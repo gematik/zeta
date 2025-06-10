@@ -1,0 +1,23 @@
+type: object
+properties:
+  product_id:
+    type: string
+  product_name:
+    type: string
+  manufacturer_id:
+    type: string
+  platform:
+    type: string
+  platform_product_id:
+    oneOf:
+      - $ref: "./product-id-apple.yaml"
+      - $ref: "./product-id-android.yaml"
+  auth_intermediary_uris:
+    type: array
+    items:
+      type: string
+  required:
+    - product_id
+    - product_name
+    - manufacturer_id
+    - platform

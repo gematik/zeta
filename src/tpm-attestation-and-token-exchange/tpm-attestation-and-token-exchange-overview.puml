@@ -1,0 +1,59 @@
+@startuml "tpm-attestation-and-token-exchange-overview"
+autonumber "(00)"
+skinparam defaultFontSize 10
+skinparam defaultFontName Helvetica
+skinparam DefaultMonospacedFontName Courier
+skinparam lengthAdjust none
+skinparam sequenceReferenceBackgroundColor White
+skinparam SequenceReferenceFontSize 12
+/'skinparam SequenceReferenceFontStyle bold
+'/
+
+!pragma teoz true
+
+Actor User
+box "LEI" #GhostWhite
+  box "Primärsystem" #Lavender
+    box "ZETA Client" #SandyBrown
+      participant Client as "ZETA\nClient"
+    end box
+    participant ZAS as "ZETA Attestation Service\n(Admin rights)"
+    participant TPM as "TPM"
+  end box
+  participant Konnektor as "Konnektor or\nTI-Gateway"
+  participant SMB as "SM(C)-B"
+end box
+
+box "Anbieter" #TECHNOLOGY
+  box "ZETA Guard" #SandyBrown
+    participant HP as "PEP\nhttp Proxy"
+    participant AuthS as "PDP\nAuthorization Server" 
+    participant PE as "PDP\nPolicy Engine"
+  end box
+    box TI 2.0 Dienst #DarkSeaGreen
+      participant RS as "Resource\nServer"
+    end box
+end box
+
+User -> Client ++ : User wants to\naccess resource\non Resource Server
+
+ref over Client, HP, AuthS: **Discovery and Configuration**
+alt Client has no client_id
+    ref over Client, AuthS: **Dynamic Client Registration with TPM Attestation**
+end
+
+ref over Client, AuthS, PE: **Token Exchange with Client Assertion JWT Auth**
+
+Client -> Client: Create DPoP Proof for RS
+Client -> HP ++ : GET /resource\n\
+  Authorization: DPoP ... (Accesss token)\n\
+  DPoP: ... (DPoP token)
+HP -> HP: verify Access token\nand DPoP Proof
+HP -> RS ++ : forward GET /resource\n\
+with header and\nPEP header as json
+RS -> RS: provide\nresource\naccess
+RS --> HP -- : 200 OK, Resource
+HP --> Client -- : 200 OK, Resource
+Client --> User -- : Resource
+
+@enduml

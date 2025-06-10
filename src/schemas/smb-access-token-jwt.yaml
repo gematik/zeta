@@ -1,0 +1,50 @@
+# Schema for SM(C)-B Access Token JWT Payload
+# The SM(C)-B Access Token JWT is used in the OAuth Token Exchange flow with the ZETA Guard AuthServer
+# It is signed by a SM(C)-B signing Key and contains the scope
+# JWT Header: 
+# {
+#   "alg": "BP256R1",
+#   "typ": "JWT",
+#   "kid": "SHA-256 hash of the public signing key used."
+# }
+# The algorithm used is the Brainpool P-256 R1 curve. It is used as long as the SM(C)-B signing key is a Brainpool P-256 R1 key.
+# JWT Payload:
+$schema: "http://json-schema.org/draft-07/schema#"
+smb-_access_token_jwt:
+
+  type: object
+  properties:
+    jti:
+      type: string
+      description: The JWT ID.
+    nonce:
+      type: string
+      description: A **unique value** from the AS to prevent replay attacks.
+    iss:
+      type: string
+      description: The issuer of the JWT (client_id).
+    sub:
+      type: string
+      description: The Telematik-ID of the SM(C)-B.
+    aud:
+      type: string
+      description: The audience of the JWT (AS Token Endpont URL).
+    exp:
+      type: integer
+      description: The expiration time of the JWT (Short-lived).
+    iat:
+      type: integer
+      description: The issued at time of the JWT.
+    scope:
+      type: string
+      description: The scope of the JWT as required for the Resource Server access.
+  required:
+    - jti
+    - nonce
+    - iss
+    - sub
+    - aud
+    - exp
+    - iat
+    - scope
+    

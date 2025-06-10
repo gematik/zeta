@@ -1,0 +1,83 @@
+openapi: 3.0.0
+info:
+  title: OAuth 2.0 Pushed Authorization Requests (PAR) Endpoint (RFC 9126)
+  version: 1.0.0
+servers:
+  - url: https://as.example.com
+paths:
+  /par:
+    post:
+      summary: Submit an authorization request to the PAR endpoint
+      description: This endpoint allows clients to push the payload of an OAuth 2.0 authorization request directly to the authorization server.
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                response_type:
+                  type: string
+                  description: REQUIRED. OAuth 2.0 Response Type value.
+                client_id:
+                  type: string
+                  description: REQUIRED. The client identifier as described in Section 2.2 of RFC 6749.
+                redirect_uri:
+                  type: string
+                  description: OPTIONAL. As described in Section 3.1.2 of RFC 6749.
+                scope:
+                  type: string
+                  description: OPTIONAL. The scope of the access request as described by Section 3.3 of RFC 6749.
+                state:
+                  type: string
+                  description: RECOMMENDED. The client uses an opaque value to maintain state between the request and callback.
+                code_challenge:
+                  type: string
+                  description: OPTIONAL. PKCE code challenge as described in RFC 7636.
+                code_challenge_method:
+                  type: string
+                  description: OPTIONAL. PKCE code challenge method as described in RFC 7636.
+                request:
+                  type: string
+                  description: OPTIONAL. JWT-encoded request object as defined in RFC 9101.
+              required:
+                - response_type
+                - client_id
+
+      responses:
+        201:
+          description: The authorization request has been successfully processed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request_uri:
+                    type: string
+                    description: The request URI that can be used to reference the pushed authorization request at the authorization endpoint.
+                  expires_in:
+                    type: integer
+                    description: The lifetime in seconds of the request URI.
+        400:
+          description: Invalid request, such as missing parameters or invalid client credentials.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: An error code.
+                  error_description:
+                    type: string
+                    description: A human-readable description of the error.
+                  error_uri:
+                    type: string
+                    description: A URI pointing to a web page with more information about the error.
+        401:
+          description: Unauthorized. Client authentication failed.
+        405:
+          description: Method Not Allowed. The method is not POST.
+        413:
+          description: Payload Too Large. The request size exceeds the allowed limit.
+        429:
+          description: Too Many Requests. The client has exceeded the allowed request rate.

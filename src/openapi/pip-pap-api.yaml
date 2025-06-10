@@ -1,0 +1,108 @@
+openapi: 3.0.3
+info:
+  title: Policy Information Point und Policy Administration Point API
+  description:  This service is part of the gematik Zero Trust
+                Telematikinfrastruktur and implements download
+                endpoints for OPA compatible PIP and PAP bundles.
+                Open Policy Agents of the Telematikinfrastruktur can
+                retrieve bundles (with policies and/or data) for their
+                application. The bundles are signed by the
+                central administrative OPA instance.
+  version: 1.0.0
+tags:
+  - name: PIP_and_PAP
+    description: Policy Information Point and Policy Administration Point
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: https://pip-pap-test.ti-dienste.de
+    description: Reference server
+  - url: https://pip-pap-ref.ti-dienste.de
+    description: Reference server
+  - url: https://pip-pap.ti-dienste.de
+    description: Production server
+paths:
+  /policies/{application}/{label}:
+    parameters:
+      - name: application
+        in: path
+        description: Application name
+        required: true
+        schema:
+          type: string
+      - name: label
+        in: path
+        description: Label of the policy and/or data bundle.tar.gz
+        required: true
+        example: latest
+        schema:
+          type: string
+      - in: header
+        name: If-None-Match
+        description: The revision of the last retrieved bundle
+                     (ETag header)
+        schema:
+          type: string
+          description: The revision of the last retrieved bundle
+    options:
+      summary: Get allowed HTTP methods for this resource
+      responses:
+        '200':
+          description: OK
+          headers:
+            Allow:
+              schema:
+                type: string
+                example: GET, HEAD, OPTIONS
+    get:
+      summary: Retrieve a signed OPA bundle
+      description: Retrieve a signed OPA bundle for the
+                   given application and label.
+                   The service compares the value of the If-None-Match header
+                   with the current revision of the bundle.
+                   If the bundle has not changed since the last update,
+                   the server replies with HTTP 304 Not Modified.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag:
+              schema:
+                type: string
+                description: The revision of the policy bundle.
+            Content-Disposition:
+              schema:
+                type: string
+                example: attachment; filename=bundle.tar.gz
+          content:
+            application/gzip:
+              schema:
+                type: string
+                format: binary
+                description: The signed OPA bundle
+        '304':
+          description: Not Modified
+        '400':
+          description: Invalid bundle type
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: The error message
+                example:
+                  error: Invalid bundle type.
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: The error message
+                example:
+                  error: The requested bundle does not exist.

@@ -1,0 +1,142 @@
+# Schema for the OAuth protected resource server .well-known json object
+$schema: "http://json-schema.org/draft-07/schema#"
+type: object
+properties:
+  resource:
+    type: string
+    description: >-
+      Identifier for the protected resource. This MUST be a URL using the `https` scheme
+      and MUST NOT include a fragment component. It is RECOMMENDED that this URL does
+      not include a query component, but using one is permitted if necessary for
+      resource identification. (See [Reference to relevant spec, e.g., RFC XXXX Section 1.2]
+      for the formal definition).
+    format: uri
+  authorization_servers:
+    type: array
+    description: >-
+      A JSON array listing the Issuer Identifiers ([RFC8414]) of the OAuth Authorization
+      Servers that can authorize access to this protected resource. The resource MAY omit
+      some supported authorization servers from this list. If the set of supported
+      authorization servers is not enumerable or discoverable via this mechanism,
+      this parameter SHOULD be omitted.
+    items:
+      type: string
+      format: uri
+  jwks_uri:
+    type: string
+    description: >-
+      URL of the protected resource's JSON Web Key Set (JWK Set) [RFC7517] document.
+      This document contains public keys owned by the protected resource, potentially
+      including keys used for signing resource responses (e.g., according to
+      [Reference to FAPI Message Signing spec]). This URL MUST use the `https` scheme.
+      If the JWK Set contains keys for both signing (`sig`) and encryption (`enc`),
+      the `use` (public key use) parameter is REQUIRED for each key to declare its
+      intended purpose.
+    format: uri
+  scopes_supported:
+    type: array
+    description: >-
+      A JSON array listing the OAuth 2.0 [RFC6749] scope values supported by this
+      protected resource for requesting access. The resource MAY omit some supported
+      scope values from this list.
+    items:
+      type: string
+  bearer_methods_supported:
+    type: array
+    description: >-
+      A JSON array listing the methods supported by the protected resource for receiving
+      OAuth 2.0 Bearer Tokens [RFC6750]. Valid values are `"header"`, `"body"`, and
+      `"query"`, corresponding to Sections 2.1, 2.2, and 2.3 of RFC 6750, respectively.
+      An empty array `[]` indicates that Bearer Tokens transmitted using these methods
+      are not supported. Omission of this parameter implies no defaults and indicates
+      nothing about supported methods.
+    items:
+      type: string
+      enum: [header, body, query]
+  resource_signing_alg_values_supported:
+    type: array
+    description: >-
+      A JSON array listing the JWS [RFC7515] signing algorithms (`alg` values) [RFC7518]
+      supported by the protected resource for signing its responses (e.g., as described
+      in [Reference to FAPI Message Signing spec]). Omission of this parameter implies
+      no default algorithms. The value `"none"` MUST NOT be included in this list.
+    items:
+      type: string
+  resource_name:
+    type: string
+    description: >-
+      A human-readable name for the protected resource, suitable for display to end-users.
+      Inclusion of this field is RECOMMENDED. The value MAY be internationalized
+      (e.g., using language tags as specified in [Reference to relevant spec, e.g., RFC XXXX Section 2.1]).
+  resource_documentation:
+    type: string
+    description: >-
+      URL of a web page providing human-readable documentation for developers about
+      using this protected resource. The target content MAY be internationalized
+      (e.g., as specified in [Reference to relevant spec, e.g., RFC XXXX Section 2.1]).
+    format: uri
+  resource_policy_uri:
+    type: string
+    description: >-
+      URL of a web page detailing the protected resource's policy regarding client
+      usage of the data it provides. The target content MAY be internationalized
+      (e.g., as specified in [Reference to relevant spec, e.g., RFC XXXX Section 2.1]).
+    format: uri
+  resource_tos_uri:
+    type: string
+    description: >-
+      URL of a web page specifying the protected resource's terms of service. The
+      target content MAY be internationalized (e.g., as specified in [Reference to relevant spec, e.g., RFC XXXX Section 2.1]).
+    format: uri
+  tls_client_certificate_bound_access_tokens:
+    type: boolean
+    description: >-
+      Boolean value indicating whether the protected resource supports mutual-TLS
+      client certificate-bound access tokens [RFC8705]. If omitted, the default
+      value is `false`.
+    default: false
+  authorization_details_types_supported:
+    type: array
+    description: >-
+      A JSON array listing the `type` values supported by the resource server for
+      the `authorization_details` parameter defined in [RFC9396].
+    items:
+      type: string
+  dpop_signing_alg_values_supported:
+    type: array
+    description: >-
+      A JSON array listing the JWS `alg` values (from the IANA "JSON Web Signature
+      and Encryption Algorithms" registry [IANA.JOSE]) supported by the resource
+      server for validating DPoP proof JWTs [RFC9449].
+    items:
+      type: string
+  dpop_bound_access_tokens_required:
+    type: boolean
+    description: >-
+      Boolean value indicating whether the protected resource requires DPoP-bound
+      access tokens [RFC9449] for all authorized requests. If omitted, the default
+      value is `false`.
+    default: false # Explicitly adding default for clarity.
+  signed_metadata:
+    type: string
+    description: >-
+      A JWT [RFC7519] containing metadata parameters about the protected resource
+      as claims. The value is the JWT itself, represented as a string. This
+      `signed_metadata` parameter itself SHOULD NOT appear as a claim within the
+      signed JWT; metadata containing such a claim SHOULD be rejected.
+
+  # --- ZETA/ASL Custom Parameters ---
+  zeta_asl_use:
+    type: string
+    description: >-
+      Indicates whether and how the ZETA/ASL protocol is utilized by this resource server.
+      `not_supported`: ZETA/ASL is not used or supported.
+      `required`: ZETA/ASL is mandatory for interaction with this resource server.
+    enum:
+      - not_supported
+      - required
+
+required:
+  - resource
+  - authorization_servers
+  - zeta_asl_use

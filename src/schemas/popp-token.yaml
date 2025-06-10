@@ -1,0 +1,18 @@
+# Schema for the ProofOfPatientPresenceToken json object. Issuer is a PoPP server.
+$schema: "http://json-schema.org/draft-07/schema#"
+proof_of_patient_presence_token:
+  type: object
+  properties:
+    sub:
+      type: string
+      description: "The subject identifier of the token, representing the patient ID."
+    tel_id:
+      type: string
+      description: "The TelematikID of the practitioner organization where the patient was present."
+    iat:
+      type: integer
+      description: "Issued at time of the token as a Unix timestamp."
+  required:
+    - sub
+    - tel_id
+    - iat

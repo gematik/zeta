@@ -1,0 +1,6 @@
+type: object
+properties:
+  clients:
+    type: array
+    items:
+      $ref: './client-policy.yaml'

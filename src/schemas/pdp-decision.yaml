@@ -1,0 +1,39 @@
+# Schema fo the PDP Decision as provided by the Policy Decision Point
+$schema: "http://json-schema.org/draft-07/schema#"
+type: object
+description: Response from an Open Policy Agent (OPA) authorization check.
+properties:
+  result:
+    type: object
+    description: The result of the OPA policy evaluation.
+    properties:
+      allow:
+        type: boolean
+        description: Indicates whether the request should be allowed (true) or denied (false).
+        required: true
+      access_token_ttl:
+        type: integer
+        format: int32
+        description: |
+          The validity period for the access token in seconds.
+          This value is only applicable, if "allow" = true.
+      refresh_token_ttl:
+        type: integer
+        format: int32
+        description: |
+          The validity period for the refresh token in seconds.
+          This value is only applicable, if "allow" = true.
+      reason:
+        type: string
+        description: |
+          Reason message in case of deny. If empty, the request is
+          denied, but no reason is given.
+    required:
+      - allow
+required:
+  - result
+example:
+  result:
+    allow: true
+    access_token_ttl: 900
+    refresh_token_ttl: 86400

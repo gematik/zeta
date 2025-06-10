@@ -1,0 +1,16 @@
+# see https://developer.apple.com/documentation/uikit/uidevice
+type: object
+properties:
+  system_version:
+    type: string
+    description: Operating system version, e.g. 10.15.7
+  system_name:
+    type: string
+    description: The name of the operating system running on the device.
+  device_model:
+    type: string
+    description: The model of the device, e.g. "iPhone6,2"
+required:
+  - system_version
+  - system_name
+  - device_model

@@ -1,0 +1,133 @@
+@startuml "dynamic-client-registration-with-tpm-attestation"
+autonumber "(00)"
+skinparam defaultFontSize 10
+skinparam defaultFontName Helvetica
+skinparam DefaultMonospacedFontName Courier
+skinparam lengthAdjust none
+skinparam sequenceReferenceBackgroundColor White
+skinparam SequenceReferenceFontSize 12
+/'skinparam SequenceReferenceFontStyle bold
+'/
+
+!pragma teoz true
+
+box "LEI" #GhostWhite
+  box "Primärsystem" #Lavender
+    box "ZETA Client" #SandyBrown
+      participant Client as "ZETA\nClient"
+    end box
+    participant ZAS as "ZETA Attestation Service\n(Admin rights)"
+    participant TPM as "TPM"
+  end box
+end box
+
+box "Anbieter" #TECHNOLOGY
+  box "ZETA Guard" #SandyBrown
+    participant AuthS as "PDP\nAuthorization Server"
+    participant PDPDB as "PDP DB"
+  end box
+    box TI 2.0 Dienst #DarkSeaGreen
+      participant RS as "Resource\nServer"
+    end box
+end box
+
+Client ++
+alt Client has no client_id
+  Client -> Client : Generate Client Instance\nKey Pair (for Client Auth)
+  note right: Key Pair for private_key_jwt \n(Public Key MUST be bound\nto TPM Attestation)
+  Client -> AuthS ++ : GET /nonce
+  AuthS --> Client --: return 200 OK new-nonce: nonce
+
+  alt ZETA Attestation Service available
+    Client -> Client: Calculate Public Key Hash\n(e.g., SHA256(PublicKeyJWK))
+    Client -> Client: Calculate attestation_challenge for TPM\n`attestation_challenge = HASH(pubKeyHash + nonce)`
+    Client -> ZAS ++ : Get Attestation\nwith `attestation_challenge`
+    alt ZETA TPM Service has no TPM Attestation Key
+      note right: The Primärsystem and the ZETA Attestation Service are in the same trust domain.\nAt the time of client installation, the ZETA Attestation Service computes a\ncryptographic hash of the Primärsystem software and extends this hash into a specific\nPCR (22 or 23) using TPM2_PCR_Extend. The ZETA Attestation Service reads\nand stores the resulting PCR value as a reference measurement or baseline.\nAt every boot of the Primärsystem, the ZETA Attestation Service measures the Primärsystem\nsoftware and extends the resulting hash into the same PCR (22 or 23) using\nTPM2_PCR_Extend.
+      ZAS -> TPM ++ : Generate Attestation Key Pair
+      TPM --> ZAS: Return Attestation Public Key
+      ZAS -> TPM: Get Certificate Chain
+      TPM --> ZAS: Return Certificate Chain
+      ZAS -> ZAS: Store AK Handle, AK Public Key\nand Certificate Chain
+    end
+
+    ZAS -> ZAS: Select AK Handle
+    ZAS -> TPM: Get TPM Quote for PCRs (4, 5, 7, 10, 11, 22 or 23)\nand `attestation_challenge` (as qualifyingData), signed with AK
+    note left: **Binding:** `attestation_challenge` enthält Hash des\nClient Instance Public Keys und die Nonce.\nDas TPM signiert PCRs + `attestation_challenge`.
+    note right: PCR 4: Boot Loader Code, Digest\nPCR 5: Boot Loader Configuration, Digest\nPCR 7: Secure Boot State / Policy, Digest\nPCR   10:OS Kernel / IMA, Digest\nPCR 11: OS Components / VSM, Digest,\nPCR 22 or 23 (if available) App Data (ID, Version,\nSignature Hash),   Digest
+    TPM --> ZAS --: Return TPM Quote
+    ZAS -> ZAS: Get TCG Event Log (from OS/Firmware)
+    note right: Quote contains:\n- `attestation_challenge` (as qualifyingData)\n- Attested Data (PCR Select, PCR Digest),\n- Signature
+    ZAS --> Client --: Return Attestation (Quote, EventLog, CertChain)
+    Client -> Client: Create Client Statement JWT\nwith posture-tpm,\nincludes Attestation\nSigned with Client Instance Key
+  else ZETA Attestation 'Service is not available
+    Client -> Client: Create Client Statement JWT\nwith posture-software\nSigned with Client Instance Key
+  end
+  note right: Attestation Statement includes:\n- product_id\n- product_version\n- posture\n- attestation (containing Quote etc.)
+
+
+  Client -> AuthS ++ : POST /register (RFC 7591)
+  note right of Client #lightblue
+      **DCR Request Body:**
+      {
+        "redirect_uris": ["..."],
+        "client_name": "...",
+        "token_endpoint_auth_method": "private_key_jwt",
+        "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange","refresh_token"],
+        "jwks": { "keys": [ <Client_Instance_Public_Key_JWK> ] },
+        // Custom parameter for attestation:
+        "urn:gematik:params:oauth:client-attestation-type:tpm2": {
+           "client_statement": "<Base64(Client Statement JWT)>",
+           "client_statement_format": "client-statement-jwt"
+         }
+      }
+  end note
+  AuthS -> AuthS : Validate Request
+  note right: Validate nonce (Replay Check)\nValidate Client Assertion JWT (Signature with Public Key from jwks)\nCalculate expected_attestation_challenge = HASH(nonce + HASH(PublicKeyFromJWKS))\nVerify qualifyingData in Quote == expected_attestation_challenge\nValidate Client Statement JWT (Signature with Public Key from jwks)\nExtract TPM Quote & Cert Chain\nfrom Client Statement
+
+  AuthS -> AuthS : Validate TPM Quote Signature\n(using AK Cert Chain / Trusted Roots)
+  note right: Checks ensure:\n1. Client owns Private Key.\n2. TPM Quote is valid & from trusted TPM.\n3. **Quote was generated for *this specific* Client Key & Nonce.**\n4. Device state (PCRs) is compliant.\n5. Request is not a replay.
+  alt Attestation and Binding valid
+    AuthS -> PDPDB ++ : Check if Client\nalready exists (by PubKey Hash?)
+    PDPDB --> AuthS:
+    note right of PDPDB
+      Check if client_id already exists in DB for
+       Client_Instance_Public_Key_JWK Thumbprint
+       (or potentially based on AK/EK cert if stable)
+    end note
+    alt Client exists in DB (based on Public Key)
+      AuthS --> Client : 409 Conflict (Client with this key already registered)
+    else
+      AuthS -> AuthS : Generate client_id
+      AuthS -> PDPDB: Store client metadata,\nincl. Client Instance Key Thumbprint, Attestation details
+      note right of PDPDB
+        Store client metadata in DB:
+        - client_id
+        - client_instance_key_thumbprint
+        - attestation_data (PCRs, AK used)
+        - attestation_key_cert_thumbprint?
+        - redirect_uris
+        - client_name
+        - token_endpoint_auth_method
+        - grant_types
+        - state // Client registered but not yet activated?
+      end note
+      PDPDB --> AuthS --: 201 Created
+      AuthS -->> Client: 201 Created
+      note right of Client #lightgreen
+          **DCR Response Body:**
+          {
+            "client_id": "<generated-client-id>",
+            "client_id_issued_at": ...,
+            // ... other metadata
+          }
+      end note
+    end
+  else Attestation or Binding invalid
+    AuthS -->> Client -- : 400 Bad Request (Attestation/Binding failed)
+  end
+
+  Client --
+end
+
+@enduml

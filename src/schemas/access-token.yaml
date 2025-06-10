@@ -1,0 +1,49 @@
+# Schema for the AccessToken json object. Issuer is a PDP authorization server.
+$schema: "http://json-schema.org/draft-07/schema#"
+access_token:
+  type: object
+  properties:
+    iss:
+      type: string
+      description: "The issuer of the token."
+    exp:
+      type: integer
+      description: "Expiration time of the token as a Unix timestamp."
+    aud:
+      type: array
+      items:
+        type: string
+      description: "The intended recipients (audiences) of the token."
+    sub:
+      type: string
+      description: "The subject of the token."
+    client_id:
+      type: string
+      description: "The client identifier of the OAuth 2.0 client that requested the token."
+    iat:
+      type: integer
+      description: "Issued at time of the token as a Unix timestamp."
+    jti:
+      type: string
+      description: "The JWT ID."
+    scope:
+      type: string
+      description: "The permissions that this token grants."
+    cnf:
+      type: object
+      description: "The confirmation claim binding the token to the public key."
+      properties:
+        jkt:
+          type: string
+          description: "SHA-256 hash of the public key used in the DPoP proof."
+      required:
+        - jkt
+  required:
+    - iss
+    - exp
+    - aud
+    - sub
+    - client_id
+    - iat
+    - jti
+    - cnf

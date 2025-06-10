@@ -1,0 +1,28 @@
+openapi: 3.0.0
+
+info:
+  title: OAuth 2.0 Protected Resource Metadata Endpoint
+  version: 1.0.0
+
+paths:
+  /.well-known/oauth-protected-resource:
+    get:
+      summary: Retrieve the metadata of the protected resource
+      description: This endpoint returns a JSON document containing metadata about the configuration of the protected resource.
+
+      responses:
+        "200":
+          description: Successful response with the metadata of the protected resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProtectedResourceMetadata"
+        "404":
+          description: Not Found.
+        "500":
+          description: Internal Server Error.
+
+components:
+  schemas:
+    ProtectedResourceMetadata:
+      $ref: "../schemas/opr-well-known.yaml"

@@ -1,0 +1,24 @@
+openapi: 3.0.0
+info:
+  title: OAuth 2.0 Authorization Server Metadata Endpunkt
+  version: 1.0.0
+paths:
+  /.well-known/oauth-authorization-server:
+    get:
+      summary: Well-Known-JSON-Objekt herunterladen
+      description: Dieser Endpunkt gibt ein JSON-Dokument zurück, das Metadaten über die Konfiguration des Autorisierungsservers enthält.
+      responses:
+        '200':
+          description: Erfolgreiche Antwort mit dem Well-Known-JSON-Objekt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorizationServerMetadata'
+        '404':
+          description: Not Found
+        '500':
+          description: Internal Server Error
+components:
+  schemas:
+    AuthorizationServerMetadata:
+      $ref: '../schemas/as-well-known.yaml'

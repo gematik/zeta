@@ -1,0 +1,80 @@
+# this schema must be refactored to match the Android APIs
+# e.g. https://developer.android.com/reference/android/os/Build
+# Constants are defined in the Build class
+# - BRAND
+# - DEVICE
+# - HARDWARE
+# etc
+type: object
+properties:
+  build:
+    description: Android build information, see https://developer.android.com/reference/android/os/Build
+    type: object
+    properties:
+      version:
+        type: object
+        properties:
+          sdk_init:
+            type: integer
+            description: Build.VERSION.SDK_INIT
+          security_patch:
+            type: string
+            description: Build.VERSION.SECURITY_PATCH
+      manufacturer:
+        type: string
+        description: Build.MANUFACTURER
+      product:
+        type: string
+      model:
+        type: string
+      board:
+        type: string
+  ro:
+    type: object
+    properties:
+      crypto:
+        type: object
+        properties:
+          state:
+            type: boolean
+            description: ro.crypto.state
+      product:
+        type: object
+        properties:
+          first_api_level:
+            type: integer
+            description: ro.product.first_api_level
+  packageManager:
+    type: object
+    properties:
+      feature_verified_boot:
+        type: boolean
+      # TODO: document where this comes from
+      mainline_patch_level:
+        type: string
+  keyguardManager:
+    type: object
+    properties:
+      isDeviceSecure:
+        type: boolean
+  # TODO: Refactor to https://developer.android.com/reference/android/hardware/biometrics/BiometricManager
+  biometricManager:
+    type: object
+    properties:
+      deviceCredential:
+        type: boolean
+      biometricStrong:
+        type: boolean
+  # TODO: Refactor to https://developer.android.com/reference/android/app/admin/DevicePolicyManager
+  devicePolicyManager:
+    type: object
+    properties:
+      passwordComplexity:
+        type: integer
+        enum:
+          - 0
+          - 1
+          - 2
+          - 3
+required:
+  - build

@@ -1,0 +1,69 @@
+openapi: 3.0.0
+info:
+  title: OAuth 2.0 Authorization Endpoint (RFC 6749 Section 3.1)
+  version: 1.0.0
+servers:
+  - url: https://as.example.com
+paths:
+  /authorize:
+    get:
+      summary: Initiate an authorization request
+      description: The client directs the user-agent to this endpoint to request authorization from the resource owner.
+      parameters:
+        - name: response_type
+          in: query
+          description: "**Must be set to \"code\" for requesting an authorization code as described by Section 4.1.1, \"token\" for requesting an access token (implicit grant) as described by Section 4.2.1, or a registered extension value as described by Section 8.4.**"
+          required: true
+          schema:
+            type: string
+            enum: [code, token]
+        - name: client_id
+          in: query
+          description: The client identifier is issued to the client during the registration process described by Section 2.2.
+          required: true
+          schema:
+            type: string
+        - name: redirect_uri
+          in: query
+          description: As described in Section 3.1.2.
+          required: true
+          schema:
+            type: string
+            format: uri
+        - name: scope
+          in: query
+          description: The scope of the access request as described by Section 3.3.
+          schema:
+            type: string
+        - name: state
+          in: query
+          description: The client uses an opaque value to maintain state between the request and callback. The authorization server includes this value when redirecting the user-agent back to the client. The parameter SHOULD be used for preventing cross-site request forgery as described in Section 10.12
+          schema:
+            type: string
+      responses:
+        302:
+          description: Redirection to the client redirection endpoint with authorization code or error.
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+        400:
+          description: Invalid request, such as a missing parameter.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: An error code.
+                  error_description:
+                    type: string
+                    description: A human-readable description of the error.
+                  error_uri:
+                    type: string
+                    description: A URI pointing to a web page with more information about the error.
+                  state:
+                    type: string
+                    description: The state parameter from the authorization request, if any.

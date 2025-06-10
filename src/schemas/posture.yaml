@@ -1,0 +1,5 @@
+oneOf:
+  - $ref: './posture-android.yaml'
+  - $ref: './posture-apple.yaml'
+  - $ref: './posture-tpm.yaml'
+  - $ref: './posture-software.yaml'

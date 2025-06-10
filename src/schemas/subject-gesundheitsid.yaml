@@ -1,0 +1,64 @@
+# Schema for subject information from GesundheitsID
+# All properties are claims from ID_TOKEN
+# Example:
+#  {
+#    "sub": "0XkIBtL3XhZ9qncbFmkYbLkj4vjkES4T3dgSgTfl2s5WyZgDkl7WW1HakMyi9iN6kLEGu7ssw1S52uW521gn9vLeNFLaIBlDJbbo55xQFJIqfPqUWYarCL253hQL2uIB4A",
+#    "urn:telematik:claims:id": "T020821918",
+#    "urn:telematik:claims:organization": "101575519",
+#    "amr": [
+#      "urn:telematik:auth:other"
+#    ],
+#    "iss": "https://...",
+#    "urn:telematik:claims:display_name": "Juliane Mustermann",
+#    "nonce": "WEgmvoUcr5EUAB7x41fmbXRqBdnr4gio",
+#    "aud": "https://...",
+#    "acr": "gematik-ehealth-loa-high",
+#    "urn:telematik:claims:profession": "1.2.276.0.76.4.49",
+#    "auth_time": 1710409161,
+#    "exp": 1710409463,
+#    "iat": 1710409163
+#  }
+#
+type: object
+properties:
+  sub:
+    type: string
+    description: The subject identifier
+  "urn:telematik:claims:id":
+    type: string
+    description: Telematik specific identifier of the subject, KVNR
+  "urn:telematik:claims:organization":
+    type: string
+    description: The organization identifier of the subject
+  amr:
+    type: array
+    items:
+      type: string
+    description: The authentication methods used
+  iss:
+    type: string
+    description: The issuer of the token
+  "urn:telematik:claims:display_name":
+    type: string
+    description: The display name of the subject
+  nonce:
+    type: string
+    description: The nonce used in the request
+  aud:
+    type: string
+    description: The audience of the token
+  acr:
+    type: string
+    description: The authentication context class reference
+  "urn:telematik:claims:profession":
+    type: string
+    description: The profession of the subject
+  auth_time:
+    type: integer
+    description: The time of the authentication
+  exp:
+    type: integer
+    description: The expiration time of the token
+  iat:
+    type: integer
+    description: The time the token was issued
