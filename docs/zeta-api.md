@@ -64,15 +64,16 @@ Die ZETA API ist so konzipiert, dass sie eine sichere und flexible Interaktion z
           - [Response-Nachricht: `GetAttestationResponse`](#response-nachricht-getattestationresponse)
           - [Fehlerbehandlung](#fehlerbehandlung)
           - [Sicherheitsaspekte](#sicherheitsaspekte)
-  - [1.6. Versionierung](#16-versionierung)
-  - [1.7. Performance- und Lastannahmen](#17-performance--und-lastannahmen)
-  - [1.8 Rate Limits und Einschränkungen](#18-rate-limits-und-einschränkungen)
-  - [1.9. Support und Kontaktinformationen](#19-support-und-kontaktinformationen)
-  - [1.10. FAQs und Troubleshooting](#110-faqs-und-troubleshooting)
-  - [1.11. Interaktive Dokumentation (optional)](#111-interaktive-dokumentation-optional)
-  - [1.12. Changelog](#112-changelog)
-  - [1.13. git Branch Modell](#113-git-branch-modell)
-  - [1.14. Lizenzbedingungen](#114-lizenzbedingungen)
+  - [1.6. Verwaltung von Keys und Sessions](#16-verwaltung-von-keys-und-sessions)
+  - [1.7. Versionierung](#17-versionierung)
+  - [1.8. Performance- und Lastannahmen](#18-performance--und-lastannahmen)
+  - [1.9. Rate Limits und Einschränkungen](#19-rate-limits-und-einschränkungen)
+  - [1.10. Support und Kontaktinformationen](#110-support-und-kontaktinformationen)
+  - [1.11. FAQs und Troubleshooting](#111-faqs-und-troubleshooting)
+  - [1.12. Interaktive Dokumentation (optional)](#112-interaktive-dokumentation-optional)
+  - [1.13. Changelog](#113-changelog)
+  - [1.14. git Branch Modell](#114-git-branch-modell)
+  - [1.15. Lizenzbedingungen](#115-lizenzbedingungen)
 
 ## 1.3 Voraussetzungen für die ZETA Client Nutzung
 
@@ -102,7 +103,7 @@ Der Gesamtprozess beginnt damit, dass ein **Nutzer** auf einen Endpunkt eines Re
 
 ### 1.4.1 Konfiguration und Discovery
 
-In dieser Phase ermittelt der ZETA Client die notwendigen Endpunkte und Konfigurationen von der ZETA Guard Komponente (PEP http Proxy und PDP Authorization Server). Der Client fragt bekannte Endpunkte (`/.well-known/oauth-protected-resource` und `/.well-known/oauth-authorization-server`) ab, um die Konfiguration des Resource Servers und des Authorization Servers zu erhalten.
+In dieser Phase ermittelt der ZETA Client die notwendigen Endpunkte und Konfigurationen von den ZETA Guard Komponenten (PEP http Proxy und PDP Authorization Server). Der Client fragt bekannte Endpunkte (`/.well-known/oauth-protected-resource` und `/.well-known/oauth-authorization-server`) ab, um die Konfiguration des Resource Servers und des Authorization Servers zu erhalten. Das folgende Bild zeigt den Ablauf.
 
 ![tpm-attestation-and-token-exchange-overview](/images/tpm-attestation-and-token-exchange/discovery-and-configuration.svg)
 <p style="font-size:0.9em; text-align:center;"><em>Abbildung 2: Ablauf Discovery and Configuration</em></p>
@@ -113,6 +114,8 @@ Jeder ZETA Client muss sich an dem ZETA Guard registrieren, über den er auf ges
 
 - **Initiale Registrierung:** Der Client erhält eine eindeutige client_id. Der Client ist danach im System bekannt, aber noch nicht aktiv.
 - **Erste Authentifizierung (Aktivierung):** Der Client weist seine Identität und seine Integrität mit der TPM-Attestierung nach, registriert damit seinen kryptographischen Schlüssel (Client Instance Key) und wird dadurch aktiviert.
+
+Die Client Registrierung erfolgt einmalig pro ZETA Guard (siehe [1.6. Verwaltung von Keys und Sessions](#16-verwaltung-von-keys-und-sessions)).
 
 #### 1.4.2.1 Initiale Registrierung
 
@@ -144,7 +147,7 @@ Diese Trennung schafft eine Balance zwischen höchster Sicherheit beim initialen
 Die folgende Abbildung zeigt den Ablauf des Token-Austauschs mit Client Assertion JWT Authentifizierung und DPoP Proof.
 
 ![tpm-attestation-and-token-exchange-overview](/images/tpm-attestation-and-token-exchange/token-exchange-with-client-assertion-jwt-auth.svg)
-<p style="font-size:0.9em; text-align:center;"><em>Abbildung 3: Authentifizierung und TPM-Attestation</em></p>
+<p style="font-size:0.9em; text-align:center;"><em>Abbildung 4: Ablauf Authentifizierung und TPM-Attestation</em></p>
 
 ##### 1.4.3.1.1 Pfad A: Initialer Token-Austausch mit TPM-Attestierung
 
@@ -1008,12 +1011,14 @@ _Hinweis: Es wird empfohlen, dass der Installer des Clients und des ZetaAttestat
 
 ---
 
-## 1.6. Versionierung
+## 1.6. Verwaltung von Keys und Sessions
+
+## 1.7. Versionierung
 
 API-Versionierung: Hinweise darauf, wie Versionen der API verwaltet werden und wie Benutzer zwischen verschiedenen Versionen wechseln können.
 Änderungsprotokoll: Ein Changelog, das alle wichtigen Änderungen und Updates dokumentiert.
 
-## 1.7. Performance- und Lastannahmen
+## 1.8. Performance- und Lastannahmen
 
 Leistungsanforderungen: Informationen über die erwartete Leistung der API, wie z.B. Antwortzeiten und Verfügbarkeit.
 Lastannahmen: Informationen über das erwartete Lastverhalten auf der API, wie z.B. die Anzahl der gleichzeitigen Benutzer oder Anfragen pro Sekunde.
@@ -1025,7 +1030,7 @@ Lastannahmen: Informationen über das erwartete Lastverhalten auf der API, wie z
 - ZETA Guard PEP
 - ZETA Guard Refresh Token Exchange
 
-## 1.8 Rate Limits und Einschränkungen
+## 1.9. Rate Limits und Einschränkungen
 
 Der OAuth Protected Resource Well-Known Endpoint ist so konfiguriert, dass er eine Rate-Limiting-Strategie implementiert. Der ZETA Client muss die Rate Limits beachten, um eine Überlastung des Endpunkts zu vermeiden. Die genauen Limits können je nach Implementierung variieren, aber typischerweise gelten folgende Richtlinien:
 
@@ -1040,27 +1045,27 @@ oder:
 
 **Beispiele:** [Draft RFC für Rate Limits](https://www.ietf.org/archive/id/draft-ietf-httpapi-ratelimit-headers-09.html#name-ratelimit-policy-field)
 
-## 1.9. Support und Kontaktinformationen
+## 1.10. Support und Kontaktinformationen
 
 Hilfe: Informationen darüber, wo und wie Benutzer Unterstützung erhalten können (z.B. Forum, E-Mail-Support).
 Fehlerberichterstattung: Wie können Nutzer Bugs melden oder Feature-Anfragen stellen?
 
-## 1.10. FAQs und Troubleshooting
+## 1.11. FAQs und Troubleshooting
 
 Häufige Fragen: Antworten auf häufige Fragen zur Nutzung der API.
 Fehlerbehebung: Leitfaden zur Behebung häufiger Probleme.
 
-## 1.11. Interaktive Dokumentation (optional)
+## 1.12. Interaktive Dokumentation (optional)
 
 Swagger/OpenAPI: Ein interaktives Interface, mit dem Entwickler API-Endpunkte direkt aus der Dokumentation heraus testen können.
 API-Sandbox: Eine Testumgebung, in der Entwickler sicher mit der API experimentieren können.
 Eine gut strukturierte API-Dokumentation erleichtert es Entwicklern, die API effizient zu nutzen, und trägt dazu bei, häufige Fragen und Probleme zu minimieren.
 
-## 1.12. Changelog
+## 1.13. Changelog
 
 Ein detaillierter Verlauf der Änderungen an der API.
 
-## 1.13. git Branch Modell
+## 1.14. git Branch Modell
 
 In diesem Repository werden Branches verwendet um den Status der Weiterentwicklung und das Review von Änderungen abzubilden.
 
@@ -1073,7 +1078,7 @@ Folgende Branches werden verwendet
 - _concept/[name]_ (in feature branches werden neue Konzepte entwickelt; basiert auf develop; dient der Abstimmung mit Dritten; es erfolgt kein merge; wird nach Bedarf gelöscht)
 - _misc/[name]_ (nur für internen Gebrauch der gematik; es erfolgt kein merge; wird nach Bedarf gelöscht)
 
-## 1.14. Lizenzbedingungen
+## 1.15. Lizenzbedingungen
 
 Copyright (c) 2024 gematik GmbH
 
