@@ -1,6 +1,6 @@
 # ZETA API
 
-![gematik logo](/images/gematik-logo.svg)
+![gematik logo](/images/gematik-logo-small.svg)
 
 ## 1.1. Einführung
 
