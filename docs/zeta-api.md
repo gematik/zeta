@@ -110,37 +110,21 @@ In dieser Phase ermittelt der ZETA Client die notwendigen Endpunkte und Konfigur
 
 ### 1.4.2 Client-Registrierung
 
-Der ZETA Client benötigt eine Client Registrierung an jedem ZETA Guard, über den auf geschützte Ressourcen zugegriffen werden soll. Die Registrierung erfolgt über den Dynamic Client Registration Endpoint der ZETA Guard API.
+Jeder ZETA Client muss sich an dem ZETA Guard registrieren, über den er auf geschützte Ressourcen zugreifen möchte. Der gesamte Prozess ist zweistufig, um die administrative Einrichtung von der technischen Inbetriebnahme zu trennen:
 
-Für die Registrierung wird eine Client Identität benötigt (Client Instance Key Pair), die vom ZETA Client generiert wird. Diese Identität wird verwendet, um den ZETA Client bei der ZETA Guard API zu identifizieren und zu authentifizieren.
-Die Registrierung erfolgt einmalig.
+- **Initiale Registrierung:** Der Client erhält eine eindeutige client_id. Der Client ist danach im System bekannt, aber noch nicht aktiv.
+- **Erste Authentifizierung (Aktivierung):** Der Client weist seine Identität und seine Integrität mit der TPM-Attestierung nach, registriert damit seinen kryptographischen Schlüssel (Client Instance Key) und wird dadurch aktiviert.
 
-#### 1.4.2.1 Stationäre Clients
+#### Initiale Registrierung
 
-Die Registrierung erfolgt über den Dynamic Client Registration Endpoint der ZETA Guard API. Der ZETA Client sendet eine Anfrage an diesen Endpunkt, um sich zu registrieren. Die Anfrage enthält:
+Die initiale Registrierung erfolgt über den Dynamic Client Registration (DCR) Endpoint der ZETA Guard API. Ziel dieser Phase ist ausschließlich der Erhalt einer client_id.
+Der ZETA Client sendet eine minimalistische Registrierungsanfrage an diesen Endpunkt. Die Anfrage enthält nur die grundlegendsten Metadaten:
 
-- Client Metadaten (Client Name, Client Instance Public Key)
-- Eine nonce, die vom ZETA Guard generiert wird
-- Client Attestation Informationen, die den ZETA Client identifizieren
-- Eine Signatur der Anfrage, die mit dem Client Instance Private Key erstellt wurde
-- Zusätzliche Informationen wie Redirect URIs, etc.
-
-Die ZETA Guard API prüft die Anfrage und registriert den ZETA Client. Nach erfolgreicher Registrierung erhält der ZETA Client eine Client ID, die für die Authentifizierung bei der ZETA Guard API verwendet wird.
+- `client_name`: Ein für Menschen lesbarer Name für den Client (z.B. "Praxis-PC-123").
+- `token_endpoint_auth_method`: Die geplante Authentifizierungsmethode (`private_key_jwt`).
+- `grant_types`: Die erlaubten Grant Types (z.B. `urn:ietf:params:oauth:grant-type:token-exchange`, `refresh_token`).
 
 ---
-
-Voraussetzung: Während der Installation des Primärsystems wird ein ZETA Attestation Service auf dem Host des Primärsystems installiert. Dieser Service hat Privilegien (Admin Rechte) um mit dem TPM kommunizieren zu können. Während der Installation wird ein hash der Primärsystem Software erzeugt und in das TPM PCR 22 oder PCR 23 geschrieben (falls noch nicht belegt). Dieser Wert wird vom ZETA Attestation Service als Baseline gespeichert. Während jedes Bootvorgangs wird die Primärsystem Software erneut gemessen und der Hash in das gleiche PCR (22 oder 23) geschrieben. Der ZETA Attestation Service ist in der Lage, den TCG Event Log zu lesen und die Integrität des Primärsystems zu garantieren. Der ZETA Client ist in der Lage, den ZETA Attestation Service zu kontaktieren und TPM Quoten zu erstellen.
-
-Sofern der ZETA Client noch keine `client_id` besitzt, durchläuft er den folgenden Prozess.
-Der ZETA Client registriert sich beim Authorization Server über den **Dynamic Client Registration** Flow. Dabei wird eine **TPM Attestation** durchgeführt, um die Integrität des Primärsystems zu garantieren.
-
-![tpm-attestation-and-token-exchange-overview](/images/tpm-attestation-and-token-exchange/dynamic-client-registration-with-tpm-attestation.svg)
-
-Hierbei generiert der ZETA Client zunächst ein **Client Instance Key Pair**, welches für die Client Authentifizierung (private_key_jwt) verwendet wird und dessen Public Key an eine TPM Attestierung gebunden werden MUSS.
-
-Um die Attestierung zu erhalten, fordert der ZETA Client eine Nonce vom Authorization Server an. Diese Nonce wird zusammen mit dem Hash des Client Instance Public Keys zu `attestation_challenge` verrechnet. Der ZETA Client nutzt dann einen ZETA Attestation Service (falls verfügbar), um ein **TPM Quote** für spezifische PCRs (z.B. 4, 5, 7, 10, 11, 22/23) sowie die `attestation_challenge` zu erhalten. Entweder PCR 22 oder PCR 23 wird genutzt, falls es bei der Installation des PS und des ZETA Attestation Service frei ist und enthält einen Hash, der die Integrität des PS garantiert. Das TPM signiert das Quote mit einem Attestation Key. Das Quote, der TCG Event Log und die Zertifikatskette des Attestation Keys werden zusammen als Attestierung an den ZETA Client zurückgegeben. Der ZETA Client erstellt dann ein **Client Statement JWT**, das die Attestierung enthält (oder eine Software-Attestierung, falls der ZETA Attestation Service nicht verfügbar ist), und signiert es mit dem Client Instance Private Key. Dieser Client Statement JWT wird im **RFC 7591** POST /register Request an den Authorization Server gesendet. Der Request enthält auch den Public Key des Client Instance Key Pairs, die Nonce vom AuthS (für Replay-Schutz und Binding-Check) sowie weitere Client-Metadaten. Der Authorization Server validiert den Request umfassend: er prüft die Nonce, die Signatur des Client Assertion JWT, verifiziert das TPM Quote und die Zertifikatskette, prüft, ob das Quote tatsächlich für diesen spezifischen Client Key und die Nonce generiert wurde (`qualifyingData` im Quote muss `expected_attestation_challenge` entsprechen), und bewertet den Gerätezustand basierend auf den PCRs. Bei erfolgreicher Validierung und sofern der ZETA Client (basierend auf dem Public Key Thumbprint) noch nicht registriert ist, generiert der AuthS eine `client_id`, speichert die Client-Metadaten zusammen mit Attestierungsdetails und gibt die `client_id` an den ZETA Client zurück.
-
-Wie oft die Attestation erneuert werden muss, hängt von der Policy des Authorization Servers ab. Der Ablauf dafür ist hier noch nicht enthalten.
 
 #### 1.4.2.2 Mobile Clients
 
@@ -148,7 +132,7 @@ Die Registrierung für mobile Clients erfolgt ähnlich wie bei stationären Clie
 
 ### 1.4.3 Authentifizierung und Autorisierung
 
-Nach erfolgreicher Registrierung besitzt der ZETA Client eine `client_id` und ein Instanz-Schlüsselpaar. Um auf einen Fachdienst zugreifen zu können, benötigt der Client ein Access Token vom Authorization Server (AS). Stationäre ZETA Clients verweden dafür den Token Exchange Flow, während mobile ZETA Clients den Authorization Code Flow mit OpenID Connect nutzen.
+Nach erfolgreicher Registrierung besitzt der ZETA Client eine `client_id`. Um auf einen Fachdienst zugreifen zu können, benötigt der Client ein Access Token vom Authorization Server (AS). Stationäre ZETA Clients verweden dafür den Token Exchange Flow, während mobile ZETA Clients den Authorization Code Flow mit OpenID Connect nutzen.
 
 #### 1.4.3.1 Stationäre Clients
 

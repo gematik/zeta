@@ -32,6 +32,11 @@ box "Anbieter" #TECHNOLOGY
 end box
 
 Client ++
+alt Client has no Client Instance Key
+  Client -> Client : Generate Client Instance\nKey Pair (for Client Auth)
+  note right: Key Pair for private_key_jwt \n(Public Key MUST be bound\nto TPM Attestation)
+end
+
 Client -> AuthS ++ : GET /nonce
 AuthS --> Client --: return 200 OK new-nonce: nonce
 
