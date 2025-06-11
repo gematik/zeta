@@ -126,6 +126,8 @@ Der ZETA Client sendet eine minimalistische Registrierungsanfrage an diesen Endp
 - `token_endpoint_auth_method`: Die geplante Authentifizierungsmethode (`private_key_jwt`).
 - `grant_types`: Die erlaubten Grant Types (z.B. `urn:ietf:params:oauth:grant-type:token-exchange`, `refresh_token`).
 
+Die folgende Abbildung zeigt die initiale Registrierung des Clients.
+
 ![Ablauf Client Registrierung](/images/tpm-attestation-and-token-exchange/dynamic-client-registration.svg)
 <p style="font-size:0.9em; text-align:center;"><em>Abbildung 3: Ablauf Client Registrierung</em></p>
 
