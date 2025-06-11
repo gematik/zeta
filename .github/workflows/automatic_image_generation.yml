@@ -1,0 +1,193 @@
+name: Automatic Image Generation
+
+on:
+  push:
+    paths:
+      - 'src/plantuml/**'
+      - 'src/drawio/**'
+      - '.github/workflows/automatic_image_generation.yml'
+  workflow_dispatch:
+
+jobs:
+  generate_images:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 11
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: '11'
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends graphviz xvfb
+        sudo snap install drawio --classic
+        sleep 5
+
+    - name: Download PlantUML jar
+      id: download_plantuml
+      run: |
+        wget --quiet https://github.com/plantuml/plantuml/releases/latest/download/plantuml.jar -O /tmp/plantuml.jar
+        if [ ! -f /tmp/plantuml.jar ]; then
+          echo "ERROR: Failed to download plantuml.jar"
+          exit 1
+        fi
+        echo "PlantUML JAR downloaded."
+
+    - name: Generate images from PlantUML files
+      id: generate_plantuml
+      run: |
+        set -e
+        SUCCESSFUL_GENERATIONS=0
+        FAILED_GENERATIONS=0
+        shopt -s nullglob
+
+        echo "Checking PlantUML files..."
+        while IFS= read -r -d $'\0' file; do
+          # echo "Processing PlantUML file: $file" # Optional: Keep if you want per-file logs
+          output_dir="$PWD/$(dirname "$file" | sed 's|^src/plantuml|images|')"
+          image_base=$(basename "$file" .puml)
+          png_path="$output_dir/$image_base.png"
+          svg_path="$output_dir/$image_base.svg"
+          should_generate=false
+          generation_reason=""
+
+          # Determine reason for generation
+          if [ ! -f "$png_path" ] || [ ! -f "$svg_path" ] || { [ -f "$png_path" ] && [ "$file" -nt "$png_path" ]; } || { [ -f "$svg_path" ] && [ "$file" -nt "$svg_path" ]; }; then
+             should_generate=true
+          fi
+
+          if [ "$should_generate" = true ]; then
+            echo "-> Generating images for PlantUML file: $file"
+            mkdir -p "$output_dir"
+            
+            # Generate PNG & SVG, check exit codes inline
+            java -jar /tmp/plantuml.jar -tpng -scale 4 "$file" -o "$output_dir" || echo "   WARNING: PNG generation command may have failed for $file (Exit Code: $?)" >&2
+            java -jar /tmp/plantuml.jar -tsvg "$file" -o "$output_dir" || echo "   WARNING: SVG generation command may have failed for $file (Exit Code: $?)" >&2
+
+            # Verify files were created AFTER commands ran
+            if [ -f "$png_path" ] && [ -f "$svg_path" ]; then
+               SUCCESSFUL_GENERATIONS=$((SUCCESSFUL_GENERATIONS + 1))
+            else
+               echo "   ERROR: One or both output files missing after generation attempt for $file." >&2
+               FAILED_GENERATIONS=$((FAILED_GENERATIONS + 1))
+            fi
+          # else # Optional: uncomment if you want to see "up-to-date" messages
+          #   echo "-> Images for PlantUML file $file are up-to-date."
+          fi
+        done < <(find src/plantuml -name "*.puml" -print0)
+
+        echo "PlantUML generation finished. Successful: $SUCCESSFUL_GENERATIONS, Failed: $FAILED_GENERATIONS."
+
+        if [ "$SUCCESSFUL_GENERATIONS" -gt 0 ]; then
+          echo "plantuml_generated=true" >> $GITHUB_OUTPUT
+        else
+          echo "plantuml_generated=false" >> $GITHUB_OUTPUT
+        fi
+
+        if [ "$FAILED_GENERATIONS" -gt 0 ]; then
+          echo "::warning::There were $FAILED_GENERATIONS failed PlantUML generation attempts."
+          # Optionally fail the step: exit 1
+        fi
+      shell: bash
+
+    - name: Generate images from drawio files
+      id: generate_drawio
+      run: |
+        set -e
+        SUCCESSFUL_GENERATIONS=0
+        FAILED_GENERATIONS=0
+        shopt -s nullglob
+
+        echo "Checking Draw.io files..."
+        while IFS= read -r -d $'\0' file; do
+          # echo "Processing drawio file: $file" # Optional: Keep if you want per-file logs
+          abs_file="$PWD/$file"
+          output_dir="$PWD/$(dirname "$file" | sed 's|^src/drawio|images|')"
+          image_base=$(basename "$file" .drawio)
+          png_path="$output_dir/$image_base.png"
+          svg_path="$output_dir/$image_base.svg"
+          should_generate=false
+
+          if [ ! -f "$abs_file" ]; then
+              echo "   ERROR: Source file path not found: $abs_file" >&2
+              FAILED_GENERATIONS=$((FAILED_GENERATIONS + 1))
+              continue
+          fi
+
+          if [ ! -f "$png_path" ] || [ ! -f "$svg_path" ] || { [ -f "$png_path" ] && [ "$abs_file" -nt "$png_path" ]; } || { [ -f "$svg_path" ] && [ "$abs_file" -nt "$svg_path" ]; }; then
+              should_generate=true
+          fi
+
+          if [ "$should_generate" = true ]; then
+            echo "-> Generating images for Draw.io file: $file"
+            mkdir -p "$output_dir"
+            drawio_png_ok=true
+            drawio_svg_ok=true
+
+            # Generate PNG & SVG, check exit codes inline
+            xvfb-run --auto-servernum drawio --no-sandbox --disable-gpu --export --format png --scale 4 --output "$png_path" "$abs_file" || drawio_png_ok=false
+            xvfb-run --auto-servernum drawio --no-sandbox --disable-gpu --export --format svg --output "$svg_path" "$abs_file" || drawio_svg_ok=false
+
+            if [ "$drawio_png_ok" = false ]; then
+                echo "   WARNING: PNG generation command may have failed for $file" >&2
+            fi
+             if [ "$drawio_svg_ok" = false ]; then
+                echo "   WARNING: SVG generation command may have failed for $file" >&2
+            fi
+
+            # Verify files were created AND commands seemed ok
+            if [ "$drawio_png_ok" = true ] && [ "$drawio_svg_ok" = true ] && [ -f "$png_path" ] && [ -f "$svg_path" ]; then
+               SUCCESSFUL_GENERATIONS=$((SUCCESSFUL_GENERATIONS + 1))
+            else
+               echo "   ERROR: Command failed or one or both output files missing after generation attempt for $file." >&2
+               FAILED_GENERATIONS=$((FAILED_GENERATIONS + 1))
+            fi
+          # else # Optional: uncomment if you want to see "up-to-date" messages
+          #   echo "-> Images for Draw.io file $file are up-to-date."
+          fi
+        done < <(find src/drawio -name "*.drawio" -print0)
+
+        echo "Draw.io generation finished. Successful: $SUCCESSFUL_GENERATIONS, Failed: $FAILED_GENERATIONS."
+
+        if [ "$SUCCESSFUL_GENERATIONS" -gt 0 ]; then
+          echo "drawio_generated=true" >> $GITHUB_OUTPUT
+        else
+          echo "drawio_generated=false" >> $GITHUB_OUTPUT
+        fi
+
+        if [ "$FAILED_GENERATIONS" -gt 0 ]; then
+           echo "::warning::There were $FAILED_GENERATIONS failed Draw.io generation attempts."
+           # Optionally fail the step: exit 1
+        fi
+      shell: bash
+
+    # Removed the 'Show Git Status for Images' step
+
+    - name: Commit and push generated images
+      if: steps.generate_plantuml.outputs.plantuml_generated == 'true' || steps.generate_drawio.outputs.drawio_generated == 'true'
+      run: |
+        echo "Checking for changes in 'images' directory to commit..."
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+        git add images
+
+        if git diff --staged --quiet -- images; then
+          echo "No staged changes detected in 'images' directory after 'git add'. Nothing to commit."
+          exit 0
+        fi
+
+        echo "Staged changes found. Committing..."
+        git commit -m "chore: Generate/update images from source files" -m "Generated by GitHub Action."
+
+        echo "Pushing changes..."
+        # Add retry logic for potential transient push failures
+        git push || (sleep 5 && git pull --rebase && git push)
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
