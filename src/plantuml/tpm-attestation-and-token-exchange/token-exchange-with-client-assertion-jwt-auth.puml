@@ -45,15 +45,37 @@ alt ZETA Client uses SM(C)-B Access Token (Initial Token Exchange with Attestati
     note right: Session-based Key Pair for DPoP binding.
 
   ' === START: ATTESTATION SECTION (only for this path) ===
-  Client -> Client: Calculate Public Key Hash\n(e.g., SHA256(PublicKeyJWK))
+  Client -> Client: Calculate Public Client Instance Key Hash\n(e.g., SHA256(PublicKeyJWK))
   Client -> Client: Calculate attestation_challenge for TPM\n`attestation_challenge = HASH(pubKeyHash + nonce)`
-  Client -> ZAS ++: Get Attestation\nwith `attestation_challenge`
-  note right: Die TPM-Attestierung wird nur beim\ninitialen Token-Austausch durchgeführt,\num die Integrität des Clients zu prüfen.
-  ZAS -> TPM ++: Get TPM Quote for PCRs (4, 5, 7, 10, 11, 22 or 23)\nand `attestation_challenge` (as qualifyingData), signed with AK
-  TPM --> ZAS --: Return TPM Quote
-  ZAS -> ZAS: Get TCG Event Log
-  ZAS --> Client --: Return Attestation (Quote, EventLog, CertChain)
-  Client -> Client: Create Client Statement JWT\nwith posture-tpm,\nincludes Attestation\nSigned with Client Instance Key
+  
+  
+    alt ZETA Attestation Service available
+    Client -> Client: Calculate Public Key Hash\n(e.g., SHA256(PublicKeyJWK))
+    Client -> Client: Calculate attestation_challenge for TPM\n`attestation_challenge = HASH(pubKeyHash + nonce)`
+    Client -> ZAS ++ : Get Attestation\nwith `attestation_challenge`
+    alt ZETA TPM Service has no TPM Attestation Key
+      note right: The Primärsystem and the ZETA Attestation Service are in the same trust domain.\nAt the time of client installation, the ZETA Attestation Service computes a\ncryptographic hash of the Primärsystem software and extends this hash into a specific\nPCR (22 or 23) using TPM2_PCR_Extend. The ZETA Attestation Service reads\nand stores the resulting PCR value as a reference measurement or baseline.\nAt every boot of the Primärsystem, the ZETA Attestation Service measures the Primärsystem\nsoftware and extends the resulting hash into the same PCR (22 or 23) using\nTPM2_PCR_Extend.
+      ZAS -> TPM ++ : Generate Attestation Key Pair
+      TPM --> ZAS: Return Attestation Public Key
+      ZAS -> TPM: Get Certificate Chain
+      TPM --> ZAS: Return Certificate Chain
+      ZAS -> ZAS: Store AK Handle, AK Public Key\nand Certificate Chain
+    end
+
+    ZAS -> ZAS: Select AK Handle
+    ZAS -> TPM: Get TPM Quote for PCRs (4, 5, 7, 10, 11, 22 or 23)\nand `attestation_challenge` (as qualifyingData), signed with AK
+    note left: **Binding:** `attestation_challenge` enthält Hash des\nClient Instance Public Keys und die Nonce.\nDas TPM signiert PCRs + `attestation_challenge`.
+    note right: PCR 4: Boot Loader Code, Digest\nPCR 5: Boot Loader Configuration, Digest\nPCR 7: Secure Boot State / Policy, Digest\nPCR   10:OS Kernel / IMA, Digest\nPCR 11: OS Components / VSM, Digest,\nPCR 22 or 23 (if available) App Data (ID, Version,\nSignature Hash),   Digest
+    TPM --> ZAS --: Return TPM Quote
+    ZAS -> ZAS: Get TCG Event Log (from OS/Firmware)
+    note right: Quote contains:\n- `attestation_challenge` (as qualifyingData)\n- Attested Data (PCR Select, PCR Digest),\n- Signature
+    ZAS --> Client --: Return Attestation (Quote, EventLog, CertChain)
+    Client -> Client: Create Client Statement\nwith posture-tpm,\nincludes Attestation
+  else ZETA Attestation 'Service is not available
+    Client -> Client: Create Client Statement\nwith posture-software
+  end
+  note right: Attestation Statement includes:\n- product_id\n- product_version\n- posture\n- attestation (containing Quote etc.)
+
   ' === END: ATTESTATION SECTION ===
 
   Client -> Client : Create Client Assertion JWT **with Attestation**
@@ -66,8 +88,8 @@ alt ZETA Client uses SM(C)-B Access Token (Initial Token Exchange with Attestati
         "cnf": { "jkt": "<DPoP_Key_Thumbprint>" },
         // Embed the fresh attestation
         "urn:gematik:params:oauth:client-attestation:tpm2": {
-           "attestation_data": "<Base64(Client Statement JWT)>",
-           "client_statement_format": "client-statement-jwt"
+           "attestation_data": "<Base64(Client Statement)>",
+           "client_statement_format": "client-statement"
          }
       }
       (sig by Client_Instance_Private_Key)
