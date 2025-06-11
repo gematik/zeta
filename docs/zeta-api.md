@@ -25,8 +25,7 @@ Die ZETA API ist so konzipiert, dass sie eine sichere und flexible Interaktion z
   - [1.4 Ablauf](#14-ablauf)
     - [1.4.1 Konfiguration und Discovery](#141-konfiguration-und-discovery)
     - [1.4.2 Client-Registrierung](#142-client-registrierung)
-      - [1.4.2.1 Stationäre Clients](#1421-stationäre-clients)
-      - [1.4.2.2 Mobile Clients](#1422-mobile-clients)
+      - [Initiale Registrierung](#initiale-registrierung)
     - [1.4.3 Authentifizierung und Autorisierung](#143-authentifizierung-und-autorisierung)
       - [1.4.3.1 Stationäre Clients](#1431-stationäre-clients)
         - [1.4.3.1.1 Pfad A: Initialer Token-Austausch mit TPM-Attestierung](#14311-pfad-a-initialer-token-austausch-mit-tpm-attestierung)
@@ -115,7 +114,7 @@ Jeder ZETA Client muss sich an dem ZETA Guard registrieren, über den er auf ges
 - **Initiale Registrierung:** Der Client erhält eine eindeutige client_id. Der Client ist danach im System bekannt, aber noch nicht aktiv.
 - **Erste Authentifizierung (Aktivierung):** Der Client weist seine Identität und seine Integrität mit der TPM-Attestierung nach, registriert damit seinen kryptographischen Schlüssel (Client Instance Key) und wird dadurch aktiviert.
 
-#### Initiale Registrierung
+#### 1.4.2.1 Initiale Registrierung
 
 Die initiale Registrierung erfolgt über den Dynamic Client Registration (DCR) Endpoint der ZETA Guard API. Ziel dieser Phase ist ausschließlich der Erhalt einer client_id.
 Der ZETA Client sendet eine minimalistische Registrierungsanfrage an diesen Endpunkt. Die Anfrage enthält nur die grundlegendsten Metadaten:
@@ -125,10 +124,6 @@ Der ZETA Client sendet eine minimalistische Registrierungsanfrage an diesen Endp
 - `grant_types`: Die erlaubten Grant Types (z.B. `urn:ietf:params:oauth:grant-type:token-exchange`, `refresh_token`).
 
 ---
-
-#### 1.4.2.2 Mobile Clients
-
-Die Registrierung für mobile Clients erfolgt ähnlich wie bei stationären Clients.
 
 ### 1.4.3 Authentifizierung und Autorisierung
 
