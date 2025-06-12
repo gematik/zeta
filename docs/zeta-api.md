@@ -232,7 +232,6 @@ Die Beschreibung wird ergänzt, wenn die Entwicklung von ZETA Stufe 2 abgeschlos
 - **TLS:** ZETA Clients müssen TLS 1.3 oder höher unterstützen.
 Es müssen die Anforderungen aus [gemSpec_Krypt](https://gemspec.gematik.de/docs/gemSpec/gemSpec_Krypt/latest/#3.3.2) erfüllt werden.
 
-
 ### 1.5.1 ZETA Guard API Endpunkte
 
 #### 1.5.1.1 OAuth Protected Resource Well-Known Endpoint
@@ -612,6 +611,7 @@ Der Authorization Server antwortet mit verschiedenen HTTP-Statuscodes und entspr
   - **Bedeutung:** Die Registrierung war erfolgreich. Der Server gibt die `client_id` und die registrierten Metadaten zurück.
   - **Content-Type:** `application/json`
   - **Beispiel Antwort:**
+
     ```json
     {
       "client_id": "1234567890abcdef",
