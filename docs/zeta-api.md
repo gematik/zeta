@@ -24,6 +24,8 @@ Die ZETA API ist so konzipiert, dass sie eine sichere und flexible Interaktion z
   - [1.4 Ablauf](#14-ablauf)
     - [1.4.1 Konfiguration und Discovery](#141-konfiguration-und-discovery)
     - [1.4.2 Client-Registrierung](#142-client-registrierung)
+      - [1.4.2.1 Stationäre Clients](#1421-stationäre-clients)
+      - [1.4.2.2 Mobile Clients](#1422-mobile-clients)
     - [1.4.3 Authentifizierung und Autorisierung](#143-authentifizierung-und-autorisierung)
       - [1.4.3.1 Stationäre Clients](#1431-stationäre-clients)
         - [1.4.3.1.1 Pfad A: Token-Austausch mit Attestierung](#14311-pfad-a-token-austausch-mit-attestierung)
@@ -34,10 +36,10 @@ Die ZETA API ist so konzipiert, dass sie eine sichere und flexible Interaktion z
     - [1.5.1 ZETA Guard API Endpunkte](#151-zeta-guard-api-endpunkte)
       - [1.5.1.1 OAuth Protected Resource Well-Known Endpoint](#1511-oauth-protected-resource-well-known-endpoint)
         - [1.5.1.1.1 Anfragen](#15111-anfragen)
-        - [1.5.1.2.2 Antworten](#15122-antworten)
+        - [1.5.1.1.2 Antworten](#15112-antworten)
       - [1.5.1.2 Authorization Server Well-Known Endpoint](#1512-authorization-server-well-known-endpoint)
         - [1.5.1.2.1 Anfragen](#15121-anfragen)
-        - [1.5.1.2.2 Antworten](#15122-antworten-1)
+        - [1.5.1.2.2 Antworten](#15122-antworten)
       - [1.5.1.3 Nonce Endpoint](#1513-nonce-endpoint)
         - [1.5.1.3.1 Anfragen](#15131-anfragen)
         - [1.5.1.3.2 Antworten](#15132-antworten)
@@ -108,6 +110,8 @@ In dieser Phase ermittelt der ZETA Client die notwendigen Endpunkte und Konfigur
 
 ### 1.4.2 Client-Registrierung
 
+#### 1.4.2.1 Stationäre Clients
+
 Jeder ZETA Client muss sich am ZETA Guard registrieren, über den er auf geschützte Ressourcen zugreifen möchte. Dieser Prozess findet **einmalig pro ZETA Guard-Instanz** statt. Der gesamte Prozess ist zweistufig, um die administrative Einrichtung von der technischen Inbetriebnahme zu trennen:
 
 - **Initiale Registrierung:** Der Client erzeugt ein langlebiges kryptographisches Schlüsselpaar (**Client Instance Key**), sendet den öffentlichen Teil an den Authorization Server und erhält im Gegenzug eine `client_id`. Der Client ist danach im System bekannt, aber sein Status ist `pending_attestation`, d.h. er ist noch nicht für den Zugriff auf Ressourcen freigeschaltet.
@@ -126,6 +130,10 @@ Für die initiale Registrierung sendet der ZETA Client eine Anfrage an den Dynam
 -   `jwks`: Ein JSON Web Key Set, das den **öffentlichen Client Instance Key** enthält. Dieser Schlüssel wird vom Authorization Server verwendet, um die Signatur der Client Assertions zu überprüfen.
 
 ---
+
+#### 1.4.2.2 Mobile Clients
+
+_Hinweis:_ Der Prozess für Mobile Clients wird in zukünftigen Versionen der API detaillierter beschrieben, sobald die Entwicklung von ZETA Stufe 2 abgeschlossen ist.
 
 ### 1.4.3 Authentifizierung und Autorisierung
 
@@ -221,13 +229,15 @@ Die Beschreibung wird ergänzt, wenn die Entwicklung von ZETA Stufe 2 abgeschlos
 
 ## 1.5. Endpunkte
 
-TODO: TLS Vorgaben beschreiben
+- **TLS:** ZETA Clients müssen TLS 1.3 oder höher unterstützen.
+Es müssen die Anforderungen aus [gemSpec_Krypt](https://gemspec.gematik.de/docs/gemSpec/gemSpec_Krypt/latest/#3.3.2) erfüllt werden.
+
 
 ### 1.5.1 ZETA Guard API Endpunkte
 
 #### 1.5.1.1 OAuth Protected Resource Well-Known Endpoint
 
-Dieser Endpunkt bietet eine standardisierte Methode für OAuth Protected Resources (OPR), um ihre Fähigkeiten und Konfigurationsdetails zu veröffentlichen. Er ermöglicht es Clients und anderen Entitäten, die notwendigen Informationen über die OPR abzurufen, wie z.B. unterstützte Schemata, Verifizierungsmethoden, Token-Introspektion-Endpunkte und unterstützte Scopes. Der Endpunkt ist unter dem Pfad `/.well-known/oauth-protected-resource` relativ zur Basis-URL der Protected Resource erreichbar.
+Dieser Endpunkt bietet eine standardisierte Methode für OAuth Protected Resources (OPR), um ihre Fähigkeiten und Konfigurationsdetails zu veröffentlichen (RFC 9728). Er ermöglicht es Clients, die notwendigen Informationen über die OPR abzurufen, wie z.B. unterstützte Schemata, Verifizierungsmethoden, Token-Introspektion-Endpunkte und unterstützte Scopes. Der Endpunkt ist unter dem Pfad `/.well-known/oauth-protected-resource` relativ zur Basis-URL der Protected Resource erreichbar.
 
 ---
 
@@ -243,7 +253,7 @@ Accept: application/json
 
 ---
 
-##### 1.5.1.2.2 Antworten
+##### 1.5.1.1.2 Antworten
 
 Wie im obigen Abschnitt dargestellt, ist die typische erfolgreiche API-Antwort ein JSON-Objekt, das der im `opr-well-known.yaml`-Schema definierten Struktur entspricht. Der `Content-Type`-Header der Antwort ist `application/json`.
 
@@ -331,7 +341,7 @@ Content-Type: application/problem+json
 
 #### 1.5.1.2 Authorization Server Well-Known Endpoint
 
-Dieser Endpunkt ermöglicht Clients und anderen Parteien die einfache Entdeckung der Konfigurationsmetadaten eines OAuth 2.0 Autorisierungsservers (AS) und seiner Fähigkeiten. Er ist gemäß RFC 8414 definiert und bietet eine standardisierte Methode, um Informationen wie Endpunkt-URIs, unterstützte Grant Types und Scopes abzurufen, ohne diese manuell konfigurieren zu müssen.
+Dieser Endpunkt ermöglicht Clients und anderen Parteien die einfache Entdeckung der Konfigurationsmetadaten eines ZETA Guard OAuth 2.0 Autorisierungsservers (AS) und seiner Fähigkeiten. Er ist gemäß RFC 8414 definiert und bietet eine standardisierte Methode, um Informationen wie Endpunkt-URIs, unterstützte Grant Types und Scopes abzurufen.
 
 ---
 
@@ -435,7 +445,9 @@ Dies tritt auf, wenn ein unerwarteter Fehler auf dem Server auftritt, der die An
 
 #### 1.5.1.3 Nonce Endpoint
 
-Dieser Endpunkt ermöglicht Clients das Abrufen eines einmaligen kryptographischen Werts, einer sogenannten "Nonce". Die Nonce dient in der Regel dem Schutz vor Replay-Angriffen und wird typischerweise von OpenID Connect Clients verwendet, um die Integrität und Einmaligkeit von ID-Tokens zu gewährleisten. Der Client sendet die erhaltene Nonce als Parameter an den Autorisierungs-Endpunkt, und der Authorization Server gibt sie unverändert im ID-Token zurück. Der Client kann dann überprüfen, ob die Nonce im ID-Token mit der ursprünglich gesendeten übereinstimmt.
+Dieser Endpunkt ermöglicht Clients das Abrufen eines einmaligen kryptographischen Werts, einer "Nonce". Im Kontext der ZETA-Architektur dient diese Nonce primär dazu, eine spezifische **TPM-Attestierung an eine aktuelle Transaktion zu binden**, um Replay-Angriffe zu verhindern. Sie wird Teil der `attestation_challenge`, die vom TPM signiert wird.
+
+Beim Token Endpunkt wird ebenfalls eine Nonce benötigt, um die Integrität der Transaktion zu gewährleisten. Diese Nonce wird in der Client Assertion verwendet, um Replay-Angriffe zu verhindern und die Bindung zwischen der Client Authentifizierung und der Transaktion sicherzustellen.
 
 ---
 
@@ -531,15 +543,17 @@ Dies tritt auf, wenn ein unerwarteter Fehler auf dem Server auftritt, der die An
 
 #### 1.5.1.4 Dynamic Client Registration Endpoint
 
-Dieser Endpunkt ermöglicht die dynamische Registrierung neuer OAuth 2.0 Clients beim Authorization Server. Im Unterschied zur standardisierten dynamischen Client-Registrierung gemäß RFC 7591 erfordert dieser Endpunkt eine zusätzliche Validierung in Form eines `software_statement`, das TPM-Attestierungsnachweise und Software-Metadaten enthält. Die Registrierung muss über eine TLS-geschützte Verbindung erfolgen.
+Dieser Endpunkt ermöglicht die dynamische Registrierung neuer OAuth 2.0 Clients beim Authorization Server gemäß RFC 7591. Der Prozess dient dazu, eine `client_id` zu erhalten und den öffentlichen **Client Instance Key** zu registrieren, der für die `private_key_jwt` Client-Authentifizierung verwendet wird.
+
+Die Registrierung selbst erfordert **keine** Attestierung. Der Client erhält den Status `pending_attestation` und muss seine Integrität beim ersten Token Exchange beweisen, um aktiviert zu werden. Die Registrierung muss über eine TLS-geschützte Verbindung erfolgen.
+
+_Hinweis:_ Es fehlen noch die Operationen zur Verwaltung von bestehenden Client Registrierungen (z.B. Aktualisierung, Löschung). Diese werden in zukünftigen Versionen der API ergänzt.
 
 ---
 
 ##### 1.5.1.4.1 Anfragen für stationäre Clients
 
-Der Client sendet eine Anfrage an den `/register`-Endpunkt. Der Anfrage-Body ist ein JSON-Objekt, das die Metadaten des zu registrierenden Clients enthält.
-
-Neben den Standard-Client-Metadaten gemäß RFC 7591 ist ein `software_statement` erforderlich, das den spezifischen Anforderungen des [Dynamic Client Registration-Ablaufs](https://raw.githubusercontent.com/gematik/spec-t20r/refs/heads/develop/images/tpm-attestation-and-token-exchange/dynamic-client-registration-with-tpm-attestation.svg) entspricht. Das `software_statement` ist ein signiertes JWT (JSON Web Token), das die Identität der Software und zusätzliche Attestierungsnachweise enthält. Es muss mit dem Private Key der Client-Instanz signiert sein.
+Der Client sendet eine `POST`-Anfrage an den `/register`-Endpunkt. Der Anfrage-Body ist ein JSON-Objekt, das die Metadaten des zu registrierenden Clients enthält.
 
 **Beispiel Anfrage:**
 
@@ -552,42 +566,41 @@ Content-type: application/json
 
 ```json
 {
-  "redirect_uris": [
-    "https://client.example.org/cb",
-    "https://client.example.org/callback"
-  ],
-  "client_name": "Mein Client",
+  "client_name": "Praxis-PC-123",
   "token_endpoint_auth_method": "private_key_jwt",
   "grant_types": [
     "urn:ietf:params:oauth:grant-type:token-exchange",
     "refresh_token"
   ],
   "jwks": {
-    "keys": [ <Client_Instance_Public_Key_JWK> ]
+    "keys": [
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "...",
+        "y": "...",
+        "use": "sig",
+        "kid": "..."
+      }
+    ]
   },
-  "urn:gematik:params:oauth:client-attestation-type:tpm2": {
-    "client_statement": "<Base64(Client Statement JWT)>",
-    "client_statement_format": "client-statement-jwt"
-  }
+  "redirect_uris": [
+    "https://client.example.org/cb"
+  ]
 }
-
 ```
 
 **Erforderliche Parameter im Anfrage-Body:**
 
-| Parameter                   | Typ      | Beschreibung|
-| :-------------------------- | :------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `redirect_uris`             | `array`  | Eine Liste von Redirection-URI-Strings, die der Client für die Weiterleitung von Autorisierungsantworten verwendet. Muss mindestens eine URI enthalten.|
-| `grant_types`               | `array`  | Eine Liste der unterstützten Grant Types (`authorization_code`, `urn:ietf:params:oauth:grant-type:token-exchange`, `refresh_token`).|
-| `software_statement`        | `string` | Ein JWS Compact Serialization string (JWT), der vom Software-Anbieter signiert ist. Dieses JWT muss folgende Claims enthalten: <br> - `software_id` (String): Eine eindeutige ID der Software (z.B. UUID). <br> - `software_version` (String): Die Version der Software. <br> - `organisation_id` (String): Die ID der Organisation, die die Software bereitstellt. <br> - `software_jwk_set` (JSON Object) oder `software_jwk_set_uri` (String): Der Public Key (Set) der Software, typischerweise für die Validierung von Signaturen der Software selbst. <br> - `attestation_cert_chain` (Array of Strings): Eine Kette von PEM-enkodierten X.509-Zertifikaten, die den Nachweis der TPM-Attestierung ermöglichen. <br> - `attestation_jwt` (String): Ein weiteres JWT, das den eigentlichen TPM-Attestierungsnachweis enthält (oft ein Verifiable Credential oder ähnliches). |
-| `jwks` | `string` | Client's JSON Web Key Set [RFC7517] Dokument, dass den Client Public Key enthält.|
+| Parameter                   | Typ      | Beschreibung |
+| :-------------------------- | :------- | :----------- |
+| `grant_types`               | `array`  | Eine Liste der Grant Types, die der Client verwenden darf. |
+| `jwks`                      | `object` | Das JSON Web Key Set [RFC7517] des Clients, das den öffentlichen **Client Instance Key** enthält. |
+| `token_endpoint_auth_method`| `string` | Muss `private_key_jwt` sein, um die Client-Authentifizierung mittels signierter JWTs zu erzwingen. |
+| `redirect_uris`             | `array`  | Optional für reine Backend-Clients, aber empfohlen. Mindestens eine URI, die für interaktive Flows (z.B. zukünftige mobile Clients) verwendet wird. |
+| `client_name`               | `string` | Optional. Ein für Menschen lesbarer Name für den Client. |
 
-**Optionale Parameter im Anfrage-Body (gemäß RFC 7591):**
-
-| Parameter                     | Typ      | Beschreibung                                                                                |
-| :---------------------------- | :------- | :------------------------------------------------------------------------------------------ |
-| `client_name`                 | `string` | Name des Clients, der den Endbenutzern angezeigt werden kann.                               |
-| `token_endpoint_auth_method`  | `string` | Authentisierungsmethode am Token-Endpunkt. Standard ist `private_key_jwt`.             |
+---
 
 ##### 1.5.1.4.2 Antworten
 
@@ -596,41 +609,31 @@ Der Authorization Server antwortet mit verschiedenen HTTP-Statuscodes und entspr
 **Statuscodes:**
 
 - **201 Created:**
-  - **Bedeutung:** Die Registrierung war erfolgreich, und der Server gibt die Client-ID und andere Metadaten des registrierten Clients zurück.
+  - **Bedeutung:** Die Registrierung war erfolgreich. Der Server gibt die `client_id` und die registrierten Metadaten zurück.
   - **Content-Type:** `application/json`
   - **Beispiel Antwort:**
-
-```json
-{
-  "client_id": "1234567890abcdef",
-  "client_id_issued_at": 1678886400,
-  "grant_types": [
-    "token-exchange",
-    "refresh_token"
-  ],
-  "token_endpoint_auth_method": "private_key_jwt",
-  "redirect_uris": [
-    "https://client.example.org/cb",
-    "https://client.example.org/callback"
-  ],
-  "client_name": "Mein Client",
-  "jwks": {
-    "keys": [
-      {
-        "kty": "EC",
-        "crv": "P-256",
-        "x": "x-coordinate",
-        "y": "y-coordinate",
-        "use": "sig"
-      }
-    ]
-  },
-  "urn:gematik:params:oauth:client-attestation-type:tpm2": {
-    "client_statement": "<Base64(Client Statement JWT)>",
-    "client_statement_format": "client-statement-jwt"
-  }
-}
-```
+    ```json
+    {
+      "client_id": "1234567890abcdef",
+      "client_id_issued_at": 1678886400,
+      "grant_types": [
+        "urn:ietf:params:oauth:grant-type:token-exchange",
+        "refresh_token"
+      ],
+      "token_endpoint_auth_method": "private_key_jwt",
+      "client_name": "Praxis-PC-123",
+      "jwks": {
+        "keys": [
+          {
+            "kty": "EC", "crv": "P-256", "x": "...", "y": "...", "use": "sig", "kid": "..."
+          }
+        ]
+      },
+       "redirect_uris": [
+        "https://client.example.org/cb"
+      ]
+    }
+    ```
 
 - **400 Bad Request:**
   - **Bedeutung:** Die Anfrage war fehlerhaft, z.B. fehlende oder ungültige Parameter.
