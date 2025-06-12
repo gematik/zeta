@@ -32,6 +32,11 @@ end box
 
 Client ++
 
+alt Client has no Client Instance Key
+  Client -> Client : Generate Client Instance\nKey Pair
+  note right: This key pair is long-lived for the client instance and\nused for the private_key_jwt client authentication method.
+end alt
+
 Client -> AuthS ++ : POST /register
 note right of AuthS #lightblue
 DCR Request Body: {
@@ -40,15 +45,17 @@ DCR Request Body: {
     "urn:ietf:params:oauth:grant-type:token-exchange",
     "refresh_token"
   ],
+  "jwks": { "keys": [ <Client_Instance_Public_Key_JWK> ] },
   "token_endpoint_auth_method": "private_key_jwt"
 }
 end note
 AuthS -> AuthS : Generate client_id
-AuthS -> PDPDB ++: Store Client Placeholder
+AuthS -> PDPDB ++: Store Client Placeholder\nwith Public Key (JWKS)
 note right of PDPDB
 Store Client Placeholder
 client_id
 client_name
+public_key_jwks
 ...
 state: pending_attestation
 end note

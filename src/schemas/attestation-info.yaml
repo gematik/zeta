@@ -9,6 +9,7 @@ properties:
       - apple-attestation
       - tpm2
       - fido2
+      - software
       - none
   timestamp:
     type: integer
