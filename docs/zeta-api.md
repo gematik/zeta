@@ -124,10 +124,10 @@ Die Client Registrierung ist in der folgenden Abbildung dargestellt.
 
 Für die initiale Registrierung sendet der ZETA Client eine Anfrage an den Dynamic Client Registration (DCR) Endpoint. Diese Anfrage enthält alle notwendigen Metadaten, um den Client für die `private_key_jwt` Authentifizierungsmethode vorzubereiten:
 
--   `client_name`: Ein für Menschen lesbarer Name für den Client.
--   `token_endpoint_auth_method`: Die geplante Authentifizierungsmethode, hier `private_key_jwt`.
--   `grant_types`: Die erlaubten Grant Types (z.B. `urn:ietf:params:oauth:grant-type:token-exchange`, `refresh_token`).
--   `jwks`: Ein JSON Web Key Set, das den **öffentlichen Client Instance Key** enthält. Dieser Schlüssel wird vom Authorization Server verwendet, um die Signatur der Client Assertions zu überprüfen.
+- `client_name`: Ein für Menschen lesbarer Name für den Client.
+- `token_endpoint_auth_method`: Die geplante Authentifizierungsmethode, hier `private_key_jwt`.
+- `grant_types`: Die erlaubten Grant Types (z.B. `urn:ietf:params:oauth:grant-type:token-exchange`, `refresh_token`).
+- `jwks`: Ein JSON Web Key Set, das den **öffentlichen Client Instance Key** enthält. Dieser Schlüssel wird vom Authorization Server verwendet, um die Signatur der Client Assertions zu überprüfen.
 
 ---
 
@@ -143,8 +143,8 @@ Nach erfolgreicher Registrierung besitzt der ZETA Client eine `client_id` und ei
 
 Die Authentifizierung und Autorisierung für stationäre Clients unterscheidet zwei Hauptfälle:
 
-1.  **Token-Austausch mit Attestierung:** Hier wird die Identität der Institution (mittels `subject_token` von der SM(C)-B) nachgewiesen und die Integrität des Clients durch eine Attestierung überprüft. Dieser aufwändigere Prozess wird zu Beginn einer neuen Session (oder zur Re-Attestierung) durchgeführt, um sicherzustellen, dass der ZETA Client und das Primärsystem vertrauenswürdig sind.
-2.  **Token-Erneuerung (Refresh Token):** Hier wird ein vorhandenes Refresh Token genutzt, um ein neues Access Token zu erhalten. Dieser Prozess ist performanter und verzichtet auf eine erneute Attestierung.
+1. **Token-Austausch mit Attestierung:** Hier wird die Identität der Institution (mittels `subject_token` von der SM(C)-B) nachgewiesen und die Integrität des Clients durch eine Attestierung überprüft. Dieser aufwändigere Prozess wird zu Beginn einer neuen Session (oder zur Re-Attestierung) durchgeführt, um sicherzustellen, dass der ZETA Client und das Primärsystem vertrauenswürdig sind.
+2. **Token-Erneuerung (Refresh Token):** Hier wird ein vorhandenes Refresh Token genutzt, um ein neues Access Token zu erhalten. Dieser Prozess ist performanter und verzichtet auf eine erneute Attestierung.
 
 Diese Trennung schafft eine Balance zwischen höchster Sicherheit beim initialen Zugriff und Effizienz bei der Erneuerung bestehender Sitzungen.
 
@@ -163,14 +163,14 @@ Dieser Pfad wird beschritten, wenn der Client keine bestehende Session (d.h. kei
 
 2. **Integritätsprüfung und kryptografische Bindung:**
     - Um zu beweisen, dass die Attestierung für genau diesen Client und diese Transaktion erstellt wurde, erzeugt der Client eine `attestation_challenge`. Diese bindet den Zustand des TPMs an den **öffentlichen Client Instance Key** und die `nonce` des AS: `attestation_challenge = HASH( HASH(Client_Instance_Public_Key_JWK) + nonce )`.
-    -   Der Client fordert beim ZETA Attestation Service eine TPM Quote an, die diese `attestation_challenge` als `qualifyingData` enthält. Das TPM signiert somit eine Aussage, die mit der Identität des Clients verbunden ist.
+    - Der Client fordert beim ZETA Attestation Service eine TPM Quote an, die diese `attestation_challenge` als `qualifyingData` enthält. Das TPM signiert somit eine Aussage, die mit der Identität des Clients verbunden ist.
 
 3. **Erstellen des Client Statement:** Die Attestierungsartefakte (TPM Quote, Event Log, Zertifikatskette) werden in eine `client_statement`-Struktur gepackt. Im Falle des Fallbacks (Software-Attestierung) enthält diese Struktur andere, softwarebasierte Evidenz.
 
-4.  **Erstellen der Client Assertion (mit Attestierung):** Für die Authentifizierung am Token-Endpoint erstellt der Client eine **Client Assertion**. Dieses JWT, mit dem **privaten Client Instance Key** signiert, dient als "Umschlag":
-    -   Es authentifiziert den Client gegenüber dem AS (`iss` und `sub` sind die `client_id`).
-    -   Es enthält einen Verweis auf den DPoP-Schlüssel der Session (`cnf.jkt`), um das spätere Access Token an diesen zu binden.
-    -   Es enthält die `client_statement`-Struktur als Beweis für die Geräteintegrität, verpackt in einem spezifischen Claim (`urn:gematik:params:oauth:client-attestation:tpm2` oder `...:software`).
+4. **Erstellen der Client Assertion (mit Attestierung):** Für die Authentifizierung am Token-Endpoint erstellt der Client eine **Client Assertion**. Dieses JWT, mit dem **privaten Client Instance Key** signiert, dient als "Umschlag":
+    - Es authentifiziert den Client gegenüber dem AS (`iss` und `sub` sind die `client_id`).
+    - Es enthält einen Verweis auf den DPoP-Schlüssel der Session (`cnf.jkt`), um das spätere Access Token an diesen zu binden.
+    - Es enthält die `client_statement`-Struktur als Beweis für die Geräteintegrität, verpackt in einem spezifischen Claim (`urn:gematik:params:oauth:client-attestation:tpm2` oder `...:software`).
 
     ```json
     // Client Assertion für initialen Token-Austausch (Beispiel TPM)
@@ -187,11 +187,11 @@ Dieser Pfad wird beschritten, wenn der Client keine bestehende Session (d.h. kei
     }
     ```
 
-5.  **Authentisierung der Institution (SM(C)-B Token):** Parallel dazu erstellt der Client das `subject_token`. Dies ist ein vom ZETA Client erzeugtes JWT, dessen Hash vom Konnektor mittels der SM(C)-B signiert wird und die Identität der Institution (z.B. Praxis) belegt. Die Audience (`aud`) dieses Tokens ist der Ziel-Fachdienst (Resource Server).
+5. **Authentisierung der Institution (SM(C)-B Token):** Parallel dazu erstellt der Client das `subject_token`. Dies ist ein vom ZETA Client erzeugtes JWT, dessen Hash vom Konnektor mittels der SM(C)-B signiert wird und die Identität der Institution (z.B. Praxis) belegt. Die Audience (`aud`) dieses Tokens ist der Ziel-Fachdienst (Resource Server).
 
-6.  **Token Request:** Der Client sendet eine `POST`-Anfrage an den `/token`-Endpoint, die alle Teile kombiniert: `grant_type=token-exchange`, das `subject_token`, die `client_assertion` (mit der eingebetteten Attestierung) und den DPoP-Proof.
+6. **Token Request:** Der Client sendet eine `POST`-Anfrage an den `/token`-Endpoint, die alle Teile kombiniert: `grant_type=token-exchange`, das `subject_token`, die `client_assertion` (mit der eingebetteten Attestierung) und den DPoP-Proof.
 
-7.  **Validierung durch den AS:** Der AS führt eine umfassende Prüfung durch: Validierung der Client Assertion (Signatur gegen den bei der DCR hinterlegten Public Key), des DPoP-Proofs, des Subject Tokens und insbesondere der **eingebetteten Attestierung** (Prüfung der Quote, der `attestation_challenge` und der PCR-Werte gegen die Sicherheits-Policy).
+7. **Validierung durch den AS:** Der AS führt eine umfassende Prüfung durch: Validierung der Client Assertion (Signatur gegen den bei der DCR hinterlegten Public Key), des DPoP-Proofs, des Subject Tokens und insbesondere der **eingebetteten Attestierung** (Prüfung der Quote, der `attestation_challenge` und der PCR-Werte gegen die Sicherheits-Policy).
 
 ##### 1.4.3.1.2 Pfad B: Token-Erneuerung via Refresh Token
 
