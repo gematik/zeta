@@ -1,4 +1,4 @@
-# Schema for the PEP authorization server .well-known json object
+# Schema for the PEP authorization server .well-known JSON object
 $schema: "http://json-schema.org/draft-07/schema#"
 type: object
 properties:
