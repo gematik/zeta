@@ -690,11 +690,11 @@ Die Beschreibung wird in Stufe 2 der ZETA API ergänzt.
 
 #### 1.5.1.5 Token Endpoint
 
-Der Token Endpoint des Autorisierungsservers (AS) ermöglicht den Austausch eines Tokens gegen ein vom Authorizationserver ausgestelltes Access Token, gemäß dem OAuth 2.0 Token Exchange (RFC 8693). Der Client muss sich mit einer JWT Client Assertion gegenüber den Authorizationserver authentifizieren.
+Der Token Endpoint des Autorisierungsservers (AS) ermöglicht den Austausch eines Tokens gegen ein vom Authorizationserver ausgestelltes Access Token, gemäß dem OAuth 2.0 Token Exchange (RFC 8693) oder die Erneuerung von Token (`refresh_token`). Der Client muss sich mit einer JWT Client Assertion gegenüber den Authorization Server authentifizieren.
 
 Der Endpunkt ist ein POST-Endpunkt, der Formular-kodierte Daten (`application/x-www-form-urlencoded`) im Body erwartet und JSON-Objekte im Erfolgsfall oder "Problem Details" im Fehlerfall zurückgibt.
 
-Der Endpunkt unterstützt verschiedene Grant Types, einschließlich `authorization_code`, `refresh_token` und `urn:ietf:params:oauth:grant-type:token-exchange`.
+Der Endpunkt unterstützt verschiedene Grant Types, einschließlich `authorization_code` (ab ZETA Stufe 2), `urn:ietf:params:oauth:grant-type:token-exchange`, `refresh_token` und `urn:ietf:params:oauth:grant-type:token-exchange`.
 
 ##### 1.5.1.5.1 Anfragen
 
@@ -748,7 +748,7 @@ Antworten werden als JSON-Objekte mit dem `Content-Type: application/json` im Er
 ```json
 {
   "access_token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRva2VuX2tleV9pZCJ9.eyJpc3MiOiJhdXRoLnNlcnZlci5kZSIsImV4cCI6MTY5NTUwMjgwMCwiYXVkIjpbInJlc291cmNlLnNlcnZlci5kZSJdLCJzdWIiOiIxMjM0NTY3ODkwIiwiY2xpZW50X2lkIjoiZXhhbXBsZV9jbGllbnRfaWQiLCJpYXQiOjE2OTU1MDI4MDAsImp0aSI6ImV4YW1wbGVfamRpX3ZhbHVlIiwic2NvcGUiOiJyZXNvdXJjZS5yZWFkIHJlc291cmNlLndyaXRlIiwiY25mIjp7ImprdCI6ImV4YW1wbGVfamt0X2hhc2gifX0.NEW_SIGNATURE_PLACEHOLDER",
-  "token_type": "Bearer",
+  "token_type": "DPoP",
   "expires_in": 3600,
   "scope": "resource.read resource.write",
   "refresh_token": "some_refresh_token_string",
