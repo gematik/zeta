@@ -22,10 +22,8 @@ Die ZETA API ist so konzipiert, dass sie eine sichere und flexible Interaktion z
   - [1.2. Inhalt](#12-inhalt)
   - [1.3 Voraussetzungen für die ZETA Client Nutzung](#13-voraussetzungen-für-die-zeta-client-nutzung)
   - [1.4 Ablauf](#14-ablauf)
-  - [Abbildung 1: Ablauf TPM Attestation und Token Exchange Überblick](#abbildung-1-ablauf-tpm-attestation-und-token-exchange-überblick)
     - [1.4.1 Konfiguration und Discovery](#141-konfiguration-und-discovery)
     - [1.4.2 Client-Registrierung](#142-client-registrierung)
-      - [1.4.2.1 Initiale Registrierung](#1421-initiale-registrierung)
     - [1.4.3 Authentifizierung und Autorisierung](#143-authentifizierung-und-autorisierung)
       - [1.4.3.1 Stationäre Clients](#1431-stationäre-clients)
         - [1.4.3.1.1 Pfad A: Initialer Token-Austausch mit TPM-Attestierung](#14311-pfad-a-initialer-token-austausch-mit-tpm-attestierung)
@@ -88,17 +86,17 @@ Zusätzlich gibt es anwendungsspezifische Voraussetzungen, die für die Nutzung 
 
 ## 1.4 Ablauf
 
-Abhängig vom Zustand des ZETA Clients müssen verschiedene Teilabläufe ausgeführt werden, oder können übersprungen werden.
-Die ZETA API besteht aus mehreren Endpunkten, die verschiedene Funktionen bereitstellen. Diese Endpunkte sind in verschiedene Kategorien unterteilt, um die Nutzung zu erleichtern. Die wichtigsten Abläufe sind:
+Abhängig vom Zustand des ZETA Clients müssen verschiedene Teilabläufe ausgeführt werden, oder können übersprungen werden. Die ZETA API besteht aus mehreren Endpunkten, die verschiedene Funktionen bereitstellen. Diese Endpunkte sind in verschiedene Kategorien unterteilt, um die Nutzung zu erleichtern. Die wichtigsten Abläufe sind:
 
-- Konfiguration und Discovery: Der ZETA Client muss die Konfiguration der ZETA Guard API kennen, um die Endpunkte zu erreichen.
-- Client-Registrierung: Der ZETA Client muss sich bei der ZETA Guard API registrieren, um Zugriff auf geschützte Ressourcen zu erhalten.
-- Authentifizierung und Autorisierung: Der Nutzer muss sich authentifizieren, um auf geschützte Ressourcen zuzugreifen.
+- **Konfiguration und Discovery:** Der ZETA Client muss die Konfiguration des ZETA Guards ermitteln, um die richtigen Endpunkte zu erreichen.
+- **Client-Registrierung:** Jeder ZETA Client muss sich einmalig beim ZETA Guard registrieren, um eine `client_id` zu erhalten und seinen öffentlichen Schlüssel zu hinterlegen.
+- **Authentifizierung und Autorisierung:** Der Client muss sich authentifizieren und die Integrität seiner Plattform nachweisen. Zusätzlich muss sich der Nutzer oder beim Primärsystem die Organisation authentifizieren, um ein Access Token für den Zugriff auf geschützte Ressourcen zu erhalten.
 
-Der Gesamtprozess beginnt damit, dass ein **Nutzer** auf einen Endpunkt eines Resource Server zugreifen möchte. Dieser Zugriff wird über das Primärsystem vom **ZETA Client** im Auftrag des Nutzers ausgeführt; siehe folgende Abbildung.
+Der Gesamtprozess beginnt damit, dass ein **Nutzer** auf einen Endpunkt eines Resource Servers zugreifen möchte. Dieser Zugriff wird über das Primärsystem vom **ZETA Client** im Auftrag des Nutzers ausgeführt; siehe folgende Abbildung.
 
 ![tpm-attestation-and-token-exchange-overview](/images/tpm-attestation-and-token-exchange/tpm-attestation-and-token-exchange-overview.svg)
 <p style="font-size:0.9em; text-align:center;"><em>Abbildung 1: Ablauf TPM Attestation und Token Exchange Überblick</em></p>
+
 ---
 
 ### 1.4.1 Konfiguration und Discovery
@@ -110,43 +108,39 @@ In dieser Phase ermittelt der ZETA Client die notwendigen Endpunkte und Konfigur
 
 ### 1.4.2 Client-Registrierung
 
-Jeder ZETA Client muss sich an dem ZETA Guard registrieren, über den er auf geschützte Ressourcen zugreifen möchte. Der gesamte Prozess ist zweistufig, um die administrative Einrichtung von der technischen Inbetriebnahme zu trennen:
+Jeder ZETA Client muss sich am ZETA Guard registrieren, über den er auf geschützte Ressourcen zugreifen möchte. Dieser Prozess findet **einmalig pro ZETA Guard-Instanz** statt. Der gesamte Prozess ist zweistufig, um die administrative Einrichtung von der technischen Inbetriebnahme zu trennen:
 
-- **Initiale Registrierung:** Der Client erhält eine eindeutige client_id. Der Client ist danach im System bekannt, aber noch nicht aktiv.
-- **Erste Authentifizierung (Aktivierung):** Der Client weist seine Identität und seine Integrität mit der TPM-Attestierung nach, registriert damit seinen kryptographischen Schlüssel (Client Instance Key) und wird dadurch aktiviert.
+- **Initiale Registrierung:** Der Client erzeugt ein langlebiges kryptographisches Schlüsselpaar (**Client Instance Key**), sendet den öffentlichen Teil an den Authorization Server und erhält im Gegenzug eine `client_id`. Der Client ist danach im System bekannt, aber sein Status ist `pending_attestation`, d.h. er ist noch nicht für den Zugriff auf Ressourcen freigeschaltet.
+- **Aktivierung (Erster Token Exchange):** Der Client wird aktiviert, indem er zum ersten Mal einen Token Exchange mit einer erfolgreichen **Attestierung** durchführt. Damit beweist er nicht nur den Besitz des privaten Schlüssels, sondern (bei der TPM-Attestierung) auch die Integrität der Plattform, auf der er läuft. Nach erfolgreicher Prüfung wird sein Status im ZETA Guard auf `active` gesetzt.
 
-Die Client Registrierung erfolgt einmalig pro ZETA Guard (siehe [1.6. Verwaltung von Keys und Sessions](#16-verwaltung-von-keys-und-sessions)).
-
-#### 1.4.2.1 Initiale Registrierung
-
-Die initiale Registrierung erfolgt über den Dynamic Client Registration (DCR) Endpoint der ZETA Guard API. Ziel dieser Phase ist ausschließlich der Erhalt einer client_id.
-Der ZETA Client sendet eine minimalistische Registrierungsanfrage an diesen Endpunkt. Die Anfrage enthält nur die grundlegendsten Metadaten:
-
-- `client_name`: Ein für Menschen lesbarer Name für den Client (z.B. "Praxis-PC-123").
-- `token_endpoint_auth_method`: Die geplante Authentifizierungsmethode (`private_key_jwt`).
-- `grant_types`: Die erlaubten Grant Types (z.B. `urn:ietf:params:oauth:grant-type:token-exchange`, `refresh_token`).
-
-Die folgende Abbildung zeigt die initiale Registrierung des Clients.
+Die Client Registrierung ist in der folgenden Abbildung dargestellt.
 
 ![Ablauf Client Registrierung](/images/tpm-attestation-and-token-exchange/dynamic-client-registration.svg)
 <p style="font-size:0.9em; text-align:center;"><em>Abbildung 3: Ablauf Client Registrierung</em></p>
+
+Für die initiale Registrierung sendet der ZETA Client eine Anfrage an den Dynamic Client Registration (DCR) Endpoint. Diese Anfrage enthält alle notwendigen Metadaten, um den Client für die `private_key_jwt` Authentifizierungsmethode vorzubereiten:
+
+-   `client_name`: Ein für Menschen lesbarer Name für den Client.
+-   `token_endpoint_auth_method`: Die geplante Authentifizierungsmethode, hier `private_key_jwt`.
+-   `grant_types`: Die erlaubten Grant Types (z.B. `urn:ietf:params:oauth:grant-type:token-exchange`, `refresh_token`).
+-   `jwks`: Ein JSON Web Key Set, das den **öffentlichen Client Instance Key** enthält. Dieser Schlüssel wird vom Authorization Server verwendet, um die Signatur der Client Assertions zu überprüfen.
 
 ---
 
 ### 1.4.3 Authentifizierung und Autorisierung
 
-Nach erfolgreicher Registrierung besitzt der ZETA Client eine `client_id`. Um auf einen Fachdienst zugreifen zu können, benötigt der Client ein Access Token vom Authorization Server (AS). Stationäre ZETA Clients verweden dafür den Token Exchange Flow, während mobile ZETA Clients den Authorization Code Flow mit OpenID Connect nutzen.
+Nach erfolgreicher Registrierung besitzt der ZETA Client eine `client_id` und ein zugehöriges Schlüsselpaar. Um auf einen Fachdienst zugreifen zu können, benötigt der Client ein Access Token vom Authorization Server (AS). Stationäre ZETA Clients verwenden dafür den Token Exchange Flow, während mobile ZETA Clients den Authorization Code Flow mit OpenID Connect nutzen.
 
 #### 1.4.3.1 Stationäre Clients
 
 Die Authentifizierung und Autorisierung für stationäre Clients unterscheidet zwei Hauptfälle:
 
-1. **Initialer Token-Austausch:** Hierbei wird die Identität der Institution (mittels `subject_token` von der SM(C)-B) nachgewiesen und die Integrität des Clients durch eine TPM-Attestierung überprüft. Der Initiale Token-Austausch muss jeweils zu Beginn einer neuen Session durchgeführt werden. Dies ist notwendig, um sicherzustellen, dass der ZETA Client und das Primärsystem weiterhin vertrauenswürdig sind.
-2. **Token-Erneuerung (Refresh Token):** Hierbei wird ein vorhandenes Refresh Token genutzt, um ein neues Access Token und ein neues Refresh Token zu erhalten. Dieser Prozess ist performanter und verzichtet auf eine erneute TPM-Attestierung.
+1.  **Token-Austausch mit Attestierung:** Hier wird die Identität der Institution (mittels `subject_token` von der SM(C)-B) nachgewiesen und die Integrität des Clients durch eine Attestierung überprüft. Dieser aufwändigere Prozess wird zu Beginn einer neuen Session (oder zur Re-Attestierung) durchgeführt, um sicherzustellen, dass der ZETA Client und das Primärsystem vertrauenswürdig sind.
+2.  **Token-Erneuerung (Refresh Token):** Hier wird ein vorhandenes Refresh Token genutzt, um ein neues Access Token zu erhalten. Dieser Prozess ist performanter und verzichtet auf eine erneute Attestierung.
 
-Diese Trennung schafft eine Balance zwischen höchster Sicherheit beim initialen Zugriff und Effizienz bei der Erneuerung bestehender Token. Die Lebensdauer der Session wird damit zu einem wichtigen Sicherheitsparameter.
+Diese Trennung schafft eine Balance zwischen höchster Sicherheit beim initialen Zugriff und Effizienz bei der Erneuerung bestehender Sitzungen.
 
-Die folgende Abbildung zeigt den Ablauf des Token-Austauschs mit Client Assertion JWT Authentifizierung und DPoP Proof.
+Die folgende Abbildung zeigt den Ablauf des Token-Austauschs mit Client Assertion JWT Authentifizierung und DPoP.
 
 ![tpm-attestation-and-token-exchange-overview](/images/tpm-attestation-and-token-exchange/token-exchange-with-client-assertion-jwt-auth.svg)
 <p style="font-size:0.9em; text-align:center;"><em>Abbildung 4: Ablauf Authentifizierung und TPM-Attestation</em></p>
