@@ -25,7 +25,8 @@ jobs:
     - name: Install dependencies and draw.io
       run: |
         sudo apt-get update
-        sudo apt-get install -y --no-install-recommends jq graphviz xvfb libasound2
+        sudo apt-get install -y jq
+        sudo apt-get install -y --no-install-recommends graphviz xvfb libasound2t64
 
         # KORRIGIERTER BEFEHL:
         # Dieser Filter sucht nach einem Asset, das "amd64" im Namen enthält UND mit ".deb" endet.
