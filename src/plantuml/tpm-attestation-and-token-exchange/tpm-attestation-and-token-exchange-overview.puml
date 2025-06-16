@@ -26,7 +26,7 @@ end box
 
 box "Anbieter" #TECHNOLOGY
   box "ZETA Guard" #SandyBrown
-    participant HP as "PEP\nhttp Proxy"
+    participant HP as "PEP\nHTTP Proxy"
     participant AuthS as "PDP\nAuthorization Server" 
     participant PE as "PDP\nPolicy Engine"
   end box
@@ -50,7 +50,7 @@ Client -> HP ++ : GET /resource\n\
   DPoP: ... (DPoP token)
 HP -> HP: verify Access token\nand DPoP Proof
 HP -> RS ++ : forward GET /resource\n\
-with header and\nPEP header as json
+with header and\nPEP header as JSON
 RS -> RS: provide\nresource\naccess
 RS --> HP -- : 200 OK, Resource
 HP --> Client -- : 200 OK, Resource

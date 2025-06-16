@@ -76,6 +76,8 @@ properties:
 required:
   - issuer
   - authorization_endpoint
+  - nonce_endpoint
+  - openid_providers_endpoint
   - token_endpoint
   - jwks_uri
   - scopes_supported

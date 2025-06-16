@@ -26,7 +26,7 @@ end box
 
 box "Anbieter" #TECHNOLOGY
   box "ZETA Guard" #SandyBrown
-    participant HP as "PEP\nhttp Proxy"
+    participant HP as "PEP\nHTTP Proxy"
     participant AuthS as "PDP\nAuthorization Server" 
     participant PE as "PDP\nPolicy Engine"
   end box
@@ -38,10 +38,10 @@ end box
 group ZETA Client has Resource Server FQDN (RS-FQDN)
   Client ++
   Client -> HP ++ : GET /.well-known/oauth-protected-resource Host: RS-FQDN
-  HP --> Client -- : Client: 200 OK; json body with Well-Known json Document (RFC9728)
+  HP --> Client -- : Client: 200 OK; JSON body with Well-Known JSON Document (RFC9728)
   Client -> Client: Update Resource Server and ZETA Guard Configuration
   Client -> AuthS ++ : GET /.well-known/oauth-authorization-server Host: AuthS-FQDN
-  AuthS --> Client -- : 200 OK; json body with Well-Known json Document (RFC8414)
+  AuthS --> Client -- : 200 OK; JSON body with Well-Known JSON Document (RFC8414)
   Client -> Client: Update Authorization Server Configuration
 end
 
