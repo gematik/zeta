@@ -25,7 +25,7 @@ jobs:
     - name: Install dependencies and draw.io
       run: |
         sudo apt-get update
-        sudo apt-get install -y --no-install-recommends graphviz xvfb libasound2
+        sudo apt-get install -y --no-install-recommends graphviz xvfb libasound2t64
 
         # Download and install draw.io via .deb package (more reliable than snap)
         DRAWIO_LATEST_URL=$(curl -s "https://api.github.com/repos/jgraph/drawio-desktop/releases/latest" | grep "browser_download_url.*amd64\.deb" | cut -d : -f 2,3 | tr -d \" | head -n 1)
