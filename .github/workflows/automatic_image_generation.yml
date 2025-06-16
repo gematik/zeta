@@ -44,9 +44,7 @@ jobs:
         wget --quiet "$DRAWIO_LATEST_URL" -O /tmp/drawio.deb
         
         echo "Installing draw.io..."
-        sudo dpkg -i /tmp/drawio.deb
-        # Install any missing dependencies that dpkg might have reported
-        sudo apt-get install -f -y
+        sudo apt-get install -y /tmp/drawio.deb
 
     - name: Download PlantUML jar
       id: download_plantuml
