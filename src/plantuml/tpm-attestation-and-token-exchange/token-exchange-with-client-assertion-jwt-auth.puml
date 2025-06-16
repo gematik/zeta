@@ -178,8 +178,8 @@ else Refresh Token use (without Attestation)
   end note
   AuthS -> AuthS : Validate Request (Client Assertion,\nDPoP Proof, Refresh Token)
   AuthS -> AuthS: Invalidate Refresh token
-  AuthS -> PDP ++ : Get Client Data, Session Data, User Data
-  PDP --> AuthS --: Client Data, Session Data, User Data
+  AuthS -> PDPDB ++ : Get Client Data, Session Data, User Data
+  PDPDB --> AuthS --: Client Data, Session Data, User Data
 end alt
 ' === END: TOKEN EXCHANGE SECTION ===
 
