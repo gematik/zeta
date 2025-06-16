@@ -169,7 +169,6 @@ Dieser Pfad wird beschritten, wenn der Client keine bestehende Session (d.h. kei
 
 4. **Erstellen der Client Assertion (mit Attestierung):** Für die Authentifizierung am Token-Endpoint erstellt der Client eine **Client Assertion**. Dieses JWT, mit dem **privaten Client Instance Key** signiert, dient als "Umschlag":
     - Es authentifiziert den Client gegenüber dem AS (`iss` und `sub` sind die `client_id`).
-    - Es enthält einen Verweis auf den DPoP-Schlüssel der Session (`cnf.jkt`), um das spätere Access Token an diesen zu binden.
     - Es enthält die `client_statement`-Struktur als Beweis für die Geräteintegrität, verpackt in einem spezifischen Claim (`urn:gematik:params:oauth:client-attestation:tpm2` oder `...:software`).
 
     ```json
@@ -178,7 +177,6 @@ Dieser Pfad wird beschritten, wenn der Client keine bestehende Session (d.h. kei
       "iss": "<client_id>", "sub": "<client_id>",
       "aud": "<AS_Token_Endpoint_URL>",
       "exp": ..., "jti": "...",
-      "cnf": { "jkt": "<DPoP_Key_Thumbprint>" },
       // Kapselung des Attestierungsnachweises
       "urn:gematik:params:oauth:client-attestation:tpm2": {
          "attestation_data": "<Base64(client_statement)>",
@@ -197,7 +195,7 @@ Dieser Pfad wird beschritten, wenn der Client keine bestehende Session (d.h. kei
 
 Dieser effiziente Pfad wird genutzt, wenn ein gültiges Refresh Token vorhanden ist.
 
-1. **Erstellen der Client Assertion (ohne Attestierung):** Der Client erstellt eine einfache `client_assertion`. Sie beweist durch ihre Signatur mit dem Client Instance Key die Identität des Clients und bindet die Anfrage an den bestehenden DPoP-Schlüssel (`cnf.jkt`). Diese Assertion enthält keine Attestierungsdaten.
+1. **Erstellen der Client Assertion (ohne Attestierung):** Der Client erstellt eine einfache `client_assertion`. Sie beweist durch ihre Signatur mit dem Client Instance Key die Identität des Clients. Diese Assertion enthält keine Attestierungsdaten.
 
     ```json
     // Client Assertion für Refresh-Token-Nutzung
@@ -205,8 +203,7 @@ Dieser effiziente Pfad wird genutzt, wenn ein gültiges Refresh Token vorhanden 
       "iss": "<client_id>",
       "sub": "<client_id>",
       "aud": "<AS_Token_Endpoint_URL>",
-      "exp": ..., "jti": "...",
-      "cnf": { "jkt": "<DPoP_Key_Thumbprint>" }
+      "exp": ..., "jti": "..."
     }
     ```
 
