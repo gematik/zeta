@@ -73,7 +73,6 @@ alt Initial SM(C)-B Token Exchangewith Attestation
           "iss": "<client_id>", "sub": "<client_id>",
           "aud": "<AS_Token_Endpoint_URL>",
           "exp": ..., "jti": "...",
-          "cnf": { "jkt": "<DPoP_Key_Thumbprint>" },
           // Embed the client_statement with attestation
           "urn:gematik:params:oauth:client-attestation:tpm2": {
              "attestation_data": "<Base64(client_statement)>",
@@ -92,7 +91,6 @@ alt Initial SM(C)-B Token Exchangewith Attestation
           "iss": "<client_id>", "sub": "<client_id>",
           "aud": "<AS_Token_Endpoint_URL>",
           "exp": ..., "jti": "...",
-          "cnf": { "jkt": "<DPoP_Key_Thumbprint>" },
           // Embed the client_statement
           "urn:gematik:params:oauth:client-attestation:software": {
              "attestation_data": "<Base64(client_statement)>",
@@ -163,8 +161,7 @@ else Refresh Token use (without Attestation)
         "sub": "<client_id>",
         "aud": "<AS_Token_Endpoint_URL>",
         "exp": ...,
-        "jti": "...",
-        "cnf": { "jkt": "<DPoP_Key_Thumbprint>" }
+        "jti": "..."
       }
       (sig by Client_Instance_Private_Key)
   end note
@@ -181,6 +178,8 @@ else Refresh Token use (without Attestation)
   end note
   AuthS -> AuthS : Validate Request (Client Assertion,\nDPoP Proof, Refresh Token)
   AuthS -> AuthS: Invalidate Refresh token
+  AuthS -> PDP ++ : Get Client Data, Session Data, User Data
+  PDP --> AuthS --: Client Data, Session Data, User Data
 end alt
 ' === END: TOKEN EXCHANGE SECTION ===
 
