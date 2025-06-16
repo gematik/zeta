@@ -25,12 +25,18 @@ jobs:
     - name: Install dependencies and draw.io
       run: |
         sudo apt-get update
+        sudo apt-get install -y jq
         sudo apt-get install -y --no-install-recommends graphviz xvfb libasound2t64
 
         # Download and install draw.io via .deb package (more reliable than snap)
-        DRAWIO_LATEST_URL=$(curl -s "https://api.github.com/repos/jgraph/drawio-desktop/releases/latest" | grep "browser_download_url.*amd64\.deb" | cut -d : -f 2,3 | tr -d \" | head -n 1)
+        # Fetch the latest release information from the GitHub API
+        DRAWIO_LATEST_URL=$(curl -s https://api.github.com/repos/jgraph/drawio-desktop/releases/latest | jq -r '.assets[] | select(.name | endswith("amd64.deb")) | .browser_download_url')
+
+        # Check if the URL was successfully retrieved
         if [ -z "$DRAWIO_LATEST_URL" ]; then
-          echo "::error::Could not determine latest draw.io .deb release URL."
+          echo "::error::Could not determine latest draw.io .deb release URL. Ensure the API response contains the expected asset information."
+          echo "Response from API:"
+          curl -s https://api.github.com/repos/jgraph/drawio-desktop/releases/latest
           exit 1
         fi
         
