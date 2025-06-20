@@ -64,7 +64,12 @@ Die ZETA API ist so konzipiert, dass sie eine sichere und flexible Interaktion z
           - [Response-Nachricht: `GetAttestationResponse`](#response-nachricht-getattestationresponse)
           - [Fehlerbehandlung](#fehlerbehandlung)
           - [Sicherheitsaspekte](#sicherheitsaspekte)
-  - [1.6. Verwaltung von Keys und Sessions](#16-verwaltung-von-keys-und-sessions)
+  - [1.6. Verwaltung von Schlüsseln und Session-Daten im ZETA Client](#16-verwaltung-von-schlüsseln-und-session-daten-im-zeta-client)
+    - [1.6.1 Einleitung](#161-einleitung)
+      - [1.6.2 Globale Daten (Client-übergreifend)](#162-globale-daten-client-übergreifend)
+      - [1.6.3 Daten pro ZETA Guard Instanz](#163-daten-pro-zeta-guard-instanz)
+      - [Konzeptionelles Speicherlayout](#konzeptionelles-speicherlayout)
+    - [1.6.4 Sicherheitsempfehlungen für die Schlüsselspeicherung](#164-sicherheitsempfehlungen-für-die-schlüsselspeicherung)
   - [1.7. Versionierung](#17-versionierung)
   - [1.8. Performance- und Lastannahmen](#18-performance--und-lastannahmen)
   - [1.9. Rate Limits und Einschränkungen](#19-rate-limits-und-einschränkungen)
@@ -1010,7 +1015,111 @@ _Hinweis: Es wird empfohlen, dass der Installer des Clients und des ZetaAttestat
 
 ---
 
-## 1.6. Verwaltung von Keys und Sessions
+## 1.6. Verwaltung von Schlüsseln und Session-Daten im ZETA Client
+
+### 1.6.1 Einleitung
+
+Ein ZETA Client muss verschiedene kryptografische Schlüssel und Session-Informationen verwalten, um mit einer oder mehreren ZETA Guard Instanzen sicher und persistent kommunizieren zu können. Die Speicherung und Verwaltung dieser Daten ist kritisch für die Sicherheit und Funktionalität des Clients.
+
+Es wird zwischen zwei Arten von Daten unterschieden:
+
+1. **Globale Daten:** Diese sind übergreifend für die Client-Instanz und unabhängig von einer spezifischen ZETA Guard Instanz.
+2. **Pro-ZETA-Guard-Instanz Daten:** Diese Daten sind spezifisch für die Session mit einer einzelnen ZETA Guard Instanz.
+
+#### 1.6.2 Globale Daten (Client-übergreifend)
+
+Diese Daten definieren die langlebige Identität der Client-Anwendung selbst. Sie müssen persistent über alle Sessions und Neustarts der Anwendung hinweg gespeichert werden.
+
+- `Client Instance Key` (Asymmetrisches Schlüsselpaar)
+  - **Beschreibung:** Dies ist das Hauptschlüsselpaar des Clients. Der private Schlüssel wird zur Signierung der Client-Registrierung bei neuen ZETA Guard Instanzen und zur Client Assertion Authentifizierung verwendet. Der öffentliche Schlüssel dient als eindeutiger, kryptografischer Identifikator des Clients.
+  - **Speicheranforderung:** Dieses Schlüsselpaar **muss** einmalig bei der ersten Initialisierung des Clients generiert und anschließend sicher und persistent gespeichert werden. Ein Verlust des privaten Schlüssels bedeutet, dass der Client seine Identität verliert und sich bei allen bereits bekannten ZETA Guard Instanzen neu registrieren muss.
+  - **Sicherheit:** Der private Schlüssel ist das wertvollste Geheimnis des Clients und **darf niemals** im Klartext gespeichert werden. Siehe Kapitel [1.6.4 Sicherheitsempfehlungen für die Schlüsselspeicherung](#sicherheitsempfehlungen-fuer-die-schluesselspeicherung).
+
+#### 1.6.3 Daten pro ZETA Guard Instanz
+
+Für jede ZETA Guard Instanz, mit der der Client eine Verbindung aufbaut, müssen die folgenden Daten separat und zugeordnet zur jeweiligen ZETA Guard-Instanz (z.B. über deren Basis-URL) gespeichert werden.
+
+- `DPoP Key` (Asymmetrisches Schlüsselpaar)
+  - **Beschreibung:** Für jede aktive Session mit einer ZETA Guard Instanz wird ein eigenes, kurzlebiges Schlüsselpaar generiert. Der private Schlüssel wird verwendet, um einzelne API-Anfragen an den Guard zu signieren (`DPoP`).
+  - **Speicheranforderung:** Dieses Schlüsselpaar ist nur für die Dauer einer Session gültig. Es sollte sicher gespeichert, aber nach Beendigung der Session (z.B. durch Logout oder Token-Ablauf ohne Refresh-Möglichkeit) verworfen werden.
+  - **Sicherheit:** Auch dieser private Schlüssel muss für seine Lebensdauer sicher aufbewahrt werden.
+
+- `Access Token`
+  - **Beschreibung:** Das vom Authorization Server des ZETA Guards ausgestellte OAuth 2.0 Access Token. Es wird im `Authorization`-Header bei jeder authentifizierten API-Anfrage mitgesendet.
+  - **Speicheranforderung:** Dieses Token ist kurzlebig und muss nach Ablauf erneuert werden. Es kann im Arbeitsspeicher gehalten oder persistent gespeichert werden, um nach einem Neustart der Anwendung die Session wiederaufnehmen zu können. Es besteht ein Diebstahlschutz durch die Bindung an den DPoP Schlüssel.
+
+- `Refresh Token`
+  - **Beschreibung:** Das vom Authorization Server des ZETA Guards ausgestellte OAuth 2.0 Refresh Token. Dieses Token kann verwendet werden, um ein neues Access Token zu erhalten, ohne dass der Benutzer sich erneut authentifizieren muss.
+  - **Speicheranforderung:** Das Refresh Token ist langlebiger als das Access Token und stellt einen sensiblen Berechtigungsnachweis dar. Es sollte persistent und sicher gespeichert werden. Es besteht ein Diebstahlschutz durch die Bindung an den DPoP Schlüssel.
+
+- `Client ID`
+  - **Beschreibung:** Die eindeutige ID, die der ZETA Guard dem Client während des Registrierungsprozesses zugewiesen hat. Sie wird für die Token-Anforderung benötigt.
+  - **Speicheranforderung:** Muss persistent gespeichert werden, solange die Registrierung beim Guard gültig sein soll.
+
+- **Discovery-Dokument Daten (Well-Known)**
+  - **Beschreibung:** Die Endpunkt-URLs und Konfigurationsdaten aus dem Discovery-Dokument des Guards (`/.well-known/zeta`).
+  - **Speicheranforderung:** Es wird dringend empfohlen, diese Daten zu cachen, um wiederholte Discovery-Anfragen zu vermeiden. Der Cache sollte eine angemessene Lebensdauer haben (z.B. 24 Stunden), um auf Konfigurationsänderungen am Guard reagieren zu können.
+
+#### Konzeptionelles Speicherlayout
+
+Ein ZETA Client könnte die Daten konzeptionell wie folgt strukturieren:
+
+```json
+{
+  "client_instance_private_key": "geschützter_speicher_ref_oder_verschlüsselt",
+  "guard_sessions": {
+    "https://guard1.example.com": {
+      "client_id": "client-id-beim-guard-1",
+      "session_private_key": "geschützter_speicher_ref_oder_verschlüsselt",
+      "access_token": "ey...",
+      "refresh_token": "def...",
+      "discovery_cache": {
+        "expires_at": "2024-12-01T10:00:00Z",
+        "data": {
+          "token_endpoint": "...",
+          "jwks_uri": "..."
+        }
+      }
+    },
+    "https://guard2.another-provider.de": {
+      "client_id": "client-id-beim-guard-2",
+      "session_private_key": "...",
+      "access_token": "...",
+      "refresh_token": null,
+      "discovery_cache": { ... }
+    }
+  }
+}
+```
+
+### 1.6.4 Sicherheitsempfehlungen für die Schlüsselspeicherung
+
+Private Schlüssel (`Client Instance Key`, `Session Key`) sind hochsensible Daten. Ihre Kompromittierung ermöglicht es einem Angreifer, die Identität des Clients zu missbrauchen. Sie müssen daher mit den sichersten, vom jeweiligen Betriebssystem bereitgestellten Mitteln geschützt werden.
+
+**Grundprinzip:** Speichern Sie private Schlüssel **niemals** unverschlüsselt im Dateisystem oder in einer Klartext-Konfigurationsdatei.
+
+Nutzen Sie stattdessen plattformspezifische, sichere Speicherorte (sog. "Keystores" oder "Secret Vaults"), die die Schlüssel an das Benutzerkonto oder die Maschinenidentität binden.
+
+- **Microsoft Windows:**
+  - **Empfehlung:** Verwenden Sie die **Data Protection API (DPAPI)**, die über die Funktionen `CryptProtectData` und `CryptUnprotectData` zugänglich ist.
+  - **Funktionsweise:** DPAPI verschlüsselt Daten mithilfe eines Schlüssels, der aus den Anmeldeinformationen des Benutzers abgeleitet wird. Die Daten können somit nur von demselben Benutzer auf demselben Computer wieder entschlüsselt werden. Dies ist ideal für Desktop-Anwendungen. Für Dienste, die unter einem Systemkonto laufen, kann der Schutz an die Maschinenidentität gebunden werden.
+
+- **Apple macOS:**
+  - **Empfehlung:** Nutzen Sie den **macOS Keychain (Schlüsselbund)**.
+  - **Funktionsweise:** Der Schlüsselbund ist ein zentraler, verschlüsselter Speicher für Passwörter, Zertifikate und Schlüssel. Der Zugriff wird vom Betriebssystem streng kontrolliert und erfordert in der Regel die Zustimmung des Benutzers. Verwenden Sie die `Security` Framework-APIs, um Schlüssel sicher zu speichern und abzurufen.
+
+- **Linux:**
+  - **Empfehlung (Desktop-Umgebungen):** Verwenden Sie den **Secret Service DBus API**, der von Diensten wie dem _GNOME Keyring_ oder _KWallet_ implementiert wird. Dies ist der Freedesktop.org-Standard und die bevorzugte Methode für Desktop-Anwendungen.
+  - **Empfehlung (Server/Headless-Umgebungen):**
+        1. **Dateibasierte Verschlüsselung:** Speichern Sie den Schlüssel in einer Datei, die mit einem Master-Passwort verschlüsselt ist (das z.B. beim Start der Anwendung abgefragt wird).
+        2. **Strikte Dateiberechtigungen:** Als absolutes Minimum muss die Schlüsseldatei durch strikte Dateisystemberechtigungen geschützt werden. Der private Schlüssel sollte nur für den Benutzer lesbar sein, unter dem die Anwendung läuft.
+            ```bash
+            # Setzt die Berechtigung, sodass nur der Eigentümer lesen und schreiben darf
+            chmod 600 /pfad/zum/privaten_schluessel.key
+            ```
+        Diese Methode bietet jedoch keinen Schutz, wenn ein Angreifer Lesezugriff auf das Dateisystem als der betreffende Benutzer erlangt. Sie sollte möglichst mit zusätzlicher Verschlüsselung kombiniert werden.
+
+**Cross-Plattform-Bibliotheken:** Für in höheren Programmiersprachen (z.B. Python, Go, Rust, C#) entwickelte Clients existieren oft Bibliotheken, die die plattformspezifischen Speicher abstrahieren und eine einheitliche API für den Zugriff auf den Windows DPAPI, den macOS Keychain und den Secret Service unter Linux bieten. Die Verwendung solcher Bibliotheken wird empfohlen.
 
 ## 1.7. Versionierung
 
