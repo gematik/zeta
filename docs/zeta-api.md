@@ -71,6 +71,13 @@ Die ZETA API ist so konzipiert, dass sie eine sichere und flexible Interaktion z
       - [Konzeptionelles Speicherlayout](#konzeptionelles-speicherlayout)
     - [1.6.4 Sicherheitsempfehlungen für die Schlüsselspeicherung](#164-sicherheitsempfehlungen-für-die-schlüsselspeicherung)
   - [1.7. Versionierung](#17-versionierung)
+    - [1.7.1 Versionierungsschema: MAJOR.MINOR.PATCH](#171-versionierungsschema-majorminorpatch)
+      - [1.7.2 Implementierung der Versionierung](#172-implementierung-der-versionierung)
+        - [1. URL-Pfad für die MAJOR-Version](#1-url-pfad-für-die-major-version)
+        - [2. Discovery-Dokument als "Source of Truth"](#2-discovery-dokument-als-source-of-truth)
+        - [3. HTTP-Header zur Laufzeit-Identifikation](#3-http-header-zur-laufzeit-identifikation)
+      - [1.7.3 Client-Verhalten und Kompatibilitätsregeln](#173-client-verhalten-und-kompatibilitätsregeln)
+      - [1.7.4 Deprecation Policy (Außerbetriebnahme)](#174-deprecation-policy-außerbetriebnahme)
   - [1.8. Performance- und Lastannahmen](#18-performance--und-lastannahmen)
   - [1.9. Rate Limits und Einschränkungen](#19-rate-limits-und-einschränkungen)
   - [1.10. Support und Kontaktinformationen](#110-support-und-kontaktinformationen)
@@ -1053,11 +1060,11 @@ Für jede ZETA Guard Instanz, mit der der Client eine Verbindung aufbaut, müsse
   - **Speicheranforderung:** Das Refresh Token ist langlebiger als das Access Token und stellt einen sensiblen Berechtigungsnachweis dar. Es sollte persistent und sicher gespeichert werden. Es besteht ein Diebstahlschutz durch die Bindung an den DPoP Schlüssel.
 
 - `Client ID`
-  - **Beschreibung:** Die eindeutige ID, die der ZETA Guard dem Client während des Registrierungsprozesses zugewiesen hat. Sie wird für die Token-Anforderung benötigt.
-  - **Speicheranforderung:** Muss persistent gespeichert werden, solange die Registrierung beim Guard gültig sein soll.
+  - **Beschreibung:** Die eindeutige ID, die der ZETA Guard dem ZETA Client während des Registrierungsprozesses zugewiesen hat. Sie wird für die Token-Anforderung benötigt.
+  - **Speicheranforderung:** Muss persistent gespeichert werden, solange die Registrierung beim ZETA Guard gültig sein soll.
 
 - **Discovery-Dokument Daten (Well-Known)**
-  - **Beschreibung:** Die Endpunkt-URLs und Konfigurationsdaten aus dem Discovery-Dokument des Guards (`/.well-known/zeta`).
+  - **Beschreibung:** Die Endpunkt-URLs und Konfigurationsdaten aus den Discovery-Dokumenten des ZETA Guards.
   - **Speicheranforderung:** Es wird dringend empfohlen, diese Daten zu cachen, um wiederholte Discovery-Anfragen zu vermeiden. Der Cache sollte eine angemessene Lebensdauer haben (z.B. 24 Stunden), um auf Konfigurationsänderungen am Guard reagieren zu können.
 
 #### Konzeptionelles Speicherlayout
@@ -1066,11 +1073,11 @@ Ein ZETA Client könnte die Daten konzeptionell wie folgt strukturieren:
 
 ```json
 {
-  "client_instance_private_key": "geschützter_speicher_ref_oder_verschlüsselt",
+  "client_instance_private_key": "geschützter_speicher_ref",
   "guard_sessions": {
     "https://guard1.example.com": {
-      "client_id": "client-id-beim-guard-1",
-      "session_private_key": "geschützter_speicher_ref_oder_verschlüsselt",
+      "client_id": "client-id-beim-zeta-guard-1",
+      "session_private_key": "geschützter_speicher_ref",
       "access_token": "ey...",
       "refresh_token": "def...",
       "discovery_cache": {
@@ -1082,7 +1089,7 @@ Ein ZETA Client könnte die Daten konzeptionell wie folgt strukturieren:
       }
     },
     "https://guard2.another-provider.de": {
-      "client_id": "client-id-beim-guard-2",
+      "client_id": "client-id-beim-zeta-guard-2",
       "session_private_key": "...",
       "access_token": "...",
       "refresh_token": null,
@@ -1094,7 +1101,7 @@ Ein ZETA Client könnte die Daten konzeptionell wie folgt strukturieren:
 
 ### 1.6.4 Sicherheitsempfehlungen für die Schlüsselspeicherung
 
-Private Schlüssel (`Client Instance Key`, `Session Key`) sind hochsensible Daten. Ihre Kompromittierung ermöglicht es einem Angreifer, die Identität des Clients zu missbrauchen. Sie müssen daher mit den sichersten, vom jeweiligen Betriebssystem bereitgestellten Mitteln geschützt werden.
+Private Schlüssel (`Client Instance Key`, `DPoP Key`) sind hochsensible Daten. Ihre Kompromittierung ermöglicht es einem Angreifer, die Identität des Clients zu missbrauchen. Sie müssen daher mit den sichersten, vom jeweiligen Betriebssystem bereitgestellten Mitteln geschützt werden.
 
 **Grundprinzip:** Speichern Sie private Schlüssel **niemals** unverschlüsselt im Dateisystem oder in einer Klartext-Konfigurationsdatei.
 
@@ -1123,8 +1130,89 @@ Nutzen Sie stattdessen plattformspezifische, sichere Speicherorte (sog. "Keystor
 
 ## 1.7. Versionierung
 
-API-Versionierung: Hinweise darauf, wie Versionen der API verwaltet werden und wie Benutzer zwischen verschiedenen Versionen wechseln können.
-Änderungsprotokoll: Ein Changelog, das alle wichtigen Änderungen und Updates dokumentiert.
+Um eine stabile und vorhersagbare Entwicklungsumgebung für Client-Anwendungen zu gewährleisten, folgt die ZETA API strikt den Prinzipien von **Semantic Versioning 2.0.0 (SemVer)**. Jede Änderung an der API wird klassifiziert, um die Auswirkungen auf bestehende Clients transparent zu machen.
+
+### 1.7.1 Versionierungsschema: MAJOR.MINOR.PATCH
+
+Jede ZETA Guard Instanz deklariert ihre API-Version im Format `MAJOR.MINOR.PATCH` (z.B. `1.2.3`). Die Bedeutung der einzelnen Komponenten ist wie folgt definiert:
+
+*   **MAJOR-Version (z.B. `1`.2.3):** Wird erhöht, wenn **rückwärtsinkompatible ("breaking") Änderungen** an der API vorgenommen werden. Dies erfordert eine Anpassung aufseiten des Clients, um weiterhin korrekt zu funktionieren.
+    *   *Beispiele:* Entfernen eines Endpunkts, Umbenennung eines JSON-Feldes, Änderung eines Felddatentyps, Hinzufügen eines verpflichtenden Request-Parameters.
+
+*   **MINOR-Version (z.B. 1.`2`.3):** Wird erhöht, wenn **neue Funktionalität in einer rückwärtskompatiblen Weise** hinzugefügt wird. Bestehende Clients dürfen durch diese Änderungen nicht beeinträchtigt werden.
+    *   *Beispiele:* Hinzufügen eines neuen API-Endpunkts, Hinzufügen eines neuen, optionalen Feldes in einer JSON-Antwort, Hinzufügen eines neuen, optionalen Request-Parameters.
+
+*   **PATCH-Version (z.B. 1.2.`3`):** Wird erhöht, wenn **rückwärtskompatible Fehlerbehebungen ("bug fixes")** vorgenommen werden, die das Verhalten der API korrigieren, aber keine neue Funktionalität einführen.
+    *   *Beispiele:* Korrektur einer fehlerhaften Validierungslogik, Behebung eines internen Fehlers, der zu einem `500 Internal Server Error` führte.
+
+Zusätzlich können Prerelease-Tags verwendet werden (z.B. `2.0.0-beta.1`), um instabile Vorabversionen zu kennzeichnen.
+
+#### 1.7.2 Implementierung der Versionierung
+
+Die Versionierung wird durch eine Kombination aus URL-Pfad, HTTP-Headern und dem Discovery-Dokument umgesetzt.
+
+##### 1. URL-Pfad für die MAJOR-Version
+
+Rückwärtsinkompatible Änderungen sind am einschneidendsten. Daher wird die **MAJOR-Version** direkt und explizit im URL-Pfad der API geführt.
+
+*   **Schema:** `https://<guard-base-url>/zeta/v{major-version}/<endpoint>`
+*   **Beispiel für Version `1.4.2`:** `POST https://guard.example.com/zeta/v1/token`
+*   **Beispiel für Version `2.0.0`:** `POST https://guard.example.com/zeta/v2/token`
+
+##### 2. Discovery-Dokument als "Source of Truth"
+
+Die Discovery-Dokumente (`/.well-known/oauth-protected-resource` und `/.well-known/oauth-authorization-server`) sind die zentrale Anlaufstelle für einen Client, um die exakten, vom ZETA Guard unterstützten Versionen zu ermitteln.
+
+*   **`api_versions_supported`:** Dieses JSON-Objekt listet alle vom ZETA Guard angebotenen MAJOR-Versionen mit ihrer jeweiligen vollen SemVer-Version auf.
+
+```jsonc
+// Beispiel-Ausschnitt aus /.well-known/...
+{
+  "issuer": "https://zeta-guard.example.com",
+  // ... andere Endpunkte
+  "api_versions_supported": [
+    {
+      "major_version": 1,
+      "version": "1.4.2", // Die volle, stabile SemVer-Version für v1
+      "status": "stable",
+      "documentation_uri": "https://gematik.github.io/ZETA/v1/"
+    },
+    {
+      "major_version": 2,
+      "version": "2.0.0-beta.3", // Eine instabile Vorabversion für v2
+      "status": "beta",
+      "documentation_uri": "https://gematik.github.io/ZETA/v2/"
+    }
+  ]
+}
+```
+
+##### 3. HTTP-Header zur Laufzeit-Identifikation
+
+Jede Antwort des ZETA Guards **wird zukünftig** einen `ZETA-API-Version`-Header enthalten, der die exakte SemVer-Version der ausführenden Instanz angibt. Dies ist besonders für Debugging und Logging wertvoll.
+
+*   **Beispiel-Response-Header:**
+    `HTTP/1.1 200 OK`
+    `Content-Type: application/json`
+    `ZETA-API-Version: 1.4.2`
+
+#### 1.7.3 Client-Verhalten und Kompatibilitätsregeln
+
+Um die Stabilität zu gewährleisten, müssen Clients die folgenden Regeln befolgen:
+
+1.  **Toleranz gegenüber MINOR- und PATCH-Versionen:** Ein Client, der für eine bestimmte API-Version entwickelt wurde (z.B. `1.2.0`), **muss** nahtlos mit jeder neueren, rückwärtskompatiblen Version derselben MAJOR-Version (z.B. `1.3.0` oder `1.2.1`) funktionieren. Dies bedeutet konkret:
+    *   **Unbekannte Felder ignorieren:** Der Client-Parser **muss** unbekannte Felder in JSON-Antworten ignorieren und darf keinen Fehler auslösen.
+    *   **Reihenfolgeunabhängigkeit:** Der Client darf sich nicht auf die Reihenfolge von Feldern in JSON-Objekten verlassen.
+
+2.  **Explizite Wahl der MAJOR-Version:** Der Client wählt die MAJOR-Version aktiv über den verwendeten URL-Pfad (z.B. `/v1/`). Ein Wechsel zu einer neuen MAJOR-Version (z.B. auf `/v2/`) ist eine bewusste Entwicklungsentscheidung und erfordert eine Code-Anpassung.
+
+#### 1.7.4 Deprecation Policy (Außerbetriebnahme)
+
+Wenn eine neue MAJOR-Version (z.B. `v2`) den Status `stable` erreicht, wird die vorherige MAJOR-Version (`v1`) als `deprecated` (veraltet) markiert.
+
+1.  **Ankündigungsphase:** Die veraltete Version wird im Discovery-Dokument als `deprecated` gekennzeichnet. Anfragen an diese Version können einen `Warning`-HTTP-Header zurückgeben, der auf die bevorstehende Abschaltung hinweist.
+2.  **Migrationszeitraum:** Es wird einen klar kommunizierten Zeitraum geben, in dem beide MAJOR-Versionen parallel betrieben werden, um Clients eine reibungslose Migration zu ermöglichen.
+3.  **Abschaltung:** Nach Ablauf des Migrationszeitraums wird die veraltete Version abgeschaltet. Anfragen an die Endpunkte dieser Version führen dann zu einem `HTTP 410 Gone`-Fehler.
 
 ## 1.8. Performance- und Lastannahmen
 
