@@ -37,12 +37,15 @@ end box
 
 User -> Client ++ : User wants to\naccess resource\non Resource Server
 
-ref over Client, HP, AuthS: **Discovery and Configuration**
+alt Discovery and Configuration not yet done
+  ref over Client, HP, AuthS: **Discovery and Configuration**
+end
 alt Client has no client_id
     ref over Client, AuthS: **Dynamic Client Registration with TPM Attestation**
 end
-
-ref over Client, AuthS, PE: **Token Exchange with Client Assertion JWT Auth**
+alt Client has no valid Access Token
+  ref over Client, AuthS, PE: **Token Exchange with Client Assertion JWT Auth**
+end
 
 Client -> Client: Create DPoP Proof for RS
 Client -> HP ++ : GET /resource\n\
