@@ -1,0 +1,73 @@
+@startuml "dynamic-client-registration"
+autonumber "(00)"
+skinparam defaultFontSize 10
+skinparam defaultFontName Helvetica
+skinparam DefaultMonospacedFontName Courier
+skinparam lengthAdjust none
+skinparam sequenceReferenceBackgroundColor White
+skinparam SequenceReferenceFontSize 12
+/'skinparam SequenceReferenceFontStyle bold
+'/
+
+!pragma teoz true
+
+box "LEI" #GhostWhite
+  box "Primärsystem" #Lavender
+    box "ZETA Client" #SandyBrown
+      participant Client as "ZETA\nClient"
+    end box
+    participant ZAS as "ZETA Attestation Service\n(Admin rights)"
+  end box
+end box
+
+box "Anbieter" #TECHNOLOGY
+  box "ZETA Guard" #SandyBrown
+    participant AuthS as "PDP\nAuthorization Server"
+    participant PDPDB as "PDP DB"
+  end box
+    box TI 2.0 Dienst #DarkSeaGreen
+      participant RS as "Resource\nServer"
+    end box
+end box
+
+Client ++
+
+alt Client has no Client Instance Key
+  Client -> Client : Generate Client Instance\nKey Pair
+  note right: This key pair is long-lived for the client instance and\nused for the private_key_jwt client authentication method.
+end alt
+
+Client -> AuthS ++ : POST /register
+note right of AuthS #lightblue
+DCR Request Body: {
+  "client_name": "myClient",
+  "grant_types": [
+    "urn:ietf:params:oauth:grant-type:token-exchange",
+    "refresh_token"
+  ],
+  "jwks": { "keys": [ <Client_Instance_Public_Key_JWK> ] },
+  "token_endpoint_auth_method": "private_key_jwt"
+}
+end note
+AuthS -> AuthS : Generate client_id
+AuthS -> PDPDB ++: Store Client Placeholder\nwith Public Key (JWKS)
+note right of PDPDB
+Store Client Placeholder
+client_id
+client_name
+public_key_jwks
+...
+state: pending_attestation
+end note
+PDPDB --> AuthS --: Client Placeholder Created
+AuthS -->> Client --: 201 Created
+note right of Client #lightgreen
+DCR Response Body:
+{
+"client_id": "<client-id>",
+"client_id_issued_at": ...,
+// ...
+}
+end note
+Client --
+@enduml

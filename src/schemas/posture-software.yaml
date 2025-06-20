@@ -12,7 +12,10 @@ properties:
     description: Hardware Architecture
   public_key:
     type: string
-    description: The public self signed signing key (PEM or base64 DER encoded).
+    description: The public self signed signing key (PEM or base64 DER encoded).^
+  attestation_challenge:
+    type: string
+    description: The attestation challenge of the client instance, used to verify the public client instance key and the nonce from AS.
 required:
   - os
   - os_version

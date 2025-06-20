@@ -1,27 +1,13 @@
-# Schema for Client Statement JWT Payload
-# The Client Statement is used in the OAuth dynamic client registration flow with the ZETA Guard AuthServer.
+# Schema for Client Statement
+# The Client Statement is used in the Client Assertion JWT with the ZETA Guard AuthServer.
 # It contains information about the client instance.
-# It is signed by a Client instance signing Key and contains information about the client instance and the TPM attestation
-# JWT Header: 
-# {
-#   "alg": "ES256",
-#   "typ": "JWT",
-#   "kid": "SHA-256 hash of the public signing key used."
-# }
-# JWT Payload:
 $schema: "http://json-schema.org/draft-07/schema#"
-client_statement_jwt:
+client_statement:
   type: object
   properties:
     sub:
       type: string
       description: The name of the client 
-    jti:
-      type: string
-      description: The JWT ID
-    iss:
-      type: string
-      description: The issuer of the JWT
     product_id:
       type: string
       description: The product identifier as provided by gematik
@@ -31,14 +17,12 @@ client_statement_jwt:
     posture:
       description: The posture of the client instance
       $ref: "./posture.yaml"
-    attestation:
+    attestation_info:
       description: The attestation information of the client instance
       $ref: "./attestation-info.yaml"
   required:
     - sub
-    - jti
-    - iss
     - product_id
     - product_version
     - posture
-    - attestation
+    - attestation_info

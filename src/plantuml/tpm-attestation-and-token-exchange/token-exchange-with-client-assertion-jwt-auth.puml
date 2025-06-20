@@ -1,0 +1,217 @@
+@startuml "token-exchange-with-client-assertion-jwt-auth"
+autonumber "(00)"
+skinparam defaultFontSize 10
+skinparam defaultFontName Helvetica
+skinparam DefaultMonospacedFontName Courier
+skinparam lengthAdjust none
+skinparam sequenceReferenceBackgroundColor White
+skinparam SequenceReferenceFontSize 12
+/'skinparam SequenceReferenceFontStyle bold
+'/
+
+!pragma teoz true
+
+Actor User
+box "LEI" #GhostWhite
+  box "Primärsystem" #Lavender
+    box "ZETA Client" #SandyBrown
+      participant Client as "ZETA\nClient"
+    end box
+    participant ZAS as "ZETA Attestation Service\n(Admin rights)"
+    participant TPM as "TPM"
+  end box
+  participant Konnektor as "Konnektor or\nTI-Gateway"
+  participant SMB as "SM(C)-B"
+end box
+
+box "Anbieter" #TECHNOLOGY
+  box "ZETA Guard" #SandyBrown
+    participant AuthS as "PDP\nAuthorization Server"
+    participant PDPDB as "PDP\nDatabase"
+    participant PE as "PDP\nPolicy Engine"
+  end box
+end box
+
+Client ++
+Client -> AuthS ++ : GET /nonce
+AuthS --> Client --: return 200 OK new-nonce: nonce
+
+' === START: TOKEN EXCHANGE SECTION ===
+alt Initial SM(C)-B Token Exchangewith Attestation
+  Client -> Client : Create DPoP Key Pair (for Token Exchange)
+  note right: Session-based Key Pair for DPoP binding.
+
+  Client -> Client: Calculate attestation_challenge
+  note right: The attestation_challenge is a cryptographic hash\nof the Public Client Instance Key Hash and a nonce.\nIt is used to bind the attestation to the client instance.\nattestation_challenge = HASH(pubKeyHash + nonce)
+  
+  ' === START: ATTESTATION SECTION ===
+  alt ZETA Attestation Service available
+    Client -> ZAS ++ : Get Attestation\nwith `attestation_challenge`
+    alt ZETA TPM Service has no TPM Attestation Key
+      note right: The Primärsystem (PS) and the ZETA Attestation Service (ZTA) are\nin the same trust domain. At the time of client installation, the ZTA\ncomputes a cryptographic hash of the PS software and extends this\nhash into a specific PCR (22 or 23) using TPM2_PCR_Extend. The\nZTA reads and stores the resulting PCR value as a reference\nmeasurement or baseline. At every start of the PS, the ZTA measures\nthe PS software and extends the resulting hash into the same PCR\n(22 or 23) using TPM2_PCR_Extend.
+      ZAS -> TPM ++ : Generate Attestation Key Pair (AK)\nand Get AK Handle
+      TPM --> ZAS: Return Attestation Public Key\nand AK Handle
+      ZAS -> TPM: Get Certificate Chain
+      TPM --> ZAS: Return Certificate Chain
+      ZAS -> ZAS: Store AK Handle, AK Public Key\nand Certificate Chain
+    end alt
+
+    ZAS -> ZAS: Select AK Handle
+    ZAS -> TPM: Get TPM Quote for PCRs\n(4, 5, 7, 10, 11, 22 or 23)\nand `attestation_challenge`\n(as qualifyingData),\nsigned with AK
+    note left: Binding: `attestation_challenge` enthält Hash des\nClient Instance Public Keys und die Nonce.\nDas TPM signiert PCRs + `attestation_challenge`.
+    note right: PCR 4: Boot Loader Code, Digest\nPCR 5: Boot Loader Configuration, Digest\nPCR 7: Secure Boot State / Policy, Digest\nPCR   10:OS Kernel / IMA, Digest\nPCR 11: OS Components / VSM, Digest,\nPCR 22 or 23 (if available) App Data, Digest
+    TPM --> ZAS --: Return TPM Quote
+    ZAS -> ZAS: Get TCG Event Log (from OS/Firmware)
+    note right: Quote contains:\n- `attestation_challenge` (as qualifyingData)\n- Attested Data (PCR Select, PCR Digest),\n- Signature
+    ZAS --> Client --: Return Attestation\n(Quote, EventLog, CertChain)
+    Client -> Client: Create client_statement\nwith posture-tpm
+    note right: client_statement includes:\n- sub\n- product_id\n- product_version\n- posture (containing TPM Quote etc.)\n- attestation-info
+    Client -> Client : Create Client Assertion JWT
+    note right #lightblue
+        **Client Assertion JWT Claims (with Attestation):**
+        {
+          "iss": "<client_id>", "sub": "<client_id>",
+          "aud": "<AS_Token_Endpoint_URL>",
+          "exp": ..., "jti": "...",
+          // Embed the client_statement with attestation
+          "urn:gematik:params:oauth:client-attestation:tpm2": {
+             "attestation_data": "<Base64(client_statement)>",
+             "client_statement_format": "client-statement"
+           }
+        }
+        (sig by Client_Instance_Private_Key)
+    end note
+  else Fallback: Software-basierte Attestierung
+    Client -> Client: Create client_statement\nwith posture-software
+    note right: client_statement includes:\n- sub\n- product_id\n- product_version\n- posture (containing attestation_challenge etc.)\n- attestation-info
+    Client -> Client : Create Client Assertion JWT
+    note right #lightblue
+        **Client Assertion JWT Claims (with Attestation):**
+        {
+          "iss": "<client_id>", "sub": "<client_id>",
+          "aud": "<AS_Token_Endpoint_URL>",
+          "exp": ..., "jti": "...",
+          // Embed the client_statement
+          "urn:gematik:params:oauth:client-attestation:software": {
+             "attestation_data": "<Base64(client_statement)>",
+             "client_statement_format": "client-statement"
+           }
+        }
+        (sig by Client_Instance_Private_Key)
+    end note
+  end alt
+  ' === END: ATTESTATION SECTION ===
+
+  ' === START: SM(C)-B Access Token Creation ===
+  Client -> Client : Create "SM(C)-B Access Token" (JWT)
+  note right #lightblue
+      **SM(C)-B Access Token Claims:**
+      {
+        "iss": "<client_id>", // Issuer is the client
+        "sub": "<Telematik-ID from SM(C)-B>", // Subject is the institution
+        "aud": "[<Resource_Server_Endpoint_URL>]", // Audience is the Resource Server
+        "exp": ..., // Short-lived
+        "iat": ...,
+        "jti": "...",
+        "scope": ... // As required for the Resource Server access
+      }
+  end note
+
+  Client -> Konnektor ++ : externalAuthenticate (JWT-hash)
+  Konnektor -> SMB ++ : sign (hash)
+  SMB --> Konnektor -- : Signature
+  Konnektor --> Client -- : JWT-signature
+  Client -> Client : Add JWT-Signature to SM(C)-B Access Token
+
+  Client -> Client : Create DPoP Proof JWT for Token Exchange
+  note right #lightblue
+      **DPoP Proof JWT Claims (for Token Exchange):**
+      {
+        "typ": "dpop+jwt",
+        "alg": "ES256",
+        "jwk": { ... }
+      }.{
+        "jti": "...",
+        "htm": "POST",
+        "htu": "<AS_Token_Endpoint_URL>",
+        "nonce": "<nonce from AS>", // Binding to AS
+        "iat": ...
+      }.(sig by DPoP_Private_Key)
+  end note
+  ' === END: SM(C)-B Access Token Creation ===
+
+  Client -> AuthS ++ : POST /token (RFC 8693) DPoP: <signed_dpop_jwt>
+    note right of Client #lightblue
+    **Token Exchange Request Body:**
+    grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+    &subject_token=<SM(C)-B_Access_Token>
+    &subject_token_type=urn:ietf:params:oauth:token-type:jwt
+    &client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+    &client_assertion=<Client_Assertion_JWT>
+    ...
+    end note
+  AuthS -> AuthS : Validate Request (Client Assertion,\nAttestation, DPoP Proof,\nSubject Token)
+
+else Refresh Token use (without Attestation)
+  Client -> Client : Create Client Assertion JWT without Attestation
+  note right #lightblue
+      **Client Assertion JWT Claims (without Attestation):**
+      {
+        "iss": "<client_id>",
+        "sub": "<client_id>",
+        "aud": "<AS_Token_Endpoint_URL>",
+        "exp": ...,
+        "jti": "..."
+      }
+      (sig by Client_Instance_Private_Key)
+  end note
+
+  Client -> Client : Create DPoP Proof JWT for Token Exchange
+
+  Client -> AuthS: POST /token DPoP: <signed_dpop_jwt>
+  note right of Client #lightblue
+    **Token Exchange Request Body:**
+    grant_type=refresh_token
+    &refresh_token=<Refresh_Token>
+    &client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+    &client_assertion=<Client_Assertion_JWT_**without**_Attestation>
+  end note
+  AuthS -> AuthS : Validate Request (Client Assertion,\nDPoP Proof, Refresh Token)
+  AuthS -> AuthS: Invalidate Refresh token
+  AuthS -> PDPDB ++ : Get Client Data, Session Data, User Data
+  PDPDB --> AuthS --: Client Data, Session Data, User Data
+end alt
+' === END: TOKEN EXCHANGE SECTION ===
+
+'  === START: VALIDATION SECTION ===
+alt Validations Successful
+  AuthS -> PE ++ : POST /v1/data/authz, body\n{  "input": {...}}
+  PE --> AuthS --: 200 OK, body {"allow": true,\n\
+  "access_token_ttl": "360",\n\
+  "refresh_token_ttl": "43200",\n\
+  "scope": "RS specific scopes"}
+  alt Policy Decision allowed
+    AuthS -> AuthS : Generate AS Access Token (AT)\nand Refresh Token (RT)
+    AuthS -> PDPDB ++ : Update Client Data\nUpdate Session\nUpdate User Data
+    PDPDB --> AuthS --: updated
+    AuthS --> Client: 200 OK, new tokens
+        note right of AuthS #lightgreen
+        **Token Response Body:**
+        {
+          "access_token": "<AS_Access_Token>",
+          "token_type": "DPoP", // Indicate DPoP is required
+          "expires_in": 300,
+          "refresh_token": "<AS_Refresh_Token>"
+          // ... other parameters
+        }
+    end note
+  else Policy Decision denied
+    AuthS --> Client: 403 Forbidden
+  end alt
+else Validation Failed
+  AuthS --> Client -- : 400 Bad Request
+end alt
+' === END: VALIDATION SECTION ===
+
+Client --
+@enduml
