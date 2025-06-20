@@ -26,7 +26,7 @@ end box
 
 box "Anbieter" #TECHNOLOGY
   box "ZETA Guard" #SandyBrown
-    participant HP as "PEP\nhttp Proxy"
+    participant HP as "PEP\nHTTP Proxy"
     participant AuthS as "PDP\nAuthorization Server" 
     participant PE as "PDP\nPolicy Engine"
   end box
@@ -37,12 +37,15 @@ end box
 
 User -> Client ++ : User wants to\naccess resource\non Resource Server
 
-ref over Client, HP, AuthS: **Discovery and Configuration**
+alt Discovery and Configuration not yet done
+  ref over Client, HP, AuthS: **Discovery and Configuration**
+end
 alt Client has no client_id
     ref over Client, AuthS: **Dynamic Client Registration with TPM Attestation**
 end
-
-ref over Client, AuthS, PE: **Token Exchange with Client Assertion JWT Auth**
+alt Client has no valid Access Token
+  ref over Client, AuthS, PE: **Token Exchange with Client Assertion JWT Auth**
+end
 
 Client -> Client: Create DPoP Proof for RS
 Client -> HP ++ : GET /resource\n\
@@ -50,7 +53,7 @@ Client -> HP ++ : GET /resource\n\
   DPoP: ... (DPoP token)
 HP -> HP: verify Access token\nand DPoP Proof
 HP -> RS ++ : forward GET /resource\n\
-with header and\nPEP header as json
+with header and\nPEP header as JSON
 RS -> RS: provide\nresource\naccess
 RS --> HP -- : 200 OK, Resource
 HP --> Client -- : 200 OK, Resource

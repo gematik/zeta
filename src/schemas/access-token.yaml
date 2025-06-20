@@ -1,4 +1,4 @@
-# Schema for the AccessToken json object. Issuer is a PDP authorization server.
+# Schema for the AccessToken JSON object. Issuer is a PDP authorization server.
 $schema: "http://json-schema.org/draft-07/schema#"
 access_token:
   type: object

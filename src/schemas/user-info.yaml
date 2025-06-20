@@ -1,4 +1,4 @@
-# Schema for the user-info json object.
+# Schema for the user-info JSON object.
 # The PDP authorization server stores user-info records for all authenticated
 # user. 
 # The PEP can request user-info records for a user by sending a request.

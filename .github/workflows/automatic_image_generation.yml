@@ -1,0 +1,175 @@
+name: Automatic Image Generation
+
+on:
+  push:
+    paths:
+      - 'src/plantuml/**'
+      - 'src/drawio/**'
+      - '.github/workflows/automatic_image_generation.yml'
+  workflow_dispatch:
+
+jobs:
+  generate_images:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 11
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: '11'
+
+    - name: Install dependencies and draw.io
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y jq
+        sudo apt-get install -y --no-install-recommends graphviz xvfb libasound2t64
+
+        # KORRIGIERTER BEFEHL:
+        # Dieser Filter sucht nach einem Asset, das "amd64" im Namen enthält UND mit ".deb" endet.
+        # Das ist robuster gegenüber Änderungen im Dateinamen-Schema (z.B. Versionsnummer).
+        DRAWIO_LATEST_URL=$(curl -s https://api.github.com/repos/jgraph/drawio-desktop/releases/latest | jq -r '.assets[] | select(.name | contains("amd64") and endswith(".deb")) | .browser_download_url')
+
+        if [ -z "$DRAWIO_LATEST_URL" ]; then
+          echo "::error::Could not determine latest draw.io .deb release URL."
+          echo "Response from API:"
+          curl -s https://api.github.com/repos/jgraph/drawio-desktop/releases/latest
+          exit 1
+        fi
+        
+        echo "Downloading draw.io from: $DRAWIO_LATEST_URL"
+        wget --quiet "$DRAWIO_LATEST_URL" -O /tmp/drawio.deb
+        
+        echo "Installing draw.io..."
+        sudo apt-get install -y /tmp/drawio.deb
+
+    - name: Download PlantUML jar
+      id: download_plantuml
+      run: |
+        wget --quiet https://github.com/plantuml/plantuml/releases/latest/download/plantuml.jar -O /tmp/plantuml.jar
+        if [ ! -f /tmp/plantuml.jar ]; then
+          echo "::error::Failed to download plantuml.jar"
+          exit 1
+        fi
+        echo "PlantUML JAR downloaded."
+
+    - name: Generate images from PlantUML files
+      id: generate_plantuml
+      run: |
+        set -e
+        SUCCESSFUL_GENERATIONS=0
+        FAILED_GENERATIONS=0
+        shopt -s nullglob
+
+        echo "Checking PlantUML files..."
+        while IFS= read -r -d $'\0' file; do
+          output_dir="$PWD/$(dirname "$file" | sed 's|^src/plantuml|images|')"
+          image_base=$(basename "$file" .puml)
+          png_path="$output_dir/$image_base.png"
+          svg_path="$output_dir/$image_base.svg"
+          should_generate=false
+
+          if [ ! -f "$png_path" ] || [ ! -f "$svg_path" ] || { [ -f "$png_path" ] && [ "$file" -nt "$png_path" ]; } || { [ -f "$svg_path" ] && [ "$file" -nt "$svg_path" ]; }; then
+             should_generate=true
+          fi
+
+          if [ "$should_generate" = true ]; then
+            echo "-> Generating images for PlantUML file: $file"
+            mkdir -p "$output_dir"
+            
+            java -jar /tmp/plantuml.jar -tpng -scale 4 "$file" -o "$output_dir"
+            java -jar /tmp/plantuml.jar -tsvg "$file" -o "$output_dir"
+
+            if [ -f "$png_path" ] && [ -f "$svg_path" ]; then
+               SUCCESSFUL_GENERATIONS=$((SUCCESSFUL_GENERATIONS + 1))
+            else
+               echo "::error::One or both output files missing after generation attempt for $file."
+               FAILED_GENERATIONS=$((FAILED_GENERATIONS + 1))
+               exit 1
+            fi
+          fi
+        done < <(find src/plantuml -name "*.puml" -print0)
+
+        echo "PlantUML generation finished. Successful: $SUCCESSFUL_GENERATIONS, Failed: $FAILED_GENERATIONS."
+
+        if [ "$SUCCESSFUL_GENERATIONS" -gt 0 ]; then
+          echo "plantuml_generated=true" >> $GITHUB_OUTPUT
+        else
+          echo "plantuml_generated=false" >> $GITHUB_OUTPUT
+        fi
+      shell: bash
+
+    - name: Generate images from drawio files
+      id: generate_drawio
+      run: |
+        set -e
+        SUCCESSFUL_GENERATIONS=0
+        shopt -s nullglob
+
+        echo "Checking Draw.io files..."
+        while IFS= read -r -d $'\0' file; do
+          output_dir="$(dirname "$file" | sed 's|^src/drawio|images|')"
+          image_base=$(basename "$file" .drawio)
+          png_path="$output_dir/$image_base.png"
+          svg_path="$output_dir/$image_base.svg"
+          should_generate=false
+
+          if [ ! -f "$png_path" ] || [ ! -f "$svg_path" ] || { [ -f "$png_path" ] && [ "$file" -nt "$png_path" ]; } || { [ -f "$svg_path" ] && [ "$file" -nt "$svg_path" ]; }; then
+              should_generate=true
+          fi
+
+          if [ "$should_generate" = true ]; then
+            echo "-> Generating images for Draw.io file: $file"
+            mkdir -p "$output_dir"
+
+            xvfb-run --auto-servernum drawio --no-sandbox --export --format png --scale 4 --output "$png_path" "$file"
+            xvfb-run --auto-servernum drawio --no-sandbox --export --format svg --output "$svg_path" "$file"
+
+            if [ -f "$png_path" ] && [ -f "$svg_path" ]; then
+               SUCCESSFUL_GENERATIONS=$((SUCCESSFUL_GENERATIONS + 1))
+            else
+               echo "::error::File generation failed unexpectedly for $file. Output files are missing."
+               exit 1
+            fi
+          fi
+        done < <(find src/drawio -name "*.drawio" -print0)
+
+        echo "Draw.io generation finished. Successfully generated for $SUCCESSFUL_GENERATIONS file(s)."
+
+        if [ "$SUCCESSFUL_GENERATIONS" -gt 0 ]; then
+          echo "drawio_generated=true" >> $GITHUB_OUTPUT
+        else
+          echo "drawio_generated=false" >> $GITHUB_OUTPUT
+        fi
+      shell: bash
+
+    - name: Commit and push generated images
+      if: steps.generate_plantuml.outputs.plantuml_generated == 'true' || steps.generate_drawio.outputs.drawio_generated == 'true'
+      run: |
+        echo "Checking for changes in 'images' directory to commit..."
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+        git add images
+
+        if git diff --staged --quiet -- images; then
+          echo "No staged changes detected in 'images' directory after 'git add'. Nothing to commit."
+          exit 0
+        fi
+
+        echo "Staged changes found. Committing..."
+        git commit -m "chore: Generate/update images from source files" -m "Generated by GitHub Action."
+
+        echo "Pushing changes..."
+        for i in 1 2 3; do
+          git push && break || {
+            echo "Push failed. Retrying in 5 seconds... (Attempt $i/3)"
+            sleep 5
+            git pull --rebase
+          }
+        done
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
