@@ -15,7 +15,6 @@ Die Gesamtheit dieser Lösung wird ZETA (Zero Trust Access) genannt.
   - [Branch Modell](#branch-modell)
   - [Lizenzbedingungen](#lizenzbedingungen)
 
-
 ## Introduction
 
 ZETA ist eine Zero Trust Access Lösung, die eine sichere und flexible Zugriffskontrolle für Cloud-native Anwendungen bietet. Sie basiert auf den Prinzipien des Zero Trust Modells und ermöglicht es, Identitäten, Ressourcen und Richtlinien dynamisch zu verwalten. ZETA besteht aus mehreren Komponenten, die zusammenarbeiten, um eine umfassende Sicherheitsarchitektur zu schaffen.
@@ -24,7 +23,7 @@ ZETA ist eine Zero Trust Access Lösung, die eine sichere und flexible Zugriffsk
 
 Die ZETA API beschreibt die Abläufe und Endpunkte des ZETA Guards aus Clientsicht.
 
-[ZETA API Dokumentation](/docs/zeta-api.md)
+[ZETA API Dokumentation](/api/v1/README.md)
 
 ## ZETA Guard
 
@@ -38,10 +37,10 @@ Folgende Branches werden verwendet
 
 - *main* (enthält den letzten freigegebenen Stand der Entwicklung; besteht permanent)
 - *develop* (enthält den Stand der fertig entwickelten Features und wird zum Review durch Industriepartner und Gesellschafter verwendet; basiert auf main; nach Freigabe erfolgt ein merge in main und ein Release wird erzeugt; besteht permanent)
-- *feature/<name>* (in feature branches werden neue Features entwickelt; basiert auf develop; nach Fertigstellung erfolgt ein merge in develop; wird nach dem merge gelöscht)
-- *hotfix/<name>* (in hotfix branches werden Hotfixes entwickelt; basiert auf main; nach Fertigstellung erfolgt ein merge in develop und in main; wird nach dem merge gelöscht)
-- *concept/<name>* (in concept branches werden neue Konzepte entwickelt; basiert auf develop; dient der Abstimmung mit Dritten; es erfolgt kein merge; wird nach Bedarf gelöscht)
-- *misc/<name>* (nur für internen Gebrauch der gematik; es erfolgt kein merge; wird nach Bedarf gelöscht)
+- *feature/name* (in feature branches werden neue Features entwickelt; basiert auf develop; nach Fertigstellung erfolgt ein merge in develop; wird nach dem merge gelöscht)
+- *hotfix/name* (in hotfix branches werden Hotfixes entwickelt; basiert auf main; nach Fertigstellung erfolgt ein merge in develop und in main; wird nach dem merge gelöscht)
+- *concept/name* (in concept branches werden neue Konzepte entwickelt; basiert auf develop; dient der Abstimmung mit Dritten; es erfolgt kein merge; wird nach Bedarf gelöscht)
+- *misc/name* (nur für internen Gebrauch der gematik; es erfolgt kein merge; wird nach Bedarf gelöscht)
 
 ## Lizenzbedingungen
 
@@ -51,11 +50,10 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+<http://www.apache.org/licenses/LICENSE-2.0>
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-
