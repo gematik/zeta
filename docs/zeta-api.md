@@ -92,7 +92,7 @@ Die ZETA API ist so konzipiert, dass sie eine sichere und flexible Interaktion z
 Folgende Voraussetzungen müssen für die Nutzung des ZETA Clients erfüllt sein:
 
 - Der **FQDN des Resource Servers** wird vom ZETA Client benötigt, um die ZETA Guard API zu erreichen.
-- Die **roots.json Datei** wird vom ZETA Client benötigt, um die Trust Chain zu validieren. Diese Datei muss regelmäßig aktualisiert werden.
+- Die [roots.json](https://download.tsl.ti-dienste.de/ECC/ROOT-CA/roots.json) Datei wird vom ZETA Client benötigt, um die Trust Chain zu validieren. Diese Datei muss wöchentlich aktualisiert werden.
 
 Zusätzlich gibt es anwendungsspezifische Voraussetzungen, die für die Nutzung der ZETA Guard API erforderlich sind.
 
@@ -1040,7 +1040,7 @@ Diese Daten definieren die langlebige Identität der Client-Anwendung selbst. Si
 - `Client Instance Key` (Asymmetrisches Schlüsselpaar)
   - **Beschreibung:** Dies ist das Hauptschlüsselpaar des Clients. Der private Schlüssel wird zur Signierung der Client-Registrierung bei neuen ZETA Guard Instanzen und zur Client Assertion Authentifizierung verwendet. Der öffentliche Schlüssel dient als eindeutiger, kryptografischer Identifikator des Clients.
   - **Speicheranforderung:** Dieses Schlüsselpaar **muss** einmalig bei der ersten Initialisierung des Clients generiert und anschließend sicher und persistent gespeichert werden. Ein Verlust des privaten Schlüssels bedeutet, dass der Client seine Identität verliert und sich bei allen bereits bekannten ZETA Guard Instanzen neu registrieren muss.
-  - **Sicherheit:** Der private Schlüssel ist das wertvollste Geheimnis des Clients und **darf niemals** im Klartext gespeichert werden. Siehe Kapitel [1.6.4 Sicherheitsempfehlungen für die Schlüsselspeicherung](#sicherheitsempfehlungen-fuer-die-schluesselspeicherung).
+  - **Sicherheit:** Der private Schlüssel ist das wertvollste Geheimnis des Clients und **darf niemals** im Klartext gespeichert werden. Siehe Kapitel [1.6.4 Sicherheitsempfehlungen für die Schlüsselspeicherung](#164-sicherheitsempfehlungen-für-die-schlüsselspeicherung).
 
 #### 1.6.3 Daten pro ZETA Guard Instanz
 
@@ -1136,14 +1136,14 @@ Um eine stabile und vorhersagbare Entwicklungsumgebung für Client-Anwendungen z
 
 Jede ZETA Guard Instanz deklariert ihre API-Version im Format `MAJOR.MINOR.PATCH` (z.B. `1.2.3`). Die Bedeutung der einzelnen Komponenten ist wie folgt definiert:
 
-*   **MAJOR-Version (z.B. `1`.2.3):** Wird erhöht, wenn **rückwärtsinkompatible ("breaking") Änderungen** an der API vorgenommen werden. Dies erfordert eine Anpassung aufseiten des Clients, um weiterhin korrekt zu funktionieren.
-    *   *Beispiele:* Entfernen eines Endpunkts, Umbenennung eines JSON-Feldes, Änderung eines Felddatentyps, Hinzufügen eines verpflichtenden Request-Parameters.
+- **MAJOR-Version (z.B. `1`.2.3):** Wird erhöht, wenn **rückwärtsinkompatible ("breaking") Änderungen** an der API vorgenommen werden. Dies erfordert eine Anpassung aufseiten des Clients, um weiterhin korrekt zu funktionieren.
+  - _Beispiele:_ Entfernen eines Endpunkts, Umbenennung eines JSON-Feldes, Änderung eines Felddatentyps, Hinzufügen eines verpflichtenden Request-Parameters.
 
-*   **MINOR-Version (z.B. 1.`2`.3):** Wird erhöht, wenn **neue Funktionalität in einer rückwärtskompatiblen Weise** hinzugefügt wird. Bestehende Clients dürfen durch diese Änderungen nicht beeinträchtigt werden.
-    *   *Beispiele:* Hinzufügen eines neuen API-Endpunkts, Hinzufügen eines neuen, optionalen Feldes in einer JSON-Antwort, Hinzufügen eines neuen, optionalen Request-Parameters.
+- **MINOR-Version (z.B. 1.`2`.3):** Wird erhöht, wenn **neue Funktionalität in einer rückwärtskompatiblen Weise** hinzugefügt wird. Bestehende Clients dürfen durch diese Änderungen nicht beeinträchtigt werden.
+  - _Beispiele:_ Hinzufügen eines neuen API-Endpunkts, Hinzufügen eines neuen, optionalen Feldes in einer JSON-Antwort, Hinzufügen eines neuen, optionalen Request-Parameters.
 
-*   **PATCH-Version (z.B. 1.2.`3`):** Wird erhöht, wenn **rückwärtskompatible Fehlerbehebungen ("bug fixes")** vorgenommen werden, die das Verhalten der API korrigieren, aber keine neue Funktionalität einführen.
-    *   *Beispiele:* Korrektur einer fehlerhaften Validierungslogik, Behebung eines internen Fehlers, der zu einem `500 Internal Server Error` führte.
+- **PATCH-Version (z.B. 1.2.`3`):** Wird erhöht, wenn **rückwärtskompatible Fehlerbehebungen ("bug fixes")** vorgenommen werden, die das Verhalten der API korrigieren, aber keine neue Funktionalität einführen.
+  - _Beispiele:_ Korrektur einer fehlerhaften Validierungslogik, Behebung eines internen Fehlers, der zu einem `500 Internal Server Error` führte.
 
 Zusätzlich können Prerelease-Tags verwendet werden (z.B. `2.0.0-beta.1`), um instabile Vorabversionen zu kennzeichnen.
 
@@ -1155,15 +1155,15 @@ Die Versionierung wird durch eine Kombination aus URL-Pfad, HTTP-Headern und dem
 
 Rückwärtsinkompatible Änderungen sind am einschneidendsten. Daher wird die **MAJOR-Version** direkt und explizit im URL-Pfad der API geführt.
 
-*   **Schema:** `https://<guard-base-url>/zeta/v{major-version}/<endpoint>`
-*   **Beispiel für Version `1.4.2`:** `POST https://guard.example.com/zeta/v1/token`
-*   **Beispiel für Version `2.0.0`:** `POST https://guard.example.com/zeta/v2/token`
+- **Schema:** `https://<guard-base-url>/zeta/v{major-version}/<endpoint>`
+- **Beispiel für Version `1.4.2`:** `POST https://guard.example.com/zeta/v1/token`
+- **Beispiel für Version `2.0.0`:** `POST https://guard.example.com/zeta/v2/token`
 
 ##### 2. Discovery-Dokument als "Source of Truth"
 
 Die Discovery-Dokumente (`/.well-known/oauth-protected-resource` und `/.well-known/oauth-authorization-server`) sind die zentrale Anlaufstelle für einen Client, um die exakten, vom ZETA Guard unterstützten Versionen zu ermitteln.
 
-*   **`api_versions_supported`:** Dieses JSON-Objekt listet alle vom ZETA Guard angebotenen MAJOR-Versionen mit ihrer jeweiligen vollen SemVer-Version auf.
+- **`api_versions_supported`:** Dieses JSON-Objekt listet alle vom ZETA Guard angebotenen MAJOR-Versionen mit ihrer jeweiligen vollen SemVer-Version auf.
 
 ```jsonc
 // Beispiel-Ausschnitt aus /.well-known/...
@@ -1191,7 +1191,7 @@ Die Discovery-Dokumente (`/.well-known/oauth-protected-resource` und `/.well-kno
 
 Jede Antwort des ZETA Guards **wird zukünftig** einen `ZETA-API-Version`-Header enthalten, der die exakte SemVer-Version der ausführenden Instanz angibt. Dies ist besonders für Debugging und Logging wertvoll.
 
-*   **Beispiel-Response-Header:**
+- **Beispiel-Response-Header:**
     `HTTP/1.1 200 OK`
     `Content-Type: application/json`
     `ZETA-API-Version: 1.4.2`
@@ -1200,19 +1200,19 @@ Jede Antwort des ZETA Guards **wird zukünftig** einen `ZETA-API-Version`-Header
 
 Um die Stabilität zu gewährleisten, müssen Clients die folgenden Regeln befolgen:
 
-1.  **Toleranz gegenüber MINOR- und PATCH-Versionen:** Ein Client, der für eine bestimmte API-Version entwickelt wurde (z.B. `1.2.0`), **muss** nahtlos mit jeder neueren, rückwärtskompatiblen Version derselben MAJOR-Version (z.B. `1.3.0` oder `1.2.1`) funktionieren. Dies bedeutet konkret:
-    *   **Unbekannte Felder ignorieren:** Der Client-Parser **muss** unbekannte Felder in JSON-Antworten ignorieren und darf keinen Fehler auslösen.
-    *   **Reihenfolgeunabhängigkeit:** Der Client darf sich nicht auf die Reihenfolge von Feldern in JSON-Objekten verlassen.
+1. **Toleranz gegenüber MINOR- und PATCH-Versionen:** Ein Client, der für eine bestimmte API-Version entwickelt wurde (z.B. `1.2.0`), **muss** nahtlos mit jeder neueren, rückwärtskompatiblen Version derselben MAJOR-Version (z.B. `1.3.0` oder `1.2.1`) funktionieren. Dies bedeutet konkret:
+    - **Unbekannte Felder ignorieren:** Der Client-Parser **muss** unbekannte Felder in JSON-Antworten ignorieren und darf keinen Fehler auslösen.
+    - **Reihenfolgeunabhängigkeit:** Der Client darf sich nicht auf die Reihenfolge von Feldern in JSON-Objekten verlassen.
 
-2.  **Explizite Wahl der MAJOR-Version:** Der Client wählt die MAJOR-Version aktiv über den verwendeten URL-Pfad (z.B. `/v1/`). Ein Wechsel zu einer neuen MAJOR-Version (z.B. auf `/v2/`) ist eine bewusste Entwicklungsentscheidung und erfordert eine Code-Anpassung.
+2. **Explizite Wahl der MAJOR-Version:** Der Client wählt die MAJOR-Version aktiv über den verwendeten URL-Pfad (z.B. `/v1/`). Ein Wechsel zu einer neuen MAJOR-Version (z.B. auf `/v2/`) ist eine bewusste Entwicklungsentscheidung und erfordert eine Code-Anpassung.
 
 #### 1.7.4 Deprecation Policy (Außerbetriebnahme)
 
 Wenn eine neue MAJOR-Version (z.B. `v2`) den Status `stable` erreicht, wird die vorherige MAJOR-Version (`v1`) als `deprecated` (veraltet) markiert.
 
-1.  **Ankündigungsphase:** Die veraltete Version wird im Discovery-Dokument als `deprecated` gekennzeichnet. Anfragen an diese Version können einen `Warning`-HTTP-Header zurückgeben, der auf die bevorstehende Abschaltung hinweist.
-2.  **Migrationszeitraum:** Es wird einen klar kommunizierten Zeitraum geben, in dem beide MAJOR-Versionen parallel betrieben werden, um Clients eine reibungslose Migration zu ermöglichen.
-3.  **Abschaltung:** Nach Ablauf des Migrationszeitraums wird die veraltete Version abgeschaltet. Anfragen an die Endpunkte dieser Version führen dann zu einem `HTTP 410 Gone`-Fehler.
+1. **Ankündigungsphase:** Die veraltete Version wird im Discovery-Dokument als `deprecated` gekennzeichnet. Anfragen an diese Version können einen `Warning`-HTTP-Header zurückgeben, der auf die bevorstehende Abschaltung hinweist.
+2. **Migrationszeitraum:** Es wird einen klar kommunizierten Zeitraum geben, in dem beide MAJOR-Versionen parallel betrieben werden, um Clients eine reibungslose Migration zu ermöglichen. Zusätzlich wird überwacht, welche ZETA Client-Versionen aktiv sind, um die Migration zu unterstützen.
+3. **Abschaltung:** Nach Ablauf des Migrationszeitraums und wenn die Überwachung der ZETA Clients ergeben hat, dass keine veralteten Clients mehr aktiv genutzt werden, wird die veraltete Version abgeschaltet. Anfragen an die Endpunkte dieser Version führen dann zu einem `HTTP 410 Gone`-Fehler.
 
 ## 1.8. Performance- und Lastannahmen
 
