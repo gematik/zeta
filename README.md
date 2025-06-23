@@ -1,19 +1,18 @@
-# ZETA
+---
+layout: default
+title: ZETA Dokumentation
+nav_order: 1
+permalink: /
+---
+
+Hier finden Sie die Dokumentationen für ZETA.
+
+# ZETA Dokumentation
 
 ![gematik](/images/gematik-logo.svg)
 
 Dies ist ein Repository für Zero Trust Komponenten, einschließlich PEP, PDP, PIP, PAP und Clients. Es enthält Quellcode, umfassende Dokumentation, Testfälle und Kubernetes-Manifestdateien für eine nahtlose Bereitstellung. Ideal für Entwickler, die eine robuste Sicherheitsarchitektur in Cloud-nativen Umgebungen suchen.
 Die Gesamtheit dieser Lösung wird ZETA (Zero Trust Access) genannt.
-
-## Table of Contents
-
-- [ZETA](#zeta)
-  - [Table of Contents](#table-of-contents)
-  - [Introduction](#introduction)
-  - [ZETA API](#zeta-api)
-  - [ZETA Guard](#zeta-guard)
-  - [Branch Modell](#branch-modell)
-  - [Lizenzbedingungen](#lizenzbedingungen)
 
 ## Introduction
 
@@ -23,7 +22,7 @@ ZETA ist eine Zero Trust Access Lösung, die eine sichere und flexible Zugriffsk
 
 Die ZETA API beschreibt die Abläufe und Endpunkte des ZETA Guards aus Clientsicht.
 
-[ZETA API Dokumentation](/api/v1/README.md)
+[ZETA API Dokumentation](/_v1/README.md)
 
 ## ZETA Guard
 

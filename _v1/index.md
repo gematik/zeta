@@ -1,7 +1,8 @@
 ---
-# layout und parent werden schon durch die "defaults" in _config.yml gesetzt
-title: ZETA API Version 1.0
-nav_order: 1 # Neueste Version sollte die niedrigste Zahl haben
+title: Version 1.0
+nav_order: 1
+permalink: /api/v1/
+parent: "ZETA API Dokumentation" # Diese Zeile ist entscheidend!
 ---
 
 # ZETA API v1
