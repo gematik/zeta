@@ -11,15 +11,6 @@ baseurl: "/ZETA"
 plugins:
   - jekyll-redirect-from
 
-# Collections für die API-Versionen definieren
-collections:
-  v1:
-    output: true
-    permalink: /api/v1/
-  #v2:
-  #  output: true
-  #  permalink: /api/v2/
-
 # Standardwerte für die Collections festlegen (sehr nützlich!)
 defaults:
   - scope:
