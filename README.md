@@ -22,7 +22,7 @@ ZETA ist eine Zero Trust Access Lösung, die eine sichere und flexible Zugriffsk
 
 Die ZETA API beschreibt die Abläufe und Endpunkte des ZETA Guards aus Clientsicht.
 
-[ZETA API Dokumentation](/_v1/README.md)
+[ZETA API Dokumentation](/_v1/index.md)
 
 ## ZETA Guard
 
