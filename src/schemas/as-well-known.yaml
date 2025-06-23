@@ -73,6 +73,35 @@ properties:
     description: "The code challenge methods supported for PKCE."
     items:
       type: string
+
+  # --- API Versioning ---
+  api_versions_supported:
+    type: array
+    description: >-
+      A JSON array listing the supported API versions for this protected resource.
+    items:
+      type: object
+      properties:
+        major_version:
+          type: integer
+          description: The major version number of the API.
+        version:
+          type: string
+          description: The full, stable Semantic Versioning (SemVer) compliant string for this API version.
+        status:
+          type: string
+          description: The release status of this API version.
+          enum: [stable, beta, alpha, deprecated, retired]
+        documentation_uri:
+          type: string
+          format: uri
+          description: >-
+            URL of the documentation specific to this API version.
+      required:
+        - major_version
+        - version
+        - status
+
 required:
   - issuer
   - authorization_endpoint

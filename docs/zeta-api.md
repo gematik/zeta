@@ -860,7 +860,10 @@ Antworten werden als JSON-Objekte mit dem `Content-Type: application/json` im Er
 
 #### 1.5.1.6 Resource Endpoint
 
-Der Resource Endpoint ist der Endpunkt, der von der geschützten Ressource (Protected Resource) bereitgestellt wird, um auf geschützte Daten zuzugreifen. Er ist durch den ZETA Guard PEP vor unberechtigtem Zugriff geschützt. Für den Zugriff auf die geschützte Ressource wird ein gültiges Access Token benötigt.
+Der Resource Endpoint ist der Endpunkt, der von der geschützten Ressource (Protected Resource) bereitgestellt wird, um auf geschützte Daten zuzugreifen. Er ist durch den ZETA Guard PEP vor unberechtigtem Zugriff geschützt. Für den Zugriff auf die geschützte Ressource wird ein gültiges Access Token und ein gültiges [DPoP Proof](https://www.rfc-editor.org/rfc/rfc9449.html) benötigt. Zusätzlich kann eine Anwendung ein gültiges [PoPP Proof](https://gemspec.gematik.de/docs/gemSpec/gemSpec_ZETA/latest/#A_25669) erfordern.
+
+Der Resource Endpoint unterstützt neben TLS eine zusätzliche Verschlüsselungsschicht [ZETA/ASL](https://gemspec.gematik.de/docs/gemSpec/gemSpec_Krypt/latest/#8) (ZETA/Additional Security Layer).
+Im [Well-Known JSON Dokument der geschützten Ressource](#1511-oauth-protected-resource-well-known-endpoint) wird angegeben, ob der Endpunkt ZETA/ASL unterstützt. Der ZETA/ASL Kanal wird nach dem TLS Verbindungsaufbau aufgebaut und verwendet, um die Kommunikation zwischen Client und Resource Endpoint zu sichern.
 
 ##### 1.5.1.6.1 Anfragen
 
@@ -1165,7 +1168,7 @@ Die Discovery-Dokumente (`/.well-known/oauth-protected-resource` und `/.well-kno
 
 - **`api_versions_supported`:** Dieses JSON-Objekt listet alle vom ZETA Guard angebotenen MAJOR-Versionen mit ihrer jeweiligen vollen SemVer-Version auf.
 
-```jsonc
+```json
 // Beispiel-Ausschnitt aus /.well-known/...
 {
   "issuer": "https://zeta-guard.example.com",
@@ -1189,7 +1192,7 @@ Die Discovery-Dokumente (`/.well-known/oauth-protected-resource` und `/.well-kno
 
 ##### 3. HTTP-Header zur Laufzeit-Identifikation
 
-Jede Antwort des ZETA Guards **wird zukünftig** einen `ZETA-API-Version`-Header enthalten, der die exakte SemVer-Version der ausführenden Instanz angibt. Dies ist besonders für Debugging und Logging wertvoll.
+Jede Antwort des ZETA Guards enthält einen `ZETA-API-Version`-Header, der die exakte SemVer-Version der ausführenden Instanz angibt. Dies ist besonders für Debugging und Logging wertvoll.
 
 - **Beispiel-Response-Header:**
     `HTTP/1.1 200 OK`
