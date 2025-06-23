@@ -9,6 +9,10 @@ baseurl: "/ZETA"
 plugins:
   - jekyll-redirect-from
 
+collections:
+  v1:
+    output: true
+    
 # Defaults-Block
 defaults:
   - scope:
