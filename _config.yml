@@ -1,27 +1,19 @@
 title: ZETA API Dokumentation
 description: Offizielle API Dokumentation für das ZETA Projekt der gematik.
 
-# Das Theme "just-the-docs" über das Remote-Repository aktivieren
 remote_theme: just-the-docs/just-the-docs
 
-# URL für die GitHub Pages Seite
 url: "https://gematik.github.io"
 baseurl: "/ZETA"
 
 plugins:
   - jekyll-redirect-from
 
-# Standardwerte für die Collections festlegen (sehr nützlich!)
+# Defaults-Block
 defaults:
   - scope:
       path: ""
       type: "v1"
     values:
       layout: "default"
-      parent: "ZETA API Dokumentation" # Verknüpft mit der api/index.md
-  #- scope:
-  #    path: ""
-  #    type: "v2"
-  #  values:
-  #    layout: "default"
-  #    parent: "ZETA API Dokumentation" # Verknüpft mit der api/index.md
+      parent: "ZETA API Dokumentation"
