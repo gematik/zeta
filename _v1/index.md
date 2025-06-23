@@ -1,8 +1,14 @@
-# ZETA API
+---
+# layout und parent werden schon durch die "defaults" in _config.yml gesetzt
+title: ZETA API Version 1.0
+nav_order: 1 # Neueste Version sollte die niedrigste Zahl haben
+---
+
+# ZETA API v1
 
 ![gematik logo](/images/gematik-logo-small.svg)
 
-## 1.1. Einführung
+## Einführung
 
 Die ZETA API ermöglicht es ZETA Clients, auf geschützte Ressourcen zuzugreifen und dabei Sicherheits- und Authentifizierungsmechanismen zu nutzen.
 Der ZETA Client nutzt Endpunkte des ZETA Guard für die Client-Registrierung, Authentifizierung und Autorisierung.
@@ -15,79 +21,7 @@ Die ZETA API ist so konzipiert, dass sie eine sichere und flexible Interaktion z
 
 ---
 
-## 1.2. Inhalt
-
-- [ZETA API](#zeta-api)
-  - [1.1. Einführung](#11-einführung)
-  - [1.2. Inhalt](#12-inhalt)
-  - [1.3 Voraussetzungen für die ZETA Client Nutzung](#13-voraussetzungen-für-die-zeta-client-nutzung)
-  - [1.4 Ablauf](#14-ablauf)
-    - [1.4.1 Konfiguration und Discovery](#141-konfiguration-und-discovery)
-    - [1.4.2 Client-Registrierung](#142-client-registrierung)
-      - [1.4.2.1 Stationäre Clients](#1421-stationäre-clients)
-      - [1.4.2.2 Mobile Clients](#1422-mobile-clients)
-    - [1.4.3 Authentifizierung und Autorisierung](#143-authentifizierung-und-autorisierung)
-      - [1.4.3.1 Stationäre Clients](#1431-stationäre-clients)
-        - [1.4.3.1.1 Pfad A: Token-Austausch mit Attestierung](#14311-pfad-a-token-austausch-mit-attestierung)
-        - [1.4.3.1.2 Pfad B: Token-Erneuerung via Refresh Token](#14312-pfad-b-token-erneuerung-via-refresh-token)
-        - [1.4.3.1.3 Gemeinsame nachfolgende Schritte](#14313-gemeinsame-nachfolgende-schritte)
-      - [1.4.3.2 Mobile Clients](#1432-mobile-clients)
-  - [1.5. Endpunkte](#15-endpunkte)
-    - [1.5.1 ZETA Guard API Endpunkte](#151-zeta-guard-api-endpunkte)
-      - [1.5.1.1 OAuth Protected Resource Well-Known Endpoint](#1511-oauth-protected-resource-well-known-endpoint)
-        - [1.5.1.1.1 Anfragen](#15111-anfragen)
-        - [1.5.1.1.2 Antworten](#15112-antworten)
-      - [1.5.1.2 Authorization Server Well-Known Endpoint](#1512-authorization-server-well-known-endpoint)
-        - [1.5.1.2.1 Anfragen](#15121-anfragen)
-        - [1.5.1.2.2 Antworten](#15122-antworten)
-      - [1.5.1.3 Nonce Endpoint](#1513-nonce-endpoint)
-        - [1.5.1.3.1 Anfragen](#15131-anfragen)
-        - [1.5.1.3.2 Antworten](#15132-antworten)
-      - [1.5.1.4 Dynamic Client Registration Endpoint](#1514-dynamic-client-registration-endpoint)
-        - [1.5.1.4.1 Anfragen für stationäre Clients](#15141-anfragen-für-stationäre-clients)
-        - [1.5.1.4.2 Antworten](#15142-antworten)
-        - [1.5.1.4.3 Anfragen für mobile Clients](#15143-anfragen-für-mobile-clients)
-      - [1.5.1.5 Token Endpoint](#1515-token-endpoint)
-        - [1.5.1.5.1 Anfragen](#15151-anfragen)
-        - [1.5.1.5.2 Antworten](#15152-antworten)
-      - [1.5.1.6 Resource Endpoint](#1516-resource-endpoint)
-        - [1.5.1.6.1 Anfragen](#15161-anfragen)
-        - [1.5.1.6.2 Antworten](#15162-antworten)
-    - [1.5.2 Konnektor/TI-Gateway Endpunkte](#152-konnektorti-gateway-endpunkte)
-      - [1.5.2.1 ReadCardCertificate](#1521-readcardcertificate)
-      - [1.5.2.1 ExternalAuthenticate](#1521-externalauthenticate)
-    - [1.5.3 ZETA Attestation Service Endpunkte](#153-zeta-attestation-service-endpunkte)
-      - [1.5.3.1 Dienstdefinition](#1531-dienstdefinition)
-      - [1.5.3.2 RPC Methoden](#1532-rpc-methoden)
-        - [1.5.3.2.1 GetAttestation](#15321-getattestation)
-          - [Request-Nachricht: `GetAttestationRequest`](#request-nachricht-getattestationrequest)
-          - [Response-Nachricht: `GetAttestationResponse`](#response-nachricht-getattestationresponse)
-          - [Fehlerbehandlung](#fehlerbehandlung)
-          - [Sicherheitsaspekte](#sicherheitsaspekte)
-  - [1.6. Verwaltung von Schlüsseln und Session-Daten im ZETA Client](#16-verwaltung-von-schlüsseln-und-session-daten-im-zeta-client)
-    - [1.6.1 Einleitung](#161-einleitung)
-      - [1.6.2 Globale Daten (Client-übergreifend)](#162-globale-daten-client-übergreifend)
-      - [1.6.3 Daten pro ZETA Guard Instanz](#163-daten-pro-zeta-guard-instanz)
-      - [Konzeptionelles Speicherlayout](#konzeptionelles-speicherlayout)
-    - [1.6.4 Sicherheitsempfehlungen für die Schlüsselspeicherung](#164-sicherheitsempfehlungen-für-die-schlüsselspeicherung)
-  - [1.7. Versionierung](#17-versionierung)
-    - [1.7.1 Versionierungsschema: MAJOR.MINOR.PATCH](#171-versionierungsschema-majorminorpatch)
-      - [1.7.2 Implementierung der Versionierung](#172-implementierung-der-versionierung)
-        - [1. URL-Pfad für die MAJOR-Version](#1-url-pfad-für-die-major-version)
-        - [2. Discovery-Dokument als "Source of Truth"](#2-discovery-dokument-als-source-of-truth)
-        - [3. HTTP-Header zur Laufzeit-Identifikation](#3-http-header-zur-laufzeit-identifikation)
-      - [1.7.3 Client-Verhalten und Kompatibilitätsregeln](#173-client-verhalten-und-kompatibilitätsregeln)
-      - [1.7.4 Deprecation Policy (Außerbetriebnahme)](#174-deprecation-policy-außerbetriebnahme)
-  - [1.8. Performance- und Lastannahmen](#18-performance--und-lastannahmen)
-  - [1.9. Rate Limits und Einschränkungen](#19-rate-limits-und-einschränkungen)
-  - [1.10. Support und Kontaktinformationen](#110-support-und-kontaktinformationen)
-  - [1.11. FAQs und Troubleshooting](#111-faqs-und-troubleshooting)
-  - [1.12. Interaktive Dokumentation (optional)](#112-interaktive-dokumentation-optional)
-  - [1.13. Changelog](#113-changelog)
-  - [1.14. git Branch Modell](#114-git-branch-modell)
-  - [1.15. Lizenzbedingungen](#115-lizenzbedingungen)
-
-## 1.3 Voraussetzungen für die ZETA Client Nutzung
+## Voraussetzungen für die ZETA Client Nutzung
 
 Folgende Voraussetzungen müssen für die Nutzung des ZETA Clients erfüllt sein:
 
@@ -98,7 +32,7 @@ Zusätzlich gibt es anwendungsspezifische Voraussetzungen, die für die Nutzung 
 
 - **VSDM2:** Für VSDM2 Requests wird ein PoPP (Proof of Patient Presence) Token benötigt. Das PoPP Token muss im [Header PoPP](https://gemspec.gematik.de/docs/gemSpec/gemSpec_ZETA/latest/#A_25669) an den ZETA Client übergeben werden.
 
-## 1.4 Ablauf
+## Ablauf
 
 Abhängig vom Zustand des ZETA Clients müssen verschiedene Teilabläufe ausgeführt werden, oder können übersprungen werden. Die ZETA API besteht aus mehreren Endpunkten, die verschiedene Funktionen bereitstellen. Diese Endpunkte sind in verschiedene Unter-Abläufe aufgeteilt:
 
@@ -113,16 +47,16 @@ Der Gesamtprozess beginnt damit, dass ein **Nutzer** auf einen Endpunkt eines Re
 
 ---
 
-### 1.4.1 Konfiguration und Discovery
+### Konfiguration und Discovery
 
 In dieser Phase ermittelt der ZETA Client die notwendigen Endpunkte und Konfigurationen von den ZETA Guard Komponenten (PEP http Proxy und PDP Authorization Server). Der Client fragt bekannte Endpunkte (`/.well-known/oauth-protected-resource` und `/.well-known/oauth-authorization-server`) ab, um die Konfiguration des Resource Servers und des Authorization Servers zu erhalten. Das folgende Bild zeigt den Ablauf.
 
 ![tpm-attestation-and-token-exchange-overview](/images/tpm-attestation-and-token-exchange/discovery-and-configuration.svg)
 <p style="font-size:0.9em; text-align:center;"><em>Abbildung 2: Ablauf Discovery and Configuration</em></p>
 
-### 1.4.2 Client-Registrierung
+### Client-Registrierung
 
-#### 1.4.2.1 Stationäre Clients
+#### Stationäre Clients
 
 Jeder ZETA Client muss sich am ZETA Guard registrieren, über den er auf geschützte Ressourcen zugreifen möchte. Dieser Prozess findet **einmalig pro ZETA Guard-Instanz** statt. Der gesamte Prozess ist zweistufig, um die administrative Einrichtung von der technischen Inbetriebnahme zu trennen:
 
@@ -143,15 +77,15 @@ Für die initiale Registrierung sendet der ZETA Client eine Anfrage an den Dynam
 
 ---
 
-#### 1.4.2.2 Mobile Clients
+#### Mobile Clients
 
 _Hinweis:_ Der Prozess für Mobile Clients wird in zukünftigen Versionen der API detaillierter beschrieben, sobald die Entwicklung von ZETA Stufe 2 abgeschlossen ist.
 
-### 1.4.3 Authentifizierung und Autorisierung
+### Authentifizierung und Autorisierung
 
 Nach erfolgreicher Registrierung besitzt der ZETA Client eine `client_id` und ein zugehöriges Schlüsselpaar. Um auf einen Fachdienst zugreifen zu können, benötigt der Client ein Access Token vom Authorization Server (AS). Stationäre ZETA Clients verwenden dafür den Token Exchange Flow, während mobile ZETA Clients den Authorization Code Flow mit OpenID Connect nutzen.
 
-#### 1.4.3.1 Stationäre Clients
+#### Stationäre Clients
 
 Die Authentifizierung und Autorisierung für stationäre Clients unterscheidet zwei Hauptfälle:
 
@@ -165,7 +99,7 @@ Die folgende Abbildung zeigt den Ablauf des Token-Austauschs mit Client Assertio
 ![tpm-attestation-and-token-exchange-overview](/images/tpm-attestation-and-token-exchange/token-exchange-with-client-assertion-jwt-auth.svg)
 <p style="font-size:0.9em; text-align:center;"><em>Abbildung 4: Ablauf Authentifizierung und TPM-Attestation</em></p>
 
-##### 1.4.3.1.1 Pfad A: Token-Austausch mit Attestierung
+##### Pfad A: Token-Austausch mit Attestierung
 
 Dieser Pfad wird beschritten, wenn der Client keine bestehende Session (d.h. kein gültiges Refresh Token) hat.
 
@@ -203,7 +137,7 @@ Dieser Pfad wird beschritten, wenn der Client keine bestehende Session (d.h. kei
 
 7. **Validierung durch den AS:** Der AS führt eine umfassende Prüfung durch: Validierung der Client Assertion (Signatur gegen den bei der DCR hinterlegten Public Key), des DPoP-Proofs, des Subject Tokens und insbesondere der **eingebetteten Attestierung** (Prüfung der Quote, der `attestation_challenge` und der PCR-Werte gegen die Sicherheits-Policy).
 
-##### 1.4.3.1.2 Pfad B: Token-Erneuerung via Refresh Token
+##### Pfad B: Token-Erneuerung via Refresh Token
 
 Dieser effiziente Pfad wird genutzt, wenn ein gültiges Refresh Token vorhanden ist.
 
@@ -225,18 +159,18 @@ Dieser effiziente Pfad wird genutzt, wenn ein gültiges Refresh Token vorhanden 
 
 ---
 
-##### 1.4.3.1.3 Gemeinsame nachfolgende Schritte
+##### Gemeinsame nachfolgende Schritte
 
 Nach erfolgreicher Validierung in einem der beiden Pfade fragt der AS bei der Policy Engine (PE) an, ob der Zugriff gewährt werden soll. Ist die Entscheidung positiv, stellt der AS ein neues Access Token (gebunden an den DPoP-Schlüssel) und ein neues Refresh Token aus.
 
 ---
 
-#### 1.4.3.2 Mobile Clients
+#### Mobile Clients
 
 Die Authentifizierung für mobile Clients erfolgt mit OpenID Connect und OAuth2 Authorization Code Flow.
 Die Beschreibung wird ergänzt, wenn die Entwicklung von ZETA Stufe 2 abgeschlossen ist.
 
-## 1.5. Endpunkte
+## Endpunkte
 
 Die ZETA API besteht aus mehreren Endpunkten, die verschiedene Funktionen bereitstellen. Diese Endpunkte sind in verschiedene Kategorien unterteilt:
 
@@ -244,7 +178,7 @@ Die ZETA API besteht aus mehreren Endpunkten, die verschiedene Funktionen bereit
 - **Konnektor/TI-Gateway Endpunkte:** Diese Endpunkte ermöglichen die Interaktion mit dem Konnektor/TI-Gateway, um Karteninformationen zu lesen und Authentifizierungsanfragen zu stellen.
 - **ZETA Attestation Service Endpunkte:** Diese Endpunkte ermöglichen die Interaktion mit dem ZETA Attestation Service, um TPM-Attestierungen durchzuführen.
 
-### 1.5.1 ZETA Guard API Endpunkte
+### ZETA Guard API Endpunkte
 
 Die ZETA Guard API Endpunkte sind für die Interaktion mit dem ZETA Guard zuständig. Sie ermöglichen die Registrierung von Clients, die Authentifizierung und Autorisierung sowie den Zugriff auf geschützte Ressourcen.
 Die ZETA Guard API Endpunkte sind über HTTPS erreichbar und erfordern eine gültige TLS-Verbindung. Der ZETA Client muss die folgenden Sicherheitsanforderungen erfüllen:
@@ -252,13 +186,13 @@ Die ZETA Guard API Endpunkte sind über HTTPS erreichbar und erfordern eine gül
 - ZETA Clients müssen TLS 1.3 oder höher unterstützen.
 - Es müssen die TLS Anforderungen aus [gemSpec_Krypt Kapitel 3.3.2](https://gemspec.gematik.de/docs/gemSpec/gemSpec_Krypt/latest/#3.3.2) erfüllt werden.
 
-#### 1.5.1.1 OAuth Protected Resource Well-Known Endpoint
+#### OAuth Protected Resource Well-Known Endpoint
 
 Dieser Endpunkt bietet eine standardisierte Methode für OAuth Protected Resources (OPR), um ihre Fähigkeiten und Konfigurationsdetails zu veröffentlichen (RFC 9728). Er ermöglicht es Clients, die notwendigen Informationen über die OPR abzurufen, wie z.B. unterstützte Schemata, Verifizierungsmethoden, Token-Introspektion-Endpunkte und unterstützte Scopes. Der Endpunkt ist unter dem Pfad `/.well-known/oauth-protected-resource` relativ zur Basis-URL der Protected Resource erreichbar.
 
 ---
 
-##### 1.5.1.1.1 Anfragen
+##### Anfragen
 
 Der Endpunkt wird über eine einfache HTTP GET-Anfrage ohne Body aufgerufen.
 
@@ -270,7 +204,7 @@ Accept: application/json
 
 ---
 
-##### 1.5.1.1.2 Antworten
+##### Antworten
 
 Wie im obigen Abschnitt dargestellt, ist die typische erfolgreiche API-Antwort ein JSON-Objekt, das der im `opr-well-known.yaml`-Schema definierten Struktur entspricht. Der `Content-Type`-Header der Antwort ist `application/json`.
 
@@ -376,13 +310,13 @@ Content-Type: application/problem+json
 
 ---
 
-#### 1.5.1.2 Authorization Server Well-Known Endpoint
+#### Authorization Server Well-Known Endpoint
 
 Dieser Endpunkt ermöglicht Clients und anderen Parteien die einfache Entdeckung der Konfigurationsmetadaten eines ZETA Guard OAuth 2.0 Autorisierungsservers (AS) und seiner Fähigkeiten. Er ist gemäß RFC 8414 definiert und bietet eine standardisierte Methode, um Informationen wie Endpunkt-URIs, unterstützte Grant Types und Scopes abzurufen.
 
 ---
 
-##### 1.5.1.2.1 Anfragen
+##### Anfragen
 
 Dieser Endpunkt wird über eine HTTP GET-Anfrage ohne Parameter aufgerufen.
 
@@ -402,7 +336,7 @@ Accept: application/json
 
 ---
 
-##### 1.5.1.2.2 Antworten
+##### Antworten
 
 **Statuscodes:**
 
@@ -520,7 +454,7 @@ Dies tritt auf, wenn ein unerwarteter Fehler auf dem Server auftritt, der die An
 
 ---
 
-#### 1.5.1.3 Nonce Endpoint
+#### Nonce Endpoint
 
 Dieser Endpunkt ermöglicht Clients das Abrufen eines einmaligen kryptographischen Werts, einer "Nonce". Im Kontext der ZETA-Architektur dient diese Nonce primär dazu, eine spezifische **TPM-Attestierung an eine aktuelle Transaktion zu binden**, um Replay-Angriffe zu verhindern. Sie wird Teil der `attestation_challenge`, die vom TPM signiert wird.
 
@@ -528,7 +462,7 @@ Beim Token Endpunkt wird ebenfalls eine Nonce benötigt, um die Integrität der 
 
 ---
 
-##### 1.5.1.3.1 Anfragen
+##### Anfragen
 
 **Beispiel Anfrage:**
 
@@ -540,7 +474,7 @@ Accept: application/json
 
 ---
 
-##### 1.5.1.3.2 Antworten
+##### Antworten
 
 **Statuscodes:**
 
@@ -618,7 +552,7 @@ Dies tritt auf, wenn ein unerwarteter Fehler auf dem Server auftritt, der die An
 
 ---
 
-#### 1.5.1.4 Dynamic Client Registration Endpoint
+#### Dynamic Client Registration Endpoint
 
 Dieser Endpunkt ermöglicht die dynamische Registrierung neuer OAuth 2.0 Clients beim Authorization Server gemäß RFC 7591. Der Prozess dient dazu, eine `client_id` zu erhalten und den öffentlichen **Client Instance Key** zu registrieren, der für die `private_key_jwt` Client-Authentifizierung verwendet wird.
 
@@ -628,7 +562,7 @@ _Hinweis:_ Es fehlen noch die Operationen zur Verwaltung von bestehenden Client 
 
 ---
 
-##### 1.5.1.4.1 Anfragen für stationäre Clients
+##### Anfragen für stationäre Clients
 
 Der Client sendet eine `POST`-Anfrage an den `/register`-Endpunkt. Der Anfrage-Body ist ein JSON-Objekt, das die Metadaten des zu registrierenden Clients enthält.
 
@@ -679,7 +613,7 @@ Content-type: application/json
 
 ---
 
-##### 1.5.1.4.2 Antworten
+##### Antworten
 
 Der Authorization Server antwortet mit verschiedenen HTTP-Statuscodes und entsprechenden JSON-Objekten, die entweder die erfolgreiche Registrierung oder Fehlermeldungen gemäß RFC 9457 ("Problem Details for HTTP APIs") beschreiben.
 
@@ -760,13 +694,13 @@ Der Authorization Server antwortet mit verschiedenen HTTP-Statuscodes und entspr
 
 ---
 
-##### 1.5.1.4.3 Anfragen für mobile Clients
+##### Anfragen für mobile Clients
 
 Die Registrierung für mobile Clients erfolgt ähnlich wie bei stationären Clients, jedoch mit anderen Anforderungen an die Client-Attestation, die auf den jeweiligen Plattformen basieren. Mobile Clients verwenden eine spezifische Attestierungsmethode, die auf den Betriebssystemen basiert (z.B. Android SafetyNet, iOS DeviceCheck).
 
 Die Beschreibung wird in Stufe 2 der ZETA API ergänzt.
 
-#### 1.5.1.5 Token Endpoint
+#### Token Endpoint
 
 Der Token Endpoint des Autorisierungsservers (AS) ermöglicht den Austausch eines Tokens gegen ein vom Authorizationserver ausgestelltes Access Token, gemäß dem OAuth 2.0 Token Exchange (RFC 8693) oder die Erneuerung von Token (`refresh_token`). Der Client muss sich mit einer JWT Client Assertion gegenüber den Authorization Server authentifizieren.
 
@@ -774,7 +708,7 @@ Der Endpunkt ist ein POST-Endpunkt, der Formular-kodierte Daten (`application/x-
 
 Der Endpunkt unterstützt verschiedene Grant Types, einschließlich `authorization_code` (ab ZETA Stufe 2), `urn:ietf:params:oauth:grant-type:token-exchange`, `refresh_token` und `urn:ietf:params:oauth:grant-type:token-exchange`.
 
-##### 1.5.1.5.1 Anfragen
+##### Anfragen
 
 Der Token Endpoint empfängt POST-Anfragen mit dem Content-Type `application/x-www-form-urlencoded`. Die Anfrage muss die notwendigen Parameter für den Token Exchange Grant Type enthalten, sowie die Client-Authentifizierung mittels JWT Bearer Client Assertion.
 
@@ -812,7 +746,7 @@ curl -X POST \
   -d 'scope=resource.read%20resource.write'
 ```
 
-##### 1.5.1.5.2 Antworten
+##### Antworten
 
 Antworten werden als JSON-Objekte mit dem `Content-Type: application/json` im Erfolgsfall und `application/problem+json` im Fehlerfall zurückgegeben. Fehlerantworten folgen dem "Problem Details for HTTP APIs"-Standard (RFC 9457).
 
@@ -927,14 +861,14 @@ Antworten werden als JSON-Objekte mit dem `Content-Type: application/json` im Er
 }
 ```
 
-#### 1.5.1.6 Resource Endpoint
+#### Resource Endpoint
 
 Der Resource Endpoint ist der Endpunkt, der von der geschützten Ressource (Protected Resource) bereitgestellt wird, um auf geschützte Daten zuzugreifen. Er ist durch den ZETA Guard PEP vor unberechtigtem Zugriff geschützt. Für den Zugriff auf die geschützte Ressource wird ein gültiges Access Token und ein gültiges [DPoP Proof](https://www.rfc-editor.org/rfc/rfc9449.html) benötigt. Zusätzlich kann eine Anwendung ein gültiges [PoPP Proof](https://gemspec.gematik.de/docs/gemSpec/gemSpec_ZETA/latest/#A_25669) erfordern.
 
 Der Resource Endpoint unterstützt neben TLS eine zusätzliche Verschlüsselungsschicht [ZETA/ASL](https://gemspec.gematik.de/docs/gemSpec/gemSpec_Krypt/latest/#8) (ZETA/Additional Security Layer).
 Im [Well-Known JSON Dokument der geschützten Ressource](#1511-oauth-protected-resource-well-known-endpoint) wird angegeben, ob der Endpunkt ZETA/ASL unterstützt. Der ZETA/ASL Kanal wird nach dem TLS Verbindungsaufbau aufgebaut und verwendet, um die Kommunikation zwischen Client und Resource Endpoint zu sichern.
 
-##### 1.5.1.6.1 Anfragen
+##### Anfragen
 
 Der ZETA Guard PEP empfängt die Anfragen und prüft das Access Token im Authentication Header sowie das DPoP Proof im DPoP Header.
 
@@ -944,25 +878,25 @@ Der ZETA Guard PEP empfängt die Anfragen und prüft das Access Token im Authent
 
 **Content-Type:** wird durch die geschützte Ressource bestimmt (z.B. `application/json`).
 
-##### 1.5.1.6.2 Antworten
+##### Antworten
 
 Die Antwort des Resource Endpoints hängt von der geschützten Ressource ab und kann verschiedene Statuscodes und Datenformate zurückgeben.
 
-### 1.5.2 Konnektor/TI-Gateway Endpunkte
+### Konnektor/TI-Gateway Endpunkte
 
 Die Endpunkte im Konnektor oder im Highspeed Konnektoren des TI-Gateways werden für die Erstellung von Signaturen mit Der SM(C)-B sowie für die Abfrage des SM(C)-B Zertifikats während der Authentifizierung am ZETA Guard verwendet.
 
 _Hinweis: Perspektivisch ist vorgesehen, dass der Zugriff auf das TI-Gateway über den ZETA Guard erfolgt, um die Sicherheit und Integrität der Kommunikation zu gewährleisten. Während der Authentifizierung wird anstatt der SM(C)-B Identität eine TI-Gateway Identität verwendet._
 
-#### 1.5.2.1 ReadCardCertificate
+#### ReadCardCertificate
 
 Die Operation [ReadCardCertificate](https://gemspec.gematik.de/docs/gemSpec/gemSpec_Kon/latest/#TIP1-A_4698-03) ist in der [Konnektor Spezifikation](https://gemspec.gematik.de/docs/gemSpec/gemSpec_Kon/latest/index.html) definiert.
 
-#### 1.5.2.1 ExternalAuthenticate
+#### ExternalAuthenticate
 
 Die Operation [ExternalAuthenticate](https://gemspec.gematik.de/docs/gemSpec/gemSpec_Kon/latest/#TIP1-A_4698-03) ist in der [Konnektor Spezifikation](https://gemspec.gematik.de/docs/gemSpec/gemSpec_Kon/latest/index.html) definiert.
 
-### 1.5.3 ZETA Attestation Service Endpunkte
+### ZETA Attestation Service Endpunkte
 
 Der `ZetaAttestationService` stellt einen gRPC-Dienst zur Verfügung, der es stationären Clients (Primärsystem) ermöglicht, signierte Attestierungsinformationen für den Client abzurufen. Diese Informationen basieren auf Integritätsmessungen, die in ausgewählten Platform Configuration Registers (PCRs) des Trusted Platform Module (TPM) gespeichert sind. Der ZETA Guard Authorization Server verwendet diese Attestierungsdaten, um die Integrität und Authentizität der Softwareumgebung des Clients zu verifizieren, bevor Zugriff auf geschützte Ressourcen gewährt wird.
 
@@ -976,14 +910,14 @@ _Hinweis:_ Der ZETA Attestation Service ist nicht für mobile Clients vorgesehen
 
 _Hinweis:_ TODO Umgang mit Messung des Clients weicht von Baseline ab; empfohlenes Verhalten für Client und ZetaAttestationService (z. B. automatisch Support informieren)
 
-#### 1.5.3.1 Dienstdefinition
+#### Dienstdefinition
 
 - **Service Name:** `zeta.attestation.service.v1.ZetaAttestationService`
 - **Proto Buffer Spezifikation:** [zeta-attestation-service.proto](/src/gRPC/zeta-attestation-service.proto)
 
-#### 1.5.3.2 RPC Methoden
+#### RPC Methoden
 
-##### 1.5.3.2.1 GetAttestation
+##### GetAttestation
 
 Diese RPC-Methode ermöglicht es Clients, eine signierte Attestierungs-Quote vom TPM des Systems anzufordern, die spezifische PCR-Werte und eine vom Client bereitgestellte Challenge enthält.
 
@@ -1094,9 +1028,9 @@ _Hinweis: Es wird empfohlen, dass der Installer des Clients und des ZetaAttestat
 
 ---
 
-## 1.6. Verwaltung von Schlüsseln und Session-Daten im ZETA Client
+## Verwaltung von Schlüsseln und Session-Daten im ZETA Client
 
-### 1.6.1 Einleitung
+### Einleitung
 
 Ein ZETA Client muss verschiedene kryptografische Schlüssel und Session-Informationen verwalten, um mit einer oder mehreren ZETA Guard Instanzen sicher und persistent kommunizieren zu können. Die Speicherung und Verwaltung dieser Daten ist kritisch für die Sicherheit und Funktionalität des Clients.
 
@@ -1105,7 +1039,7 @@ Es wird zwischen zwei Arten von Daten unterschieden:
 1. **Globale Daten:** Diese sind übergreifend für die Client-Instanz und unabhängig von einer spezifischen ZETA Guard Instanz.
 2. **Pro-ZETA-Guard-Instanz Daten:** Diese Daten sind spezifisch für die Session mit einer einzelnen ZETA Guard Instanz.
 
-#### 1.6.2 Globale Daten (Client-übergreifend)
+#### Globale Daten (Client-übergreifend)
 
 Diese Daten definieren die langlebige Identität der Client-Anwendung selbst. Sie müssen persistent über alle Sessions und Neustarts der Anwendung hinweg gespeichert werden.
 
@@ -1114,7 +1048,7 @@ Diese Daten definieren die langlebige Identität der Client-Anwendung selbst. Si
   - **Speicheranforderung:** Dieses Schlüsselpaar **muss** einmalig bei der ersten Initialisierung des Clients generiert und anschließend sicher und persistent gespeichert werden. Ein Verlust des privaten Schlüssels bedeutet, dass der Client seine Identität verliert und sich bei allen bereits bekannten ZETA Guard Instanzen neu registrieren muss.
   - **Sicherheit:** Der private Schlüssel ist das wertvollste Geheimnis des Clients und **darf niemals** im Klartext gespeichert werden. Siehe Kapitel [1.6.4 Sicherheitsempfehlungen für die Schlüsselspeicherung](#164-sicherheitsempfehlungen-für-die-schlüsselspeicherung).
 
-#### 1.6.3 Daten pro ZETA Guard Instanz
+#### Daten pro ZETA Guard Instanz
 
 Für jede ZETA Guard Instanz, mit der der Client eine Verbindung aufbaut, müssen die folgenden Daten separat und zugeordnet zur jeweiligen ZETA Guard-Instanz (z.B. über deren Basis-URL) gespeichert werden.
 
@@ -1171,7 +1105,7 @@ Ein ZETA Client könnte die Daten konzeptionell wie folgt strukturieren:
 }
 ```
 
-### 1.6.4 Sicherheitsempfehlungen für die Schlüsselspeicherung
+### Sicherheitsempfehlungen für die Schlüsselspeicherung
 
 Private Schlüssel (`Client Instance Key`, `DPoP Key`) sind hochsensible Daten. Ihre Kompromittierung ermöglicht es einem Angreifer, die Identität des Clients zu missbrauchen. Sie müssen daher mit den sichersten, vom jeweiligen Betriebssystem bereitgestellten Mitteln geschützt werden.
 
@@ -1200,11 +1134,11 @@ Nutzen Sie stattdessen plattformspezifische, sichere Speicherorte (sog. "Keystor
 
 **Cross-Plattform-Bibliotheken:** Für in höheren Programmiersprachen (z.B. Python, Go, Rust, C#) entwickelte Clients existieren oft Bibliotheken, die die plattformspezifischen Speicher abstrahieren und eine einheitliche API für den Zugriff auf den Windows DPAPI, den macOS Keychain und den Secret Service unter Linux bieten. Die Verwendung solcher Bibliotheken wird empfohlen.
 
-## 1.7. Versionierung
+## Versionierung
 
 Um eine stabile und vorhersagbare Entwicklungsumgebung für Client-Anwendungen zu gewährleisten, folgt die ZETA API strikt den Prinzipien von **Semantic Versioning 2.0.0 (SemVer)**. Jede Änderung an der API wird klassifiziert, um die Auswirkungen auf bestehende Clients transparent zu machen.
 
-### 1.7.1 Versionierungsschema: MAJOR.MINOR.PATCH
+### Versionierungsschema: MAJOR.MINOR.PATCH
 
 Jede ZETA Guard Instanz deklariert ihre API-Version im Format `MAJOR.MINOR.PATCH` (z.B. `1.2.3`). Die Bedeutung der einzelnen Komponenten ist wie folgt definiert:
 
@@ -1219,7 +1153,7 @@ Jede ZETA Guard Instanz deklariert ihre API-Version im Format `MAJOR.MINOR.PATCH
 
 Zusätzlich können Prerelease-Tags verwendet werden (z.B. `2.0.0-beta.1`), um instabile Vorabversionen zu kennzeichnen.
 
-#### 1.7.2 Implementierung der Versionierung
+#### Implementierung der Versionierung
 
 Die Versionierung wird durch eine Kombination aus URL-Pfad, HTTP-Headern und dem Discovery-Dokument umgesetzt.
 
@@ -1268,7 +1202,7 @@ Jede Antwort des ZETA Guards enthält einen `ZETA-API-Version`-Header, der die e
     `Content-Type: application/json`
     `ZETA-API-Version: 1.4.2`
 
-#### 1.7.3 Client-Verhalten und Kompatibilitätsregeln
+#### Client-Verhalten und Kompatibilitätsregeln
 
 Um die Stabilität zu gewährleisten, müssen Clients die folgenden Regeln befolgen:
 
@@ -1278,7 +1212,7 @@ Um die Stabilität zu gewährleisten, müssen Clients die folgenden Regeln befol
 
 2. **Explizite Wahl der MAJOR-Version:** Der Client wählt die MAJOR-Version aktiv über den verwendeten URL-Pfad (z.B. `/v1/`). Ein Wechsel zu einer neuen MAJOR-Version (z.B. auf `/v2/`) ist eine bewusste Entwicklungsentscheidung und erfordert eine Code-Anpassung.
 
-#### 1.7.4 Deprecation Policy (Außerbetriebnahme)
+#### Deprecation Policy (Außerbetriebnahme)
 
 Wenn eine neue MAJOR-Version (z.B. `v2`) den Status `stable` erreicht, wird die vorherige MAJOR-Version (`v1`) als `deprecated` (veraltet) markiert.
 
@@ -1286,7 +1220,7 @@ Wenn eine neue MAJOR-Version (z.B. `v2`) den Status `stable` erreicht, wird die 
 2. **Migrationszeitraum:** Es wird einen klar kommunizierten Zeitraum geben, in dem beide MAJOR-Versionen parallel betrieben werden, um Clients eine reibungslose Migration zu ermöglichen. Zusätzlich wird überwacht, welche ZETA Client-Versionen aktiv sind, um die Migration zu unterstützen.
 3. **Abschaltung:** Nach Ablauf des Migrationszeitraums und wenn die Überwachung der ZETA Clients ergeben hat, dass keine veralteten Clients mehr aktiv genutzt werden, wird die veraltete Version abgeschaltet. Anfragen an die Endpunkte dieser Version führen dann zu einem `HTTP 410 Gone`-Fehler.
 
-## 1.8. Performance- und Lastannahmen
+## Performance- und Lastannahmen
 
 Leistungsanforderungen: Informationen über die erwartete Leistung der API, wie z.B. Antwortzeiten und Verfügbarkeit.
 Lastannahmen: Informationen über das erwartete Lastverhalten auf der API, wie z.B. die Anzahl der gleichzeitigen Benutzer oder Anfragen pro Sekunde.
@@ -1298,7 +1232,7 @@ Lastannahmen: Informationen über das erwartete Lastverhalten auf der API, wie z
 - ZETA Guard PEP
 - ZETA Guard Refresh Token Exchange
 
-## 1.9. Rate Limits und Einschränkungen
+## Rate Limits und Einschränkungen
 
 Der OAuth Protected Resource Well-Known Endpoint ist so konfiguriert, dass er eine Rate-Limiting-Strategie implementiert. Der ZETA Client muss die Rate Limits beachten, um eine Überlastung des Endpunkts zu vermeiden. Die genauen Limits können je nach Implementierung variieren, aber typischerweise gelten folgende Richtlinien:
 
@@ -1313,27 +1247,21 @@ oder:
 
 **Beispiele:** [Draft RFC für Rate Limits](https://www.ietf.org/archive/id/draft-ietf-httpapi-ratelimit-headers-09.html#name-ratelimit-policy-field)
 
-## 1.10. Support und Kontaktinformationen
+## Support und Kontaktinformationen
 
 Hilfe: Informationen darüber, wo und wie Benutzer Unterstützung erhalten können (z.B. Forum, E-Mail-Support).
 Fehlerberichterstattung: Wie können Nutzer Bugs melden oder Feature-Anfragen stellen?
 
-## 1.11. FAQs und Troubleshooting
+## FAQs und Troubleshooting
 
 Häufige Fragen: Antworten auf häufige Fragen zur Nutzung der API.
 Fehlerbehebung: Leitfaden zur Behebung häufiger Probleme.
 
-## 1.12. Interaktive Dokumentation (optional)
-
-Swagger/OpenAPI: Ein interaktives Interface, mit dem Entwickler API-Endpunkte direkt aus der Dokumentation heraus testen können.
-API-Sandbox: Eine Testumgebung, in der Entwickler sicher mit der API experimentieren können.
-Eine gut strukturierte API-Dokumentation erleichtert es Entwicklern, die API effizient zu nutzen, und trägt dazu bei, häufige Fragen und Probleme zu minimieren.
-
-## 1.13. Changelog
+## Changelog
 
 Ein detaillierter Verlauf der Änderungen an der API.
 
-## 1.14. git Branch Modell
+## git Branch Modell
 
 In diesem Repository werden Branches verwendet um den Status der Weiterentwicklung und das Review von Änderungen abzubilden.
 
@@ -1346,7 +1274,7 @@ Folgende Branches werden verwendet
 - _concept/[name]_ (in feature branches werden neue Konzepte entwickelt; basiert auf develop; dient der Abstimmung mit Dritten; es erfolgt kein merge; wird nach Bedarf gelöscht)
 - _misc/[name]_ (nur für internen Gebrauch der gematik; es erfolgt kein merge; wird nach Bedarf gelöscht)
 
-## 1.15. Lizenzbedingungen
+## Lizenzbedingungen
 
 Copyright (c) 2024 gematik GmbH
 
