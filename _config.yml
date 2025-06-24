@@ -1,7 +1,7 @@
 # Titel und Beschreibung Ihrer Seite
 title: ZETA
 description: Dokumentation für das ZETA-Projekt der gematik.
-url: "https://gematik.github.io/zeta" # Wichtig: Passen Sie dies an, sobald die Seite live ist
+url: "https://gematik.github.io" # Wichtig: Passen Sie dies an, sobald die Seite live ist
 baseurl: "/ZETA"
 
 # Theme-Auswahl: Just the Docs
