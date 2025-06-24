@@ -1,7 +1,7 @@
 ---
-layout: default
 title: ZETA API v1
-toc: true
+parent: ZETA API Versionen
+nav_order: 1
 ---
 
 

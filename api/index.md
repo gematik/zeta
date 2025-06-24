@@ -1,9 +1,8 @@
 ---
-layout: default
 title: ZETA API Versionen
 nav_order: 2
 has_children: true
-permalink: /api/
+parent: ZETA
 ---
 
 ## ZETA API Versionen

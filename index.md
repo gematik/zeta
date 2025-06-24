@@ -1,7 +1,7 @@
 ---
-layout: home
 title: ZETA
 nav_order: 1
+has_children: true
 ---
 
 # ZETA Dokumentation

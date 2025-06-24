@@ -47,9 +47,9 @@ favicon_ico: "/images/favicon.ico" # Pfad zu Ihrem Favicon, ggf. anpassen
 search_enabled: true
 
 # Standardeinstellungen (stellt sicher, dass toc: true überall gilt)
-defaults:
-  -
-    scope:
-      path: ""
-    values:
-      toc: true
+#defaults:
+#  -
+#    scope:
+#      path: ""
+#    values:
+#      toc: true
