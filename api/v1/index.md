@@ -1,5 +1,5 @@
 ---
-layout: default
+layout: page
 title: ZETA API v1
 nav_order: 3
 has_children: false
