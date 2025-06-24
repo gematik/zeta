@@ -9,7 +9,7 @@ toc: true
 
 # ZETA API v1
 
-![gematik logo](/images/gematik-logo-small.svg)
+![gematik logo]({{ site.baseurl }}/images/gematik-logo-small.svg)
 
 ## Einführung
 
@@ -54,7 +54,7 @@ Der Gesamtprozess beginnt damit, dass ein **Nutzer** auf einen Endpunkt eines Re
 
 In dieser Phase ermittelt der ZETA Client die notwendigen Endpunkte und Konfigurationen von den ZETA Guard Komponenten (PEP http Proxy und PDP Authorization Server). Der Client fragt bekannte Endpunkte (`/.well-known/oauth-protected-resource` und `/.well-known/oauth-authorization-server`) ab, um die Konfiguration des Resource Servers und des Authorization Servers zu erhalten. Das folgende Bild zeigt den Ablauf.
 
-![tpm-attestation-and-token-exchange-overview](/images/tpm-attestation-and-token-exchange/discovery-and-configuration.svg)
+![tpm-attestation-and-token-exchange-overview]({{ site.baseurl }}/images/tpm-attestation-and-token-exchange/discovery-and-configuration.svg)
 <p style="font-size:0.9em; text-align:center;"><em>Abbildung 2: Ablauf Discovery and Configuration</em></p>
 
 ### Client-Registrierung
