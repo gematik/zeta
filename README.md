@@ -2,7 +2,6 @@
 layout: default
 title: ZETA Dokumentation
 nav_order: 1
-permalink: /
 ---
 
 Hier finden Sie die Dokumentationen für ZETA.

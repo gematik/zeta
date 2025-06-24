@@ -1,23 +1,26 @@
-title: ZETA API Dokumentation
-description: Offizielle API Dokumentation für das ZETA Projekt der gematik.
+# Titel und Beschreibung Ihrer Seite
+title: ZETA
+description: Dokumentation für das ZETA-Projekt der gematik.
+url: "https://gematik.github.io/zeta" # Wichtig: Passen Sie dies an, sobald die Seite live ist
 
+# Theme-Auswahl: Just the Docs
+# Wir verwenden remote_theme, damit GitHub Pages das Theme automatisch bezieht.
 remote_theme: just-the-docs/just-the-docs
 
-url: "https://gematik.github.io"
-baseurl: "/ZETA"
+# Logo im Header (optional, aber empfohlen)
+logo: "/images/gematik-logo.svg"
+favicon_ico: "/images/favicon.ico"
 
-plugins:
-  - jekyll-redirect-from
+# Suchfunktion aktivieren
+search_enabled: true
 
-collections:
-  v1:
-    output: true
-    
-# Defaults-Block
+# Jekyll anweisen, das Verzeichnis _v1 zu verarbeiten
+include:
+  - "_v1"
+
+# Standardeinstellungen für alle Seiten und Posts (optional, aber nützlich)
 defaults:
   - scope:
-      path: ""
-      type: "v1"
+      path: "" # für alle Dateien im Repo
     values:
-      layout: "default"
-      parent: "ZETA API Dokumentation"
+      toc: true # Inhaltsverzeichnis (rechts) standardmäßig aktivieren

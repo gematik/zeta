@@ -1,9 +1,9 @@
 ---
-title: Version 1.0
-nav_order: 1
-permalink: /api/v1/
-parent: "ZETA API Dokumentation" # Diese Zeile ist entscheidend!
+layout: default
+title: ZETA API v1
+nav_order: 3
 ---
+
 
 # ZETA API v1
 
