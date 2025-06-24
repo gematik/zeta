@@ -1,9 +1,11 @@
 ---
-layout: page
+layout: default
 title: ZETA API v1
+nav_enabled: true
 nav_order: 3
 has_children: false
-toc: true
+toc:
+  sidebar: left
 ---
 
 
