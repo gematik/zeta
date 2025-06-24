@@ -1,33 +1,55 @@
 # Titel und Beschreibung Ihrer Seite
 title: ZETA
 description: Dokumentation für das ZETA-Projekt der gematik.
-url: "https://gematik.github.io/ZETA" # Wichtig: Passen Sie dies an, sobald die Seite live ist
-baseurl: "/ZETA"
+#url: "https://gematik.github.io" # Wichtig: Passen Sie dies an, sobald die Seite live ist
+#baseurl: "/ZETA"
 
 # Theme-Auswahl: Just the Docs
 # Wir verwenden remote_theme, damit GitHub Pages das Theme automatisch bezieht.
 remote_theme: just-the-docs/just-the-docs
 
 # Logo im Header (optional, aber empfohlen)
-logo: "/images/gematik-logo.svg"
-favicon_ico: "/images/favicon.ico"
+#logo: "/images/gematik-logo.svg"
+#favicon_ico: "/images/favicon.ico"
 
 # Suchfunktion aktivieren
 #search_enabled: true
 
 # Navigation aktivieren
-just_the_docs:
-  collections:
-    api:
-      permalink: /:collection/:path/
-      output: true
-  aux_links:
-    "API Dokumentation": /api/
-    "API Version 1": /api/v1/
+#just_the_docs:
+#  collections:
+#    api:
+#      permalink: /:collection/:path/
+#      output: true
+#  aux_links:
+#    "API Dokumentation": /api/
+#    "API Version 1": /api/v1/
 
 # Standardeinstellungen für alle Seiten und Posts (optional, aber nützlich)
+#defaults:
+#  - scope:
+#      path: "" # für alle Dateien im Repo
+#    values:
+#      toc: true # Inhaltsverzeichnis (rechts) standardmäßig aktivieren
+
+
+
+# URL-Konfiguration für GitHub Pages
+# WICHTIG: url ist NUR die Domain, baseurl ist das Repository
+url: "https://gematik.github.io"
+baseurl: "/ZETA"
+
+# Logo im Header
+logo: "/assets/images/gematik-logo.svg" # Pfad zu Ihrem Logo, ggf. anpassen
+favicon_ico: "/assets/images/favicon.ico" # Pfad zu Ihrem Favicon, ggf. anpassen
+
+# Suchfunktion aktivieren (empfohlen)
+search_enabled: true
+
+# Standardeinstellungen (stellt sicher, dass toc: true überall gilt)
 defaults:
-  - scope:
-      path: "" # für alle Dateien im Repo
+  -
+    scope:
+      path: ""
     values:
-      toc: true # Inhaltsverzeichnis (rechts) standardmäßig aktivieren
+      toc: true
