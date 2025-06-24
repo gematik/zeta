@@ -2,7 +2,7 @@
 title: ZETA
 description: Dokumentation für das ZETA-Projekt der gematik.
 url: "https://gematik.github.io" # Wichtig: Passen Sie dies an, sobald die Seite live ist
-baseurl: "/zeta"
+baseurl: "/ZETA"
 
 # Theme-Auswahl: Just the Docs
 # Wir verwenden remote_theme, damit GitHub Pages das Theme automatisch bezieht.
