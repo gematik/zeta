@@ -12,11 +12,22 @@ logo: "/images/gematik-logo.svg"
 favicon_ico: "/images/favicon.ico"
 
 # Suchfunktion aktivieren
-search_enabled: true
+#search_enabled: true
 
 # Jekyll anweisen, das Verzeichnis _v1 zu verarbeiten
-include:
-  - "_v1"
+#include:
+#  - "_v1"
+
+# ChatGPT
+# Navigation aktivieren
+just_the_docs:
+  collections:
+    api:
+      permalink: /:collection/:path/
+      output: true
+  aux_links:
+    "API Dokumentation": /api/
+    "Version 1": /api/v1/
 
 # Standardeinstellungen für alle Seiten und Posts (optional, aber nützlich)
 defaults:

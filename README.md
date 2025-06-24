@@ -1,10 +1,10 @@
 ---
 layout: default
 title: ZETA Dokumentation
+description: Dokumentation für ZETA (Zero Trust Access)
+has_children: true
 nav_order: 1
 ---
-
-Hier finden Sie die Dokumentationen für ZETA.
 
 # ZETA Dokumentation
 
@@ -21,7 +21,7 @@ ZETA ist eine Zero Trust Access Lösung, die eine sichere und flexible Zugriffsk
 
 Die ZETA API beschreibt die Abläufe und Endpunkte des ZETA Guards aus Clientsicht.
 
-[ZETA API Dokumentation](/_v1/index.md)
+[ZETA API Dokumentation](/api/v1/index.md)
 
 ## ZETA Guard
 

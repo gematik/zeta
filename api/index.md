@@ -1,8 +1,13 @@
 ---
 layout: default
-title: ZETA API Dokumentation
+title: ZETA API Versionen
+description: Dokumentation der verschiedenen Versionen der ZETA API
 nav_order: 2
 has_children: true
 ---
 
-Hier finden Sie die Dokumentationen für die verschiedenen Versionen der ZETA API.
+## API Versionen
+
+{% for version in site.data.api_versions %}
+- [{{ version.name }}]({{ version.url }})
+{% endfor %}
