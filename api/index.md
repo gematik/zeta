@@ -1,9 +1,9 @@
 ---
 layout: default
 title: ZETA API Versionen
-description: Dokumentation der verschiedenen Versionen der ZETA API
 nav_order: 2
 has_children: true
+permalink: /api/
 ---
 
 ## ZETA API Versionen

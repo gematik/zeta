@@ -1,9 +1,6 @@
 ---
-layout: default
+layout: home
 title: ZETA
-description: Dokumentation für ZETA (Zero Trust Access)
-has_children: true
-toc: true
 nav_order: 1
 ---
 
