@@ -1,6 +1,6 @@
 ---
 layout: default
-title: ZETA Dokumentation
+title: ZETA
 description: Dokumentation für ZETA (Zero Trust Access)
 has_children: true
 nav_order: 1
