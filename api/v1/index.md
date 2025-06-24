@@ -45,7 +45,7 @@ Abhängig vom Zustand des ZETA Clients müssen verschiedene Teilabläufe ausgef�
 
 Der Gesamtprozess beginnt damit, dass ein **Nutzer** auf einen Endpunkt eines Resource Servers zugreifen möchte. Dieser Zugriff wird über das Primärsystem vom **ZETA Client** im Auftrag des Nutzers ausgeführt; siehe folgende Abbildung.
 
-![tpm-attestation-and-token-exchange-overview](/images/tpm-attestation-and-token-exchange/tpm-attestation-and-token-exchange-overview.svg)
+![tpm-attestation-and-token-exchange-overview]({{ site.baseurl }}/images/tpm-attestation-and-token-exchange/tpm-attestation-and-token-exchange-overview.svg)
 <p style="font-size:0.9em; text-align:center;"><em>Abbildung 1: Ablauf TPM Attestation und Token Exchange Überblick</em></p>
 
 ---
@@ -68,7 +68,7 @@ Jeder ZETA Client muss sich am ZETA Guard registrieren, über den er auf geschü
 
 Die Client Registrierung ist in der folgenden Abbildung dargestellt.
 
-![Ablauf Client Registrierung](/images/tpm-attestation-and-token-exchange/dynamic-client-registration.svg)
+![Ablauf Client Registrierung]({{ site.baseurl }}/images/tpm-attestation-and-token-exchange/dynamic-client-registration.svg)
 <p style="font-size:0.9em; text-align:center;"><em>Abbildung 3: Ablauf Client Registrierung</em></p>
 
 Für die initiale Registrierung sendet der ZETA Client eine Anfrage an den Dynamic Client Registration (DCR) Endpoint. Diese Anfrage enthält alle notwendigen Metadaten, um den Client für die `private_key_jwt` Authentifizierungsmethode vorzubereiten:
@@ -99,7 +99,7 @@ Diese Trennung schafft eine Balance zwischen höchster Sicherheit beim initialen
 
 Die folgende Abbildung zeigt den Ablauf des Token-Austauschs mit Client Assertion JWT Authentifizierung und DPoP.
 
-![tpm-attestation-and-token-exchange-overview](/images/tpm-attestation-and-token-exchange/token-exchange-with-client-assertion-jwt-auth.svg)
+![tpm-attestation-and-token-exchange-overview]({{ site.baseurl }}/images/tpm-attestation-and-token-exchange/token-exchange-with-client-assertion-jwt-auth.svg)
 <p style="font-size:0.9em; text-align:center;"><em>Abbildung 4: Ablauf Authentifizierung und TPM-Attestation</em></p>
 
 ##### Pfad A: Token-Austausch mit Attestierung
