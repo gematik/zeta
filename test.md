@@ -1,4 +1,5 @@
 ---
+layout: default
 title: Testseite für TOC
 nav_order: 99
 ---

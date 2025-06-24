@@ -40,8 +40,8 @@ url: "https://gematik.github.io"
 baseurl: "/ZETA"
 
 # Logo im Header
-logo: "/assets/images/gematik-logo.svg" # Pfad zu Ihrem Logo, ggf. anpassen
-favicon_ico: "/assets/images/favicon.ico" # Pfad zu Ihrem Favicon, ggf. anpassen
+logo: "/images/gematik-logo.svg" # Pfad zu Ihrem Logo, ggf. anpassen
+favicon_ico: "/images/favicon.ico" # Pfad zu Ihrem Favicon, ggf. anpassen
 
 # Suchfunktion aktivieren (empfohlen)
 search_enabled: true

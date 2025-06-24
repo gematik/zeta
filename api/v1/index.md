@@ -1,4 +1,5 @@
 ---
+layout: default
 title: ZETA API v1
 toc: true
 ---
