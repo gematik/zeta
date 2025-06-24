@@ -14,11 +14,6 @@ favicon_ico: "/images/favicon.ico"
 # Suchfunktion aktivieren
 #search_enabled: true
 
-# Jekyll anweisen, das Verzeichnis _v1 zu verarbeiten
-#include:
-#  - "_v1"
-
-# ChatGPT
 # Navigation aktivieren
 just_the_docs:
   collections:

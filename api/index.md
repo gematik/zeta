@@ -8,6 +8,4 @@ has_children: true
 
 ## API Versionen
 
-{% for version in site.data.api_versions %}
-- [{{ version.name }}]({{ version.url }})
-{% endfor %}
+[ZETA API v1](https://gematik.github.io/ZETA/api/v1/)
