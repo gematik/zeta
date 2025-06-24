@@ -3,6 +3,7 @@ title: ZETA API Versionen
 nav_order: 2
 has_children: true
 parent: ZETA
+permalink: /api/
 ---
 
 ## ZETA API Versionen
