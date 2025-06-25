@@ -1,0 +1,195 @@
+<script>
+{% raw %}
+document.addEventListener("DOMContentLoaded", function () {
+  const siteTitleContainer = document.querySelector(".site-header .site-title");
+  const siteLogo = document.querySelector(".site-logo");
+
+  if (siteTitleContainer && siteLogo) {
+    const siteTitleText = siteLogo.getAttribute("aria-label");
+    if (siteTitleText) {
+      const titleSpan = document.createElement("span");
+      titleSpan.className = "site-title-text";
+      titleSpan.textContent = siteTitleText;
+      siteTitleContainer.appendChild(titleSpan);
+      siteTitleContainer.classList.add("has-logo-and-text");
+    }
+  }
+
+  const inPageTocList = document.querySelector("#markdown-toc");
+  const sidebar = document.querySelector(".side-bar");
+
+  if (inPageTocList && sidebar) {
+    const detailsParent = inPageTocList.closest('details');
+    inPageTocList.classList.add("toc-in-sidebar");
+
+    const tocContainerInSidebar = document.createElement("nav");
+    tocContainerInSidebar.classList.add("nav-list", "nav-list--toc");
+
+    const tocTitle = document.createElement("span");
+    tocTitle.textContent = "On this page";
+    tocTitle.classList.add("toc-sidebar-title");
+    tocContainerInSidebar.appendChild(tocTitle);
+    
+    tocContainerInSidebar.appendChild(inPageTocList);
+
+    const activeListItem = sidebar.querySelector(".nav-list-item.active");
+    if (activeListItem) {
+      activeListItem.appendChild(tocContainerInSidebar);
+    } else {
+      sidebar.appendChild(tocContainerInSidebar);
+      if (console && console.warn) {
+        console.warn("Sidebar ToC: No active .nav-list-item found for #markdown-toc. Appending ToC to end of sidebar.");
+      }
+    }
+
+    if (detailsParent) {
+      detailsParent.style.display = 'none';
+    }
+    document.body.classList.add("js-toc-sidebar");
+
+  } else if (sidebar) {
+    const themeToc = document.querySelector(".toc"); 
+    if (themeToc) {
+      if (console && console.log) {
+        console.log("Sidebar ToC: #markdown-toc not found, attempting to use theme's .toc element.");
+      }
+      const clonedThemeToc = themeToc.cloneNode(true);
+      clonedThemeToc.classList.add("toc-in-sidebar");
+
+      const tocContainerInSidebar = document.createElement("nav");
+      tocContainerInSidebar.classList.add("nav-list", "nav-list--toc");
+      
+      const tocTitle = document.createElement("span");
+      tocTitle.textContent = "On this page";
+      tocTitle.classList.add("toc-sidebar-title");
+      tocContainerInSidebar.appendChild(tocTitle);
+
+      tocContainerInSidebar.appendChild(clonedThemeToc);
+
+      const activeListItem = sidebar.querySelector(".nav-list-item.active");
+      if (activeListItem) {
+        activeListItem.appendChild(tocContainerInSidebar);
+      } else {
+        sidebar.appendChild(tocContainerInSidebar);
+        if (console && console.warn) {
+          console.warn("Sidebar ToC: No active .nav-list-item found for theme .toc. Appending ToC to end of sidebar.");
+        }
+      }
+      document.body.classList.add("js-toc-sidebar");
+    }
+  }
+});
+{% endraw %}
+</script>
+
+<style>
+/* --- Styling for Site Title next to Logo --- */
+/* >> CHANGED: Added flex-grow and min-width to allow the title container to expand */
+.site-header a.site-title.has-logo-and-text {
+  display: flex;
+  align-items: center;
+  flex-grow: 1; /* Allows this element to take up available space */
+  min-width: 0; /* Prevents flexbox overflow issues, allowing truncation to work if needed */
+}
+
+.site-title-text {
+  margin-left: 0.75rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- Base ToC Rules --- */
+body.js-toc-sidebar .main-content-wrap .toc {
+  display: none;
+}
+
+.nav-list--toc {
+  margin-top: 0;
+  padding-left: 0;
+  font-size: 0.9rem;
+}
+
+.toc-sidebar-title {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--jtc-text-color-muted, #6c757d);
+  padding-left: 0.8rem;
+  margin-bottom: 0.75rem;
+  /* >> CHANGED: Reduced top margin and padding to feel more connected to the active page */
+  border-top: 1px solid var(--jtc-border-color, #dee2e6); 
+  padding-top: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.toc-in-sidebar {
+  all: unset;
+  display: block;
+  list-style-type: none;
+}
+
+.toc-in-sidebar ul {
+  list-style-type: none;
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.toc-in-sidebar li {
+  margin: 0;
+  position: relative;
+}
+
+.toc-in-sidebar a {
+  text-decoration: none;
+  display: block; 
+  padding: 0.2rem 0.5rem;
+  color: var(--jtc-nav-link-color, var(--jtc-text-color));
+}
+.toc-in-sidebar a:hover {
+  text-decoration: underline;
+  color: var(--jtc-link-hover-color, #0076df);
+}
+
+/* --- Beautiful Tree Lines --- */
+.toc-in-sidebar ul li::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -0.7rem;
+  width: 1px;
+  height: 100%;
+  background: var(--jtc-border-color, #e1e4e8);
+}
+
+.toc-in-sidebar ul li::before {
+  content: '';
+  position: absolute;
+  top: 0.8rem;
+  left: -0.7rem;
+  width: 0.7rem;
+  height: 1px;
+  background: var(--jtc-border-color, #e1e4e8);
+}
+
+.toc-in-sidebar ul li:last-child::after {
+  height: 0.8rem;
+}
+
+.toc-in-sidebar > li::before,
+.toc-in-sidebar > li::after {
+    display: none;
+}
+
+/* --- Hierarchical Font Styling (Unchanged) --- */
+.toc-in-sidebar > li > a { font-size: 1em; }
+.toc-in-sidebar > li > ul > li > a { font-size: 0.95em; }
+.toc-in-sidebar > li > ul > li > ul > li > a { font-size: 0.9em; }
+.toc-in-sidebar > li > ul > li > ul > li > ul > li > a { font-size: 0.85em; }
+.toc-in-sidebar > li > ul > li > ul > li > ul > li > ul > li > a { font-size: 0.80em; }
+.toc-in-sidebar > li > ul > li > ul > li > ul > li > ul > li > ul > li > a { font-size: 0.75em; }
+</style>

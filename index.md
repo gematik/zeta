@@ -5,8 +5,18 @@ has_children: true
 ---
 
 # ZETA Dokumentation
+{: .no_toc }
 
-![gematik](/images/gematik-logo.svg)
+<details open markdown="block">
+  <summary>
+    Table of contents
+  </summary>
+  {: .text-delta }
+- TOC
+{:toc}
+</details>
+
+![gematik]({{ site.baseurl }}/images/gematik-logo.svg)
 
 Dies ist ein Repository für Zero Trust Komponenten, einschließlich PEP, PDP, PIP, PAP und Clients. Es enthält Quellcode, umfassende Dokumentation, Testfälle und Kubernetes-Manifestdateien für eine nahtlose Bereitstellung. Ideal für Entwickler, die eine robuste Sicherheitsarchitektur in Cloud-nativen Umgebungen suchen.
 Die Gesamtheit dieser Lösung wird ZETA (Zero Trust Access) genannt.
