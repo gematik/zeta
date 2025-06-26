@@ -1,23 +1,30 @@
-{% raw %}{% comment %}
-  This include generates a static badge from shields.io.
-  Usage in Markdown:
-  {::nomarkdown}
-  {% include badge.html name="badge_key_from_data_file" %}
-  {:/nomarkdown}
-{% endcomment %}
+{%- comment -%}
+  <!--
+    This include generates a static badge from shields.io.
+    It produces a raw <a><img> tag, making it immune to Markdown processing issues.
+    Usage:
+    {::nomarkdown}
+    {% include badge.html name="badge_key_from_data_file" %}
+    {:/nomarkdown}
+  -->
+{%- endcomment -%}
 
 {%- assign badge_name = include.name -%}
 {%- assign badge = site.data.badges[badge_name] -%}
 
 {%- if badge -%}
-  {%- comment %} URL-encode the parts for the path segment. Shields.io requires that dashes `-` are escaped to `--` and spaces ` ` become `_`. %}{% endcomment %}
+  {%- comment -%}
+    <!-- URL-encode the parts for the path segment. Shields.io requires that dashes `-` are escaped to `--` and spaces ` ` become `_`. -->
+  {%- endcomment -%}
   {%- assign label = badge.label | replace: '-', '--' | replace: ' ', '_' -%}
   {%- assign message = badge.message | replace: '-', '--' | replace: ' ', '_' -%}
   {%- assign color = badge.color -%}
 
   {%- assign base_badge_url = "https://img.shields.io/badge/" | append: label | append: "-" | append: message | append: "-" | append: color -%}
 
-  {%- comment %} Build the query string for optional parameters like style, logo, etc. %}{% endcomment %}
+  {%- comment -%}
+    <!-- Build the query string for optional parameters like style, logo, etc. -->
+  {%- endcomment -%}
   {%- assign params = "" -%}
   {%- if badge.style -%}     {%- capture params -%}{{ params }}&style={{ badge.style }}{%- endcapture -%}   {%- endif -%}
   {%- if badge.logo -%}      {%- capture params -%}{{ params }}&logo={{ badge.logo }}{%- endcapture -%}      {%- endif -%}
@@ -25,14 +32,16 @@
 
   {%- assign final_badge_url = base_badge_url -%}
   {%- if params.size > 0 -%}
-    {%- comment %} Safely remove the first '&' and append the query string %}{% endcomment %}
+    {%- comment -%}<!-- Safely remove the first '&' and append the query string -->{%- endcomment -%}
     {%- assign query_string = params | remove_first: '&' -%}
     {%- assign final_badge_url = final_badge_url | append: '?' | append: query_string -%}
   {%- endif -%}
 
-  {%- comment %} Output the final HTML. Using <a><img></a> is more reliable than Markdown links inside includes. %}{% endcomment %}
-  <a href="{{ site.baseurl }}{{ badge.link }}"><img src="{{ final_badge_url }}" alt="{{ badge.label }}"></a>
+  {%- comment -%}
+    <!-- Output the final HTML. -->
+  {%- endcomment -%}
+  <a href="{{ site.baseurl }}{{ badge.link }}"><img src="{{ final_badge_url }}" alt="{{ badge.label }}" style="vertical-align: middle;"></a>
 
 {%- else -%}
-  <!-- Badge generation failed for '{{ include.name }}'. Check _data/badges.yml -->
-{%- endif -%}{% endraw %}
+  <!-- Badge generation failed for '{{ include.name | escape }}'. Check _data/badges.yml -->
+{%- endif -%}
