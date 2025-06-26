@@ -1,41 +1,12 @@
-{% raw %}{% comment %}
-  This include generates a static badge from shields.io.
-  Usage: {% include badge.html name="<badge_name_from_data_file>" %}
-  Example: {% include badge.html name="release_notes" %}
-{% endcomment %}
-
-{%- assign badge_name = include.name -%}
-{%- assign badge = site.data.badges[badge_name] -%}
-
-{%- if badge -%}
-  {%- comment %} URL-encode the parts for the path segment. Shields.io is smart about spaces and dashes. %}{% endcomment %}
-  {%- assign label = badge.label | replace: "-", "--" | replace: " ", "_" -%}
-  {%- assign message = badge.message | replace: "-", "--" | replace: " ", "_" -%}
-  {%- assign color = badge.color -%}
-
-  {%- comment %} Base URL for a static badge %}{% endcomment %}
-  {%- assign base_badge_url = "https://img.shields.io/badge/" | append: label | append: "-" | append: message | append: "-" | append: color -%}
-
-  {%- comment %} Build the query string for optional parameters %}{% endcomment %}
-  {%- assign params = "" -%}
-  {%- if badge.style -%}
-    {%- capture params -%}{{ params }}&style={{ badge.style }}{%- endcapture -%}
-  {%- endif -%}
-  {%- if badge.logo -%}
-    {%- capture params -%}{{ params }}&logo={{ badge.logo }}{%- endcapture -%}
-  {%- endif -%}
-  {%- if badge.logoColor -%}
-    {%- capture params -%}{{ params }}&logoColor={{ badge.logoColor }}{%- endcapture -%}
-  {%- endif -%}
-
-  {%- assign final_badge_url = base_badge_url -%}
-  {%- if params != "" -%}
-    {%- assign final_badge_url = final_badge_url | append: "?" | append: params -%}
-  {%- endif -%}
-
-  {%- comment %} Output the final Markdown link %}{% endcomment %}
-  [![{{ badge.label }}]({{ final_badge_url }})]({{ badge.link | relative_url }})
-
-{%- else -%}
-  <p style="color: red;">Error: Badge '{{ badge_name }}' not found in _data/badges.yml.</p>
-{%- endif -%}{% endraw %}
+<div style="border: 2px solid red; padding: 10px; margin: 1em 0; font-family: monospace; background-color: #fee;">
+  <p><strong>--- Badge Debugger ---</strong></p>
+  
+  <p><strong>1. Name passed to include:</strong></p>
+  <pre><code>{{ include.name | inspect }}</code></pre>
+  
+  <p><strong>2. The entire site.data.badges object:</strong> (If this is 'nil', the file is not being read)</p>
+  <pre><code>{{ site.data.badges | inspect }}</code></pre>
+  
+  <p><strong>3. Value of looking up site.data.badges['release_notes']:</strong> (If this is 'nil', the key is wrong or YAML is invalid)</p>
+  <pre><code>{{ site.data.badges['release_notes'] | inspect }}</code></pre>
+</div>
