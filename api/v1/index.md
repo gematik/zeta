@@ -11,9 +11,6 @@ nav_order: 1
 - TOC
 {:toc}
 
-ZETA v1.3.0-Alpha
-{: .label .label-yellow }
-
 ## Einführung
 
 Die ZETA API ermöglicht es ZETA Clients, auf geschützte Ressourcen zuzugreifen und dabei Sicherheits- und Authentifizierungsmechanismen zu nutzen.
