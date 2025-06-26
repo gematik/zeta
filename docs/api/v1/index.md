@@ -4,14 +4,12 @@ parent: ZETA API Versionen
 nav_order: 1
 ---
 
-
-# ZETA API v1
-{: .no_toc }
-
 - TOC
 {:toc}
 
-## Einführung
+## ZETA API v1
+
+{% include badge.html name="zeta_api" %}
 
 Die ZETA API ermöglicht es ZETA Clients, auf geschützte Ressourcen zuzugreifen und dabei Sicherheits- und Authentifizierungsmechanismen zu nutzen.
 Der ZETA Client nutzt Endpunkte des ZETA Guard für die Client-Registrierung, Authentifizierung und Autorisierung.
@@ -1225,15 +1223,14 @@ Wenn eine neue MAJOR-Version (z.B. `v2`) den Status `stable` erreicht, wird die 
 
 ## Performance- und Lastannahmen
 
-Leistungsanforderungen: Informationen über die erwartete Leistung der API, wie z.B. Antwortzeiten und Verfügbarkeit.
-Lastannahmen: Informationen über das erwartete Lastverhalten auf der API, wie z.B. die Anzahl der gleichzeitigen Benutzer oder Anfragen pro Sekunde.
+Informationen zu den erwarteten Leistungs- und Lastannahmen für die ZETA API werden nachgereicht.
 
 - SM(C)-B Signaturerstellung
 - TPM Attestation
 - ZETA Guard Clientregistrierung
 - ZETA Guard Authentifizierung
-- ZETA Guard PEP
 - ZETA Guard Refresh Token Exchange
+- ZETA Guard PEP
 
 ## Rate Limits und Einschränkungen
 
@@ -1254,41 +1251,3 @@ oder:
 
 Hilfe: Informationen darüber, wo und wie Benutzer Unterstützung erhalten können (z.B. Forum, E-Mail-Support).
 Fehlerberichterstattung: Wie können Nutzer Bugs melden oder Feature-Anfragen stellen?
-
-## FAQs und Troubleshooting
-
-Häufige Fragen: Antworten auf häufige Fragen zur Nutzung der API.
-Fehlerbehebung: Leitfaden zur Behebung häufiger Probleme.
-
-## Changelog
-
-Ein detaillierter Verlauf der Änderungen an der API.
-
-## git Branch Modell
-
-In diesem Repository werden Branches verwendet um den Status der Weiterentwicklung und das Review von Änderungen abzubilden.
-
-Folgende Branches werden verwendet
-
-- _main_ (enthält den letzten freigegebenen Stand der Entwicklung; besteht permanent)
-- _develop_ (enthält den Stand der fertig entwickelten Features und wird zum Review durch Industriepartner und Gesellschafter verwendet; basiert auf main; nach Freigabe erfolgt ein merge in main und ein Release wird erzeugt; besteht permanent)
-- _feature/[name]_ (in feature branches werden neue Features entwickelt; basiert auf develop; nach Fertigstellung erfolgt ein merge in develop; wird nach dem merge gelöscht)
-- _hotfix/[name]_ (in hotfix branches werden Hotfixes entwickelt; basiert auf main; nach Fertigstellung erfolgt ein merge in develop und in main; wird nach dem merge gelöscht)
-- _concept/[name]_ (in feature branches werden neue Konzepte entwickelt; basiert auf develop; dient der Abstimmung mit Dritten; es erfolgt kein merge; wird nach Bedarf gelöscht)
-- _misc/[name]_ (nur für internen Gebrauch der gematik; es erfolgt kein merge; wird nach Bedarf gelöscht)
-
-## Lizenzbedingungen
-
-Copyright (c) 2024 gematik GmbH
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-<http://www.apache.org/licenses/LICENSE-2.0>
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.

@@ -1,0 +1,28 @@
+# This file is now the single source of truth for all badge content.
+
+release_notes:
+      label: "Release Notes"
+      message: "v1.0.0-Alpha"      # The actual text to display on the badge
+      color: "blue"
+      style: "plastic"
+      logo: "github"
+      logoColor: "white"
+      link: "/release-notes.html"
+
+zeta_api:
+      label: "ZETA API"
+      message: "v1.0.0-Alpha"
+      color: "green"
+      style: "flat-square"
+      logo: "github"
+      logoColor: "white"
+      link: "/docs/api/v1/index.html"
+
+zeta_guard:
+      label: "ZETA Guard"
+      message: "v1.0.0-Alpha"
+      color: "orange"
+      style: "flat-square"
+      logo: "github"
+      logoColor: "white"
+      link: "/docs/zeta-guard/v1/index.html"
