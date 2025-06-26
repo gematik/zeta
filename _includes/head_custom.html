@@ -1,20 +1,6 @@
 <script>
 {% raw %}
 document.addEventListener("DOMContentLoaded", function () {
-  const siteTitleContainer = document.querySelector(".site-header .site-title");
-  const siteLogo = document.querySelector(".site-logo");
-
-  if (siteTitleContainer && siteLogo) {
-    const siteTitleText = siteLogo.getAttribute("aria-label");
-    if (siteTitleText) {
-      const titleSpan = document.createElement("span");
-      titleSpan.className = "site-title-text";
-      titleSpan.textContent = siteTitleText;
-      siteTitleContainer.appendChild(titleSpan);
-      siteTitleContainer.classList.add("has-logo-and-text");
-    }
-  }
-
   const inPageTocList = document.querySelector("#markdown-toc");
   const sidebar = document.querySelector(".side-bar");
 
@@ -83,24 +69,6 @@ document.addEventListener("DOMContentLoaded", function () {
 </script>
 
 <style>
-/* --- Styling for Site Title next to Logo --- */
-/* >> CHANGED: Added flex-grow and min-width to allow the title container to expand */
-.site-header a.site-title.has-logo-and-text {
-  display: flex;
-  align-items: center;
-  flex-grow: 1; /* Allows this element to take up available space */
-  min-width: 0; /* Prevents flexbox overflow issues, allowing truncation to work if needed */
-}
-
-.site-title-text {
-  margin-left: 0.75rem;
-  font-size: 1.1rem;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 /* --- Base ToC Rules --- */
 body.js-toc-sidebar .main-content-wrap .toc {
   display: none;
@@ -121,7 +89,6 @@ body.js-toc-sidebar .main-content-wrap .toc {
   color: var(--jtc-text-color-muted, #6c757d);
   padding-left: 0.8rem;
   margin-bottom: 0.75rem;
-  /* >> CHANGED: Reduced top margin and padding to feel more connected to the active page */
   border-top: 1px solid var(--jtc-border-color, #dee2e6); 
   padding-top: 0.75rem;
   margin-top: 0.75rem;
@@ -185,7 +152,7 @@ body.js-toc-sidebar .main-content-wrap .toc {
     display: none;
 }
 
-/* --- Hierarchical Font Styling (Unchanged) --- */
+/* --- Hierarchical Font Styling --- */
 .toc-in-sidebar > li > a { font-size: 1em; }
 .toc-in-sidebar > li > ul > li > a { font-size: 0.95em; }
 .toc-in-sidebar > li > ul > li > ul > li > a { font-size: 0.9em; }

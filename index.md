@@ -7,21 +7,12 @@ has_children: true
 # ZETA Dokumentation
 {: .no_toc }
 
-<details open markdown="block">
-  <summary>
-    Table of contents
-  </summary>
-  {: .text-delta }
 - TOC
 {:toc}
-</details>
 
-![gematik]({{ site.baseurl }}/images/gematik-logo.svg)
+Diese Dokumentation beschreibt die ZETA Zero Trust Access Lösung der gematik GmbH. Sie richtet sich an Entwickler, Integratoren und Administratoren, die ZETA in ihre Systeme integrieren oder verwalten möchten.
 
-Dies ist ein Repository für Zero Trust Komponenten, einschließlich PEP, PDP, PIP, PAP und Clients. Es enthält Quellcode, umfassende Dokumentation, Testfälle und Kubernetes-Manifestdateien für eine nahtlose Bereitstellung. Ideal für Entwickler, die eine robuste Sicherheitsarchitektur in Cloud-nativen Umgebungen suchen.
-Die Gesamtheit dieser Lösung wird ZETA (Zero Trust Access) genannt.
-
-## Introduction
+## Einführung
 
 ZETA ist eine Zero Trust Access Lösung, die eine sichere und flexible Zugriffskontrolle für Cloud-native Anwendungen bietet. Sie basiert auf den Prinzipien des Zero Trust Modells und ermöglicht es, Identitäten, Ressourcen und Richtlinien dynamisch zu verwalten. ZETA besteht aus mehreren Komponenten, die zusammenarbeiten, um eine umfassende Sicherheitsarchitektur zu schaffen.
 
