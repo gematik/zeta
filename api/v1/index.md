@@ -1,13 +1,18 @@
 ---
-title: Version 1.0
+title: ZETA API v1
+parent: ZETA API Versionen
 nav_order: 1
-permalink: /api/v1/
-parent: "ZETA API Dokumentation" # Diese Zeile ist entscheidend!
 ---
 
-# ZETA API v1
 
-![gematik logo](/images/gematik-logo-small.svg)
+# ZETA API v1
+{: .no_toc }
+
+- TOC
+{:toc}
+
+ZETA v1.3.0-Alpha
+{: .label .label-yellow }
 
 ## Einführung
 
@@ -43,7 +48,7 @@ Abhängig vom Zustand des ZETA Clients müssen verschiedene Teilabläufe ausgef�
 
 Der Gesamtprozess beginnt damit, dass ein **Nutzer** auf einen Endpunkt eines Resource Servers zugreifen möchte. Dieser Zugriff wird über das Primärsystem vom **ZETA Client** im Auftrag des Nutzers ausgeführt; siehe folgende Abbildung.
 
-![tpm-attestation-and-token-exchange-overview](/images/tpm-attestation-and-token-exchange/tpm-attestation-and-token-exchange-overview.svg)
+![tpm-attestation-and-token-exchange-overview]({{ site.baseurl }}/images/tpm-attestation-and-token-exchange/tpm-attestation-and-token-exchange-overview.svg)
 <p style="font-size:0.9em; text-align:center;"><em>Abbildung 1: Ablauf TPM Attestation und Token Exchange Überblick</em></p>
 
 ---
@@ -52,7 +57,7 @@ Der Gesamtprozess beginnt damit, dass ein **Nutzer** auf einen Endpunkt eines Re
 
 In dieser Phase ermittelt der ZETA Client die notwendigen Endpunkte und Konfigurationen von den ZETA Guard Komponenten (PEP http Proxy und PDP Authorization Server). Der Client fragt bekannte Endpunkte (`/.well-known/oauth-protected-resource` und `/.well-known/oauth-authorization-server`) ab, um die Konfiguration des Resource Servers und des Authorization Servers zu erhalten. Das folgende Bild zeigt den Ablauf.
 
-![tpm-attestation-and-token-exchange-overview](/images/tpm-attestation-and-token-exchange/discovery-and-configuration.svg)
+![tpm-attestation-and-token-exchange-overview]({{ site.baseurl }}/images/tpm-attestation-and-token-exchange/discovery-and-configuration.svg)
 <p style="font-size:0.9em; text-align:center;"><em>Abbildung 2: Ablauf Discovery and Configuration</em></p>
 
 ### Client-Registrierung
@@ -66,7 +71,7 @@ Jeder ZETA Client muss sich am ZETA Guard registrieren, über den er auf geschü
 
 Die Client Registrierung ist in der folgenden Abbildung dargestellt.
 
-![Ablauf Client Registrierung](/images/tpm-attestation-and-token-exchange/dynamic-client-registration.svg)
+![Ablauf Client Registrierung]({{ site.baseurl }}/images/tpm-attestation-and-token-exchange/dynamic-client-registration.svg)
 <p style="font-size:0.9em; text-align:center;"><em>Abbildung 3: Ablauf Client Registrierung</em></p>
 
 Für die initiale Registrierung sendet der ZETA Client eine Anfrage an den Dynamic Client Registration (DCR) Endpoint. Diese Anfrage enthält alle notwendigen Metadaten, um den Client für die `private_key_jwt` Authentifizierungsmethode vorzubereiten:
@@ -97,7 +102,7 @@ Diese Trennung schafft eine Balance zwischen höchster Sicherheit beim initialen
 
 Die folgende Abbildung zeigt den Ablauf des Token-Austauschs mit Client Assertion JWT Authentifizierung und DPoP.
 
-![tpm-attestation-and-token-exchange-overview](/images/tpm-attestation-and-token-exchange/token-exchange-with-client-assertion-jwt-auth.svg)
+![tpm-attestation-and-token-exchange-overview]({{ site.baseurl }}/images/tpm-attestation-and-token-exchange/token-exchange-with-client-assertion-jwt-auth.svg)
 <p style="font-size:0.9em; text-align:center;"><em>Abbildung 4: Ablauf Authentifizierung und TPM-Attestation</em></p>
 
 ##### Pfad A: Token-Austausch mit Attestierung
