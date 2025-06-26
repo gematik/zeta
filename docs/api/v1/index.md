@@ -1,7 +1,7 @@
 ---
 title: ZETA API v1
 parent: ZETA
-nav_order: 2
+nav_order: 3
 ---
 
 - TOC
