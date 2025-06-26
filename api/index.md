@@ -6,16 +6,6 @@ parent: ZETA
 permalink: /api/
 ---
 
-## ZETA API Versionen
-{: .no_toc }
-
-<details open markdown="block">
-  <summary>
-    Table of contents
-  </summary>
-  {: .text-delta }
-- TOC
-{:toc}
-</details>
+# ZETA API Versionen
 
 [ZETA API v1](https://gematik.github.io/ZETA/api/v1/)
