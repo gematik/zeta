@@ -16,3 +16,6 @@ favicon_ico: "/images/favicon.ico" # Pfad zu Ihrem Favicon, ggf. anpassen
 
 # Suchfunktion aktivieren (empfohlen)
 search_enabled: true
+
+# For copy button on code
+enable_copy_code_button: true
