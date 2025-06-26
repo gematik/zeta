@@ -22,7 +22,7 @@ Die Release Notes bieten einen Überblick über die Änderungen und Neuerungen i
 * fix: Update ZETA API documentation link to point to the correct index… by @gem-cp in https://github.com/gematik/ZETA/pull/8
 * fix: Clean up Jekyll configuration by removing commented-out code and… by @gem-cp in https://github.com/gematik/ZETA/pull/9
 
-**Full Changelog**: https://github.com/gematik/ZETA/commits/v1.0.0
+[Full Changelog](https://github.com/gematik/ZETA/commits/v1.0.0)
 
 ## ZETA Guard
 
