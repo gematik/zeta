@@ -2,7 +2,7 @@
 
 release_notes:
       label: "Release Notes"
-      message: "v1.0.0-Alpha"      # The actual text to display on the badge
+      message: "v1.0.0"      # The actual text to display on the badge
       color: "blue"
       style: "plastic"
       logo: "github"
@@ -11,7 +11,7 @@ release_notes:
 
 zeta_api:
       label: "ZETA API"
-      message: "v1.0.0-Alpha"
+      message: "v1.0.0"
       color: "green"
       style: "plastic"
       logo: "github"
@@ -20,7 +20,7 @@ zeta_api:
 
 zeta_guard:
       label: "ZETA Guard"
-      message: "v1.0.0-Alpha"
+      message: "v1.0.0"
       color: "orange"
       style: "plastic"
       logo: "github"
