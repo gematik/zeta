@@ -29,9 +29,9 @@ zeta_guard:
 
 zeta_specification:
       label: "gemSpec_ZETA"
-      message: "v1.0.0"
+      message: "v1.1.0"
       color: "blue"
       style: "plastic"
-      logo: "https://raw.githubusercontent.com/gematik/ZETA/refs/heads/main/images/gematik-icon-white.svg"
+      logo: "https://raw.githubusercontent.com/gematik/ZETA/refs/heads/main/images/gematik-simple-logo.svg"
       logoColor: "white"
       link: "https://gemspec.gematik.de/docs/gemSpec/gemSpec_ZETA/latest/"
