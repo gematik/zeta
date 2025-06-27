@@ -11,6 +11,7 @@ nav_order: 3
 
 {::nomarkdown}
 {% include badge.html name="zeta_api" %}
+{% include badge.html name="zeta_specification" %}
 {:/nomarkdown}
 
 Die ZETA API ermöglicht es ZETA Clients, auf geschützte Ressourcen zuzugreifen und dabei Sicherheits- und Authentifizierungsmechanismen zu nutzen.
