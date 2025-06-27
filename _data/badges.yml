@@ -32,6 +32,6 @@ zeta_specification:
       message: "v1.0.0"
       color: "blue"
       style: "plastic"
-      logo: "github"
+      logo: "/images/gematik-icon-white.svg"
       logoColor: "white"
       link: "https://gemspec.gematik.de/docs/gemSpec/gemSpec_ZETA/latest/"
