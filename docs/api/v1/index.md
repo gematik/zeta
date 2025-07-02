@@ -1,13 +1,4 @@
----
-title: ZETA API v1
-parent: ZETA
-nav_order: 3
----
-
-- TOC
-{:toc}
-
-## ZETA API v1
+# ZETA API v1
 
 Die ZETA API ermöglicht es ZETA Clients, auf geschützte Ressourcen zuzugreifen und dabei Sicherheits- und Authentifizierungsmechanismen zu nutzen.
 Der ZETA Client nutzt Endpunkte des ZETA Guard für die Client-Registrierung, Authentifizierung und Autorisierung.

@@ -1,13 +1,4 @@
----
-title: ZETA
-nav_order: 1
-has_children: true
----
-
-- TOC
-{:toc}
-
-## ZETA Dokumentation
+# ZETA Dokumentation
 
 Diese Dokumentation beschreibt die Zero Trust Access (ZETA) Lösung der gematik GmbH. Sie richtet sich an Entwickler, Integratoren und Administratoren, die ZETA in ihre Systeme integrieren oder verwalten möchten.
 
