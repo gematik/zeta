@@ -8,7 +8,7 @@ remote_theme: just-the-docs/just-the-docs
 # URL-Konfiguration für GitHub Pages
 # WICHTIG: url ist NUR die Domain, baseurl ist das Repository
 url: "https://gematik.github.io"
-baseurl: "/ZETA"
+baseurl: "/zeta"
 
 # Logo im Header
 logo: "/images/gematik-logo.svg" # Pfad zu Ihrem Logo, ggf. anpassen

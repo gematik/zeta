@@ -1,17 +1,4 @@
----
-title: ZETA
-nav_order: 1
-has_children: true
----
-
-- TOC
-{:toc}
-
-## ZETA Dokumentation
-
-{::nomarkdown}
-{% include badge.html name="release_notes" %}
-{:/nomarkdown}
+# ZETA Dokumentation
 
 Diese Dokumentation beschreibt die Zero Trust Access (ZETA) Lösung der gematik GmbH. Sie richtet sich an Entwickler, Integratoren und Administratoren, die ZETA in ihre Systeme integrieren oder verwalten möchten.
 
@@ -21,7 +8,7 @@ ZETA ist eine Zero Trust Access Lösung, die eine sichere und flexible Zugriffsk
 
 Die ZETA API beschreibt aus ZETA Client Sicht, wie man auf ZETA Guard geschützte Resource Server zugreifen kann.
 
-[ZETA API Dokumentation](/docs/api/v1/index.md)
+[ZETA API Dokumentation](api/v1/index.md)
 
 ## ZETA Guard
 

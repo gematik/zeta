@@ -1,17 +1,4 @@
----
-title: ZETA API v1
-parent: ZETA
-nav_order: 3
----
-
-- TOC
-{:toc}
-
-## ZETA API v1
-
-{::nomarkdown}
-{% include badge.html name="zeta_api" %}
-{:/nomarkdown}
+# ZETA API v1
 
 Die ZETA API ermöglicht es ZETA Clients, auf geschützte Ressourcen zuzugreifen und dabei Sicherheits- und Authentifizierungsmechanismen zu nutzen.
 Der ZETA Client nutzt Endpunkte des ZETA Guard für die Client-Registrierung, Authentifizierung und Autorisierung.
@@ -45,8 +32,7 @@ Abhängig vom Zustand des ZETA Clients müssen verschiedene Teilabläufe ausgef�
 
 Der Gesamtprozess beginnt damit, dass ein **Nutzer** auf einen Endpunkt eines Resource Servers zugreifen möchte. Dieser Zugriff wird über das Primärsystem vom **ZETA Client** im Auftrag des Nutzers ausgeführt; siehe folgende Abbildung.
 
-![tpm-attestation-and-token-exchange-overview]({{ site.baseurl }}/images/tpm-attestation-and-token-exchange/tpm-attestation-and-token-exchange-overview.svg)
-<p style="font-size:0.9em; text-align:center;"><em>Abbildung 1: Ablauf TPM Attestation und Token Exchange Überblick</em></p>
+![Abbildung 1: Ablauf TPM Attestation und Token Exchange Überblick](../../../images/tpm-attestation-and-token-exchange/tpm-attestation-and-token-exchange-overview.svg)
 
 ---
 
@@ -54,8 +40,7 @@ Der Gesamtprozess beginnt damit, dass ein **Nutzer** auf einen Endpunkt eines Re
 
 In dieser Phase ermittelt der ZETA Client die notwendigen Endpunkte und Konfigurationen von den ZETA Guard Komponenten (PEP http Proxy und PDP Authorization Server). Der Client fragt bekannte Endpunkte (`/.well-known/oauth-protected-resource` und `/.well-known/oauth-authorization-server`) ab, um die Konfiguration des Resource Servers und des Authorization Servers zu erhalten. Das folgende Bild zeigt den Ablauf.
 
-![tpm-attestation-and-token-exchange-overview]({{ site.baseurl }}/images/tpm-attestation-and-token-exchange/discovery-and-configuration.svg)
-<p style="font-size:0.9em; text-align:center;"><em>Abbildung 2: Ablauf Discovery and Configuration</em></p>
+![Abbildung 2: Ablauf Discovery and Configuration](../../../images/tpm-attestation-and-token-exchange/discovery-and-configuration.svg)
 
 ### Client-Registrierung
 
@@ -68,8 +53,7 @@ Jeder ZETA Client muss sich am ZETA Guard registrieren, über den er auf geschü
 
 Die Client Registrierung ist in der folgenden Abbildung dargestellt.
 
-![Ablauf Client Registrierung]({{ site.baseurl }}/images/tpm-attestation-and-token-exchange/dynamic-client-registration.svg)
-<p style="font-size:0.9em; text-align:center;"><em>Abbildung 3: Ablauf Client Registrierung</em></p>
+![Abbildung 3: Ablauf Client Registrierung](../../../images/tpm-attestation-and-token-exchange/dynamic-client-registration.svg)
 
 Für die initiale Registrierung sendet der ZETA Client eine Anfrage an den Dynamic Client Registration (DCR) Endpoint. Diese Anfrage enthält alle notwendigen Metadaten, um den Client für die `private_key_jwt` Authentifizierungsmethode vorzubereiten:
 
@@ -99,8 +83,7 @@ Diese Trennung schafft eine Balance zwischen höchster Sicherheit beim initialen
 
 Die folgende Abbildung zeigt den Ablauf des Token-Austauschs mit Client Assertion JWT Authentifizierung und DPoP.
 
-![tpm-attestation-and-token-exchange-overview]({{ site.baseurl }}/images/tpm-attestation-and-token-exchange/token-exchange-with-client-assertion-jwt-auth.svg)
-<p style="font-size:0.9em; text-align:center;"><em>Abbildung 4: Ablauf Authentifizierung und TPM-Attestation</em></p>
+![Abbildung 4: Ablauf Authentifizierung und TPM-Attestation](../../../images/tpm-attestation-and-token-exchange/token-exchange-with-client-assertion-jwt-auth.svg)
 
 ##### Pfad A: Token-Austausch mit Attestierung
 
@@ -1234,9 +1217,11 @@ Informationen zu den erwarteten Leistungs- und Lastannahmen für die ZETA API we
 - ZETA Guard Refresh Token Exchange
 - ZETA Guard PEP
 
-## Rate Limits und Einschränkungen
+## Verhaltensregeln für den Client
 
-Der OAuth Protected Resource Well-Known Endpoint ist so konfiguriert, dass er eine Rate-Limiting-Strategie implementiert. Der ZETA Client muss die Rate Limits beachten, um eine Überlastung des Endpunkts zu vermeiden. Die genauen Limits können je nach Implementierung variieren, aber typischerweise gelten folgende Richtlinien:
+### Rate Limits und Einschränkungen
+
+Die ZETA Guard Endpunkte sind so konfiguriert, dass eine Rate-Limiting-Strategie angewendet wird. Der ZETA Client muss die Rate Limits beachten, um eine Überlastung der Endpunkte zu vermeiden. Die genauen Limits können je nach Implementierung variieren, aber typischerweise gelten folgende Richtlinien:
 
 - X-RateLimit-Limit
 - X-RateLimit-Remaining

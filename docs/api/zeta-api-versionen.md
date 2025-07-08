@@ -5,4 +5,4 @@ has_children: true
 parent: ZETA
 ---
 
-- [ZETA API v1](https://gematik.github.io/ZETA/docs/api/v1/)
+- [ZETA API v1](v1/)
