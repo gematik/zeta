@@ -1217,9 +1217,11 @@ Informationen zu den erwarteten Leistungs- und Lastannahmen für die ZETA API we
 - ZETA Guard Refresh Token Exchange
 - ZETA Guard PEP
 
-## Rate Limits und Einschränkungen
+## Verhaltensregeln für den Client
 
-Der OAuth Protected Resource Well-Known Endpoint ist so konfiguriert, dass er eine Rate-Limiting-Strategie implementiert. Der ZETA Client muss die Rate Limits beachten, um eine Überlastung des Endpunkts zu vermeiden. Die genauen Limits können je nach Implementierung variieren, aber typischerweise gelten folgende Richtlinien:
+### Rate Limits und Einschränkungen
+
+Die ZETA Guard Endpunkte sind so konfiguriert, dass eine Rate-Limiting-Strategie angewendet wird. Der ZETA Client muss die Rate Limits beachten, um eine Überlastung der Endpunkte zu vermeiden. Die genauen Limits können je nach Implementierung variieren, aber typischerweise gelten folgende Richtlinien:
 
 - X-RateLimit-Limit
 - X-RateLimit-Remaining
