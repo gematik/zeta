@@ -6,3 +6,5 @@ Dies ist ein Repository für Zero Trust Komponenten, einschließlich PEP, PDP, P
 Die Gesamtheit dieser Lösung wird ZETA (Zero Trust Access) genannt.
 
 [ZETA Dokumentation](https://gematik.github.io/zeta/)
+
+[Implementierungsleitfaden für Primärsysteme](https://gematik.github.io/zeta/api/v1)
