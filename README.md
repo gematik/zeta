@@ -1,4 +1,4 @@
-# ZETA Dokumentation
+# ZETA
 
 ![gematik](/images/gematik-logo-small.svg)
 
