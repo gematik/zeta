@@ -1,62 +1,62 @@
 # Schema for client instance information used by the zero trust components
 $schema: "http://json-schema.org/draft-07/schema#"
 client_instance:
-type: object
-properties:
-  name:
-    type: string
-    description: The name of the client instance, chosen by the user of the client
-  client_id:
-    type: string
-    description: The client identifier
-  product_id:
-    type: string
-    description: The product identifier
-  product_name:
-    type: string
-    description: The product name
-  product_version:
-    type: string
-    description: The product version
-  manufacturer_id:
-    type: string
-    description: The manufacturer identifier
-  manufacturer_name:
-    type: string
-    description: The manufacturer name
-  owner:
-    description: The owner of the client instance
-    "$ref": "./subject-gesundheitsid.yaml"
-  owner_mail:
-    type: string
-    description: The mail address of the owner
-  registration_timestamp:
-    type: integer
-    description: The timestamp of the registration in seconds since epoch
-  platform:
-    type: string
-    description: The platform of the client instance
-  platform_product_id:
-    oneOf:
-      - $ref: "./product-id-apple.yaml"
-      - $ref: "./product-id-android.yaml"
-  posture:
-    description: The posture of the client instance
-    $ref: "./posture.yaml"
-  attestation:
-    description: The attestation information of the client instance
-    $ref: "./attestation-info.yaml"
-required:
-  - name
-  - client_id
-  - product_id
-  - product_name
-  - product_version
-  - manufacturer_id
-  - manufacturer_name
-  - owner
-  - owner_mail
-  - registration_timestamp
-  - platform
-  - posture
-  - attestation
+  type: object
+  properties:
+    name:
+      type: string
+      description: The name of the client instance, chosen by the user of the client
+    client_id:
+      type: string
+      description: The client identifier
+    product_id:
+      type: string
+      description: The product identifier
+    product_name:
+      type: string
+      description: The product name
+    product_version:
+      type: string
+      description: The product version
+    manufacturer_id:
+      type: string
+      description: The manufacturer identifier
+    manufacturer_name:
+      type: string
+      description: The manufacturer name
+    owner:
+      description: The owner of the client instance
+      "$ref": "./subject-gesundheitsid.yaml"
+    owner_mail:
+      type: string
+      description: The mail address of the owner
+    registration_timestamp:
+      type: integer
+      description: The timestamp of the registration in seconds since epoch
+    platform:
+      type: string
+      description: The platform of the client instance
+    platform_product_id:
+      oneOf:
+        - $ref: "./product-id-apple.yaml"
+        - $ref: "./product-id-android.yaml"
+    posture:
+      description: The posture of the client instance
+      $ref: "./posture.yaml"
+    attestation:
+      description: The attestation information of the client instance
+      $ref: "./attestation-info.yaml"
+  required:
+    - name
+    - client_id
+    - product_id
+    - product_name
+    - product_version
+    - manufacturer_id
+    - manufacturer_name
+    - owner
+    - owner_mail
+    - registration_timestamp
+    - platform
+    - posture
+    - attestation

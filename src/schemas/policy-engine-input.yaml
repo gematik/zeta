@@ -1,0 +1,18 @@
+# Policy Engine Input Schema for ZETA Guard
+# This schema combines client-instance.yaml and user-info.yaml.
+$schema: "http://json-schema.org/draft-07/schema#"
+type: object
+properties:
+  policy-engine-input:
+    type: object
+    description: "Combined schema of client-instance and user-info for OPA policy decisions."
+    properties:
+      client_instance:
+        description: The client-instance data
+        "$ref": "./client-instance.yaml"
+      user_info:
+        description: The user information data
+        "$ref": "./user-info.yaml"
+      required:
+        - client_instance
+        - user_info
