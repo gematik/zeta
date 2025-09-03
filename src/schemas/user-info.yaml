@@ -7,17 +7,16 @@ $schema: "http://json-schema.org/draft-07/schema#"
 user_info:
   type: object
   properties:
-    subject:
-      type: string
-      description: "User id. Assigned by the Authorization Server."
     identifier:
       type: string
       description: "Telematik-ID, KVNR or other unique identifier"
     professionOID:
       type: string
       description: "Profession identifier (OID)"
+  mail:
+    type: string
+    description: The mail address of the owner
   required:
-    - subject
     - identifier
     - professionOID
   additionalProperties: true

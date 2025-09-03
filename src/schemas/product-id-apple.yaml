@@ -1,9 +1,13 @@
 # Platform specific product id for Apple Apps (iOS, macOS, iPadOS, watchOS, tvOS, etc.)
 type: object
 properties:
+  platform_type:
+    type: string
+    const: apple
   app_bundle_ids:
     type: array
     items:
       type: string
 required:
   - app_bundle_ids
+  - platform_type
