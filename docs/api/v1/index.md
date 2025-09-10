@@ -899,7 +899,7 @@ _Hinweis:_ TODO Umgang mit Messung des Clients weicht von Baseline ab; empfohlen
 #### Dienstdefinition
 
 - **Service Name:** `zeta.attestation.service.v1.ZetaAttestationService`
-- **Proto Buffer Spezifikation:** [zeta-attestation-service.proto](/src/gRPC/zeta-attestation-service.proto)
+- **Proto Buffer Spezifikation:** [zeta-attestation-service.proto](../../../src/gRPC/zeta-attestation-service.proto)
 
 #### RPC Methoden
 
