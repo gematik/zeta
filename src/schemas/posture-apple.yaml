@@ -1,6 +1,12 @@
 # see https://developer.apple.com/documentation/uikit/uidevice
 type: object
 properties:
+  product_id:
+    $ref: "./product-id-apple.yaml"
+    description: The product identifier for Apple apps
+  product_version:
+    type: string
+    description: The product version
   system_version:
     type: string
     description: Operating system version, e.g. 10.15.7
@@ -14,3 +20,6 @@ required:
   - system_version
   - system_name
   - device_model
+  - product_id
+  - product_version
+

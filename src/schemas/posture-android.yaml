@@ -7,6 +7,12 @@
 # etc
 type: object
 properties:
+  product_id:
+    $ref: "./product-id-android.yaml"
+    description: The product identifier for Android apps
+  product_version:
+    type: string
+    description: The product version
   build:
     description: Android build information, see https://developer.android.com/reference/android/os/Build
     type: object
@@ -77,4 +83,6 @@ properties:
           - 2
           - 3
 required:
+  - product_id
+  - product_version
   - build

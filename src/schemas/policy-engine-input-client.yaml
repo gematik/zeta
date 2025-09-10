@@ -15,7 +15,8 @@ properties:
     oneOf:
       - $ref: "./product-id-apple.yaml"
       - $ref: "./product-id-android.yaml"
-      # TODO: Linux und Windows?
+      - $ref: "./product-id-windows.yaml"
+      - $ref: "./product-id-linux.yaml"
   posture:
     # TODO: posture muss zur platform passen.
     description: The posture of the client instance

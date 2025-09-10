@@ -1,6 +1,14 @@
 # Posture schema for generic software clients
 type: object
 properties:
+  product_id:
+    oneOf:
+      - $ref: "./product-id-windows.yaml"
+      - $ref: "./product-id-linux.yaml"
+    description: The product identifier
+  product_version:
+    type: string
+    description: The product version
   os:
     type: string
     description: Operating system name
@@ -17,6 +25,8 @@ properties:
     type: string
     description: The attestation challenge of the client instance, used to verify the public client instance key and the nonce from AS.
 required:
+  - product_id
+  - product_version
   - os
   - os_version
   - arch
