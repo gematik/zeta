@@ -852,7 +852,7 @@ Antworten werden als JSON-Objekte mit dem `Content-Type: application/json` im Er
 Der Resource Endpoint ist der Endpunkt, der von der geschützten Ressource (Protected Resource) bereitgestellt wird, um auf geschützte Daten zuzugreifen. Er ist durch den ZETA Guard PEP vor unberechtigtem Zugriff geschützt. Für den Zugriff auf die geschützte Ressource wird ein gültiges Access Token und ein gültiges [DPoP Proof](https://www.rfc-editor.org/rfc/rfc9449.html) benötigt. Zusätzlich kann eine Anwendung ein gültiges [PoPP Proof](https://gemspec.gematik.de/docs/gemSpec/gemSpec_ZETA/latest/#A_25669) erfordern.
 
 Der Resource Endpoint unterstützt neben TLS eine zusätzliche Verschlüsselungsschicht [ZETA/ASL](https://gemspec.gematik.de/docs/gemSpec/gemSpec_Krypt/latest/#8) (ZETA/Additional Security Layer).
-Im [Well-Known JSON Dokument der geschützten Ressource](#1511-oauth-protected-resource-well-known-endpoint) wird angegeben, ob der Endpunkt ZETA/ASL unterstützt. Der ZETA/ASL Kanal wird nach dem TLS Verbindungsaufbau aufgebaut und verwendet, um die Kommunikation zwischen Client und Resource Endpoint zu sichern.
+Im [Well-Known JSON Dokument der geschützten Ressource](#oauth-protected-resource-well-known-endpoint) wird angegeben, ob der Endpunkt ZETA/ASL unterstützt. Der ZETA/ASL Kanal wird nach dem TLS Verbindungsaufbau aufgebaut und verwendet, um die Kommunikation zwischen Client und Resource Endpoint zu sichern.
 
 ##### Anfragen
 
@@ -1032,7 +1032,7 @@ Diese Daten definieren die langlebige Identität der Client-Anwendung selbst. Si
 - `Client Instance Key` (Asymmetrisches Schlüsselpaar)
   - **Beschreibung:** Dies ist das Hauptschlüsselpaar des Clients. Der private Schlüssel wird zur Signierung der Client-Registrierung bei neuen ZETA Guard Instanzen und zur Client Assertion Authentifizierung verwendet. Der öffentliche Schlüssel dient als eindeutiger, kryptografischer Identifikator des Clients.
   - **Speicheranforderung:** Dieses Schlüsselpaar **muss** einmalig bei der ersten Initialisierung des Clients generiert und anschließend sicher und persistent gespeichert werden. Ein Verlust des privaten Schlüssels bedeutet, dass der Client seine Identität verliert und sich bei allen bereits bekannten ZETA Guard Instanzen neu registrieren muss.
-  - **Sicherheit:** Der private Schlüssel ist das wertvollste Geheimnis des Clients und **darf niemals** im Klartext gespeichert werden. Siehe Kapitel [1.6.4 Sicherheitsempfehlungen für die Schlüsselspeicherung](#164-sicherheitsempfehlungen-für-die-schlüsselspeicherung).
+  - **Sicherheit:** Der private Schlüssel ist das wertvollste Geheimnis des Clients und **darf niemals** im Klartext gespeichert werden. Siehe Kapitel [Sicherheitsempfehlungen für die Schlüsselspeicherung](#sicherheitsempfehlungen-für-die-schlüsselspeicherung).
 
 #### Daten pro ZETA Guard Instanz
 

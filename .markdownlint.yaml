@@ -1,0 +1,9 @@
+# Linters configuration file
+# For a full list of available rules see https://github.com/DavidAnson/markdownlint/blob/main/doc/Rules.md
+
+# Line length
+MD013: false
+# MD024 - Multiple headings with the same content
+MD024: false
+# MD033 - Inline HTML
+MD033: false
