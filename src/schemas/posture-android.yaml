@@ -31,8 +31,10 @@ properties:
         description: Build.MANUFACTURER
       product:
         type: string
+        description: Build.PRODUCT
       model:
         type: string
+        description: Build.MODEL
       board:
         type: string
   ro:
@@ -82,7 +84,13 @@ properties:
           - 1
           - 2
           - 3
+  key_attestation_certificate_chain:
+    type: array
+    description: The certificate chain from the Android Key Attestation
+    items:
+      type: string
 required:
   - product_id
   - product_version
   - build
+  - key_attestation_certificate_chain

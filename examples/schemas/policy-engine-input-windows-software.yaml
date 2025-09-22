@@ -1,0 +1,39 @@
+{
+  "version": "1.0",
+  "client_instance": {
+    "name": "Home-Office-PC",
+    "client_id": "cid-win-sw-pqrst",
+    "product_id": "gematik-light-client-win",
+    "product_name": "Gematik Light Client",
+    "product_version": "1.1.0",
+    "manufacturer_id": "any-vendor",
+    "manufacturer_name": "Any Vendor",
+    "owner_mail": "home.office@example.com",
+    "registration_timestamp": 1678890000,
+    "platform": "windows",
+    "posture": {
+      "product_id": {
+        "platform_type": "windows",
+        "store_id": "9PBLGGH4R0C9"
+      },
+      "product_version": "1.1.0",
+      "os": "Windows 11 Home",
+      "os_version": "10.0.22000",
+      "arch": "amd64",
+      "public_key": "base64-encoded-self-signed-public-key...",
+      "attestation_challenge": "base64-encoded-signed-nonce-from-as..."
+    }
+  },
+  "user_info": {
+    "identifier": "A112233445",
+    "professionOID": "1.2.276.0.76.4.50"
+  },
+  "authorization_request": {
+    "scopes": [
+      "openid"
+    ],
+    "aud": [
+      "https://some-service.de/api/v1"
+    ]
+  }
+}

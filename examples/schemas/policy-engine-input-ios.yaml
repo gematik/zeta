@@ -1,0 +1,42 @@
+{
+  "version": "1.0",
+  "client_instance": {
+    "name": "Erika's iPhone",
+    "client_id": "cid-ios-67890",
+    "product_id": "gematik-example-app-ios",
+    "product_name": "Gematik Example App",
+    "product_version": "2.0.1",
+    "manufacturer_id": "apple-inc",
+    "manufacturer_name": "Apple Inc.",
+    "owner_mail": "erika.mustermann@example.com",
+    "registration_timestamp": 1678887000,
+    "platform": "ios",
+    "posture": {
+      "product_id": {
+        "platform_type": "apple",
+        "app_bundle_ids": [
+          "de.gematik.exampleapp"
+        ]
+      },
+      "product_version": "2.0.1",
+      "system_version": "16.3.1",
+      "system_name": "iOS",
+      "device_model": "iPhone15,2",
+      "attestation_object": "base64-encoded-attestation-object...",
+      "key_id": "base64-encoded-key-id..."
+    }
+  },
+  "user_info": {
+    "identifier": "X987654321",
+    "professionOID": "1.2.276.0.76.4.30"
+  },
+  "authorization_request": {
+    "scopes": [
+      "openid",
+      "urn:telematik:prescriptions"
+    ],
+    "aud": [
+      "https://another-resource.de/api/v2"
+    ]
+  }
+}

@@ -8,12 +8,6 @@ client_statement:
     sub:
       type: string
       description: The name of the client 
-    product_id:
-      type: string
-      description: The product identifier as provided by gematik
-    product_version:
-      type: string
-      description: The product version
     posture:
       description: The posture of the client instance
       $ref: "./posture.yaml"
@@ -22,7 +16,5 @@ client_statement:
       $ref: "./attestation-info.yaml"
   required:
     - sub
-    - product_id
-    - product_version
     - posture
     - attestation_info

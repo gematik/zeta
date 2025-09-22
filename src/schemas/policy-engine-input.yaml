@@ -28,7 +28,7 @@ properties:
         items:
           type: string
     required:
-      - scope
+      - scopes
       - aud
   required:
     - client_instance

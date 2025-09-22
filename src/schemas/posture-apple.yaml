@@ -16,10 +16,18 @@ properties:
   device_model:
     type: string
     description: The model of the device, e.g. "iPhone6,2"
+  attestation_object:
+    type: string
+    description: The attestation object from the Apple App Attest service (base64 encoded)
+  key_id:
+    type: string
+    description: The key identifier associated with the attestation object (base64 encoded)
 required:
   - system_version
   - system_name
   - device_model
   - product_id
   - product_version
+  - attestation_object
+  - key_id
 
