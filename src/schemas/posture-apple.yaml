@@ -1,9 +1,12 @@
 # see https://developer.apple.com/documentation/uikit/uidevice
 type: object
 properties:
-  product_id:
+  platform_product_id:
     $ref: "./product-id-apple.yaml"
     description: The product identifier for Apple apps
+  product_id:
+    type: string
+    description: The gematik product identifier
   product_version:
     type: string
     description: The product version

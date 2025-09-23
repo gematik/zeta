@@ -3,21 +3,25 @@
   "client_instance": {
     "name": "Erika's iPhone",
     "client_id": "cid-ios-67890",
-    "product_id": "gematik-example-app-ios",
-    "product_name": "Gematik Example App",
-    "product_version": "2.0.1",
     "manufacturer_id": "apple-inc",
     "manufacturer_name": "Apple Inc.",
     "owner_mail": "erika.mustermann@example.com",
     "registration_timestamp": 1678887000,
     "platform": "ios",
+    "platform_product_id": {
+      "platform_type": "apple",
+      "app_bundle_ids": [
+        "de.gematik.exampleapp"
+      ]
+    },
     "posture": {
-      "product_id": {
+      "platform_product_id": {
         "platform_type": "apple",
         "app_bundle_ids": [
           "de.gematik.exampleapp"
         ]
       },
+      "product_id": "gematik-example-app-ios-v2",
       "product_version": "2.0.1",
       "system_version": "16.3.1",
       "system_name": "iOS",

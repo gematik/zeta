@@ -7,9 +7,12 @@
 # etc
 type: object
 properties:
-  product_id:
+  platform_product_id:
     $ref: "./product-id-android.yaml"
     description: The product identifier for Android apps
+  product_id:
+    type: string
+    description: The gematik product identifier
   product_version:
     type: string
     description: The product version

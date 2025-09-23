@@ -3,16 +3,21 @@
   "client_instance": {
     "name": "Max's Smartphone",
     "client_id": "cid-android-12345",
-    "product_id": "gematik-example-app-android",
-    "product_name": "Gematik Example App",
-    "product_version": "1.2.3",
     "manufacturer_id": "google-llc",
     "manufacturer_name": "Google LLC",
     "owner_mail": "max.mustermann@example.com",
     "registration_timestamp": 1678886400,
     "platform": "android",
+    "platform_product_id": {
+      "platform_type": "android",
+      "namespace": "android_app",
+      "package_name": "de.gematik.exampleapp",
+      "sha256_cert_fingerprints": [
+        "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99"
+      ]
+    },
     "posture": {
-      "product_id": {
+      "platform_product_id": {
         "platform_type": "android",
         "namespace": "android_app",
         "package_name": "de.gematik.exampleapp",
@@ -20,6 +25,7 @@
           "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99"
         ]
       },
+      "product_id": "gematik-example-app-android-v1",
       "product_version": "1.2.3",
       "build": {
         "version": {

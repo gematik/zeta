@@ -3,20 +3,23 @@
   "client_instance": {
     "name": "Klinik-Server-02",
     "client_id": "cid-linux-tpm-fghij",
-    "product_id": "gematik-connector-linux",
-    "product_name": "Gematik Konnektor",
-    "product_version": "5.1.0",
     "manufacturer_id": "dell-inc",
     "manufacturer_name": "Dell Inc.",
     "owner_mail": "it-klinik@example.com",
     "registration_timestamp": 1678889000,
     "platform": "linux",
+    "platform_product_id": {
+      "platform_type": "linux",
+      "packaging_type": "deb",
+      "application_id": "de.gematik.konnektor"
+    },
     "posture": {
-      "product_id": {
+      "platform_product_id": {
         "platform_type": "linux",
         "packaging_type": "deb",
         "application_id": "de.gematik.konnektor"
       },
+      "product_id": "gematik-konnektor-linux-v5",
       "product_version": "5.1.0",
       "os": "Ubuntu 22.04.1 LTS",
       "os_version": "5.15.0-67-generic",

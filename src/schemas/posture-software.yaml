@@ -1,11 +1,14 @@
 # Posture schema for generic software clients
 type: object
 properties:
-  product_id:
+  platform_product_id:
     oneOf:
       - $ref: "./product-id-windows.yaml"
       - $ref: "./product-id-linux.yaml"
     description: The product identifier
+  product_id:
+    type: string
+    description: The gematik product identifier
   product_version:
     type: string
     description: The product version
