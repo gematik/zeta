@@ -42,6 +42,11 @@
     ],
     "aud": [
       "https://epa-resource.de/api/v1"
+    ],
+    "ip_address": "192.0.2.88",
+    "grant_type": "authorization_code",
+    "amr": [
+      "smartcard"
     ]
   }
 }

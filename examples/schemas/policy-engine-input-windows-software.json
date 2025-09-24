@@ -36,6 +36,11 @@
     ],
     "aud": [
       "https://some-service.de/api/v1"
+    ],
+    "ip_address": "192.0.2.150",
+    "grant_type": "authorization_code",
+    "amr": [
+      "pwd"
     ]
   }
 }

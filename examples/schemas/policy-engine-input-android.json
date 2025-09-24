@@ -54,6 +54,12 @@
     ],
     "aud": [
       "https://example-resource.de/api/v1"
+    ],
+    "ip_address": "203.0.113.42",
+    "grant_type": "authorization_code",
+    "amr": [
+      "pwd",
+      "mfa"
     ]
   }
 }

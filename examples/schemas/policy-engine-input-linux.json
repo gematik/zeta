@@ -44,6 +44,9 @@
     ],
     "aud": [
       "https://fachdienst-resource.de/api/v3"
-    ]
+    ],
+    "ip_address": "198.51.100.5",
+    "grant_type": "client_credentials",
+    "amr": null
   }
 }

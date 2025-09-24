@@ -27,9 +27,28 @@ properties:
         description: The audience for the authorization
         items:
           type: string
+      ip_address:
+        type: string
+        description: The source IP address of the request.
+      grant_type:
+        type: string
+        description: The OAuth 2.0 grant type being used.
+        enum:
+          - authorization_code
+          - client_credentials
+          - refresh_token
+          - urn:ietf:params:oauth:grant-type:jwt-bearer
+      amr:
+        type: array
+        description: Methods used for user authentication (AMR).
+        items:
+          type: string
     required:
       - scopes
       - aud
+      - ip_address
+      - grant_type
+      - amr
   required:
     - client_instance
     - user_info
