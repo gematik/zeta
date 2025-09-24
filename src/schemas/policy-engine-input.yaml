@@ -33,6 +33,9 @@ properties:
       ip_address:
         type: string
         description: The source IP address of the request.
+      previous_ip_address:
+        type: string
+        description: The previously used source IP address; for impossible travel detection
       grant_type:
         type: string
         description: The OAuth 2.0 grant type being used.

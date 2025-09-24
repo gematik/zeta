@@ -53,7 +53,8 @@
       "https://fachdienst-resource.de/api/v3"
     ],
     "ip_address": "198.51.100.5",
-    "grant_type": "client_credentials",
+    "previous_ip_address": "203.0.113.100",
+    "grant_type": "authorization_code",
     "amr": null
   }
 }

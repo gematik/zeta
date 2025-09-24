@@ -63,6 +63,7 @@
       "https://example-resource.de/api/v1"
     ],
     "ip_address": "203.0.113.42",
+    "previous_ip_address": "198.51.100.5",
     "grant_type": "authorization_code",
     "amr": [
       "pwd",

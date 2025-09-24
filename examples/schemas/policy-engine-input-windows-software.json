@@ -45,6 +45,7 @@
       "https://some-service.de/api/v1"
     ],
     "ip_address": "192.0.2.150",
+    "previous_ip_address": "203.0.113.100",
     "grant_type": "authorization_code",
     "amr": [
       "pwd"
