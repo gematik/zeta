@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "client_instance": {
+  "client_registration_data": {
     "name": "Home-Office-PC",
     "client_id": "cid-win-sw-pqrst",
     "manufacturer_id": "any-vendor",
@@ -11,7 +11,10 @@
     "platform_product_id": {
       "platform_type": "windows",
       "store_id": "9PBLGGH4R0C9"
-    },
+    }
+  },
+  "client_assertion": {
+    "sub": "cid-win-sw-pqrst",
     "posture": {
       "platform_product_id": {
         "platform_type": "windows",
@@ -24,6 +27,10 @@
       "arch": "amd64",
       "public_key": "base64-encoded-self-signed-public-key...",
       "attestation_challenge": "base64-encoded-signed-nonce-from-as..."
+    },
+    "attestation_info": {
+      "method": "software",
+      "timestamp": 1678890010
     }
   },
   "user_info": {

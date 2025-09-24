@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "client_instance": {
+  "client_registration_data": {
     "name": "Max's Smartphone",
     "client_id": "cid-android-12345",
     "manufacturer_id": "google-llc",
@@ -15,7 +15,10 @@
       "sha256_cert_fingerprints": [
         "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99"
       ]
-    },
+    }
+  },
+  "client_assertion": {
+    "sub": "cid-android-12345",
     "posture": {
       "platform_product_id": {
         "platform_type": "android",
@@ -41,6 +44,10 @@
         "-----BEGIN CERTIFICATE-----\nMIIC... (App Key Cert) ...\n-----END CERTIFICATE-----",
         "-----BEGIN CERTIFICATE-----\nMIIC... (Hardware Key Cert) ...\n-----END CERTIFICATE-----"
       ]
+    },
+    "attestation_info": {
+      "method": "android-key-id-attestation",
+      "timestamp": 1678886410
     }
   },
   "user_info": {

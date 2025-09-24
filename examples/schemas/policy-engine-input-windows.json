@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "client_instance": {
+  "client_registration_data": {
     "name": "Praxis-PC-01",
     "client_id": "cid-win-tpm-abcde",
     "manufacturer_id": "lenovo-corp",
@@ -11,7 +11,10 @@
     "platform_product_id": {
       "platform_type": "windows",
       "package_family_name": "GematikDesktopSuite_123456789"
-    },
+    }
+  },
+  "client_assertion": {
+    "sub": "cid-win-tpm-abcde",
     "posture": {
       "platform_product_id": {
         "platform_type": "windows",
@@ -29,6 +32,10 @@
         "base64-encoded-ek-cert-1...",
         "base64-encoded-ek-cert-2..."
       ]
+    },
+    "attestation_info": {
+      "method": "tpm2",
+      "timestamp": 1678888010
     }
   },
   "user_info": {

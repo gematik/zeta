@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "client_instance": {
+  "client_registration_data": {
     "name": "Klinik-Server-02",
     "client_id": "cid-linux-tpm-fghij",
     "manufacturer_id": "dell-inc",
@@ -12,7 +12,10 @@
       "platform_type": "linux",
       "packaging_type": "deb",
       "application_id": "de.gematik.konnektor"
-    },
+    }
+  },
+  "client_assertion": {
+    "sub": "cid-linux-tpm-fghij",
     "posture": {
       "platform_product_id": {
         "platform_type": "linux",
@@ -31,6 +34,10 @@
         "base64-encoded-ek-cert-1...",
         "base64-encoded-ek-cert-2..."
       ]
+    },
+    "attestation_info": {
+      "method": "tpm2",
+      "timestamp": 1678889010
     }
   },
   "user_info": {

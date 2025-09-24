@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "client_instance": {
+  "client_registration_data": {
     "name": "Erika's iPhone",
     "client_id": "cid-ios-67890",
     "manufacturer_id": "apple-inc",
@@ -13,7 +13,10 @@
       "app_bundle_ids": [
         "de.gematik.exampleapp"
       ]
-    },
+    }
+  },
+  "client_assertion": {
+    "sub": "cid-ios-67890",
     "posture": {
       "platform_product_id": {
         "platform_type": "apple",
@@ -28,6 +31,10 @@
       "device_model": "iPhone15,2",
       "attestation_object": "base64-encoded-attestation-object...",
       "key_id": "base64-encoded-key-id..."
+    },
+    "attestation_info": {
+      "method": "apple-attestation",
+      "timestamp": 1678887010
     }
   },
   "user_info": {
