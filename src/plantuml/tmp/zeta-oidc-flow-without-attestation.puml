@@ -1,83 +1,123 @@
 @startuml "zeta-oidc-flow-without-attestation"
-!theme plain
+
+autonumber "(00)"
+skinparam defaultFontSize 10
+skinparam defaultFontName Helvetica
+skinparam DefaultMonospacedFontName Courier
+skinparam lengthAdjust none
+skinparam sequenceReferenceBackgroundColor White
+skinparam SequenceReferenceFontSize 12
+
+!pragma teoz true
 
 title Gesamtablauf: PoPP-Token Abruf mit ZETA SDK & PAR (RFC 9126)
 
-actor Nutzer
-participant "Anbieter-App" as App
-participant "PoPP-Modul" as PoPP
-participant "ZETA-SDK" as SDK
-participant "Authorization Server\n(PoPP) Zeta Guard" as AS
-participant "Sektoraler IDP" as IDP
-participant "Authenticator-App" as AuthApp
-participant "HTTP-Proxy\n(PoPP) Zeta Guard" as Proxy
-participant "Client Registry" as CR
-participant "PoPP Resource Server" as RS
+Actor User
+box "User Device A" #GhostWhite
+  box "App" #Lavender
+    participant "Anbieter-App" as App
+    participant "PoPP-Modul" as PoPP
+    participant "Browser / WebView" as BrowserA
+    box "ZETA Client" #SandyBrown
+      participant "ZETA-SDK" as SDK
+    end box
+  end box
+end box
+
+box "Anbieter" #TECHNOLOGY
+  box "ZETA Guard" #SandyBrown
+    participant "Authorization Server\n(PoPP) Zeta Guard" as AS
+    participant "HTTP-Proxy\n(PoPP) Zeta Guard" as Proxy
+  end box
+    box TI 2.0 Dienst #DarkSeaGreen
+        participant "PoPP Resource Server" as RS
+    end box
+end box
+
+box "IDP" #GhostWhite
+    participant "Sektoraler IDP" as IDP
+end box
+
+box "User Device B" #GhostWhite
+  box "App" #Lavender
+    participant "Authenticator" as AuthApp
+  end box
+end box
 
 ' --- Phase 1: Initialisierung ---
 group Phase 1: Initialisierung und Vorbereitung
-    Nutzer -> App: Startet Aktion (z.B. Check-in)
-    App -> PoPP: Initialisierung PoPP-Token mit LEI-Details
+    User -> App: Startet Aktion
+    App -> PoPP: Initialisierung\nPoPP-Token\nmit LEI-Details
 
     PoPP -> SDK: init(FQDN des PoPP-Service)
     SDK --> PoPP: Initialisierung abgeschlossen
 
-    PoPP -> PoPP: Generiert HTTP-Request (Telematik-ID, etc.)
-    PoPP -> PoPP: Generiert appDetails (Auth-Methode, Ziel-URL)
+    PoPP -> PoPP: Generiert HTTP-Request\n(Telematik-ID, etc.)
+    PoPP -> PoPP: Generiert appDetails\n(IDP iss uri, Auth-Methode)
 end
 
 ' --- Phase 2: Authentifizierung & Token-Beschaffung ---
 group Phase 2: OIDC Authentifizierung und Token Beschaffung
-    PoPP -> SDK: execute(HTTP-Request, callBackMethod, appDetails)
-
-    ' --- Äußerer OIDC Flow ---
-    SDK -> AS: Startet Authorization Flow am /authorize Endpoint
-
-    ' --- Innerer (föderierter) OIDC Flow mit PAR ---
-    group Innerer Flow: ZETA AS agiert als Client des Sektoralen IDP
-        ' --- PAR Flow (RFC 9126) ---
-        AS -> IDP: **POST /par Endpoint (Pushed Authorization Request)**
-        note right of AS: Sendet alle Auth-Parameter\nsicher via Back-Channel
-        IDP --> AS: Antwortet mit **request_uri**
-
-        AS -> IDP: **GET /authorize Endpoint (nur mit request_uri)**
-        note right of AS: Leitet den Nutzer weiter.\nDie sensiblen Parameter sind nicht im Browser sichtbar.
-        ' --- Ende PAR Flow ---
-        
-        IDP -> AuthApp: Fordert Nutzer-Authentifizierung an
-        Nutzer -> AuthApp: Authentifiziert sich
-        AuthApp --> IDP: Authentifizierung erfolgreich
-        IDP --> AS: Redirect zurück zum AS mit **Authorization Code (für AS)**
-        AS -> IDP: Ruft /token Endpoint des IDP auf (Back-Channel)\nmit dem erhaltenen Code
-        IDP --> AS: Antwortet mit **ID-Token** (enthält KVNR, IK-Nummer)
-        AS -> AS: Validiert ID-Token und extrahiert Claims
-    end
-
-    ' --- Abschluss des äußeren OIDC Flows ---
-    AS --> SDK: Redirect zurück zum SDK mit **Authorization Code (für SDK)**
+    PoPP -> SDK: execute(HTTP-Request,\ncallBackMethod, appDetails)
     
-    SDK -> AS: Ruft /token Endpoint des ZETA AS auf (Back-Channel)\nmit dem neuen Code
-    AS -> AS: Generiert **Access Token** für das ZETA-SDK
-    AS --> SDK: Antwortet mit dem **Access Token**
-    SDK -> SDK: Speichert Access Token zur Session
+    ' -- Äußerer Flow beginnt --
+    SDK -> BrowserA: Öffne URL für ZETA AS
+    BrowserA -> AS: **[FRONT-CHANNEL]**\nGET /authorize?params...
+    
+    ' -- Innerer Flow wird vorbereitet --
+    AS -> IDP: **[BACK-CHANNEL]** POST /par (Pushed Authorization Request)
+    IDP --> AS: **[BACK-CHANNEL]** Antwort mit request_uri
+
+    ' -- Stafettenübergabe vom AS zum IDP via Browser --
+    AS --> BrowserA: **[FRONT-CHANNEL]** Antwort:\nHTTP 302 Redirect zum IDP
+    note right of AS: "Browser, redirect zum IDP!"
+
+    BrowserA -> IDP: **[FRONT-CHANNEL]** Folgt dem\nRedirect und ruft den IDP auf
+    
+    ' -- User-Interaktion über den IDP --
+    IDP --> BrowserA: **[FRONT-CHANNEL]**\nZeigt "Warten"-Seite an
+    IDP -> AuthApp: **[PUSH / BACK-CHANNEL]**\nSendet Push-Benachrichtigung\nAuth erforderlich
+    User -> AuthApp: Authentifizierung für App auf Gerät B
+    AuthApp --> IDP: **[BACK-CHANNEL]**\nMeldet Erfolg an IDP Server
+    
+    ' -- Stafettenübergabe vom IDP zurück zum AS via Browser --
+    'IDP --> AS: **[FRONT-CHANNEL]**\nBrowser wird mit Auth-Code\n(für AS) zum AS redirected
+    'note right of IDP: "Browser, redirect\nzum ZETA AS!"
+    IDP --> BrowserA: **[FRONT-CHANNEL]** Antwort: HTTP 302 Redirect
+    note right of IDP: Location: https://zeta-as/callback?code=...
+    BrowserA -> AS: **[FRONT-CHANNEL]** Folgt dem Redirect und ruft den AS auf,\nübermittelt so den **Auth-Code (für AS)**
+
+    ' -- Innerer Flow wird abgeschlossen --
+    AS -> IDP: **[BACK-CHANNEL]**\nRuft /token Endpoint des IDP auf
+    IDP --> AS: **[BACK-CHANNEL]** Antwortet mit ID-Token
+
+    ' -- Äußerer Flow wird abgeschlossen --
+    'AS --> SDK: **[FRONT-CHANNEL]**\nBrowser wird mit Auth-Code\n(für SDK) zur App redirected
+    'note right of AS: "Browser, redirect zur App!"
+    ' --- Übergabe vom AS zurück zur App ---
+    AS --> BrowserA: **[FRONT-CHANNEL]** Antwort: HTTP 302 Redirect
+    note right of AS: Location: https://app/callback?code=...
+    BrowserA -> SDK: **[FRONT-CHANNEL]** Folgt dem Redirect zur App,\nübermittelt so den **Auth-Code (für SDK)**
+
+    SDK -> AS: **[BACK-CHANNEL]**\nRuft /token Endpoint des ZETA AS auf
+    AS --> SDK: **[BACK-CHANNEL]**\nAntwortet mit finalem Access Token
 end
 
 ' --- Phase 3: Zugriff auf die geschützte Ressource ---
 group Phase 3: Autorisierter Zugriff auf den PoPP Resource Server
-    SDK -> Proxy: Ruft HTTP-Proxy mit ursprünglichem HTTP-Request und Access Token auf
-    Proxy -> AS: Lädt PoPP-Metainformationen zum Access Token
-    Proxy -> CR: Lädt Clientinformationen
-    Proxy -> Proxy: Reichert HTTP-Request mit Metadaten an
-    Proxy -> RS: Sendet angereicherten Request an PoPP Resource Server
+    SDK -> Proxy: Ruft HTTP-Proxy mit\nursprünglichem HTTP-Request\nund Access Token auf
+    Proxy -> AS: Lädt PoPP-Metainformationen\nzum Access Token
+    Proxy -> Proxy: Reichert HTTP-Request\nmit Metadaten an
+    Proxy -> RS: Sendet angereicherten Request\nan PoPP Resource Server
     RS --> Proxy: Antwortet mit dem Ergebnis
     Proxy --> SDK: Leitet die Response weiter
 end
 
 ' --- Phase 4: Ergebnisverarbeitung ---
 group Phase 4: Ergebnisverarbeitung und Darstellung
-    SDK -> PoPP: Ruft callBackMethod mit der HTTP-Response auf
-    PoPP -> App: Wertet die Antwort fachlich aus
-    App -> Nutzer: Stellt das Ergebnis dar
+    SDK -> PoPP: Ruft callBackMethod\nmit der HTTP-Response auf
+    PoPP -> App: Wertet die\nAntwort aus
+    App -> User: Stellt das\nErgebnis dar
 end
 
 @enduml
