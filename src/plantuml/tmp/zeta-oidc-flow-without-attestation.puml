@@ -1,4 +1,4 @@
-@startuml
+@startuml "zeta-oidc-flow-without-attestation"
 !theme plain
 
 title Gesamtablauf: PoPP-Token Abruf mit ZETA SDK & PAR (RFC 9126)
