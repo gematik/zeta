@@ -44,6 +44,18 @@ box "User Device B" #GhostWhite
   end box
 end box
 
+' --- Phase 0: Client Registration & Attestation (einmalig) ---
+group Phase 0: Client Registration (mit Attestation)
+    SDK -> SDK: Generiert DPoP-Schlüsselpaar
+    SDK -> SDK: Fordert Attestation Statement\nvom OS (Android/iOS) an
+    note right: SafetyNet/Play Integrity (Android)\nApp Attest (iOS)
+    SDK -> AS: Registrierungsanfrage mit\nAttestation Statement\nund DPoP Public Key
+    AS -> AS: Verifiziert Attestation Statement
+    AS --> SDK: Antwortet mit **client_id**
+    note left of SDK: App ist nun als vertrauenswürdiger\nClient beim AS registriert.
+end
+
+
 ' --- Phase 1: Initialisierung ---
 group Phase 1: Initialisierung und Vorbereitung
     User -> App: Startet Aktion
