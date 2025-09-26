@@ -1,36 +1,96 @@
-# see https://developer.apple.com/documentation/uikit/uidevice
-type: object
-properties:
-  platform_product_id:
-    $ref: "./product-id-apple.yaml"
-    description: The product identifier for Apple apps
-  product_id:
-    type: string
-    description: The gematik product identifier
-  product_version:
-    type: string
-    description: The product version
-  system_version:
-    type: string
-    description: Operating system version, e.g. 10.15.7
-  system_name:
-    type: string
-    description: The name of the operating system running on the device.
-  device_model:
-    type: string
-    description: The model of the device, e.g. "iPhone6,2"
-  attestation_object:
-    type: string
-    description: The attestation object from the Apple App Attest service (base64 encoded)
-  key_id:
-    type: string
-    description: The key identifier associated with the attestation object (base64 encoded)
-required:
-  - system_version
-  - system_name
-  - device_model
-  - product_id
-  - product_version
-  - attestation_object
-  - key_id
+# ===================================================================
+# Hauptschema für Apple Posture
+# ===================================================================
+# Beschreibt die Daten, die von einer Apple iOS App zur Überprüfung ihrer
+# Integrität gesendet werden.
+# ===================================================================
+oneOf:
+  - $ref: "#/components/schemas/InitialAttestation"
+  - $ref: "#/components/schemas/SubsequentAssertion"
 
+components:
+  schemas:
+
+    # -------------------------------------------------------------------
+    # Basisschema (BasePosture)
+    # -------------------------------------------------------------------
+    # Enthält alle Felder, die SOWOHL bei der Attestierung ALS AUCH bei
+    # der Assertion immer vorhanden sind.
+    # -------------------------------------------------------------------
+    BasePosture:
+      type: object
+      properties:
+        platform_product_id:
+          $ref: "./product-id-apple.yaml"
+          description: The product identifier for Apple apps
+        product_id:
+          type: string
+          description: The gematik product identifier
+        product_version:
+          type: string
+          description: The product version
+        system_version:
+          type: string
+          description: Operating system version, e.g. 10.15.7
+        system_name:
+          type: string
+          description: The name of the operating system running on the device.
+        device_model:
+          type: string
+          description: The model of the device, e.g. "iPhone6,2"
+        key_id:
+          type: string
+          format: base64
+          description: The key identifier associated with the cryptographic key on the device (base64 encoded).
+      required:
+        - system_version
+        - system_name
+        - device_model
+        - product_id
+        - product_version
+        - key_id
+
+    # -------------------------------------------------------------------
+    # Schema für die initiale Attestierung (InitialAttestation)
+    # -------------------------------------------------------------------
+    # Kombiniert das Basisschema mit dem nur bei der Attestierung
+    # vorhandenen Feld 'attestation_object'.
+    # -------------------------------------------------------------------
+    InitialAttestation:
+      type: object
+      description: "Schema für die initiale Attestierung zur einmaligen Überprüfung der App-Integrität."
+      allOf:
+        - $ref: "#/components/schemas/BasePosture"
+        - type: object
+          properties:
+            attestation_object:
+              type: string
+              format: base64
+              description: The attestation object from the Apple App Attest service (base64 encoded).
+          required:
+            - attestation_object
+
+    # -------------------------------------------------------------------
+    # Schema für nachfolgende Assertions (SubsequentAssertion)
+    # -------------------------------------------------------------------
+    # Kombiniert das Basisschema mit den Feldern, die für jede
+    # nachfolgende Anfrage zur Bestätigung benötigt werden.
+    # -------------------------------------------------------------------
+    SubsequentAssertion:
+      type: object
+      description: "Schema für eine nachfolgende Assertion zur wiederholten Überprüfung einer Anfrage."
+      allOf:
+        - $ref: "#/components/schemas/BasePosture"
+        - type: object
+          properties:
+            assertion_object:
+              type: string
+              format: base64
+              description: The assertion object, which contains the signature for the client_data_json (base64 encoded).
+            client_data_json:
+              type: string
+              format: json
+              description: A JSON string containing the request data to be signed, including a server-provided challenge.
+          required:
+            - assertion_object
+            - client_data_json

@@ -1,0 +1,59 @@
+{
+  "version": "1.0",
+  "client_registration_data": {
+    "name": "Erika's iPhone",
+    "client_id": "cid-ios-67890",
+    "manufacturer_id": "apple-inc",
+    "manufacturer_name": "Apple Inc.",
+    "owner_mail": "erika.mustermann@example.com",
+    "registration_timestamp": 1678887000,
+    "platform_product_id": {
+      "platform": "apple",
+      "app_bundle_ids": [
+        "de.gematik.exampleapp"
+      ]
+    }
+  },
+  "client_assertion": {
+    "sub": "cid-ios-67890",
+    "posture": {
+      "platform_product_id": {
+        "platform": "apple",
+        "app_bundle_ids": [
+          "de.gematik.exampleapp"
+        ]
+      },
+      "product_id": "gematik-example-app-ios-v2",
+      "product_version": "2.0.1",
+      "system_version": "16.3.1",
+      "system_name": "iOS",
+      "device_model": "iPhone15,2",
+      "key_id": "base64-encoded-key-id...",
+      "assertion_object": "base64-encoded-assertion-object...",
+      "client_data_json": "{\"challenge\":\"server-provided-nonce\",\"other_data\":\"...\"}"
+    },
+    "attestation_info": {
+      "method": "apple-attestation",
+      "timestamp": 1678887025
+    }
+  },
+  "user_info": {
+    "identifier": "X987654321",
+    "professionOID": "1.2.276.0.76.4.30"
+  },
+  "delegation_context": null,
+  "authorization_request": {
+    "scopes": [
+      "openid",
+      "urn:telematik:prescriptions"
+    ],
+    "aud": [
+      "https://another-resource.de/api/v2"
+    ],
+    "ip_address": "203.0.113.100",
+    "grant_type": "authorization_code",
+    "amr": [
+      "biometric"
+    ]
+  }
+}
