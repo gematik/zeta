@@ -7,9 +7,8 @@
     "manufacturer_name": "Lenovo",
     "owner_mail": "praxis@example.com",
     "registration_timestamp": 1678888000,
-    "platform": "windows",
     "platform_product_id": {
-      "platform_type": "windows",
+      "platform": "windows",
       "package_family_name": "GematikDesktopSuite_123456789"
     }
   },
@@ -17,7 +16,7 @@
     "sub": "cid-win-tpm-abcde",
     "posture": {
       "platform_product_id": {
-        "platform_type": "windows",
+        "platform": "windows",
         "package_family_name": "GematikDesktopSuite_123456789"
       },
       "product_id": "gematik-desktop-suite-win-v3",
@@ -42,6 +41,7 @@
     "identifier": "Y555666777",
     "professionOID": "1.2.276.0.76.4.49"
   },
+  "delegation_context": null,
   "authorization_request": {
     "scopes": [
       "openid",
@@ -51,7 +51,6 @@
       "https://epa-resource.de/api/v1"
     ],
     "ip_address": "192.0.2.88",
-    "previous_ip_address": "203.0.113.100",
     "grant_type": "authorization_code",
     "amr": [
       "smartcard"

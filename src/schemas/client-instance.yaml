@@ -21,18 +21,12 @@ client_instance:
     registration_timestamp:
       type: integer
       description: The timestamp of the registration in seconds since epoch
-    platform:
-      type: string
-      description: The platform of the client instance
     platform_product_id:
       oneOf:
         - $ref: "./product-id-apple.yaml"
         - $ref: "./product-id-android.yaml"
         - $ref: "./product-id-windows.yaml"
         - $ref: "./product-id-linux.yaml"
-    posture:
-      description: The posture of the client instance, including platform-specific attestation data
-      $ref: "./posture.yaml"
   required:
     - name
     - client_id
@@ -40,6 +34,4 @@ client_instance:
     - manufacturer_name
     - owner_mail
     - registration_timestamp
-    - platform
     - platform_product_id
-    - posture

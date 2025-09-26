@@ -54,9 +54,27 @@ properties:
       - scopes
       - aud
       - ip_address
+      - previous_ip_address
       - grant_type
       - amr
+  delegation_context:
+    description: The delegation context if the client is acting on behalf of a user.
+    type: ["object", "null"]
+    properties:
+      principal_user_info:
+        $ref: "./user-info.yaml"
+      allowed_scopes:
+        type: array
+        items:
+          type: string
+      valid_until:
+        type: integer
+    required:
+      - principal_user_info
+      - allowed_scopes
+      - valid_until
   required:
+    - version
     - client_registration_data
     - client_assertion
     - user_info

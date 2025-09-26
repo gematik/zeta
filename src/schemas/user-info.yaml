@@ -13,10 +13,9 @@ user_info:
     professionOID:
       type: string
       description: "Profession identifier (OID)"
-  mail:
-    type: string
-    description: The mail address of the owner
+    mail:
+      type: string
+      description: The mail address of the owner
   required:
     - identifier
     - professionOID
-  additionalProperties: true

@@ -7,9 +7,8 @@
     "manufacturer_name": "Google LLC",
     "owner_mail": "max.mustermann@example.com",
     "registration_timestamp": 1678886400,
-    "platform": "android",
     "platform_product_id": {
-      "platform_type": "android",
+      "platform": "android",
       "namespace": "android_app",
       "package_name": "de.gematik.exampleapp",
       "sha256_cert_fingerprints": [
@@ -21,7 +20,7 @@
     "sub": "cid-android-12345",
     "posture": {
       "platform_product_id": {
-        "platform_type": "android",
+        "platform": "android",
         "namespace": "android_app",
         "package_name": "de.gematik.exampleapp",
         "sha256_cert_fingerprints": [
@@ -32,7 +31,7 @@
       "product_version": "1.2.3",
       "build": {
         "version": {
-          "sdk_init": 33,
+          "sdk_int": 33,
           "security_patch": "2023-03-05"
         },
         "manufacturer": "Google",
@@ -41,8 +40,8 @@
         "board": "oriole"
       },
       "key_attestation_certificate_chain": [
-        "-----BEGIN CERTIFICATE-----\nMIIC... (App Key Cert) ...\n-----END CERTIFICATE-----",
-        "-----BEGIN CERTIFICATE-----\nMIIC... (Hardware Key Cert) ...\n-----END CERTIFICATE-----"
+        "-----BEGIN CERTIFICATE-----\\nMIIC... (App Key Cert) ...\\n-----END CERTIFICATE-----",
+        "-----BEGIN CERTIFICATE-----\\nMIIC... (Hardware Key Cert) ...\\n-----END CERTIFICATE-----"
       ]
     },
     "attestation_info": {
@@ -54,6 +53,18 @@
     "identifier": "X123456789",
     "professionOID": "1.2.276.0.76.4.49"
   },
+  "delegation_context": {
+    "principal_user_info": {
+      "identifier": "T020821918",
+      "professionOID": "1.2.276.0.76.4.49"
+    },
+    "allowed_scopes": [
+      "openid",
+      "urn:telematik:email",
+      "urn:telematik:prescriptions"
+    ],
+    "valid_until": 1710409463
+  },
   "authorization_request": {
     "scopes": [
       "openid",
@@ -63,7 +74,6 @@
       "https://example-resource.de/api/v1"
     ],
     "ip_address": "203.0.113.42",
-    "previous_ip_address": "198.51.100.5",
     "grant_type": "authorization_code",
     "amr": [
       "pwd",

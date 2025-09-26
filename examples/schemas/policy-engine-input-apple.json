@@ -7,9 +7,9 @@
     "manufacturer_name": "Apple Inc.",
     "owner_mail": "erika.mustermann@example.com",
     "registration_timestamp": 1678887000,
-    "platform": "ios",
     "platform_product_id": {
-      "platform_type": "apple",
+      "platform": "apple",
+      "platform_type": "ios",
       "app_bundle_ids": [
         "de.gematik.exampleapp"
       ]
@@ -19,7 +19,8 @@
     "sub": "cid-ios-67890",
     "posture": {
       "platform_product_id": {
-        "platform_type": "apple",
+        "platform": "apple",
+        "platform_type": "ios",
         "app_bundle_ids": [
           "de.gematik.exampleapp"
         ]
@@ -41,6 +42,7 @@
     "identifier": "X987654321",
     "professionOID": "1.2.276.0.76.4.30"
   },
+  "delegation_context": null,
   "authorization_request": {
     "scopes": [
       "openid",
@@ -50,7 +52,6 @@
       "https://another-resource.de/api/v2"
     ],
     "ip_address": "203.0.113.100",
-    "previous_ip_address": "198.51.100.5",
     "grant_type": "authorization_code",
     "amr": [
       "biometric"

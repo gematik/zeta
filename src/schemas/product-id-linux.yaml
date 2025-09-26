@@ -1,7 +1,7 @@
 # Plattformspezifische Produkt-ID für Linux Apps
 type: object
 properties:
-  platform_type:
+  platform:
     type: string
     const: linux
   packaging_type:
@@ -11,6 +11,6 @@ properties:
     type: string
     description: The Application ID for the Linux app (e.g., org.mozilla.firefox for Flatpak).
   required:
-  - platform_type
+  - platform
   - packaging_type
   - application_id

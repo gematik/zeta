@@ -7,9 +7,8 @@
     "manufacturer_name": "Any Vendor",
     "owner_mail": "home.office@example.com",
     "registration_timestamp": 1678890000,
-    "platform": "windows",
     "platform_product_id": {
-      "platform_type": "windows",
+      "platform": "windows",
       "store_id": "9PBLGGH4R0C9"
     }
   },
@@ -17,7 +16,7 @@
     "sub": "cid-win-sw-pqrst",
     "posture": {
       "platform_product_id": {
-        "platform_type": "windows",
+        "platform": "windows",
         "store_id": "9PBLGGH4R0C9"
       },
       "product_id": "gematik-light-client-win-v1",
@@ -37,6 +36,7 @@
     "identifier": "A112233445",
     "professionOID": "1.2.276.0.76.4.50"
   },
+  "delegation_context": null,
   "authorization_request": {
     "scopes": [
       "openid"
@@ -45,7 +45,6 @@
       "https://some-service.de/api/v1"
     ],
     "ip_address": "192.0.2.150",
-    "previous_ip_address": "203.0.113.100",
     "grant_type": "authorization_code",
     "amr": [
       "pwd"

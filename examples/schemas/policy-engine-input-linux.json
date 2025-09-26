@@ -7,9 +7,8 @@
     "manufacturer_name": "Dell Inc.",
     "owner_mail": "it-klinik@example.com",
     "registration_timestamp": 1678889000,
-    "platform": "linux",
     "platform_product_id": {
-      "platform_type": "linux",
+      "platform": "linux",
       "packaging_type": "deb",
       "application_id": "de.gematik.konnektor"
     }
@@ -18,7 +17,7 @@
     "sub": "cid-linux-tpm-fghij",
     "posture": {
       "platform_product_id": {
-        "platform_type": "linux",
+        "platform": "linux",
         "packaging_type": "deb",
         "application_id": "de.gematik.konnektor"
       },
@@ -44,6 +43,7 @@
     "identifier": "Z888999000",
     "professionOID": "1.2.276.0.76.4.30"
   },
+  "delegation_context": null,
   "authorization_request": {
     "scopes": [
       "openid",
@@ -53,8 +53,7 @@
       "https://fachdienst-resource.de/api/v3"
     ],
     "ip_address": "198.51.100.5",
-    "previous_ip_address": "203.0.113.100",
     "grant_type": "authorization_code",
-    "amr": null
+    "amr": []
   }
 }
