@@ -1,9 +1,6 @@
 # Platform specific product id for Android Apps
 type: object
 properties:
-  platform:
-    type: string
-    const: android
   namespace:
     type: string
     const: "android_app"
@@ -14,7 +11,6 @@ properties:
     items:
       type: string
 required:
-  - platform
   - namespace
   - package_name
   - sha256_cert_fingerprints

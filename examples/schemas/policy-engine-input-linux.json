@@ -3,21 +3,21 @@
   "client_registration_data": {
     "name": "Klinik-Server-02",
     "client_id": "cid-linux-tpm-fghij",
+    "platform": "linux",
     "manufacturer_id": "dell-inc",
     "manufacturer_name": "Dell Inc.",
     "owner_mail": "it-klinik@example.com",
     "registration_timestamp": 1678889000,
     "platform_product_id": {
-      "platform": "linux",
       "packaging_type": "deb",
       "application_id": "de.gematik.konnektor"
     }
   },
   "client_assertion": {
     "sub": "cid-linux-tpm-fghij",
+    "platform": "linux",
     "posture": {
       "platform_product_id": {
-        "platform": "linux",
         "packaging_type": "deb",
         "application_id": "de.gematik.konnektor"
       },

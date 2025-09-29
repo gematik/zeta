@@ -1,4 +1,5 @@
 # Schema for the AccessToken JSON object. Issuer is a PDP authorization server.
+# See also https://www.rfc-editor.org/rfc/rfc9068.html
 $schema: "http://json-schema.org/draft-07/schema#"
 access_token:
   type: object

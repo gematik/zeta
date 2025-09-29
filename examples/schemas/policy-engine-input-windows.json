@@ -3,20 +3,20 @@
   "client_registration_data": {
     "name": "Praxis-PC-01",
     "client_id": "cid-win-tpm-abcde",
+    "platform": "windows",
     "manufacturer_id": "lenovo-corp",
     "manufacturer_name": "Lenovo",
     "owner_mail": "praxis@example.com",
     "registration_timestamp": 1678888000,
     "platform_product_id": {
-      "platform": "windows",
       "package_family_name": "GematikDesktopSuite_123456789"
     }
   },
   "client_assertion": {
     "sub": "cid-win-tpm-abcde",
+    "platform": "windows",
     "posture": {
       "platform_product_id": {
-        "platform": "windows",
         "package_family_name": "GematikDesktopSuite_123456789"
       },
       "product_id": "gematik-desktop-suite-win-v3",

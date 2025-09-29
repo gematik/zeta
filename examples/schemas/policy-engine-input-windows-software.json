@@ -3,20 +3,20 @@
   "client_registration_data": {
     "name": "Home-Office-PC",
     "client_id": "cid-win-sw-pqrst",
+    "platform": "windows",
     "manufacturer_id": "any-vendor",
     "manufacturer_name": "Any Vendor",
     "owner_mail": "home.office@example.com",
     "registration_timestamp": 1678890000,
     "platform_product_id": {
-      "platform": "windows",
       "store_id": "9PBLGGH4R0C9"
     }
   },
   "client_assertion": {
     "sub": "cid-win-sw-pqrst",
+    "platform": "windows",
     "posture": {
       "platform_product_id": {
-        "platform": "windows",
         "store_id": "9PBLGGH4R0C9"
       },
       "product_id": "gematik-light-client-win-v1",

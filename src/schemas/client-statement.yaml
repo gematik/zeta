@@ -7,14 +7,60 @@ client_statement:
   properties:
     sub:
       type: string
-      description: The name of the client 
+      description: The name of the client
+    platform:
+      type: string
+      description: The platform of the client instance
+      enum:
+        - android
+        - apple
+        - windows
+        - linux
     posture:
-      description: The posture of the client instance
+      description: The posture of the client instance. The structure depends on the platform.
       $ref: "./posture.yaml"
     attestation_info:
       description: The attestation information of the client instance
       $ref: "./attestation-info.yaml"
   required:
     - sub
+    - platform
     - posture
     - attestation_info
+  allOf:
+    - if:
+        properties:
+          platform:
+            const: "android"
+      then:
+        properties:
+          posture:
+            $ref: "./posture-android.yaml"
+    - if:
+        properties:
+          platform:
+            const: "apple"
+      then:
+        properties:
+          posture:
+            $ref: "./posture-apple.yaml"
+    - if:
+        properties:
+          platform:
+            const: "windows"
+      then:
+        properties:
+          posture:
+            oneOf:
+              - $ref: "./posture-tpm.yaml"
+              - $ref: "./posture-software.yaml"
+    - if:
+        properties:
+          platform:
+            const: "linux"
+      then:
+        properties:
+          posture:
+            oneOf:
+              - $ref: "./posture-tpm.yaml"
+              - $ref: "./posture-software.yaml"

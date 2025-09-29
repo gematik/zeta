@@ -3,12 +3,12 @@
   "client_registration_data": {
     "name": "Erika's iPhone",
     "client_id": "cid-ios-67890",
+    "platform": "apple",
     "manufacturer_id": "apple-inc",
     "manufacturer_name": "Apple Inc.",
     "owner_mail": "erika.mustermann@example.com",
     "registration_timestamp": 1678887000,
     "platform_product_id": {
-      "platform": "apple",
       "app_bundle_ids": [
         "de.gematik.exampleapp"
       ]
@@ -16,9 +16,9 @@
   },
   "client_assertion": {
     "sub": "cid-ios-67890",
+    "platform": "apple",
     "posture": {
       "platform_product_id": {
-        "platform": "apple",
         "app_bundle_ids": [
           "de.gematik.exampleapp"
         ]

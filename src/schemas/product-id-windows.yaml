@@ -1,14 +1,9 @@
 # Plattformspezifische Produkt-ID für Windows Apps
 type: object
 properties:
-  platform:
-    type: string
-    const: windows
   store_id:
     type: string
     description: The Store ID for the Windows app.
   package_family_name:
     type: string
     description: The Package Family Name for the Windows app.
-required:
-  - platform

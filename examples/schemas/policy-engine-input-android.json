@@ -3,12 +3,12 @@
   "client_registration_data": {
     "name": "Max's Smartphone",
     "client_id": "cid-android-12345",
+    "platform": "android",
     "manufacturer_id": "google-llc",
     "manufacturer_name": "Google LLC",
     "owner_mail": "max.mustermann@example.com",
     "registration_timestamp": 1678886400,
     "platform_product_id": {
-      "platform": "android",
       "namespace": "android_app",
       "package_name": "de.gematik.exampleapp",
       "sha256_cert_fingerprints": [
@@ -18,9 +18,9 @@
   },
   "client_assertion": {
     "sub": "cid-android-12345",
+    "platform": "android",
     "posture": {
       "platform_product_id": {
-        "platform": "android",
         "namespace": "android_app",
         "package_name": "de.gematik.exampleapp",
         "sha256_cert_fingerprints": [
