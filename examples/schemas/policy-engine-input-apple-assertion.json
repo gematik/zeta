@@ -29,7 +29,11 @@
       "system_name": "iOS",
       "device_model": "iPhone15,2",
       "key_id": "base64-encoded-key-id...",
-      "assertion_object": "base64-encoded-assertion-object...",
+      "signature": "base64-encoded-signature...",
+      "assertionAuthenticatorData": {
+        "rpidHash": "hash-of-relying-party-id",
+        "counter": 42
+      },
       "client_data_json": "{\"challenge\":\"server-provided-nonce\",\"other_data\":\"...\"}"
     },
     "attestation_info": {

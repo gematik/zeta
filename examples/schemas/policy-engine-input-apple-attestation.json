@@ -30,8 +30,22 @@
       "system_version": "16.3.1",
       "system_name": "iOS",
       "device_model": "iPhone15,2",
-      "attestation_object": "base64-encoded-attestation-object...",
-      "key_id": "base64-encoded-key-id..."
+      "key_id": "base64-encoded-key-id...",
+      "fmt": "apple-appattest",
+      "attStmt": {
+        "x5c": [
+          "base64-encoded-credential-cert...",
+          "base64-encoded-intermediate-cert..."
+        ],
+        "receipt": "base64-encoded-receipt..."
+      },
+      "authData": {
+        "rpidHash": "hash-of-relying-party-id",
+        "flags": "0x01",
+        "counter": 0,
+        "aaguid": "appattest-production-aaguid",
+        "credentialId": "hash-of-public-key"
+      }
     },
     "attestation_info": {
       "method": "apple-attestation",

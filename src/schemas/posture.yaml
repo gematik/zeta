@@ -1,5 +1,0 @@
-# Base schema for posture.
-# The concrete schema is determined by the 'platform' property in the client-statement.
-type: object
-description: "Contains platform-specific posture information. The exact structure is determined by the 'platform' field in the client statement."
-
