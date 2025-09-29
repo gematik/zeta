@@ -27,10 +27,7 @@
       "public_key": "base64-encoded-self-signed-public-key...",
       "attestation_challenge": "base64-encoded-signed-nonce-from-as..."
     },
-    "attestation_info": {
-      "method": "software",
-      "timestamp": 1678890010
-    }
+    "attestation_timestamp": 1678890010
   },
   "user_info": {
     "identifier": "A112233445",

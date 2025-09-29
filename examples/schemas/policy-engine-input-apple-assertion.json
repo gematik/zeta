@@ -36,10 +36,7 @@
       },
       "client_data_json": "{\"challenge\":\"server-provided-nonce\",\"other_data\":\"...\"}"
     },
-    "attestation_info": {
-      "method": "apple-attestation",
-      "timestamp": 1678887025
-    }
+    "attestation_timestamp": 1678887025
   },
   "user_info": {
     "identifier": "X987654321",

@@ -44,10 +44,7 @@
         "-----BEGIN CERTIFICATE-----\\nMIIC... (Hardware Key Cert) ...\\n-----END CERTIFICATE-----"
       ]
     },
-    "attestation_info": {
-      "method": "android-key-id-attestation",
-      "timestamp": 1678886410
-    }
+    "attestation_timestamp": 1678886410
   },
   "user_info": {
     "identifier": "X123456789",

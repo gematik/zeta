@@ -19,14 +19,15 @@ client_statement:
     posture:
       description: The posture of the client instance. The structure depends on the platform.
       $ref: "./posture.yaml"
-    attestation_info:
-      description: The attestation information of the client instance
-      $ref: "./attestation-info.yaml"
+    attestation_timestamp:
+      description: The attestation timestamp of the client instance
+      type: integer
+      format: unix-time
   required:
     - sub
     - platform
     - posture
-    - attestation_info
+    - attestation_timestamp
   allOf:
     - if:
         properties:

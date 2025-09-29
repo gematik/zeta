@@ -32,10 +32,7 @@
         "base64-encoded-ek-cert-2..."
       ]
     },
-    "attestation_info": {
-      "method": "tpm2",
-      "timestamp": 1678888010
-    }
+    "attestation_timestamp": 1678888010
   },
   "user_info": {
     "identifier": "Y555666777",
