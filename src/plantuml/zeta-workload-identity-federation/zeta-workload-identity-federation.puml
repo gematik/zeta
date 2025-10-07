@@ -31,6 +31,8 @@ Client -> K8sIDP++: Fordert ID-Token an
 K8sIDP --> Client--: ID-Token
 
 Client -> ZetaSTS++: Fordert Access-Token an\n(Token Exchange mit ID-Token)
+ZetaSTS -> K8sIDP++:  GET /.well-known/openid-configuration
+K8sIDP --> ZetaSTS--: OpenID Provider Metadaten
 ZetaSTS -> K8sIDP++:  GET /openid/v1/jwks
 K8sIDP --> ZetaSTS--: JWKS
 ZetaSTS -> ZetaSTS: Validiert ID-Token\n(Signatur, Ablauf, etc.)
