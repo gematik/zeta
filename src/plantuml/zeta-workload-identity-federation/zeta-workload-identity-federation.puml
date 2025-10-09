@@ -10,53 +10,73 @@ skinparam SequenceReferenceFontSize 12
 
 !pragma teoz true
 
-box "Kubernetes Cluster" #GhostWhite
-  participant "Client Workload" as Client
-  participant "Kubernetes IDP" as K8sIDP
+box "Anbieter A" #TECHNOLOGY
+  box "ZETA Guard A" #SandyBrown
+    participant "cronjob Pod" as cronjobClient
+    participant "ZETA Guard\nAuthorization Server (STS)" as AuthS
+    participant "etcd" as etcd
+  end box
+    box "TI 2.0 Dienst A" #DarkSeaGreen
+        participant "Resource Server\nWorkload" as workloadClient
+    end box
 end box
 
-box "Anbieter" #TECHNOLOGY
-  box "ZETA Guard" #SandyBrown
+participant "gematik" as gem
+
+box "Anbieter B" #TECHNOLOGY
+  box "ZETA Guard B" #SandyBrown
     participant "ZETA Guard\nAuthorization Server (STS)" as ZetaSTS
     participant "PEP\nHTTP Proxy" as HP
     participant "Policy Engine\n(OPA)" as OPA
   end box
-    box TI 2.0 Dienst #DarkSeaGreen
+    box "TI 2.0 Dienst B" #DarkSeaGreen
         participant "Resource Server" as ResourceServer
     end box
 end box
 
-activate Client
-Client -> K8sIDP++: Fordert ID-Token an
-K8sIDP --> Client--: ID-Token
+ref over AuthS, gem: **Registrierung beim Federation Master (Workload Identity Pool)**
 
-Client -> ZetaSTS++: Fordert Access-Token an\n(Token Exchange mit ID-Token)
-ZetaSTS -> K8sIDP++:  GET /.well-known/openid-configuration
-K8sIDP --> ZetaSTS--: OpenID Provider Metadaten
-ZetaSTS -> K8sIDP++:  GET /openid/v1/jwks
-K8sIDP --> ZetaSTS--: JWKS
-ZetaSTS -> ZetaSTS: Validiert ID-Token\n(Signatur, Ablauf, etc.)
-alt Erfolgreiche Validierung
-  ZetaSTS -> OPA++: Entscheidungsanfrage (issuer uri, etc.)
-  OPA --> ZetaSTS--: Ergebnis
-else Fehlgeschlagene Validierung
-  ZetaSTS --> Client: Fehler 403 Forbidden
+ref over gem, OPA: **Verteilung der Zugriffsberechtigten Workloads an die Policy Engine (OPA)**
+
+par Regelmäßiger Token Exchange (ID Token gegen Access Token)
+  etcd++
+  cronjobClient++
+  cronjobClient -> AuthS++: Fordert ID-Token an
+  AuthS --> cronjobClient--: ID-Token
+
+  cronjobClient -> ZetaSTS++: Fordert Access-Token an\n(Token Exchange mit ID-Token)
+  ZetaSTS -> AuthS++:  GET /.well-known/openid-configuration
+  AuthS --> ZetaSTS--: OpenID Provider Metadaten
+  ZetaSTS -> AuthS++:  GET /openid/v1/jwks
+  AuthS --> ZetaSTS--: JWKS
+  ZetaSTS -> ZetaSTS: Validiert ID-Token\n(Signatur, Ablauf, etc.)
+  alt Erfolgreiche Validierung
+    ZetaSTS -> OPA++: Entscheidungsanfrage (issuer uri, etc.)
+    OPA --> ZetaSTS--: Ergebnis
+  else Fehlgeschlagene Validierung
+    ZetaSTS --> cronjobClient: Fehler 403 Forbidden
+  end
+  alt Erfolgreiche Autorisierung
+      ZetaSTS --> cronjobClient: Access-Token
+      cronjobClient -> etcd: Speichert Access-Token als Secret
+  else Fehlgeschlagene Autorisierung
+      ZetaSTS --> cronjobClient--: Fehler 403 Forbidden
+  end
+  cronjobClient--
 end
-alt Erfolgreiche Autorisierung
-    ZetaSTS --> Client: Access-Token
-else Fehlgeschlagene Autorisierung
-    ZetaSTS --> Client--: Fehler 403 Forbidden
+par Ressourcenzugriff mit Access Token
+  workloadClient++
+  workloadClient -> etcd: Liest Secret mit\nAccess-Token aus
+  workloadClient -> HP++: Anfrage mit Access-Token
+  HP -> HP: Validiert Access-Token
+   alt Erfolgreiche Validierung
+    HP -> ResourceServer++: Weiterleitung der Anfrage mit Access-Token
+    ResourceServer --> HP--: Antwort
+    HP --> workloadClient: Antwort
+   else Fehlgeschlagene Validierung
+      HP --> workloadClient--: Fehler 401 Unauthorized
+   end
+
+  deactivate cronjobClient
 end
-
-Client -> HP++: Anfrage mit Access-Token
-HP -> HP: Validiert Access-Token
- alt Erfolgreiche Validierung
-  HP -> ResourceServer++: Weiterleitung der Anfrage mit Access-Token
-  ResourceServer --> HP--: Antwort
-  HP --> Client: Antwort
- else Fehlgeschlagene Validierung
-    HP --> Client--: Fehler 401 Unauthorized
- end
-
-deactivate Client
 @enduml
