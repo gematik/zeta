@@ -1,0 +1,81 @@
+# Policy Engine Input Schema for ZETA Guard
+# This schema combines client-instance.yaml and user-info.yaml.
+$schema: "http://json-schema.org/draft-07/schema#"
+type: object
+description: "Combined schema of client-instance and user-info for OPA policy decisions."
+properties:
+  version:
+    description: The version of the schema
+    type: string
+  client_registration_data:
+    description: The client registration data stored at the authorization server.
+    "$ref": "./client-instance.yaml"
+  client_assertion:
+    description: The client assertion data from the client's JWT.
+    "$ref": "./client-statement.yaml"
+  user_info:
+    description: The user information data
+    "$ref": "./user-info.yaml"
+  authorization_request:
+    description: The authorization request data
+    type: object
+    properties:
+      scopes:
+        type: array
+        description: The purpose of use for the authorization
+        items:
+          type: string
+      aud:
+        type: array
+        description: The audience for the authorization
+        items:
+          type: string
+      ip_address:
+        type: string
+        description: The source IP address of the request.
+      previous_ip_address:
+        type: string
+        description: The previously used source IP address; for impossible travel detection
+      grant_type:
+        type: string
+        description: The OAuth 2.0 grant type being used.
+        enum:
+          - authorization_code
+          - urn:ietf:params:oauth:grant-type:token-exchange
+          - client_credentials
+          - refresh_token
+          - urn:ietf:params:oauth:grant-type:jwt-bearer
+      amr:
+        type: array
+        description: Methods used for user authentication (Authentication Methods References).
+        items:
+          type: string
+    required:
+      - scopes
+      - aud
+      - ip_address
+      - previous_ip_address
+      - grant_type
+      - amr
+  delegation_context:
+    description: The delegation context if the client is acting on behalf of a user.
+    type: ["object", "null"]
+    properties:
+      principal_user_info:
+        $ref: "./user-info.yaml"
+      allowed_scopes:
+        type: array
+        items:
+          type: string
+      valid_until:
+        type: integer
+    required:
+      - principal_user_info
+      - allowed_scopes
+      - valid_until
+  required:
+    - version
+    - client_registration_data
+    - client_assertion
+    - user_info
+    - authorization_request

@@ -3,8 +3,7 @@ type: object
 properties:
   namespace:
     type: string
-    enum:
-      - "android_app"
+    const: "android_app"
   package_name:
     type: string
   sha256_cert_fingerprints:

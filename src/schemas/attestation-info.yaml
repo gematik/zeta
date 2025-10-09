@@ -13,4 +13,7 @@ properties:
       - none
   timestamp:
     type: integer
-    description: The timestamp of the last attestation in seconds since epoch
+    description: The timestamp of the last attestation in seconds since epoch.
+required:
+  - method
+  - timestamp

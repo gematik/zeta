@@ -1,0 +1,56 @@
+{
+  "version": "1.0",
+  "client_registration_data": {
+    "name": "Klinik-Server-02",
+    "client_id": "cid-linux-tpm-fghij",
+    "platform": "linux",
+    "manufacturer_id": "dell-inc",
+    "manufacturer_name": "Dell Inc.",
+    "owner_mail": "it-klinik@example.com",
+    "registration_timestamp": 1678889000,
+    "platform_product_id": {
+      "packaging_type": "deb",
+      "application_id": "de.gematik.konnektor"
+    }
+  },
+  "client_assertion": {
+    "sub": "cid-linux-tpm-fghij",
+    "platform": "linux",
+    "posture": {
+      "platform_product_id": {
+        "packaging_type": "deb",
+        "application_id": "de.gematik.konnektor"
+      },
+      "product_id": "gematik-konnektor-linux-v5",
+      "product_version": "5.1.0",
+      "os": "Ubuntu 22.04.1 LTS",
+      "os_version": "5.15.0-67-generic",
+      "arch": "x86_64",
+      "tpm_attestation_key": "base64-encoded-tpm-attestation-key...",
+      "tpm_quote": "base64-encoded-tpm-quote...",
+      "tpm_event_log": "base64-encoded-tpm-event-log...",
+      "tpm_ek_certificate_chain": [
+        "base64-encoded-ek-cert-1...",
+        "base64-encoded-ek-cert-2..."
+      ]
+    },
+    "attestation_timestamp": 1678889010
+  },
+  "user_info": {
+    "identifier": "Z888999000",
+    "professionOID": "1.2.276.0.76.4.30"
+  },
+  "delegation_context": null,
+  "authorization_request": {
+    "scopes": [
+      "openid",
+      "urn:telematik:fachdienst"
+    ],
+    "aud": [
+      "https://fachdienst-resource.de/api/v3"
+    ],
+    "ip_address": "198.51.100.5",
+    "grant_type": "authorization_code",
+    "amr": []
+  }
+}
