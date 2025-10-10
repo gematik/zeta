@@ -1,0 +1,183 @@
+@Library('gematik-jenkins-shared-library') _
+
+String REMOTE_BRANCH = 'main'
+String GITHUB_PROJECT_NAME = 'zeta'
+String GEMATIK_PROJECT_NAME = 'zeta/documentation/concepts-extern/betriebshandbuch'
+String GITHUB_TARGET_FOLDER = 'docs/user-manual'
+
+// The pipeline is an adjusted copy of pipelineGitHubPublishSources
+// The original pipeline can't be reused, because the GitHub repository is not a mirror of any GitLab one
+// Futhermore, we do not wanr to push the whole repository, but only some of its subfolders, which will be placed under a fixed location in the target GitHub repository
+pipeline {
+        agent { label 'k8-backend-small' }
+        options { skipStagesAfterUnstable() }
+
+        parameters {
+            string(name: 'GITLAB_TAG', description: 'Name of the version in the internal repository that should be released to GitHub. (Git-Tag)')
+            text(name: 'COMMIT_MESSAGE', description: 'Commit message of the released version. Do not use asterisks (*) nor +')
+        }
+
+        environment {
+            GITLAB_SSH_KEY = "svc_gitlab_prod_ssh_private_key"
+            GITHUB_SSH_KEY = "GITHUB_PRIVATE_KEY"
+            CREDENTIAL_ID_GEMATIK_GIT = 'svc_gitlab'
+            COMMITTER_NAME = 'gematik-Entwicklung'
+            COMMITTER_EMAIL = 'software-development@gematik.de'
+            GIT_REPO = getGitUrl()
+            RBAC_LAYOUT = getRbacLayout(true)
+            LOCAL_REPO = "${GIT_REPO}${RBAC_LAYOUT}${GEMATIK_PROJECT_NAME}"
+            REMOTE_REPO = "git@github.com:gematik/${GITHUB_PROJECT_NAME}"
+            REMOTE_FEATURE_BRANCH = "publishUserManual-${BUILD_NUMBER}"
+        }
+
+        stages {
+            stage("Verify input parameters") {
+                steps {
+                    script {
+                        if (!GITLAB_TAG?.trim()) {
+                            logError("[pipelineGitHubPublishSources] ERROR: Empty GITLAB_TAG")
+                        }
+                        logInfo("[pipelineGitHubPublishSources] use GitLab-Tag: " + GITLAB_TAG)
+                    }
+                }
+            }
+
+
+
+        stage('Checkout') {
+                parallel {
+
+                    stage('Branch Source') {
+                        steps {
+                            script {
+                                dir("source") {
+                                    sh 'git config --global push.default simple'
+                                    git branch: 'master',
+                                        credentialsId: 'svc_gitlab_prod_credentials',
+                                        url: LOCAL_REPO
+                                        
+                                    sh "git checkout --force ${GITLAB_TAG}"
+                                }
+                            }
+                        }
+                    }
+                    
+                    stage('Branch Remote/target') {
+                        stages {
+                            stage('Checkout Remote/target') {
+                                steps {
+                                    gitLoadSshKey(GITHUB_SSH_KEY, "github")
+                                    dir("target") {
+                                        sh 'git config --global push.default simple'
+                                        sh 'git clone $REMOTE_REPO .'
+                                    }
+                                }
+                            }
+                            stage("Checkout Target Branch") {
+                                when { expression { gitCheckIfBranchExits("origin/" + REMOTE_BRANCH, "target") } }
+                                steps {
+                                    dir("target") {
+                                        sh("""
+                                            git checkout origin/${REMOTE_BRANCH}
+                                            git reset --hard origin/${REMOTE_BRANCH}
+                                        """)
+                                    }
+                                }
+                            }                        
+                        }
+                    }
+
+                }
+            }
+
+        stage('gh-Source-Feature-Branch') {
+            stages {
+                stage('Create Feature Branch') {
+                    steps {
+                        dir("target") {
+                            sh "git checkout -b $REMOTE_FEATURE_BRANCH"
+                        }
+                    }
+                }
+                stage('Copy Source Files to Feature Branch') {
+                    steps {
+                        dir("temp") {
+                            withEnv(["SOURCE_DIR=../source",
+                                         "TARGET_DIR=."]) {
+                                sh(libraryResource('copySourceFilesToFeatureBranch.sh'))
+                            }
+                            sh "mkdir -p ../target/${GITHUB_TARGET_FOLDER}"
+                            sh "cp -r . ../target/${GITHUB_TARGET_FOLDER}"
+                        }                        
+                    }
+                }
+
+                stage("Apply .githubignore rules") {
+                    steps {
+                        dir("target") {
+                            script {
+                                sh(libraryResource('applyGithubIgnoreRules.sh'))
+                            }
+                        }
+                    }
+                }
+
+
+                stage("Commit sources") {
+                    steps {
+                        dir("target") {
+                            gitSetCommitter(COMMITTER_NAME, COMMITTER_EMAIL)
+                            gitCommitAndTag(COMMIT_MESSAGE, "NO_TAG", COMMITTER_NAME, COMMITTER_EMAIL, false, true)
+                        }
+                    }
+                }
+                
+                
+                stage("Pull-Request Sources") {
+                    environment {
+                        def PR_URL = ""
+                        def PR_ID = ""
+                    }
+                    stages {
+                        stage("Create Pull-Request") {
+                            steps {
+                                dir("target") {
+                                    withEnv(["GITHUB_PROJECT_NAME=${GITHUB_PROJECT_NAME}",
+                                                "TARGET_BRANCH=${REMOTE_BRANCH}",
+                                                "SOURCE_BRANCH=${REMOTE_FEATURE_BRANCH}",
+                                                "TITLE=Publish User Manual Release ${GITLAB_TAG}",
+                                                "BODY=Review the Changes for User Manual Release ${GITLAB_TAG}"]) {
+                                        withCredentials([string(credentialsId: 'GITHUB.API.Token.Publish', variable: 'GITHUB_ACCESS_TOKEN')]) {
+                                            script {
+                                                logDebug("[pipelineGitHubPublishSources] Create Pull-Request for \"$GITHUB_PROJECT_NAME\" from \"$REMOTE_FEATURE_BRANCH\" to \"$REMOTE_BRANCH\" with title \"$TITLE\" and body \"$BODY\"")
+                                                def pr_result = createTmpFile("json", "pr_result")
+                                                def CREATE_PR_RESULT = sh(returnStdout: true, script: libraryResource('createGitHubPullRequest.sh'))
+                                                writeFile file: pr_result, text: CREATE_PR_RESULT
+                                                logTrace("[pipelineGitHubPublishSources] Create Pull-Request result: $CREATE_PR_RESULT")
+                                                logDebug("[pipelineGitHubPublishSources] Extract PR-ID and URL from result")
+                                                PR_ID = sh(label: "Extract PR_ID", returnStdout: true, script: "jq '.number' ${pr_result}").trim()
+                                                logTrace("[pipelineGitHubPublishSources] PR-ID: $PR_ID")
+                                                logDebug("[pipelineGitHubPublishSources] Extract PR-URL from result")
+                                                PR_URL = sh(label: "Extract PR_URL", returnStdout: true, script: "jq '._links.html.href' ${pr_result}").trim()
+                                                logTrace("[pipelineGitHubPublishSources] PR-URL: $PR_URL")
+                                                sh(label: "Remove temporary file", script: "rm -f ${pr_result}")
+                                                logInfo("Open PR: $PR_URL")
+                                                logInfo("PR-ID: $PR_ID")
+                                                def PR_URL_CLEAN = PR_URL.replaceAll('"', '')
+                                                if (PR_ID != null && PR_ID != "") {
+                                                    currentBuild.description = """Please merge: <a href=$PR_URL target="_blank">Pull-Request $PR_ID</a>"""
+                                                    addBadge cssClass: '', icon: 'symbol-cube', id: '', link: "$PR_URL_CLEAN", style: '', target: '', text: "Pull-Request ${PR_ID}"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }                
+            }
+        }
+
+        }
+}
