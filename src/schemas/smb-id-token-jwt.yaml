@@ -1,0 +1,45 @@
+# Schema for SM(C)-B ID Token JWT Payload
+# The SM(C)-B ID Token JWT is used in the OAuth Token Exchange flow with the ZETA Guard AuthServer
+# It is signed by a SM(C)-B signing Key and contains the Telematik-ID of the SM(C)-B.
+# JWT Header: 
+# {
+#   "alg": "ES256",
+#   "typ": "JWT",
+#   "x5c": [ "Base64-encoded X.509 certificate chain" ]
+# }
+# Hint: The algorithm used by the SM(C)-B signing key is the
+# Brainpool P-256 R1 curve.
+
+# JWT Payload:
+$schema: "http://json-schema.org/draft-07/schema#"
+type: object
+properties:
+  jti:
+    type: string
+    description: The JWT ID.
+  nonce:
+    type: string
+    description: A **unique value** from the AS to prevent replay attacks.
+  iss:
+    type: string
+    description: The issuer of the JWT (client_id).
+  sub:
+    type: string
+    description: The Telematik-ID of the SM(C)-B.
+  aud:
+    type: string
+    description: The audience of the JWT (the Resource Server).
+  exp:
+    type: integer
+    description: The expiration time of the JWT (Short-lived).
+  iat:
+    type: integer
+    description: The issued at time of the JWT.
+required:
+  - jti
+  - nonce
+  - iss
+  - sub
+  - aud
+  - exp
+  - iat    

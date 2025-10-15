@@ -1,0 +1,18 @@
+{
+  "allowed_products": {
+    "ZETA-Test-Client": [
+      "0.0.1",
+      "0.1.0",
+      "1.0.0"
+    ],
+    "gematik-light-client-win-v1": [
+      "1.1.0"
+    ],
+    "test_proxy": [
+      "0.1.0"
+    ],
+    "demo_client": [
+      "0.1.0"
+    ]
+  }
+}
