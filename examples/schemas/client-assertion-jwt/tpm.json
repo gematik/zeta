@@ -1,0 +1,11 @@
+{
+  "iss": "cid-win-tpm-abcde",
+  "sub": "cid-win-tpm-abcde",
+  "aud": "https://auth-server.zeta.gematik.de/token",
+  "exp": 1678888310,
+  "jti": "unique-jwt-id-win-tpm-789",
+  "urn:gematik:params:oauth:client-attestation:tpm2": {
+    "attestation_data": "eyJzdWIiOiAiY2lkLXdpbi10cG0tYWJjZGUiLCAicGxhdGZvcm0iOiAid2luZG93cyIsICJwb3N0dXJlIjogeyJwbGF0Zm9ybV9wcm9kdWN0X2lkIjogeyJwYWNrYWdlX2ZhbWlseV9uYW1lIjogIkdlbWF0aWtlc2t0b3BTdWl0ZV8xMjM0NTY3ODkifSwgInByb2R1Y3RfaWQiOiAiZ2VtYXRpay1kZXNrdG9wLXN1aXRlLXdpbi12MyIsICJwcm9kdWN0X3ZlcnNpb24iOiAiMy41LjAiLCAib3MiOiAiV2luZG93cyAxMSBQcm8iLCAib3NfdmVyc2lvbiI6ICIxMC4wLjIyNjIxIiwgImFyY2giOiAieDg2XzY0IiwgInRwbV9hdHRlc3RhdGlvbl9rZXkiOiAiYmFzZTY0LWVuY29kZWQtdHBtLWF0dGVzdGF0aW9uLWtleS4uLiIsICJ0cG1fcXVvdGUiOiAiYmFzZTY0LWVuY29kZWQtdHBtLXF1b3RlLnLi4iLCAidHBtX2V2ZW50X2xvZyI6ICJiYXNlNjQtZW5jb2RlZC10cG0tZXZlbnQtbG9nLi4uIiwgInRwbV9la19jZXJ0aWZpY2F0ZV9jaGFpbiI6IFsiYmFzZTY0LWVuY29kZWQtZWstY2VydC0xLi4uIiwgImJhc2U2NC1lbmNvZGVkLWVrLWNlcnQtMi4uLiJdfSwgImF0dGVzdGF0aW9uX3RpbWVzdGFtcCI6IDE2Nzg4ODgwMTB9",
+    "client_statement_format": "client-statement"
+  }
+}

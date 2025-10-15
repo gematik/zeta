@@ -1,0 +1,65 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+description: "Schema for the payload of a Client Assertion JWT used in ZETA, as defined in RFC 7523, with custom claims for client attestation."
+
+type: object
+
+definitions:
+  attestation_object:
+    type: object
+    description: "A generic object containing the base64-encoded client statement."
+    properties:
+      attestation_data:
+        type: string
+        description: "Base64 encoded client_statement."
+        contentEncoding: base64
+      client_statement_format:
+        type: string
+        const: "client-statement"
+        description: "Indicates the format of the attestation_data, which must be 'client-statement'."
+    required:
+      - attestation_data
+      - client_statement_format
+
+properties:
+  iss:
+    type: string
+    description: "Issuer of the JWT, which MUST be the client_id of the client."
+  sub:
+    type: string
+    description: "Subject of the JWT, which MUST be the client_id of the client."
+  aud:
+    description: "Audience for the JWT. It MUST contain the Authorization Server's token endpoint URL."
+    oneOf:
+      - type: string
+      - type: array
+        items:
+          type: string
+  exp:
+    type: integer
+    description: "Expiration time of the JWT in seconds since epoch."
+  jti:
+    type: string
+    description: "JWT ID, a unique identifier for the token."
+  
+  "urn:gematik:params:oauth:client-attestation:tpm2":
+    $ref: "#/definitions/attestation_object"
+    description: "Client attestation data for a TPM-based client."
+  
+  "urn:gematik:params:oauth:client-attestation:software":
+    $ref: "#/definitions/attestation_object"
+    description: "Client attestation data for a software-based client."
+    
+  "urn:gematik:params:oauth:client-attestation:android":
+    $ref: "#/definitions/attestation_object"
+    description: "Client attestation data for an Android-based client."
+
+  "urn:gematik:params:oauth:client-attestation:apple":
+    $ref: "#/definitions/attestation_object"
+    description: "Client attestation data for an Apple-based client."
+
+required:
+  - iss
+  - sub
+  - aud
+  - exp
+  - jti

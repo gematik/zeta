@@ -1,0 +1,11 @@
+{
+  "iss": "cid-ios-67890",
+  "sub": "cid-ios-67890",
+  "aud": "https://auth-server.zeta.gematik.de/token",
+  "exp": 1678887310,
+  "jti": "unique-jwt-id-ios-456",
+  "urn:gematik:params:oauth:client-attestation:apple": {
+    "attestation_data": "eyJzdWIiOiAiY2lkLWlvcy02Nzg5MCIsICJwbGF0Zm9ybSI6ICJhcHBsZSIsICJwb3N0dXJlIjogeyJwbGF0Zm9ybV9wcm9kdWN0X2lkIjogeyJwbGF0Zm9ybV90eXBlIjogImlvcyIsICJhcHBfYnVuZGxlX2lkcyI6IFsiZGUuZ2VtYXRpay5leGFtcGxlYXBwIl19LCAicHJvZHVjdF9pZCI6ICJnZW1hdGlrLWV4YW1wbGUtYXBwLWlvcy12MiIsICJwcm9kdWN0X3ZlcnNpb24iOiAiMi4wLjEiLCAic3lzdGVtX3ZlcnNpb24iOiAiMTYuMy4xIiwgInN5c3RlbV9uYW1lIjogImlPUyIsICJkZXZpY2VfbW9kZWwiOiAiaVBob25lMTUsMiIsICJrZXlfaWQiOiAiYmFzZTY0LWVuY29kZWQta2V5LWlkLi4uIiwgImZtdCI6ICJhcHBsZS1hcHBhdHRlc3QiLCAiYXR0U3RtdCI6IHsieDVjIjogWyJiYXNlNjQtZW5jb2RlZC1jcmVkZW50aWFsLWNlcnQuLi4iLCAiYmFzZTY0LWVuY29kZWQtaW50ZXJtZWRpYXRlLWNlcnQuLi4iXSwgInJlY2VpcHQiOiAiYmFzZTY0LWVuY29kZWQtcmVjZWlwdC4uLiJ9LCAiYXV0aERhdGEiOiB7InJwaWRJZCI6ICJoYXNoLW9mLXJlbHlpbmctcGFydHktaWQiLCAiZmxhZ3MiOiAiMHgwMSIsICJjb3VudGVyIjogMCwgImFhZ3VpZCI6ICJhcHBhdHRlc3QtcHJvZHVjdGlvbi1hYWd1aWQiLCAiY3JlZGVudGlhbElkIjogImhhc2gtb2YtcHVibGljLWtleSJ9fSwgImF0dGVzdGF0aW9uX3RpbWVzdGFtcCI6IDE2Nzg4ODcwMTB9",
+    "client_statement_format": "client-statement"
+  }
+}

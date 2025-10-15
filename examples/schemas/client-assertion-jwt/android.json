@@ -1,0 +1,11 @@
+{
+  "iss": "cid-android-12345",
+  "sub": "cid-android-12345",
+  "aud": "https://auth-server.zeta.gematik.de/token",
+  "exp": 1678886710,
+  "jti": "unique-jwt-id-android-123",
+  "urn:gematik:params:oauth:client-attestation:android": {
+    "attestation_data": "eyJzdWIiOiAiY2lkLWFuZHJvaWQtMTIzNDUiLCAicGxhdGZvcm0iOiAiYW5kcm9pZCIsICJwb3N0dXJlIjogeyJuYW1lc3BhY2UiOiAiYW5kcm9pZF9hcHAiLCAicGFja2FnZV9uYW1lIjogImRlLmdlbWF0aWsuZXhhbXBsZWFwcCIsICJzaGEyNTZfY2VydF9maW5nZXJwcmludHMiOiBbIkFBOkJCOkNDOkREOkVFOkZGOjAwOjExOjIyOjMzOjQ0OjU1OjY2Ojc3Ojg4Ojk5Il0sICJwcm9kdWN0X2lkIjogImdlbWF0aWstZXhhbXBsZS1hcHAtYW5kcm9pZC12MSIsICJwcm9kdWN0X3ZlcnNpb24iOiAiMS4yLjMiLCAiYnVpbGQiOiB7InZlcnNpb24iOiB7InNka19pbnQiOiAzMywgInNlY3VyaXR5X3BhdGNoIjogIjIwMjMtMDMtMDUifSwgIm1hbnVmYWN0dXJlciI6ICJHb29nbGUiLCAicHJvZHVjdCI6ICJQaXhlbCA3IiwgIm1vZGVsIjogIlBpeGVsIDciLCAiYm9hcmQiOiAib3Jpb2xlIn0sICJrZXlfYXR0ZXN0YXRpb25fY2VydGlmaWNhdGVfY2hhaW4iOiBbIi0tLS0tQkVHSU4gQ0VSVElGSUNBVEUtLS0tLVxuTUlJQy4uLiAoQXBwIEtleSBDZXJ0KSAuLi5cbi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0iLCIiLS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tXG5NSUlDLi4uIChIYXJkd2FyZSBLZXkgQ2VydCkgLi4uXG4tLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tIl19LCAiYXR0ZXN0YXRpb25fdGltZXN0YW1wIjogMTY3ODg4NjQxMH0=",
+    "client_statement_format": "client-statement"
+  }
+}
