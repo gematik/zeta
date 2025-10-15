@@ -11,7 +11,6 @@ skinparam SequenceReferenceFontSize 12
 
 !pragma teoz true
 
-Actor User
 box "LEI" #GhostWhite
   box "Primärsystem" #Lavender
     box "ZETA Client" #SandyBrown
