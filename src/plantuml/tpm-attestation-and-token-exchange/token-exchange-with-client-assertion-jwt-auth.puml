@@ -188,16 +188,25 @@ end alt
 '  === START: VALIDATION SECTION ===
 alt Validations Successful
   AuthS -> PE ++ : POST /v1/data/authz, body\n{  "input": {...}}
-  PE --> AuthS --: 200 OK, body {"allow": true,\n\
-  "access_token_ttl": "360",\n\
-  "refresh_token_ttl": "43200",\n\
-  "scope": "RS specific scopes"}
+    note left of PE #lightgreen
+    **Policy Engine Response Body:**
+    {
+      ...
+      "allow": true,
+      "ttl": {
+        "access_token": 300,
+        "refresh_token": 86400
+      },
+      ...
+    }
+    end note
+  PE --> AuthS --: 200 OK
   alt Policy Decision allowed
     AuthS -> AuthS : Generate AS Access Token (AT)\nand Refresh Token (RT)
     AuthS -> PDPDB ++ : Update Client Data\nUpdate Session\nUpdate User Data
     PDPDB --> AuthS --: updated
     AuthS --> Client: 200 OK, new tokens
-        note right of AuthS #lightgreen
+        note left of AuthS #lightgreen
         **Token Response Body:**
         {
           "access_token": "<AS_Access_Token>",
