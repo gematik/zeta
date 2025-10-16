@@ -1,0 +1,33 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+description: "Schema for the payload of a Client Assertion JWT used in ZETA, as defined in RFC 7523, with custom claims for client attestation."
+
+type: object
+
+properties:
+  iss:
+    type: string
+    description: "Issuer of the JWT, which MUST be the client_id of the client."
+  sub:
+    type: string
+    description: "Subject of the JWT, which MUST be the OAuth 2.0 client_id of the client."
+  aud:
+    description: "Audience for the JWT. It MUST contain the Authorization Server's token endpoint URL."
+    type: string
+  exp:
+    type: integer
+    description: "Expiration time of the JWT in seconds since epoch."
+  jti:
+    type: string
+    description: "JWT ID, a unique identifier for the token."
+  
+  client_statement:
+    description: "A client statement object, as defined in client-statement.yaml. This property is optional and only present during an attestation flow."
+    $ref: "client-statement.yaml"
+
+required:
+  - iss
+  - sub
+  - aud
+  - exp
+  - jti
+

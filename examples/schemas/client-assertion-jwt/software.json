@@ -1,0 +1,24 @@
+{
+  "iss": "cid-win-sw-pqrst",
+  "sub": "cid-win-sw-pqrst",
+  "aud": "https://auth-server.zeta.gematik.de/token",
+  "exp": 1678890310,
+  "jti": "unique-jwt-id-win-sw-101",
+  "client_statement": {
+    "sub": "cid-win-sw-pqrst",
+    "platform": "windows",
+    "posture": {
+      "platform_product_id": {
+        "store_id": "9PBLGGH4R0C9"
+      },
+      "product_id": "gematik-light-client-win-v1",
+      "product_version": "1.1.0",
+      "os": "Windows 11 Home",
+      "os_version": "10.0.22000",
+      "arch": "amd64",
+      "public_key": "base64-encoded-self-signed-public-key...",
+      "attestation_challenge": "base64-encoded-signed-nonce-from-as..."
+    },
+    "attestation_timestamp": 1678890010
+  }
+}
