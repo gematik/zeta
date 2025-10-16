@@ -4,8 +4,21 @@
   "aud": "https://auth-server.zeta.gematik.de/token",
   "exp": 1678890310,
   "jti": "unique-jwt-id-win-sw-101",
-  "urn:gematik:params:oauth:client-attestation:software": {
-    "attestation_data": "eyJzdWIiOiAiY2lkLXdpbi1zdy1wcXJzdCIsICJwbGF0Zm9ybSI6ICJ3aW5kb3dzIiwgInBvc3R1cmUiOiB7InBsYXRmb3JtX3Byb2R1Y3RfaWQiOiB7InN0b3JlX2lkIjogIjlQQkxHR0g0UjBDOSJ9LCAicHJvZHVjdF9pZCI6ICJnZW1hdGlrLWxpZ2h0LWNsaWVudC13aW4tdjEiLCAicHJvZHVjdF92ZXJzaW9uIjogIjEuMS4wIiwgIm9zIjogIldpbmRvd3MgMTEgSG9tZSIsICJvc192ZXJzaW9uIjogIjEwLjAuMjIwMDAiLCAiYXJjaCI6ICJhbWQ2NCIsICJwdWJsaWNfa2V5IjogImJhc2U2NC1lbmNvZGVkLXNlbGYtc2lnbmVkLXB1YmxpYy1rZXkuLi4iLCAiYXR0ZXN0YXRpb25fY2hhbGxlbmdlIjogImJhc2U2NC1lbmNvZGVkLXNpZ25lZC1ub25jZS1mcm9tLWFzLi4uIn0sICJhdHRlc3RhdGlvbl90aW1lc3RhbXAiOiAxNjc4ODkwMDEw",
-    "client_statement_format": "client-statement"
+  "client_statement": {
+    "sub": "cid-win-sw-pqrst",
+    "platform": "windows",
+    "posture": {
+      "platform_product_id": {
+        "store_id": "9PBLGGH4R0C9"
+      },
+      "product_id": "gematik-light-client-win-v1",
+      "product_version": "1.1.0",
+      "os": "Windows 11 Home",
+      "os_version": "10.0.22000",
+      "arch": "amd64",
+      "public_key": "base64-encoded-self-signed-public-key...",
+      "attestation_challenge": "base64-encoded-signed-nonce-from-as..."
+    },
+    "attestation_timestamp": 1678890010
   }
 }
