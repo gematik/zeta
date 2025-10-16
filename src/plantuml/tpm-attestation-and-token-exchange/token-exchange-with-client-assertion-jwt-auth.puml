@@ -102,18 +102,18 @@ alt Initial SM(C)-B Token Exchangewith Attestation
   end alt
   ' === END: ATTESTATION SECTION ===
 
-  ' === START: SM(C)-B Access Token Creation ===
-  Client -> Client : Create "SM(C)-B Access Token" (JWT)
+  ' === START: SM(C)-B ID Token Creation ===
+  Client -> Client : Create "SM(C)-B ID Token" (JWT)
   note right #lightblue
-      **SM(C)-B Access Token Claims:**
+      **SM(C)-B ID Token Claims:**
       {
         "iss": "<client_id>", // Issuer is the client
+        "nonce": "<nonce from AS>", // Binding to AS
         "sub": "<Telematik-ID from SM(C)-B>", // Subject is the institution
         "aud": "[<Resource_Server_Endpoint_URL>]", // Audience is the Resource Server
         "exp": ..., // Short-lived
         "iat": ...,
-        "jti": "...",
-        "scope": ... // As required for the Resource Server access
+        "jti": "..."
       }
   end note
 
@@ -121,7 +121,7 @@ alt Initial SM(C)-B Token Exchangewith Attestation
   Konnektor -> SMB ++ : sign (hash)
   SMB --> Konnektor -- : Signature
   Konnektor --> Client -- : JWT-signature
-  Client -> Client : Add JWT-Signature to SM(C)-B Access Token
+  Client -> Client : Add JWT-Signature to SM(C)-B ID Token
 
   Client -> Client : Create DPoP Proof JWT for Token Exchange
   note right #lightblue
@@ -138,16 +138,18 @@ alt Initial SM(C)-B Token Exchangewith Attestation
         "iat": ...
       }.(sig by DPoP_Private_Key)
   end note
-  ' === END: SM(C)-B Access Token Creation ===
+  ' === END: SM(C)-B ID Token Creation ===
 
   Client -> AuthS ++ : POST /token (RFC 8693) DPoP: <signed_dpop_jwt>
     note right of Client #lightblue
     **Token Exchange Request Body:**
     grant_type=urn:ietf:params:oauth:grant-type:token-exchange
-    &subject_token=<SM(C)-B_Access_Token>
+    &subject_token=<SM(C)-B signed ID Token>
     &subject_token_type=urn:ietf:params:oauth:token-type:jwt
     &client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
     &client_assertion=<Client_Assertion_JWT>
+    &audience=<Resource Server Endpoint>
+    &scope=<Resource Server scopes>
     ...
     end note
   AuthS -> AuthS : Validate Request (Client Assertion,\nAttestation, DPoP Proof,\nSubject Token)
@@ -186,16 +188,25 @@ end alt
 '  === START: VALIDATION SECTION ===
 alt Validations Successful
   AuthS -> PE ++ : POST /v1/data/authz, body\n{  "input": {...}}
-  PE --> AuthS --: 200 OK, body {"allow": true,\n\
-  "access_token_ttl": "360",\n\
-  "refresh_token_ttl": "43200",\n\
-  "scope": "RS specific scopes"}
+    note left of PE #lightgreen
+    **Policy Engine Response Body:**
+    {
+      ...
+      "allow": true,
+      "ttl": {
+        "access_token": 300,
+        "refresh_token": 86400
+      },
+      ...
+    }
+    end note
+  PE --> AuthS --: 200 OK
   alt Policy Decision allowed
     AuthS -> AuthS : Generate AS Access Token (AT)\nand Refresh Token (RT)
     AuthS -> PDPDB ++ : Update Client Data\nUpdate Session\nUpdate User Data
     PDPDB --> AuthS --: updated
     AuthS --> Client: 200 OK, new tokens
-        note right of AuthS #lightgreen
+        note left of AuthS #lightgreen
         **Token Response Body:**
         {
           "access_token": "<AS_Access_Token>",

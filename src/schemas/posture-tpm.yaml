@@ -1,37 +1,48 @@
 # Posture schema for generic software clients with TPM attestation
 # 
-$schema: "http://json-schema.org/draft-07/schema#"
-posture_software_tpm:
-  type: object
-  properties:
-    os:
+type: object
+properties:
+  platform_product_id:
+    oneOf:
+      - $ref: "./product-id-windows.yaml"
+      - $ref: "./product-id-linux.yaml"
+    description: The product identifier
+  product_id:
+    type: string
+    description: The gematik product identifier
+  product_version:
+    type: string
+    description: The product version
+  os:
+    type: string
+    description: Operating system name
+  os_version:
+    type: string
+    description: Operating system version
+  arch:
+    type: string
+    description: Hardware Architecture
+  tpm_attestation_key:
+    type: string
+    description: The public key of the TPM-resident attestation key (PEM or base64 DER encoded).
+  tpm_quote:
+    type: string
+    description: The TPM quote of the client instance
+  tpm_event_log:
+    type: string
+    description: The TPM event log of the client instance
+  tpm_ek_certificate_chain:
+    type: array
+    description: The endorsement key certificate chain from the TPM manufacturer (PEM or base64 DER encoded).
+    items:
       type: string
-      description: Operating system name
-    os_version:
-      type: string
-      description: Operating system version
-    arch:
-      type: string
-      description: Hardware Architecture
-    tpm_attestation_key:
-      type: string
-      description: The public key of the TPM-resident attestation key (PEM or base64 DER encoded).
-    tpm_quote:
-      type: string
-      description: The TPM quote of the client instance
-    tpm_event_log:
-      type: string
-      description: The TPM event log of the client instance
-    tpm_ek_certificate_chain:
-      type: array
-      description: The endorsement key certificate chain from the TPM manufacturer (PEM or base64 DER encoded).
-      items:
-        type: string
-  required:
-    - os
-    - os_version
-    - arch
-    - tpm_attestation_key
-    - tpm_quote
-    - tpm_event_log
-    - tpm_ek_certificate_chain
+required:
+  - product_id
+  - product_version
+  - os
+  - os_version
+  - arch
+  - tpm_attestation_key
+  - tpm_quote
+  - tpm_event_log
+  - tpm_ek_certificate_chain

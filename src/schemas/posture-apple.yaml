@@ -1,16 +1,120 @@
-# see https://developer.apple.com/documentation/uikit/uidevice
+# ===================================================================
+# Hauptschema für Apple Posture
+# ===================================================================
+# Beschreibt die Daten, die von einer Apple iOS App zur Überprüfung ihrer
+# Integrität gesendet werden. Die Struktur ist flach und enthält
+# die dekodierten Inhalte der Attestation- und Assertion-Objekte.
+# ===================================================================
 type: object
 properties:
+  # -------------------------------------------------------------------
+  # Basis-Felder (ehemals BasePosture)
+  # -------------------------------------------------------------------
+  platform_product_id:
+    $ref: "./product-id-apple.yaml"
+    description: The product identifier for Apple apps
+  product_id:
+    type: string
+    description: The gematik product identifier
+  product_version:
+    type: string
+    description: The product version
   system_version:
     type: string
-    description: Operating system version, e.g. 10.15.7
+    description: Operating system version, e.g., 10.15.7
   system_name:
     type: string
     description: The name of the operating system running on the device.
   device_model:
     type: string
-    description: The model of the device, e.g. "iPhone6,2"
+    description: The model of the device, e.g., "iPhone6,2"
+  key_id:
+    type: string
+    format: base64
+    description: The key identifier associated with the cryptographic key on the device (base64 encoded).
+
+  # -------------------------------------------------------------------
+  # Felder aus dekodiertem Attestation-Objekt (nur bei Initial-Attestation)
+  # -------------------------------------------------------------------
+  fmt:
+    type: string
+    description: The format of the attestation statement. For Apple App Attest, this is 'apple-appattest'.
+    const: "apple-appattest"
+  attStmt:
+    type: object
+    description: The attestation statement containing the actual attestation data.
+    properties:
+      x5c:
+        type: array
+        items:
+          type: string
+          format: base64
+        description: A chain of X.509 certificates, starting with the credential certificate.
+      receipt:
+        type: string
+        format: base64
+        description: An Apple-specific receipt for device risk assessment.
+    required:
+      - x5c
+      - receipt
+  authData:
+    type: object
+    description: Structured authenticator data from the initial attestation.
+    properties:
+      rpidHash:
+        type: string
+        format: byte
+        description: SHA256 hash of the Relying Party ID (App ID).
+      flags:
+        type: string
+        description: A byte of flags indicating the authenticator's state.
+      counter:
+        type: integer
+        description: Signature counter, which is 0 during initial attestation.
+      aaguid:
+        type: string
+        description: Authenticator Attestation Globally Unique Identifier, indicating the environment (dev/prod).
+      credentialId:
+        type: string
+        description: Hash of the public key of the attested key pair.
+    required:
+      - rpidHash
+      - flags
+      - counter
+      - aaguid
+      - credentialId
+
+  # -------------------------------------------------------------------
+  # Felder aus dekodiertem Assertion-Objekt (nur bei Subsequent-Assertion)
+  # -------------------------------------------------------------------
+  signature:
+    type: string
+    format: base64
+    description: The cryptographic signature created by the private key on the device.
+  assertionAuthenticatorData:
+    type: object
+    description: Simplified authenticator data for subsequent assertions.
+    properties:
+      rpidHash:
+        type: string
+        format: byte
+        description: SHA256 hash of the Relying Party ID (App ID).
+      counter:
+        type: integer
+        description: Signature counter, incremented for each assertion to prevent replay attacks.
+    required:
+      - rpidHash
+      - counter
+  client_data_json:
+    type: string
+    format: json
+    description: A JSON string containing the request data to be signed, including a server-provided challenge.
+
 required:
+  - platform_product_id
+  - product_id
+  - product_version
   - system_version
   - system_name
   - device_model
+  - key_id

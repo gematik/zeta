@@ -12,7 +12,6 @@ ZETA Guard kommuniziert mit den ZETA Clients und der Telemetriedaten Erfassung. 
 - **ZETA Clients**: ZETA Guard sendet Service Discovery Daten, Client-Registrierungsdaten und Autorisierungsentscheidungen an die ZETA Clients.
   - **Service Discovery**: < 10 kB (1 x pro Tag und Nutzer)
   - **Client-Registrierung**: < 5 kB  (1 x pro Client einmalig)
-  - **Autorisierungsentscheidungen**: 
+  - **Autorisierungsentscheidungen**: < 1 kB (1 x pro Anfrage)
 - **Telemetriedaten Erfassung**: ZETA Guard sendet Telemetriedaten an die Telemetriedaten Erfassung, um die Sicherheit und Leistung des Systems zu überwachen. Diese Daten umfassen Informationen über Zugriffsanfragen, Autorisierungsentscheidungen und Systemereignisse. Die Telemetriedaten Erfassung ermöglicht es, Muster zu erkennen und potenzielle Sicherheitsvorfälle frühzeitig zu identifizieren.
   - Telemetriedaten (Logs, Metriken, Selbstauskunft): < 2 kB (angenommen alle 10 Sekunden; das Sende-Intervall wird in der Testphase abgestimmt und festgelegt)
-- 

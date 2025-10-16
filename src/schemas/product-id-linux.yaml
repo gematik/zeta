@@ -1,0 +1,12 @@
+# Plattformspezifische Produkt-ID für Linux Apps
+type: object
+properties:
+  packaging_type:
+    type: string
+    description: The type of packaging for the Linux app (e.g., flatpak, snap, deb).
+  application_id:
+    type: string
+    description: The Application ID for the Linux app (e.g., org.mozilla.firefox for Flatpak).
+required:
+  - packaging_type
+  - application_id

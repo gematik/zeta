@@ -1,0 +1,6 @@
+{
+  "allowed_audiences": [
+    "https://example.com/testresource",
+    "https://some-service.de/api/v1"
+  ]
+}

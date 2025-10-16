@@ -7,6 +7,15 @@
 # etc
 type: object
 properties:
+  platform_product_id:
+    $ref: "./product-id-android.yaml"
+    description: The product identifier for Android apps
+  product_id:
+    type: string
+    description: The gematik product identifier
+  product_version:
+    type: string
+    description: The product version
   build:
     description: Android build information, see https://developer.android.com/reference/android/os/Build
     type: object
@@ -25,8 +34,10 @@ properties:
         description: Build.MANUFACTURER
       product:
         type: string
+        description: Build.PRODUCT
       model:
         type: string
+        description: Build.MODEL
       board:
         type: string
   ro:
@@ -76,5 +87,13 @@ properties:
           - 1
           - 2
           - 3
+  key_attestation_certificate_chain:
+    type: array
+    description: The certificate chain from the Android Key Attestation
+    items:
+      type: string
 required:
+  - product_id
+  - product_version
   - build
+  - key_attestation_certificate_chain
