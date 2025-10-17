@@ -38,7 +38,7 @@
     "scopes": [
       "openid"
     ],
-    "aud": [
+    "audience": [
       "https://some-service.de/api/v1"
     ],
     "ip_address": "192.0.2.150",

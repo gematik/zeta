@@ -4,6 +4,8 @@
 # The PEP can request user-info records for a user by sending a request.
 #
 $schema: "http://json-schema.org/draft-07/schema#"
+title: User Info
+description: Schema for the user-info JSON object.
 user_info:
   type: object
   properties:

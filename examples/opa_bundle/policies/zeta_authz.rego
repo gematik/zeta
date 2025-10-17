@@ -15,7 +15,6 @@ decision := response if {
     count(reasons) == 0
     response := {
         "allow": true,
-        "scopes": input.authorization_request.scopes,
         "ttl": {
             # KORRIGIERTER PFAD: Greift direkt auf die Top-Level-Keys zu
             "access_token": data.access_token_ttl,
@@ -57,6 +56,6 @@ scopes_are_allowed if {
 audience_is_allowed if {
     # KORRIGIERTER PFAD
     allowed_audience_set := {s | s := data.allowed_audiences[_]}
-    requested_audience_set := {aud | aud := input.authorization_request.aud[_]}
+    requested_audience_set := {audience | audience := input.authorization_request.audience[_]}
     requested_audience_set - allowed_audience_set == set()
 }

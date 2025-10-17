@@ -46,7 +46,7 @@
       "openid",
       "urn:telematik:fachdienst"
     ],
-    "aud": [
+    "audience": [
       "https://fachdienst-resource.de/api/v3"
     ],
     "ip_address": "198.51.100.5",

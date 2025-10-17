@@ -1,5 +1,7 @@
 # Schema for the OAuth protected resource server .well-known JSON object
 $schema: "http://json-schema.org/draft-07/schema#"
+title: OAuth Protected Resource Server .well-known JSON Object
+description: Schema for the .well-known JSON object used by OAuth Protected Resource Servers.
 type: object
 properties:
   resource:

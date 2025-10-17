@@ -1,33 +1,35 @@
 # Schema for the user-session JSON object.
 # The PDP authorization server stores the state of the user-session for
 # authenticated user.
-user_session:
-  type: object
-  properties:
-    session_id:
-      type: string
-      description: "Unique ID of the session."
-    accesstoken_jti:
-      type: string
-      description: "jti attribute of the accesstoken."
-    refreshtoken_jti:
-      type: string
-      description: "jti attribute of the refreshtoken."
-    subject:
-      type: string
-      description: "Unique ID of the user."
-    client_id:
-      type: string
-      description: "Unique ID of the client."
-    session_expiry:
-      type: integer
-      description: "Timestamp of the session expiration."
-    refresh_count:
-      type: integer
-      description: "Counter for the refresh token usage."
-  required:
-    - session_id
-    - subject
-    - client_id
-    - session_expiry
-    - refresh_count
+$schema: "http://json-schema.org/draft-07/schema#"
+title: User Session
+description: Schema for the user-session JSON object. The PDP authorization server stores the state of the user-session for authenticated user.
+type: object
+properties:
+  session_id:
+    type: string
+    description: "Unique ID of the session."
+  accesstoken_jti:
+    type: string
+    description: "jti attribute of the accesstoken."
+  refreshtoken_jti:
+    type: string
+    description: "jti attribute of the refreshtoken."
+  subject:
+    type: string
+    description: "Unique ID of the user."
+  client_id:
+    type: string
+    description: "Unique ID of the client."
+  session_expiry:
+    type: integer
+    description: "Timestamp of the session expiration."
+  refresh_count:
+    type: integer
+    description: "Counter for the refresh token usage."
+required:
+  - session_id
+  - subject
+  - client_id
+  - session_expiry
+  - refresh_count

@@ -48,7 +48,7 @@
       "openid",
       "urn:telematik:prescriptions"
     ],
-    "aud": [
+    "audience": [
       "https://another-resource.de/api/v2"
     ],
     "ip_address": "203.0.113.100",
