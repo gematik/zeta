@@ -26,7 +26,7 @@ properties:
         description: The purpose of use for the authorization
         items:
           type: string
-      aud:
+      audience:
         type: array
         description: The audience for the authorization
         items:

@@ -44,7 +44,7 @@
       "openid",
       "urn:telematik:epas"
     ],
-    "aud": [
+    "audience": [
       "https://epa-resource.de/api/v1"
     ],
     "ip_address": "192.0.2.88",
