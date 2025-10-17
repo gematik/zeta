@@ -5,6 +5,9 @@
 # Integrität gesendet werden. Die Struktur ist flach und enthält
 # die dekodierten Inhalte der Attestation- und Assertion-Objekte.
 # ===================================================================
+$schema: "http://json-schema.org/draft-07/schema#"
+title: Apple Posture
+description: The posture of the client instance. The structure depends on the platform.
 type: object
 properties:
   # -------------------------------------------------------------------

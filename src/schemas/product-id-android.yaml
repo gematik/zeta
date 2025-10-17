@@ -1,6 +1,12 @@
 # Platform specific product id for Android Apps
+$schema: "http://json-schema.org/draft-07/schema#"
+title: Android Product ID
+description: The product identifier for Android apps
 type: object
 properties:
+  platform:
+    type: string
+    const: "android"
   namespace:
     type: string
     const: "android_app"

@@ -15,7 +15,6 @@ decision := response if {
     count(reasons) == 0
     response := {
         "allow": true,
-        "scopes": input.authorization_request.scopes,
         "ttl": {
             # KORRIGIERTER PFAD: Greift direkt auf die Top-Level-Keys zu
             "access_token": data.access_token_ttl,
