@@ -1,76 +1,41 @@
 # Schema for client instance information used by the zero trust components
 $schema: "http://json-schema.org/draft-07/schema#"
-client_instance:
-  type: object
-  properties:
-    name:
-      type: string
-      description: The name of the client instance, chosen by the user of the client
-    client_id:
-      type: string
-      description: The client identifier
-    platform:
-      type: string
-      description: The platform of the client instance
-      enum:
-        - android
-        - apple
-        - windows
-        - linux
-    manufacturer_id:
-      type: string
-      description: The manufacturer identifier
-    manufacturer_name:
-      type: string
-      description: The manufacturer name
-    owner_mail:
-      type: string
-      description: The mail address of the owner
-    registration_timestamp:
-      type: integer
-      description: The timestamp of the registration in seconds since epoch
-    platform_product_id:
-      type: object
-      description: "Contains platform-specific product identifiers. The exact structure is determined by the 'platform' field."
-  required:
-    - name
-    - client_id
-    - platform
-    - manufacturer_id
-    - manufacturer_name
-    - owner_mail
-    - registration_timestamp
-    - platform_product_id
-  allOf:
-    - if:
-        properties:
-          platform:
-            const: "android"
-      then:
-        properties:
-          platform_product_id:
-            $ref: "./product-id-android.yaml"
-    - if:
-        properties:
-          platform:
-            const: "apple"
-      then:
-        properties:
-          platform_product_id:
-            $ref: "./product-id-apple.yaml"
-    - if:
-        properties:
-          platform:
-            const: "windows"
-      then:
-        properties:
-          platform_product_id:
-            $ref: "./product-id-windows.yaml"
-    - if:
-        properties:
-          platform:
-            const: "linux"
-      then:
-        properties:
-          platform_product_id:
-            $ref: "./product-id-linux.yaml"
+title: ClientInstance
+description: The client instance contains information about the client instance.
+type: object
+properties:
+  name:
+    type: string
+    description: The name of the client instance, chosen by the user of the client
+  client_id:
+    type: string
+    description: The client identifier
+  manufacturer_id:
+    type: string
+    description: The manufacturer identifier
+  manufacturer_name:
+    type: string
+    description: The manufacturer name
+  owner_mail:
+    type: string
+    description: The mail address of the owner
+  registration_timestamp:
+    type: integer
+    description: The timestamp of the registration in seconds since epoch
+  platform_product_id:
+    type: object
+    description: "Contains platform-specific product identifiers. The exact structure is determined by the 'platform' field."
+oneOf:
+  - $ref: "./product-id-android.yaml"
+  - $ref: "./product-id-apple.yaml"
+  - $ref: "./product-id-windows.yaml"
+  - $ref: "./product-id-linux.yaml"
+required:
+  - name
+  - client_id
+  - platform
+  - manufacturer_id
+  - manufacturer_name
+  - owner_mail
+  - registration_timestamp
+  - platform_product_id

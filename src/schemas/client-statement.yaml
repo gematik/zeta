@@ -2,66 +2,35 @@
 # The Client Statement is used in the Client Assertion JWT with the ZETA Guard AuthServer.
 # It contains information about the client instance.
 $schema: "http://json-schema.org/draft-07/schema#"
-client_statement:
-  type: object
-  properties:
-    sub:
-      type: string
-      description: The name of the client
-    platform:
-      type: string
-      description: The platform of the client instance
-      enum:
-        - android
-        - apple
-        - windows
-        - linux
-    posture:
-      description: The posture of the client instance. The structure depends on the platform.
-      $ref: "./posture.yaml"
-    attestation_timestamp:
-      description: The attestation timestamp of the client instance
-      type: integer
-      format: unix-time
-  required:
-    - sub
-    - platform
-    - posture
-    - attestation_timestamp
-  allOf:
-    - if:
-        properties:
-          platform:
-            const: "android"
-      then:
-        properties:
-          posture:
-            $ref: "./posture-android.yaml"
-    - if:
-        properties:
-          platform:
-            const: "apple"
-      then:
-        properties:
-          posture:
-            $ref: "./posture-apple.yaml"
-    - if:
-        properties:
-          platform:
-            const: "windows"
-      then:
-        properties:
-          posture:
-            oneOf:
-              - $ref: "./posture-tpm.yaml"
-              - $ref: "./posture-software.yaml"
-    - if:
-        properties:
-          platform:
-            const: "linux"
-      then:
-        properties:
-          posture:
-            oneOf:
-              - $ref: "./posture-tpm.yaml"
-              - $ref: "./posture-software.yaml"
+title: Client Statement
+description: The client statement contains information about the client instance.
+type: object
+properties:
+  sub:
+    type: string
+    description: The name of the client
+  platform:
+    type: string
+    description: The platform of the client instance
+    enum:
+      - android
+      - apple
+      - windows
+      - linux
+  posture:
+    description: The posture of the client instance. The structure depends on the platform.
+    $ref: "./posture.yaml"
+  attestation_timestamp:
+    description: The attestation timestamp of the client instance
+    type: integer
+    format: unix-time
+oneOf:
+  - $ref: "./posture-android.yaml"
+  - $ref: "./posture-apple.yaml"
+  - $ref: "./posture-tpm.yaml"
+  - $ref: "./posture-software.yaml"
+required:
+  - sub
+  - platform
+  - posture
+  - attestation_timestamp

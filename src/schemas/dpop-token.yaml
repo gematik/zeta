@@ -1,0 +1,73 @@
+# YAML Schema for a DPoP Proof JWT according to RFC 9449
+$schema: "http://json-schema.org/draft-07/schema#"
+title: DPoP Proof JWT
+description: Schema for a DPoP Proof JWT as defined in RFC 9449.
+type: object
+properties:
+  header:
+    type: object
+    properties:
+      typ:
+        type: string
+        description: The type of the JWT. For DPoP, this MUST be "dpop+jwt".
+        enum:
+          - dpop+jwt
+      alg:
+        type: string
+        description: The asymmetric algorithm used to sign the JWT. It MUST NOT be "none" or a symmetric algorithm.
+        examples:
+          - ES256
+      jwk:
+        type: object
+        description: The public key corresponding to the private key used to sign the DPoP proof.
+        properties:
+          kty:
+            type: string
+            description: The key type (e.g., "EC", "RSA").
+          crv:
+            type: string
+            description: The curve for an Elliptic Curve key.
+          x:
+            type: string
+            description: The x-coordinate for the Elliptic Curve point.
+          y:
+            type: string
+            description: The y-coordinate for the Elliptic Curve point.
+          e:
+            type: string
+            description: The exponent for an RSA public key.
+          n:
+            type: string
+            description: The modulus for an RSA public key.
+        required:
+          - kty
+    required:
+      - typ
+      - alg
+      - jwk
+  payload:
+    type: object
+    properties:
+      jti:
+        type: string
+        description: A unique identifier for the DPoP proof JWT.
+      htm:
+        type: string
+        description: The HTTP method of the request to which the DPoP proof is being attached.
+      htu:
+        type: string
+        description: The HTTP URI of the request, excluding any query and fragment parts.
+      iat:
+        type: integer
+        description: The time at which the DPoP proof JWT was issued, in seconds since the Unix epoch.
+      ath:
+        type: string
+        description: The base64url-encoded SHA-256 hash of the associated access token. Required when the DPoP proof is used in conjunction with an access token.
+      nonce:
+        type: string
+        description: A recent nonce provided by the server to prevent replay attacks.
+    required:
+      - jti
+      - htm
+      - htu
+      - iat

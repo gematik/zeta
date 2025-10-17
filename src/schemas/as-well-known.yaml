@@ -1,5 +1,7 @@
-# Schema for the PEP authorization server .well-known JSON object
+# Schema for the Authorization Server .well-known JSON object
 $schema: "http://json-schema.org/draft-07/schema#"
+title: Authorization Server .well-known JSON Object
+description: Schema for the .well-known JSON object used by Authorization Servers.
 type: object
 properties:
   issuer:

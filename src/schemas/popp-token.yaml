@@ -1,18 +1,64 @@
-# Schema for the ProofOfPatientPresenceToken JSON object. Issuer is a PoPP server.
+# YAML Schema for a PoPP Token according to gematik specification
+# Based on gemSpec_PoPP_Service_V1.0.0
 $schema: "http://json-schema.org/draft-07/schema#"
-proof_of_patient_presence_token:
-  type: object
-  properties:
-    sub:
-      type: string
-      description: "The subject identifier of the token, representing the patient ID."
-    tel_id:
-      type: string
-      description: "The TelematikID of the practitioner organization where the patient was present."
-    iat:
-      type: integer
-      description: "Issued at time of the token as a Unix timestamp."
-  required:
-    - sub
-    - tel_id
-    - iat
+title: PoPP Token
+description: Schema for a PoPP Token as defined in gematik specification.
+type: object
+properties:
+  header:
+    type: object
+    description: The JOSE Header of the PoPP-Token.
+    properties:
+      typ:
+        type: string
+        description: Type of the JWT. Must be "popp+jwt".
+        enum:
+          - popp+jwt
+      alg:
+        type: string
+        description: Asymmetric algorithm used to sign the JWT. Must be "PS256".
+        enum:
+          - PS256
+      x5c:
+        type: array
+        description: Contains the certificate chain. The first certificate must be the leaf certificate containing the public key for verifying the signature. It must be base64-der-encoded.
+        items:
+          type: string
+          format: byte # Represents base64 encoded data
+        minItems: 1
+    required:
+      - typ
+      - alg
+      - x5c
+  payload:
+    type: object
+    description: The JWT Claims Set of the PoPP-Token.
+    properties:
+      jti:
+        type: string
+        description: Unique identifier for the JWT.
+      htm:
+        type: string
+        description: The HTTP method of the request to which the PoPP token is being attached.
+      htu:
+        type: string
+        description: The HTTP URI of the request, without query and fragment parts.
+      iat:
+        type: integer
+        description: Timestamp of when the JWT was issued (seconds since Unix epoch).
+      ath:
+        type: string
+        description: The base64url-encoded SHA-256 hash of the associated access token.
+      nonce:
+        type: string
+        description: A nonce provided by the server to prevent replay attacks.
+    required:
+      - jti
+      - htm
+      - htu
+      - iat
+      - ath
+      - nonce
+required:
+  - header
+  - payload

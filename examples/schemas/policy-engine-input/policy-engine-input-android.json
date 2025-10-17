@@ -67,7 +67,7 @@
       "openid",
       "urn:telematik:email"
     ],
-    "aud": [
+    "audience": [
       "https://example-resource.de/api/v1"
     ],
     "ip_address": "203.0.113.42",

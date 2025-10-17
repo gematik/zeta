@@ -4,6 +4,7 @@
   "allowed_scopes": [
     "test_scope_read",
     "test_scope_write",
+    "erezept",
     "openid"
   ]
 }
