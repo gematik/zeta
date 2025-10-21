@@ -41,9 +41,11 @@ properties:
         type: integer
         description: Expiration time of the token as a Unix timestamp.
       aud:
-        type: array
-        items:
-          type: string
+        oneOf:
+          - type: array
+            items:
+              type: string
+          - type: string
         description: The intended recipients (audiences) of the token.
       sub:
         type: string

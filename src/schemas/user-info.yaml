@@ -6,18 +6,17 @@
 $schema: "http://json-schema.org/draft-07/schema#"
 title: User Info
 description: Schema for the user-info JSON object.
-user_info:
-  type: object
-  properties:
-    identifier:
-      type: string
-      description: "Telematik-ID, KVNR or other unique identifier"
-    professionOID:
-      type: string
-      description: "Profession identifier (OID)"
-    mail:
-      type: string
-      description: The mail address of the owner
-  required:
-    - identifier
-    - professionOID
+type: object
+properties:
+  identifier:
+    type: string
+    description: "Telematik-ID, KVNR or other unique identifier"
+  professionOID:
+    type: string
+    description: "Profession identifier (OID)"
+  mail:
+    type: string
+    description: The mail address of the owner
+required:
+  - identifier
+  - professionOID
