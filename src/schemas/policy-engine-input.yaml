@@ -74,9 +74,9 @@ properties:
       - principal_user_info
       - allowed_scopes
       - valid_until
-  required:
-    - version
-    - client_registration_data
-    - client_assertion
-    - user_info
-    - authorization_request
+required:
+  - version
+  - client_registration_data
+  - client_assertion
+  - user_info
+  - authorization_request
