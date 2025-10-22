@@ -35,7 +35,7 @@ note right of Client #LightYellow
   - ZETA Client is pre-configured with Resource Server FQDN (RS-FQDN)
 end note
 
-alt ZETA Client is already able to access api-catalog
+alt ZETA Client supports api-catalog
   Client ++
   Client -> HP++: GET /.well-known/api-catalog Host: RS-FQDN
   HP --> Client--: Client: 200 OK; JSON body with Well-Known JSON Document  (RFC9727)
@@ -52,7 +52,7 @@ alt ZETA Client is already able to access api-catalog
   Client -> Client: Verify signature of fetched JSON Document
   Client -> Client: Update Configuration
 
-else ZETA Client is not yet able to access api-catalog
+else ZETA Client doesn't support api-catalog yet 
 
   Client -> HP ++ : GET /.well-known/oauth-protected-resource Host: RS-FQDN
   HP --> Client--: Client: 200 OK; JSON body with Well-Known JSON Document  (RFC9728)
