@@ -80,12 +80,36 @@ jobs:
             echo "-> Generating images for PlantUML file: $file"
             mkdir -p "$output_dir"
             
-            java -jar /tmp/plantuml.jar -tpng -scale 4 "$file" -o "$output_dir"
-            java -jar /tmp/plantuml.jar -tsvg "$file" -o "$output_dir"
+            # --- BEGINN DER ÄNDERUNG ---
+            # Wir fügen -verbose hinzu, um mehr Details zu erhalten, und fangen die Ausgabe bei einem Fehler ab.
+            # Wir verwenden auch -graphvizdot, um den Pfad zu dot explizit anzugeben.
+            
+            # Temporäre Datei für die Fehlerausgabe
+            ERROR_LOG=$(mktemp)
+
+            echo "Generating PNG..."
+            if ! java -jar /tmp/plantuml.jar -graphvizdot /usr/bin/dot -verbose -tpng -scale 4 "$file" -o "$output_dir" > "$ERROR_LOG" 2>&1; then
+              echo "::error::PNG generation failed for $file. PlantUML output:"
+              cat "$ERROR_LOG"
+              rm "$ERROR_LOG"
+              exit 1
+            fi
+
+            echo "Generating SVG..."
+            if ! java -jar /tmp/plantuml.jar -graphvizdot /usr/bin/dot -verbose -tsvg "$file" -o "$output_dir" > "$ERROR_LOG" 2>&1; then
+              echo "::error::SVG generation failed for $file. PlantUML output:"
+              cat "$ERROR_LOG"
+              rm "$ERROR_LOG"
+              exit 1
+            fi
+            
+            rm "$ERROR_LOG"
+            # --- ENDE DER ÄNDERUNG ---
 
             if [ -f "$png_path" ] && [ -f "$svg_path" ]; then
                SUCCESSFUL_GENERATIONS=$((SUCCESSFUL_GENERATIONS + 1))
             else
+               # Diese Meldung sollte jetzt nicht mehr erreicht werden, da wir vorher abbrechen
                echo "::error::One or both output files missing after generation attempt for $file."
                FAILED_GENERATIONS=$((FAILED_GENERATIONS + 1))
                exit 1
@@ -101,7 +125,6 @@ jobs:
           echo "plantuml_generated=false" >> $GITHUB_OUTPUT
         fi
       shell: bash
-
     - name: Generate images from drawio files
       id: generate_drawio
       run: |
