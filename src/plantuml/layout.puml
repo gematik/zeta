@@ -1,0 +1,17 @@
+skinparam defaultFontSize 10
+skinparam DefaultMonospacedFontName Courier
+skinparam lengthAdjust none
+
+skinparam sequence {
+  ParticipantBorderColor black
+  ParticipantBackgroundColor white
+  ActorBorderColor black
+  ActorBackgroundColor white
+  ArrowColor black
+  LifeLineBorderColor black
+  LifeLineBackgroundColor #F0F0F0
+  NoteBorderColor black
+  NoteBackgroundColor #FEFECE
+}
+
+!pragma teoz true
