@@ -56,76 +56,42 @@ jobs:
         fi
         echo "PlantUML JAR downloaded."
 
-    - name: Generate images from PlantUML files
-      id: generate_plantuml
+    - name: DEBUG PlantUML Generation
       run: |
-        set -e
-        SUCCESSFUL_GENERATIONS=0
-        FAILED_GENERATIONS=0
-        shopt -s nullglob
-
-        echo "Checking PlantUML files..."
-        while IFS= read -r -d $'\0' file; do
-          output_dir="$PWD/$(dirname "$file" | sed 's|^src/plantuml|images|')"
-          image_base=$(basename "$file" .puml)
-          png_path="$output_dir/$image_base.png"
-          svg_path="$output_dir/$image_base.svg"
-          should_generate=false
-
-          if [ ! -f "$png_path" ] || [ ! -f "$svg_path" ] || { [ -f "$png_path" ] && [ "$file" -nt "$png_path" ]; } || { [ -f "$svg_path" ] && [ "$file" -nt "$svg_path" ]; }; then
-             should_generate=true
-          fi
-
-          if [ "$should_generate" = true ]; then
-            echo "-> Generating images for PlantUML file: $file"
-            mkdir -p "$output_dir"
-            
-            ERROR_LOG=$(mktemp)
-
-            # --- BEGINN DER ÄNDERUNG ---
-            # Wir fügen -failfast2 hinzu. Dies zwingt PlantUML, bei JEDEM Fehler
-            # (inkl. nicht gefundener includes) mit einem Exit-Code ungleich 0 abzubrechen.
-            # Das wird dann von unserer "if ! java..." Logik korrekt gefangen.
-            
-            echo "Generating PNG..."
-            if ! java -jar /tmp/plantuml.jar -failfast2 -graphvizdot /usr/bin/dot -verbose -tpng -scale 4 "$file" -o "$output_dir" > "$ERROR_LOG" 2>&1; then
-              echo "::error::PNG generation failed for $file. PlantUML output:"
-              cat "$ERROR_LOG"
-              rm "$ERROR_LOG"
-              exit 1
-            fi
-
-            echo "Generating SVG..."
-            if ! java -jar /tmp/plantuml.jar -failfast2 -graphvizdot /usr/bin/dot -verbose -tsvg "$file" -o "$output_dir" > "$ERROR_LOG" 2>&1; then
-              echo "::error::SVG generation failed for $file. PlantUML output:"
-              cat "$ERROR_LOG"
-              rm "$ERROR_LOG"
-              exit 1
-            fi
-            # --- ENDE DER ÄNDERUNG ---
-            
-            rm "$ERROR_LOG"
-
-            # Diese nachfolgende Prüfung ist nur noch ein Fallback.
-            # Der Job sollte jetzt schon im "if"-Block oben fehlschlagen.
-            if [ -f "$png_path" ] && [ -f "$svg_path" ]; then
-               SUCCESSFUL_GENERATIONS=$((SUCCESSFUL_GENERATIONS + 1))
-            else
-               echo "::error::File generation failed unexpectedly for $file. Output files are missing, although PlantUML returned a success code."
-               FAILED_GENERATIONS=$((FAILED_GENERATIONS + 1))
-               exit 1
-            fi
-          fi
-        done < <(find src/plantuml -name "*.puml" -print0)
-
-        echo "PlantUML generation finished. Successful: $SUCCESSFUL_GENERATIONS, Failed: $FAILED_GENERATIONS."
-
-        if [ "$SUCCESSFUL_GENERATIONS" -gt 0 ]; then
-          echo "plantuml_generated=true" >> $GITHUB_OUTPUT
+        echo "--- 1. Checking environment ---"
+        echo "Java version:"
+        java -version
+        echo "Graphviz dot version:"
+        dot -V
+        echo "PlantUML integrity check:"
+        # -testdot prüft die Verbindung zu Graphviz und gibt Details aus.
+        java -jar /tmp/plantuml.jar -testdot
+        
+        echo ""
+        echo "--- 2. Setting up file paths for the failing file ---"
+        FILE="src/plantuml/mobile-client-registration/mobile-client-registration.puml"
+        OUTPUT_DIR="$PWD/images/mobile-client-registration"
+        mkdir -p "$OUTPUT_DIR"
+        
+        echo "Processing file: $FILE"
+        echo "Output directory: $OUTPUT_DIR"
+        
+        echo ""
+        echo "--- 3. Running PlantUML with maximum verbosity ---"
+        # Wir verwenden -v (verbose) und -debugsvek für maximale Ausgabe.
+        # Wir leiten alle Ausgaben (stdout und stderr) direkt in das Action Log.
+        java -jar /tmp/plantuml.jar -v -debugsvek -failfast2 -tpng -scale 4 "$FILE" -o "$OUTPUT_DIR"
+        
+        echo ""
+        echo "--- 4. Checking for output file ---"
+        PNG_PATH="$OUTPUT_DIR/mobile-client-registration.png"
+        if [ -f "$PNG_PATH" ]; then
+          echo "SUCCESS: Output PNG file was created at $PNG_PATH"
         else
-          echo "plantuml_generated=false" >> $GITHUB_OUTPUT
+          echo "::error::FAILURE: Output PNG file was NOT created."
+          # Wir beenden den Prozess hier, um sicherzustellen, dass der Fehler erkannt wird.
+          exit 1
         fi
-      shell: bash
     - name: Generate images from drawio files
       id: generate_drawio
       run: |
