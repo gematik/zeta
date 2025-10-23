@@ -2,11 +2,11 @@
   "api_catalog": [
     {
       "name": "e-rezept",
-      "href": "https://erp.zentral.idp.splitdns.ti-dienste.de/.well-known/oauth-protected-resource/e-rezept"
+      "href": "https://erp.zentral.example.de/.well-known/oauth-protected-resource/e-rezept"
     },
     {
       "name": "e-patientenakte",
-      "href": "https://epa.zentral.idp.splitdns.ti-dienste.de/.well-known/oauth-protected-resource/e-patientenakte"
+      "href": "https://epa.zentral.example.de/.well-known/oauth-protected-resource/e-patientenakte"
     }
   ]
 }

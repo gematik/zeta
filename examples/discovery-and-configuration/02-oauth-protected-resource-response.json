@@ -1,6 +1,6 @@
 {
-  "resource": "https://erp.zentral.idp.splitdns.ti-dienste.de",
-  "authorization_server": "https://auth-server.zeta.gematik.de",
+  "resource": "https://erp.zentral.example.de",
+  "authorization_server": "https://auth-server.zeta.example.de",
   "scopes": [
     "e-rezept",
     "e-rezept:read",

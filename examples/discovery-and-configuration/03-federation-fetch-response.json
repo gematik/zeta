@@ -1,13 +1,13 @@
 {
-  "iss": "https://auth-server.zeta.gematik.de",
-  "sub": "https://auth-server.zeta.gematik.de",
+  "iss": "https://auth-server.example.de",
+  "sub": "https://auth-server.example.de",
   "exp": 1761234567,
   "metadata": {
     "openid_provider": {
-      "issuer": "https://auth-server.zeta.gematik.de",
-      "authorization_endpoint": "https://auth-server.zeta.gematik.de/auth",
-      "token_endpoint": "https://auth-server.zeta.gematik.de/token",
-      "jwks_uri": "https://auth-server.zeta.gematik.de/jwks",
+      "issuer": "https://auth-server.example.de",
+      "authorization_endpoint": "https://auth-server.example.de/auth",
+      "token_endpoint": "https://auth-server.example.de/token",
+      "jwks_uri": "https://auth-server.example.de/jwks",
       "scopes_supported": [
         "openid",
         "e-rezept",
