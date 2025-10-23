@@ -1,4 +1,4 @@
-@startuml "mobile-client-registration"
+@startuml "mobile-client-reg"
 
 !include ../layout.puml
 
