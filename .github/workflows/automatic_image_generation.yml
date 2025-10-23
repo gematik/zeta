@@ -81,15 +81,18 @@ jobs:
             mkdir -p "$output_dir"
             
             # --- BEGINN DER ÄNDERUNG ---
-            # Wir leiten den Dateiinhalt per Pipe an PlantUML weiter (-p).
-            # Das gibt uns die volle Kontrolle über den Ausgabedateinamen,
-            # unabhängig von einem 'title' im puml-Code.
+            # Wir wechseln in das Verzeichnis der Quelldatei, um relative '!include' Pfade
+            # korrekt aufzulösen. Wir tun dies in einer Subshell (...), um das Hauptskript nicht zu beeinflussen.
+            # Die Pfade für die Ausgabe ($png_path, $svg_path) sind absolut und funktionieren weiterhin.
             
+            file_dir=$(dirname "$file")
+            file_name=$(basename "$file")
+
             echo "Generating PNG: $png_path"
-            cat "$file" | java -jar /tmp/plantuml.jar -p -tpng -scale 4 -graphvizdot /usr/bin/dot > "$png_path"
+            (cd "$file_dir" && cat "$file_name" | java -jar /tmp/plantuml.jar -p -tpng -scale 4 -graphvizdot /usr/bin/dot > "$png_path")
             
             echo "Generating SVG: $svg_path"
-            cat "$file" | java -jar /tmp/plantuml.jar -p -tsvg -graphvizdot /usr/bin/dot > "$svg_path"
+            (cd "$file_dir" && cat "$file_name" | java -jar /tmp/plantuml.jar -p -tsvg -graphvizdot /usr/bin/dot > "$svg_path")
             # --- ENDE DER ÄNDERUNG ---
 
             if [ -f "$png_path" ] && [ -f "$svg_path" ]; then
