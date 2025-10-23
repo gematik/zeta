@@ -80,15 +80,15 @@ jobs:
             echo "-> Generating images for PlantUML file: $file"
             mkdir -p "$output_dir"
             
-            # --- BEGINN DER ÄNDERUNG ---
-            # Wir fügen -verbose hinzu, um mehr Details zu erhalten, und fangen die Ausgabe bei einem Fehler ab.
-            # Wir verwenden auch -graphvizdot, um den Pfad zu dot explizit anzugeben.
-            
-            # Temporäre Datei für die Fehlerausgabe
             ERROR_LOG=$(mktemp)
 
+            # --- BEGINN DER ÄNDERUNG ---
+            # Wir fügen -failfast2 hinzu. Dies zwingt PlantUML, bei JEDEM Fehler
+            # (inkl. nicht gefundener includes) mit einem Exit-Code ungleich 0 abzubrechen.
+            # Das wird dann von unserer "if ! java..." Logik korrekt gefangen.
+            
             echo "Generating PNG..."
-            if ! java -jar /tmp/plantuml.jar -graphvizdot /usr/bin/dot -verbose -tpng -scale 4 "$file" -o "$output_dir" > "$ERROR_LOG" 2>&1; then
+            if ! java -jar /tmp/plantuml.jar -failfast2 -graphvizdot /usr/bin/dot -verbose -tpng -scale 4 "$file" -o "$output_dir" > "$ERROR_LOG" 2>&1; then
               echo "::error::PNG generation failed for $file. PlantUML output:"
               cat "$ERROR_LOG"
               rm "$ERROR_LOG"
@@ -96,21 +96,22 @@ jobs:
             fi
 
             echo "Generating SVG..."
-            if ! java -jar /tmp/plantuml.jar -graphvizdot /usr/bin/dot -verbose -tsvg "$file" -o "$output_dir" > "$ERROR_LOG" 2>&1; then
+            if ! java -jar /tmp/plantuml.jar -failfast2 -graphvizdot /usr/bin/dot -verbose -tsvg "$file" -o "$output_dir" > "$ERROR_LOG" 2>&1; then
               echo "::error::SVG generation failed for $file. PlantUML output:"
               cat "$ERROR_LOG"
               rm "$ERROR_LOG"
               exit 1
             fi
+            # --- ENDE DER ÄNDERUNG ---
             
             rm "$ERROR_LOG"
-            # --- ENDE DER ÄNDERUNG ---
 
+            # Diese nachfolgende Prüfung ist nur noch ein Fallback.
+            # Der Job sollte jetzt schon im "if"-Block oben fehlschlagen.
             if [ -f "$png_path" ] && [ -f "$svg_path" ]; then
                SUCCESSFUL_GENERATIONS=$((SUCCESSFUL_GENERATIONS + 1))
             else
-               # Diese Meldung sollte jetzt nicht mehr erreicht werden, da wir vorher abbrechen
-               echo "::error::One or both output files missing after generation attempt for $file."
+               echo "::error::File generation failed unexpectedly for $file. Output files are missing, although PlantUML returned a success code."
                FAILED_GENERATIONS=$((FAILED_GENERATIONS + 1))
                exit 1
             fi
