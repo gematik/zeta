@@ -1,0 +1,23 @@
+{
+  "resource": "https://erp.zentral.idp.splitdns.ti-dienste.de",
+  "authorization_server": "https://auth-server.zeta.gematik.de",
+  "scopes": [
+    "e-rezept",
+    "e-rezept:read",
+    "e-rezept:write"
+  ],
+  "response_types_supported": [
+    "code"
+  ],
+  "grant_types_supported": [
+    "authorization_code",
+    "urn:ietf:params:oauth:grant-type:token-exchange"
+  ],
+  "token_endpoint_auth_methods_supported": [
+    "private_key_jwt"
+  ],
+  "token_endpoint_auth_signing_alg_values_supported": [
+    "ES256"
+  ],
+  "zeta_asl_use": "required"
+}

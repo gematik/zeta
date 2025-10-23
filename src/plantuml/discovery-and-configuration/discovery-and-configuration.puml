@@ -42,7 +42,6 @@ alt Recommended Flow
   loop for each resource-name in list of APIs
     Client -> HP ++ : GET /.well-known/oauth-protected-resource/resource-name   Host: RS-FQDN
     HP --> Client--: Client: 200 OK; JSON body with Well-Known JSON Document  (RFC9728)
-    Client -> Client: Update Configuration
   end
 
   Client -> FM++: GET /federation/fetch?iss=<Fed-Master-issuer>&  sub=<ZETA-Guard-AS-issuer>
@@ -56,7 +55,6 @@ else Legacy Flow
 
   Client -> HP ++ : GET /.well-known/oauth-protected-resource Host: RS-FQDN
   HP --> Client--: Client: 200 OK; JSON body with Well-Known JSON Document  (RFC9728)
-  Client -> Client: Update Configuration
 
   Client -> AuthS ++ : GET /.well-known/oauth-authorization-server Host:  AuthS-FQDN
   AuthS --> Client -- : 200 OK; JSON body with Well-Known JSON Document   (RFC8414)
