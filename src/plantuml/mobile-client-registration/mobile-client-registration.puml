@@ -1,4 +1,4 @@
-@startuml "native-client-attestation-oidc-and-oauth"
+@startuml "mobile-client-registration"
 
 !include ../layout.puml
 
