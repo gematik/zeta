@@ -1,4 +1,4 @@
-@startuml "mobile-client-reg"
+@startuml "mobile-client-registration"
 
 !include ../layout.puml
 
@@ -8,8 +8,8 @@ box "Mobile Device" #GhostWhite
     participant UserAgent as "User Agent"
     participant MUA as "Mail\nUser Agent"
     box "mobile App" #AliceBlue
-        participant FC as "Fach-Client" #DarkSeaGreen
-        participant Client as "ZETA Client" #SandyBrown
+        participant FClient as "Fach-Client" #DarkSeaGreen
+        participant ZClient as "ZETA Client" #SandyBrown
     end box
 end box
 
@@ -25,56 +25,43 @@ end box
 
 participant "Attestation\nService" as AttService
 
-== Client Registration (with Client Attestation and Email) ==
+== ZClient Registration (with ZClient Attestation and Email) ==
 
-User -> Client: User Starts Registration
-activate Client
+User -> FClient++: User uses Fach-Client
 alt Android Attestation
-    Client -> AndroidTEE: Generate Key Pair\nfor Attestation
-    activate AndroidTEE
+    ZClient -> AndroidTEE++: Generate Key Pair\nfor Attestation
     note right: Using Android TEE or iOS Secure Enclave
-    AndroidTEE --> Client: Public Key
-    deactivate AndroidTEE
-    Client -> AttService: Request Attestation Challenge
-    activate AttService
-    AttService --> Client: Attestation Challenge
-    deactivate AttService
-    Client -> AndroidTEE: Sign Challenge with\nAttestation Key
-    activate AndroidTEE
-    note right: Using Android SafetyNet/Play Integrity or\niOS DeviceCheck/App Attest API
-    AndroidTEE --> Client: Attestation Statement
-    deactivate AndroidTEE
+    AndroidTEE --> ZClient--: Public Key
+    ZClient -> AttService++: Request Attestation Challenge
+    AttService --> ZClient--: Attestation Challenge
+    ZClient -> AndroidTEE++: Sign Challenge with\nAttestation Key
+    note right: Using Android Play Integrity or\niOS DeviceCheck/App Attest API
+    AndroidTEE --> ZClient--: Attestation Statement
 else iOS Attestation
-    Client -> Client:
+    ZClient -> ZClient:
     note right: iOS Attestation with App Attest API or\nDeviceCheck API
 end
-Client -> AuthS: Client Registration Request
-note right: client_instance.yaml\nIncludes attestation statement, public key,\nUser Email and software statement
-activate AuthS
-AuthS -> AttService: Verify Client Attestation
-activate AttService
+ZClient -> AuthS++: ZClient Registration Request
+note right: ZClient_instance.yaml\nIncludes attestation statement, public key,\nUser Email and software statement
+AuthS -> AttService++: Verify ZClient Attestation
 note right: AS A forwards attestation data\nto Attestation Service
 AttService -> AttService: Validate Attestation\nStatement
-AttService --> AuthS: Attestation Verification Result
+AttService --> AuthS--: Attestation Verification Result
 AuthS -> AuthS: Verify Email Confirmation JWT\nif exists
-deactivate AttService
+
 alt Email Confirmation Required because E-Mail Confirmation JWT not\nprovided or Email Confirmation JWT expired
     AuthS -> AuthS: Generate Confirmation\nLink and send Email
-    activate MUA
-    MUA -> MUA: Receive Email
+    MUA -> MUA+: Receive Email
     User -> MUA: Click Confirmation\nLink in Email
-    MUA -> UserAgent: Open\nConfirmation\nLink
-    activate UserAgent
+    MUA -> UserAgent++: Open\nConfirmation\nLink
     deactivate MUA
-    UserAgent -> AuthS: Email Confirmation\nRequest
-    deactivate UserAgent
+    UserAgent -> AuthS--: Email Confirmation\nRequest
     AuthS -> AuthS: Verify Email\nConfirmation\nRequest
     AuthS -> AuthS: Generate Email\nConfirmation JWT
-    note right: JWT Claims:\n - iss: AS_A_ID\n - sub: Client_id\n - aud: (all AS)\n - exp: (Policy Engine decision)\n - iat: (now)\n - Email_verified: true
-    AuthS --> Client: Client Registration Response\n(client_id, Email Confirmation JWT)
+    note right: JWT Claims:\n - iss: AS_A_ID\n - sub: ZClient_id\n - aud: (all AS)\n - exp: (Policy Engine decision)\n - iat: (now)\n - Email_verified: true
+    AuthS --> ZClient: ZClient Registration Response\n(ZClient_id, Email Confirmation JWT)
 else Valid Email Confirmation was provided
-    AuthS --> Client: Client Registration Response\n(client_id)
+    AuthS --> ZClient--: ZClient Registration Response\n(ZClient_id)
 end
-deactivate AuthS
 
 @enduml
