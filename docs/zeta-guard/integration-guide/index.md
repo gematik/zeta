@@ -25,6 +25,7 @@
       - Argo CD
     - Telemetriedaten Erfassung
     - HSM Anbindung
+    - Mehrere Resource Server hinter einem ZETA Guard
 - **Registrierung der Instanz**
   - Bei gematik registrieren (inkl. Federation Master)
   - Audiences
