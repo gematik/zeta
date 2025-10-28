@@ -3,13 +3,14 @@
 ## Inhalt
 
 - **Zulassungsbedingungen**
+  - Erstzulassung (was liefert Projekt ZETA SiGu, Produkt-Gutachten, Testbericht ZETA-Guard, SBOM, Report öber Sicherheitslücken)
 - **Auswirkungen von Changes an ZETA-Guard**
   - Wann Neuzulassung
   - Wann betrieblicher Change
   - Wann Hotfix
   - Bedingungen für Changes an ZETA-Guard
 - **Testen der Integration**
-  - Ugos Begriff
+  - Generalprobe
 - Fehlerbehebung und Support
 - **Einsaztszenarien**
   - Geo-Redundanz/Multi-Cluster Betrieb
