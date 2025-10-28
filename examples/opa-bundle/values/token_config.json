@@ -5,6 +5,7 @@
     "test_scope_read",
     "test_scope_write",
     "erezept",
+    "vsdservice",
     "openid"
   ]
 }
