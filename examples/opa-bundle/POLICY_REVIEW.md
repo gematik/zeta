@@ -154,3 +154,85 @@ audience_is_allowed if {
     requested_audience_set - allowed_audience_set == set()
 }
 ```
+
+### audiences.json  
+
+```json
+{
+  "allowed_audiences": [
+    "https://example.com/testresource",
+    "https://some-service.de/api/v1",
+    "https://zeta-cd.spree.de/",
+    "https://zeta-cd.westeurope.cloudapp.azure.com/",
+    "https://zeta-dev.spree.de/",
+    "https://zeta-dev.westeurope.cloudapp.azure.com/",
+    "https://zeta-staging.spree.de/",
+    "https://zeta-staging.westeurope.cloudapp.azure.com/",
+    "https://zeta-achelos.spree.de/",
+    "https://zeta-achelos.westeurope.cloudapp.azure.com/",
+    "https://test-ik-nr.vsdm2.ti-dienste.de"
+  ]
+}
+```
+
+### products.json
+
+```json
+{
+  "allowed_products": {
+    "ZETA-Test-Client": [
+      "0.0.1",
+      "0.1.0",
+      "1.0.0"
+    ],
+    "gematik-light-client-win-v1": [
+      "0.0.1",
+      "0.1.0",
+      "1.0.0"
+    ],
+    "test_proxy": [
+      "0.1.0"
+    ],
+    "testsuite": [
+      "0.1.0"
+    ],
+    "demo_client": [
+      "0.1.0"
+    ]
+  }
+}
+```
+
+### professions.json
+
+```json
+{
+  "allowed_professions": [
+    "1.2.276.0.76.4.50",
+    "1.2.276.0.76.4.51",
+    "1.2.276.0.76.4.52",
+    "1.2.276.0.76.4.53",
+    "1.2.276.0.76.4.54",
+    "1.2.276.0.76.4.55",
+    "1.2.276.0.76.4.56",
+    "1.2.276.0.76.4.57",
+    "1.2.276.0.76.4.59"
+  ]
+}
+```
+
+### token-config.json
+
+```json
+{
+  "access_token_ttl": 300,
+  "refresh_token_ttl": 86400,
+  "allowed_scopes": [
+    "test_scope_read",
+    "test_scope_write",
+    "erezept",
+    "vsdservice",
+    "openid"
+  ]
+}
+```
