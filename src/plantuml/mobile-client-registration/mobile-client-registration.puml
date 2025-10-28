@@ -1,0 +1,200 @@
+@startuml "Mobile Client Registration with API Details"
+
+!include ../layout.puml
+
+Actor User
+box "Mobile Device" #GhostWhite
+  box "mobile Application"
+    participant "Application" as FachClient #DeepSkyBlue
+    participant "ZETA Client\n(SDK)" as ZetaClient #SandyBrown
+  end box
+end box
+
+box "Provider" #TECHNOLOGY
+    box "ZETA Guard 1" #SandyBrown
+        participant AuthS as "First AuthS"
+        participant PDPDB as "PDP DB"
+    end box
+end box
+
+participant "Attestation\nService" as AttService
+
+box "Provider" #TECHNOLOGY
+    box "ZETA Guard 2" #SandyBrown
+        participant AuthS2 as "AuthS"
+        participant PDPDB2 as "PDP DB"
+    end box
+end box
+
+participant "Federation \nMaster" as FedMaster
+
+== Phase 1: Initial Registration (Delegation to ZETA Client) ==
+
+activate ZetaClient
+note right of ZetaClient
+  - The ZETA Client is pre-configured with the user's email address.
+  - The ZETA Client is pre-configured with the Application's redirect_uri.
+end note
+
+group Integrated TOFU OTP Flow (performed by ZETA Client)
+    ' Step 1: Initiation
+    ZetaClient -> AuthS: **Starts DCR (Initiation Request)**
+    note left of AuthS
+      **POST /register**
+      Content-Type: application/json
+      
+      {
+        "email": "user@example.com",
+        "application_type": "native"
+      }
+    end note
+    activate AuthS
+    AuthS -> AuthS: Generates OTP and `dcr_session_id`
+    AuthS -> User: **Sends OTP directly via email**
+    AuthS --> ZetaClient: **Responds with `dcr_session_id`**
+    note left of ZetaClient
+      **201 Created**
+      Content-Type: application/json
+      
+      {
+        "dcr_session_id": "urn:tx:1a2b3c4d",
+        "expires_in": 600
+      }
+    end note
+    
+    ZetaClient -> FachClient: Signals: "Waiting for OTP input"
+    deactivate ZetaClient
+    
+    User -> FachClient: Enters the received OTP
+    FachClient -> ZetaClient: Passes OTP to complete registration
+    activate ZetaClient
+
+    ' Step 2: Platform-Specific Attestation & Completion
+    alt iOS App (App Attest)
+        ZetaClient -> AttService: Requests Attestation (with `dcr_session_id` as challenge)
+        activate AttService
+        AttService --> ZetaClient: Sends **Attestation Object**
+        deactivate AttService
+    else Android App (Play Integrity)
+        ZetaClient -> AuthS: Requests Nonce
+        AuthS --> ZetaClient: Sends **Nonce**
+        ZetaClient -> AttService: Requests Integrity Token (with **Nonce**)
+        activate AttService
+        AttService --> ZetaClient: Sends **Integrity Token (JWT)**
+        deactivate AttService
+    end
+    
+    ZetaClient -> AuthS: **Completes DCR (Completion Request)**
+    note left of AuthS
+      **POST /register**
+      Content-Type: application/json
+      
+      {
+        "dcr_session_id": "urn:tx:1a2b3c4d",
+        "otp": "123456",
+        "attestation_format": "apple-app-attest",
+        "attestation": "<base64_attestation_object>",
+        "jwks": { "keys": [ ... ] },
+        "token_endpoint_auth_method": "private_key_jwt",
+        "redirect_uris": [ "com.myapp:/callback" ]
+      }
+    end note
+end
+
+AuthS -> AuthS: Validates OTP, **then** validates the attestation proof.
+alt Successful Validation
+    AuthS --> ZetaClient: **Sends `client_id` (for this AuthS)**
+    note left of ZetaClient
+      **201 Created**
+      Content-Type: application/json
+      
+      {
+        "client_id": "client-id-for-auths1",
+        "attestation_proof": "<signed_jwt_as_proof>",
+        "client_id_issued_at": 1672531200,
+        ...
+      }
+    end note
+    deactivate AuthS
+    ZetaClient -> ZetaClient: Securely stores `client_id` and `Attestation Proof JWT`
+    ZetaClient --> FachClient: Registration successful
+else Failed Validation
+    AuthS --> ZetaClient: Sends error message
+    note left of ZetaClient
+      **400 Bad Request**
+      Content-Type: application/json
+      
+      {
+        "error": "invalid_request",
+        "error_description": "OTP is invalid or expired."
+      }
+    end note
+    deactivate AuthS
+    ZetaClient --> FachClient: Registration failed
+    destroy ZetaClient
+end
+deactivate ZetaClient
+deactivate FachClient
+
+== Phase 2: Subsequent Registration at another AuthS ==
+
+User -> FachClient: Initiates action requiring `AuthS2`
+activate FachClient
+FachClient -> ZetaClient: Delegates registration at `AuthS2`
+activate ZetaClient
+
+ZetaClient -> AuthS2: Starts DCR
+note left of AuthS2
+**POST /register**
+Content-Type: application/json
+
+{
+  "attestation_proof": "<the_jwt_from_phase_1>",
+  "jwks": { "keys": [ ... ] },
+  "token_endpoint_auth_method": "private_key_jwt",
+  "redirect_uris": [ "com.myapp:/callback" ]
+}
+end note
+activate AuthS2
+
+AuthS2 -> FedMaster: Retrieves public signing key from `AuthS`
+activate FedMaster
+FedMaster --> AuthS2: Sends key material
+deactivate FedMaster
+
+AuthS2 -> AuthS2: Validates the `Attestation Proof JWT`
+alt Successful Validation
+    AuthS2 --> ZetaClient: **Sends new `client_id` (for AuthS2)**
+    note left of ZetaClient
+      **201 Created**
+      Content-Type: application/json
+      
+      {
+        "client_id": "client-id-for-auths2",
+        "client_id_issued_at": 1672535000,
+        ...
+      }
+    end note
+    ZetaClient -> ZetaClient: Stores the new `client_id`
+    ZetaClient --> FachClient: Registration at `AuthS2` successful
+else Failed Validation
+    AuthS2 --> ZetaClient: Sends error message
+    ZetaClient --> FachClient: Registration at `AuthS2` failed
+end
+deactivate AuthS2
+deactivate ZetaClient
+deactivate FachClient
+
+== Phase 3: OIDC/OAuth Flow (Delegation to ZETA Client) ==
+
+FachClient -> ZetaClient: Requests Access Token for a service
+activate ZetaClient
+' ... The ZETA Client performs the complete OIDC Authorization Code Flow ...'
+' ... It creates the Client Assertion, exchanges the code for tokens, etc. ...'
+ZetaClient -> AuthS2: Performs OIDC Flow
+AuthS2 --> ZetaClient: Sends Access Token
+ZetaClient --> FachClient: Returns Access Token
+deactivate ZetaClient
+FachClient -> FachClient: Uses Access Token for API calls
+
+@enduml

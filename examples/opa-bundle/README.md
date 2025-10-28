@@ -4,17 +4,17 @@ Dieses Repository enthält die OPA (Open Policy Agent) Richtlinien und Konfigura
 
 ## Verzeichnisstruktur
 
--   `policies/`: Enthält alle Rego-Richtliniendateien.
--   `values/`: Enthält alle externen Daten im JSON-Format, die von den Richtlinien verwendet werden.
-    -   `professions.json`: Erlaubte Berufs-OIDs.
-    -   `products.json`: Erlaubte Client-Produkte und deren Versionen.
-    -   `audiences.json`: Erlaubte Ziel-URLs (Audiences).
-    -   `token_config.json`: Konfiguration für Token-Gültigkeitsdauern (TTL) und erlaubte Scopes.
+- `policies/`: Enthält alle Rego-Richtliniendateien.
+- `values/`: Enthält alle externen Daten im JSON-Format, die von den Richtlinien verwendet werden.
+  - `professions.json`: Erlaubte Berufs-OIDs.
+  - `products.json`: Erlaubte Client-Produkte und deren Versionen.
+  - `audiences.json`: Erlaubte Ziel-URLs (Audiences).
+  - `token-config.json`: Konfiguration für Token-Gültigkeitsdauern (TTL) und erlaubte Scopes.
 
 ## Voraussetzungen
 
--   [OPA CLI](https://www.openpolicyagent.org/docs/latest/get-started/#1-download-opa)
--   [cosign](https://docs.sigstore.dev/cosign/installation/) (optional, für das Signieren von OCI-Images)
+- [OPA CLI](https://www.openpolicyagent.org/docs/latest/get-started/#1-download-opa)
+- [cosign](https://docs.sigstore.dev/cosign/installation/) (optional, für das Signieren von OCI-Images)
 
 ## Anleitung
 
@@ -23,6 +23,7 @@ Dieses Repository enthält die OPA (Open Policy Agent) Richtlinien und Konfigura
 Sie können die Richtlinien lokal mit dem `opa eval` Befehl testen. Erstellen Sie eine `input.json`-Datei mit Testdaten und fragen Sie den Endpunkt `data.zeta.authz.decision` ab.
 
 **Beispiel `input.json` (für einen Erfolgsfall):**
+
 ```json
 {
   "version": "1.0",

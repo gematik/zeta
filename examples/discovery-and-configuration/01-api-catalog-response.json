@@ -1,0 +1,12 @@
+{
+  "api_catalog": [
+    {
+      "name": "e-rezept",
+      "href": "https://erp.zentral.example.de/.well-known/oauth-protected-resource/e-rezept"
+    },
+    {
+      "name": "e-patientenakte",
+      "href": "https://epa.zentral.example.de/.well-known/oauth-protected-resource/e-patientenakte"
+    }
+  ]
+}
