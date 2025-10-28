@@ -20,15 +20,15 @@ Es wird die Berufs- bzw. Einrichtungs-OID des anfragenden Nutzers bzw. der anfra
 **Wer darf zugreifen?**
 Folgende Berufe und Einrichtungsarten sind zugelassen:
 
-*   **1.2.276.0.76.4.50:** Betriebsstätte Arzt
-*   **1.2.276.0.76.4.51:** Zahnarztpraxis
-*   **1.2.276.0.76.4.52:** Betriebsstätte Psychotherapeut
-*   **1.2.276.0.76.4.53:** Krankenhaus
-*   **1.2.276.0.76.4.54:** Öffentliche Apotheke
-*   **1.2.276.0.76.4.55:** Krankenhausapotheke
-*   **1.2.276.0.76.4.56:** Bundeswehrapotheke
-*   **1.2.276.0.76.4.57:** Betriebsstätte Mobile Einrichtung Rettungsdienst
-*   **1.2.276.0.76.4.59:** Betriebsstätte Kostenträger
+* **1.2.276.0.76.4.50:** Betriebsstätte Arzt
+* **1.2.276.0.76.4.51:** Zahnarztpraxis
+* **1.2.276.0.76.4.52:** Betriebsstätte Psychotherapeut
+* **1.2.276.0.76.4.53:** Krankenhaus
+* **1.2.276.0.76.4.54:** Öffentliche Apotheke
+* **1.2.276.0.76.4.55:** Krankenhausapotheke
+* **1.2.276.0.76.4.56:** Bundeswehrapotheke
+* **1.2.276.0.76.4.57:** Betriebsstätte Mobile Einrichtung Rettungsdienst
+* **1.2.276.0.76.4.59:** Betriebsstätte Kostenträger
 
 ### 2. Prüfung der Client-Anwendung
 
@@ -38,8 +38,9 @@ Diese Regel verifiziert, dass die verwendete Software (der "Client") und deren V
 Es wird geprüft, ob die Kombination aus Produkt und Version in einer Liste der erlaubten Software-Versionen enthalten ist.
 
 **Beispiel:**
-*   Produkt A ist in den Versionen 1.2 und 1.3 erlaubt.
-*   Produkt B ist nur in Version 2.5 erlaubt.
+
+* Produkt A ist in den Versionen 1.2 und 1.3 erlaubt.
+* Produkt B ist nur in Version 2.5 erlaubt.
 
 Eine Anfrage von Produkt A in Version 1.2 wäre erfolgreich, eine Anfrage in Version 1.1 würde jedoch scheitern.
 
@@ -51,10 +52,11 @@ Diese Regel stellt sicher, dass die anfragende Anwendung nur die Berechtigungen 
 Es wird die Liste der von der Anwendung angeforderten Berechtigungen mit der Liste der maximal erlaubten Berechtigungen abgeglichen. Die Anfrage ist nur dann erfolgreich, wenn **alle** angeforderten Berechtigungen in der Liste der erlaubten Berechtigungen enthalten sind.
 
 **Beispiel:**
-*   Erlaubte Berechtigungen sind: `daten_lesen`, `daten_schreiben`
-*   Anwendung fordert an: `daten_lesen` -> **Erfolg**
-*   Anwendung fordert an: `daten_lesen`, `daten_schreiben` -> **Erfolg**
-*   Anwendung fordert an: `daten_lesen`, `daten_löschen` -> **Fehler** (da `daten_löschen` nicht erlaubt ist)
+
+* Erlaubte Berechtigungen sind: `daten_lesen`, `daten_schreiben`
+* Anwendung fordert an: `daten_lesen` -> **Erfolg**
+* Anwendung fordert an: `daten_lesen`, `daten_schreiben` -> **Erfolg**
+* Anwendung fordert an: `daten_lesen`, `daten_löschen` -> **Fehler** (da `daten_löschen` nicht erlaubt ist)
 
 ### 4. Prüfung der Ziel-Ressource (Audience)
 
@@ -64,14 +66,26 @@ Diese Regel kontrolliert, auf welche Zielsysteme oder Datenbereiche ("Audiences"
 Es wird abgeglichen, ob die von der Anwendung angefragten Ziel-Ressourcen in der Liste der erlaubten Ressourcen enthalten sind. Ähnlich wie bei den Berechtigungen müssen **alle** angefragten "Audiences" erlaubt sein.
 
 **Beispiel:**
-*   Erlaubte Ziel-Ressourcen: `patienten-api`, `abrechnungs-dienst`
-*   Anwendung fordert Zugriff auf: `patienten-api` -> **Erfolg**
-*   Anwendung fordert Zugriff auf: `patienten-api`, `statistik-dienst` -> **Fehler** (da `statistik-dienst` nicht erlaubt ist)
+
+* Erlaubte Ziel-Ressourcen: `patienten-api`, `abrechnungs-dienst`
+* Anwendung fordert Zugriff auf: `patienten-api` -> **Erfolg**
+* Anwendung fordert Zugriff auf: `patienten-api`, `statistik-dienst` -> **Fehler** (da `statistik-dienst` nicht erlaubt ist)
+
+## Gültigkeitsdauer der Zugriffstoken (TTL)
+
+Wenn alle Prüfungen erfolgreich sind, erhält die Anwendung zeitlich begrenzte "Token" für den Zugriff. Die Gültigkeitsdauer (Time-To-Live, TTL) ist aus Sicherheitsgründen bewusst kurz gewählt.
+
+Es gibt zwei Arten von Token:
+
+* **Access Token:** Dies ist der eigentliche "Schlüssel" für den direkten Zugriff auf Daten. Er hat eine sehr kurze Lebensdauer.
+  * **Gültigkeit:** 300 Sekunden (5 Minuten)
+* **Refresh Token:** Wenn das Access Token abgelaufen ist, kann die Anwendung dieses zweite Token verwenden, um ein neues Access Token zu erhalten, ohne dass sich der Benutzer erneut anmelden muss. Es hat eine deutlich längere Lebensdauer.
+  * **Gültigkeit:** 86400 Sekunden (24 Stunden)
 
 ## Ergebnis der Prüfung
 
-*   **Erfolgsfall:** Wenn **alle vier Prüfungen** erfolgreich sind, wird der Zugriff gestattet. Die Anwendung erhält ein zeitlich begrenztes Zugriffstoken.
-*   **Fehlerfall:** Wenn **mindestens eine Prüfung scheitert**, wird der Zugriff verweigert. Die genauen Gründe für die Ablehnung (z.B. "User profession is not allowed", "One or more requested scopes are not allowed") werden zurückgemeldet.
+* **Erfolgsfall:** Wenn **alle vier Prüfungen** erfolgreich sind, wird der Zugriff gestattet. Die Anwendung erhält ein zeitlich begrenztes Zugriffstoken.
+* **Fehlerfall:** Wenn **mindestens eine Prüfung scheitert**, wird der Zugriff verweigert. Die genauen Gründe für die Ablehnung (z.B. "User profession is not allowed", "One or more requested scopes are not allowed") werden zurückgemeldet.
   
 ## Referenzen
 
