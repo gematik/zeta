@@ -18,7 +18,7 @@
   - Konfiguration
     - TLS
     - Optionale Komponenten
-      - ZETA/ASL
+      - ZETA/ASL (Komp-PKI Zertifikat; Beantragung und Konfiguration)
       - Ingress
       - PDP DB
       - Service Mesh
