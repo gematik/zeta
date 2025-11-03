@@ -2,9 +2,15 @@
 
 ## Inhalt
 
+- **Registrierung der Instanz**
+  - Bei gematik registrieren (inkl. Federation Master)
+  - Audiences
+  - Issuer für Zugriff auf Telemetrtiedaten-Empfänger und SIEM der gematik
 - **Zulassungsbedingungen**
   - Erstzulassung (was liefert Projekt ZETA SiGu, Produkt-Gutachten, Testbericht ZETA-Guard, SBOM, Report öber Sicherheitslücken)
-- **Auswirkungen von Changes an ZETA-Guard**
+- **Updates und Upgrades an ZETA-Guard**
+  - Vorgehen bei Updates/Upgrades
+  - Testen nach Updates/Upgrades
   - Wann Neuzulassung
   - Wann betrieblicher Change
   - Wann Hotfix
@@ -26,11 +32,15 @@
     - Telemetriedaten Erfassung
     - HSM Anbindung
     - Mehrere Resource Server hinter einem ZETA Guard
-- **Registrierung der Instanz**
-  - Bei gematik registrieren (inkl. Federation Master)
-  - Audiences
-  - Issuer für Zugriff auf Telemetrtiedaten-Empfänger und SIEM der gematik
 - Lokaler Cache der Artifact Registry
   - Container Images
   - PIP und PAP Daten
   - Konfigurationsdaten (TSL, TPM Hersteller-CAs, roots.json)
+- Tests der gematik
+  - CI Prozess
+  - Test in der gcloud Umgebung
+  - Openshift-Konformitätstest
+  - Penetrationstest
+  - Performance-Test
+  - Load-Test
+  - Sonstige Tests
