@@ -28,10 +28,10 @@ jobs:
         sudo apt-get install -y jq
         sudo apt-get install -y --no-install-recommends graphviz xvfb libasound2t64
 
-        # KORRIGIERTER BEFEHL:
-        # Dieser Filter sucht nach einem Asset, das "amd64" im Namen enthält UND mit ".deb" endet.
-        # Das ist robuster gegenüber Änderungen im Dateinamen-Schema (z.B. Versionsnummer).
-        DRAWIO_LATEST_URL=$(curl -s https://api.github.com/repos/jgraph/drawio-desktop/releases/latest | jq -r '.assets[] | select(.name | contains("amd64") and endswith(".deb")) | .browser_download_url')
+        # Dieser Befehl sucht die neueste Version, filtert nach Download-URLs
+        # und wählt dann diejenige aus, die 'amd64.deb' enthält.
+        # Das ist widerstandsfähiger gegen Releases, die keine Linux-Builds enthalten.
+        DRAWIO_LATEST_URL=$(curl -s https://api.github.com/repos/jgraph/drawio-desktop/releases/latest | grep "browser_download_url" | grep 'amd64\.deb' | cut -d '"' -f 4 | head -n 1)
 
         if [ -z "$DRAWIO_LATEST_URL" ]; then
           echo "::error::Could not determine latest draw.io .deb release URL."
