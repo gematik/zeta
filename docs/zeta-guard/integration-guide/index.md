@@ -49,7 +49,7 @@
 
 In dieser Anleitung werden die Rahmenbedingungen, Szenarien und Schritte für die Integration von ZETA Guard in die IT-Infrastruktur von TI 2.0 Dienst-Anbietern beschrieben.
 
-
+![ZETA Guard Deployment](../../../images/zeta-guard-integration-guide/zeta-guard-deployment-view.svg)
 
 ## Registrierung der Instanz
 
