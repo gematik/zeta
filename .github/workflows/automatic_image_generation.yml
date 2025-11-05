@@ -27,16 +27,15 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y jq
         sudo apt-get install -y --no-install-recommends graphviz xvfb libasound2t64
-
-        # Dieser Befehl sucht die neueste Version, filtert nach Download-URLs
-        # und wählt dann diejenige aus, die 'amd64.deb' enthält.
-        # Das ist widerstandsfähiger gegen Releases, die keine Linux-Builds enthalten.
-        DRAWIO_LATEST_URL=$(curl -s https://api.github.com/repos/jgraph/drawio-desktop/releases/latest | grep "browser_download_url" | grep 'amd64\.deb' | cut -d '"' -f 4 | head -n 1)
-
+          
+        # --- BEGINN DER VERBESSERTEN LOGIK ---
+        # Sucht die Liste der Releases durch und nimmt das Neueste, das eine .deb-Datei enthält.
+        # Dies ist robust gegenüber "latest"-Releases, denen Linux-Assets fehlen.
+        DRAWIO_LATEST_URL=$(curl -s "https://api.github.com/repos/jgraph/drawio-desktop/releases" | \
+          jq -r '[.[] | .assets[] | select(.name | contains("amd64") and endswith(".deb")) | .browser_download_url] | first')
+        
         if [ -z "$DRAWIO_LATEST_URL" ]; then
-          echo "::error::Could not determine latest draw.io .deb release URL."
-          echo "Response from API:"
-          curl -s https://api.github.com/repos/jgraph/drawio-desktop/releases/latest
+          echo "::error::Could not find any recent draw.io release with a .deb file."
           exit 1
         fi
         
@@ -45,16 +44,17 @@ jobs:
         
         echo "Installing draw.io..."
         sudo apt-get install -y /tmp/drawio.deb
-
-    - name: Download PlantUML jar
-      id: download_plantuml
-      run: |
-        wget --quiet https://github.com/plantuml/plantuml/releases/latest/download/plantuml.jar -O /tmp/plantuml.jar
-        if [ ! -f /tmp/plantuml.jar ]; then
-          echo "::error::Failed to download plantuml.jar"
-          exit 1
-        fi
-        echo "PlantUML JAR downloaded."
+        # --- ENDE DER VERBESSERTEN LOGIK ---
+        
+        - name: Download PlantUML jar
+          id: download_plantuml
+          run: |
+            wget --quiet https://github.com/plantuml/plantuml/releases/latest/download/plantuml.jar -O /tmp/plantuml.jar
+            if [ ! -f /tmp/plantuml.jar ]; then
+              echo "::error::Failed to download plantuml.jar"
+              exit 1
+            fi
+            echo "PlantUML JAR downloaded."
 
     - name: Generate images from PlantUML files
       id: generate_plantuml
