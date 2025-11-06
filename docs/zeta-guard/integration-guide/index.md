@@ -49,11 +49,21 @@
 
 In dieser Anleitung werden die Rahmenbedingungen, Szenarien und Schritte für die Integration von ZETA Guard in die IT-Infrastruktur von TI 2.0 Dienst-Anbietern beschrieben.
 
+Die folgende Abbildung zeigt eine typische ZETA Guard-Deployment-Architektur:
+
 ![ZETA Guard Deployment](../../../images/zeta-guard-integration-guide/zeta-guard-deployment-view.svg)
 
-## Registrierung der Instanz
+Wenn eine WAF vor dem Ingress Controller eingesetzt wird, muss TLS Termination an der WAF erfolgen. In diesem Fall muss der Ingress Controller so konfiguriert werden, dass er TLS-Verbindungen von der WAF akzeptiert.
 
-Die Registrierung Ihrer ZETA Guard-Instanz bei der gematik ist ein wesentlicher Schritt, um den Zugriff auf Telemetriedaten-Empfänger und SIEM-Systeme zu ermöglichen. Stellen Sie sicher, dass Sie die erforderlichen Audiences und Issuer korrekt konfigurieren.
+## Registrierung der ZETA Guard-Instanz
+
+Die Registrierung der ZETA Guard-Instanz bei der gematik ist ein wesentlicher Schritt, um den Zugriff auf Telemetriedaten-Empfänger und SIEM-Systeme zu ermöglichen und um den ZETA Guard Authorization Server in die TI 2.0 Föderation des Federation Masters aufzunehmen.
+
+Folgende Daten sind für die Registrierung erforderlich:
+
+- Issuer-Informationen (Issuer und JWKS URI) für die Authentifizierung der ZETA Guard Instanz. Der Issuer des ZETA Guard ist der OpenID Provider des Kubernetes Clusters, in dem ZETA Guard ausgeführt wird. Diese Daten werden für die Authentifizierung per Workload Identity Federation am Telemetriedaten-Empfänger und SIEM der gematik benötigt.
+- Audiences für den Zugriff auf den Telemetriedaten-Empfänger und das SIEM der gematik sind im ZETA Guard bereits vorkonfiguriert. Wenn der Fachdienst Zugriff auf andere durch ZETA Guard geschützte Resource Server benötigt, müssen die Audiences dieser Dienste bei der Registrierung angegeben werden.
+- Öffentliche Signaturschlüssel: Öffentliche Signaturschlüssel des ZETA Guard Authorization Servers werden für die Validierung von JWTs benötigt, die von ZETA Guard ausgegeben werden. Diese Schlüssel müssen werden vom Federation Master in die Konfiguration des Federation Masters aufgenommen. Dadurch wird die Vertrauensstellung zwischen dem Federation Master und dem ZETA Guard Authorization Server hergestellt.
 
 ## Zulassungsbedingungen
 
