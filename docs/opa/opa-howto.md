@@ -80,5 +80,5 @@ Sie können die Richtlinien lokal mit dem `opa eval` Befehl testen. Erstellen Si
 Überprüfung mit dem opa Tool:
 
 ```bash
-opa eval --data values/ --data policies/ --input ../schemas/policy-engine-input-windows-software.json "data.zeta.authz.decision"
+opa eval --data data/ --data policies/ --input ../schemas/policy-engine-input/policy-engine-input-windows-software.json "data.zeta.authz.decision"
 ```
