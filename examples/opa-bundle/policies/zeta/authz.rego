@@ -62,7 +62,7 @@ client_product_is_allowed if {
 
 scopes_are_allowed if {
 	# KORRIGIERTER PFAD
-	allowed_scope_set := {s | s := data.token_config.allowed_scopes[_]}
+	allowed_scope_set := {s | s := data.token.allowed_scopes[_]}
 	requested_scope_set := {s | s := input.authorization_request.scopes[_]}
 	requested_scope_set - allowed_scope_set == set()
 }
