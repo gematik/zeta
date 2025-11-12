@@ -4,6 +4,6 @@
         "audiences",
         "products",
         "professions",
-        "token-config"
+        "token"
     ]
 }
