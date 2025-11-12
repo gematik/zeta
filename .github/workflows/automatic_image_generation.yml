@@ -30,11 +30,14 @@ jobs:
         sudo apt-get install -y --no-install-recommends graphviz xvfb libasound2t64
 
         echo "Finding latest draw.io .deb release URL..."
-        DRAWIO_LATEST_URL=$(curl -s "https://api.github.com/repos/jgraph/drawio-desktop/releases" | \
-          jq -r '[.[] | .assets[] | select(.name | contains("amd64") and endswith(".deb")) | .browser_download_url] | first')
+        DRAWIO_LATEST_URL=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+          https://api.github.com/repos/jgraph/drawio-desktop/releases \
+          | jq -r '[.[] | .assets[] | select(.name | contains("amd64") and endswith(".deb")) | .browser_download_url] | first')
 
-        if [ -z "$DRAWIO_LATEST_URL" ]; then
-          echo "::error::Could not find any recent draw.io release with a .deb file."
+
+        if [[ -z "$DRAWIO_LATEST_URL" || "$DRAWIO_LATEST_URL" == "null" ]]; then
+          echo "::error::Could not find any recent draw.io release with a .deb file. API response may be rate limited or malformed."
+          curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/rate_limit
           exit 1
         fi
         
