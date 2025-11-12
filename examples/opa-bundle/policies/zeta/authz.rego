@@ -16,9 +16,8 @@ decision := response if {
 	response := {
 		"allow": true,
 		"ttl": {
-			# KORRIGIERTER PFAD: Greift direkt auf die Top-Level-Keys zu
-			"access_token": data.access_token_ttl,
-			"refresh_token": data.refresh_token_ttl,
+			"access_token": data.token.access_token_ttl,
+			"refresh_token": data.token.refresh_token_ttl,
 		},
 	}
 }
@@ -44,33 +43,33 @@ reasons[msg] if {
 	msg := "One or more requested audiences are not allowed"
 }
 
-# --- HELPER-REGELN (mit den finalen, korrekten Datenpfaden) ---
+# --- HELPER-REGELN ---
 
 user_profession_is_allowed if {
 	# KORRIGIERTER PFAD
 	some i
-	input.user_info.professionOID == data.allowed_professions[i]
+	input.user_info.professionOID == data.professions.allowed_professions[i]
 }
 
 client_product_is_allowed if {
 	posture := input.client_assertion.posture
 
 	# KORRIGIERTER PFAD
-	allowed_versions := data.allowed_products[posture.product_id]
+	allowed_versions := data.products.allowed_products[posture.product_id]
 	some i
 	posture.product_version == allowed_versions[i]
 }
 
 scopes_are_allowed if {
 	# KORRIGIERTER PFAD
-	allowed_scope_set := {s | s := data.allowed_scopes[_]}
+	allowed_scope_set := {s | s := data.token_config.allowed_scopes[_]}
 	requested_scope_set := {s | s := input.authorization_request.scopes[_]}
 	requested_scope_set - allowed_scope_set == set()
 }
 
 audience_is_allowed if {
 	# KORRIGIERTER PFAD
-	allowed_audience_set := {s | s := data.allowed_audiences[_]}
+	allowed_audience_set := {s | s := data.audiences.allowed_audiences[_]}
 	requested_audience_set := {audience | audience := input.authorization_request.audience[_]}
 	requested_audience_set - allowed_audience_set == set()
 }
