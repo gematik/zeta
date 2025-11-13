@@ -127,3 +127,31 @@ Writing manifest to image destination
 ---
 
 **Ergebnis:** Das Image mit Ihren Provisionierungsdaten ist nun sicher in Ihrer Google Cloud Artifact Registry gespeichert und kann von Diensten wie Kubernetes abgerufen werden.
+
+## Schritt 6: Image-Inhalt anzeigen
+
+Um den Inhalt des erstellten OCI-Images anzuzeigen, können Sie den folgenden Befehl verwenden:
+
+```bash
+buildah run zeta-guard-provisioning:test-latest -- ls -lR /zeta-guard-provisioning
+```
+
+Dies listet alle Dateien und Verzeichnisse im `/zeta-guard-provisioning`-Verzeichnis des Images auf.
+
+**Beispiel-Ausgabe:**
+
+```bash
+/zeta-guard-provisioning:
+total 3088
+-rwxr-xr-x    1 root     root        573768 Nov 12 09:28 ECC-RSA_TSL-test.xml
+-rwxr-xr-x    1 root     root       2535847 Nov 12 09:28 TrustedTpm.cab
+-rw-r--r--    1 root     root           349 Nov 13 07:35 federation-master.yaml
+drwxr-xr-x    2 root     root          4096 Nov 13 13:18 policy-engine-bundle-keys
+-rwxr-xr-x    1 root     root         34340 Nov 12 09:28 roots.json
+
+/zeta-guard-provisioning/policy-engine-bundle-keys:
+total 12
+-r--------    1 root     root          1081 Nov 13 13:17 GEM.KOMP-CA61-TEST-ONLY.pem
+-r--------    1 root     root          1028 Nov 13 13:17 GEM.RCA7-TEST-ONLY.pem
+-r--------    1 root     root          1069 Nov 13 13:17 zeta_artifact_reg_nist.pem
+```
