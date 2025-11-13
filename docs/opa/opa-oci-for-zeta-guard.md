@@ -61,12 +61,14 @@ Zuerst müssen Sie sich bei Ihrem Google Cloud-Konto anmelden und das richtige P
 
 1. **Login:**
     Dieser Befehl öffnet ein Browserfenster zur Authentifizierung.
+
     ```bash
     gcloud auth login
     ```
 
 2. **Projekt auswählen (Optional):**
     Listen Sie alle Projekte auf, auf die Sie Zugriff haben, um Ihre Projekt-ID zu überprüfen.
+
     ```bash
     gcloud projects list
     gcloud config set project PROJECT_ID
@@ -78,6 +80,7 @@ Um Images in die Artifact Registry zu pushen, müssen Sie sich mit einem Zugriff
 
 1. **Zugriffstoken generieren:**
     Erstellen Sie ein kurzlebiges OAuth2-Zugriffstoken aus Ihren `gcloud`-Anmeldeinformationen.
+
     ```bash
     gcloud auth print-access-token
     <geheim>
@@ -85,6 +88,7 @@ Um Images in die Artifact Registry zu pushen, müssen Sie sich mit einem Zugriff
 
 2. **Bei der Registry anmelden:**
     Verwenden Sie das generierte Token, um sich mit der `policy` CLI bei der Artifact Registry anzumelden. Der Benutzername für diesen Anmeldetyp lautet `oauth2accesstoken`.
+
     ```bash
     policy login --username=oauth2accesstoken --server=europe-west3-docker.pkg.dev --password=<geheim>
     ```
@@ -139,6 +143,7 @@ Wenn Sie das Bundle für lokale Tests als `.tar.gz`-Datei benötigen, können Si
 ```bash
 policy save gematik-pt-zeta-test/zeta-policies/pip-policy-example:latest
 ```
+
 Dies erzeugt standardmäßig eine Datei namens `bundle.tar.gz` im aktuellen Verzeichnis.
 
 ### Schritt 7: Lokales Bundle evaluieren
