@@ -1,4 +1,4 @@
-# Leitfaden: OCI-Image mit Buildah erstellen und in die Google Artifact Registry hochladen
+# ZETA Guard Provisioning OCI-Image erstellen und in die Artifact Registry hochladen
 
 Dieser Leitfaden beschreibt den schrittweisen Prozess, um aus einem lokalen Verzeichnis ein OCI-konformes Container-Image zu erstellen, es zu konfigurieren und anschließend in eine private Google Cloud Artifact Registry hochzuladen.
 
