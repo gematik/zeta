@@ -9,7 +9,6 @@
   - [Zulassungsbedingungen](#zulassungsbedingungen)
     - [Erstzulassung](#erstzulassung)
     - [Management von Änderungen (Updates und Upgrades)](#management-von-änderungen-updates-und-upgrades)
-  - [Updates und Upgrades an ZETA-Guard](#updates-und-upgrades-an-zeta-guard)
   - [Testen der Integration](#testen-der-integration)
   - [Fehlerbehebung und Support](#fehlerbehebung-und-support)
   - [Einsatzszenarien](#einsatzszenarien)
@@ -37,9 +36,9 @@ Die Registrierung der ZETA Guard-Instanz bei der gematik ist ein wesentlicher Sc
 
 Folgende Daten sind für die Registrierung erforderlich:
 
-- Issuer-Informationen (Issuer und JWKS URI) für die Authentifizierung der ZETA Guard Instanz. Der Issuer des ZETA Guard ist der OpenID Provider des Kubernetes Clusters, in dem ZETA Guard ausgeführt wird. Diese Daten werden für die Authentifizierung per Workload Identity Federation am Telemetriedaten-Empfänger und SIEM der gematik benötigt.
-- Audiences für den Zugriff auf den Telemetriedaten-Empfänger und das SIEM der gematik sind im ZETA Guard bereits vorkonfiguriert. Wenn der Fachdienst Zugriff auf andere durch ZETA Guard geschützte Resource Server benötigt, müssen die Audiences dieser Dienste bei der Registrierung angegeben werden.
-- **JWKS URI des ZETA Guard: Öffentliche Signaturschlüssel des ZETA Guard Authorization Servers werden für die Validierung von JWTs benötigt, die von ZETA Guard ausgegeben werden. Die JWKS URI muss vom Federation Master in die Konfiguration des Federation Masters aufgenommen. Dadurch wird die Vertrauensstellung zwischen dem Federation Master und dem ZETA Guard Authorization Server hergestellt.**
+- **Issuer-Informationen** (Issuer und JWKS URI) für die Authentifizierung der ZETA Guard Instanz. Der Issuer des ZETA Guard ist der OpenID Provider des Kubernetes Clusters, in dem ZETA Guard ausgeführt wird. Diese Daten werden für die Authentifizierung per Workload Identity Federation am Telemetriedaten-Empfänger und SIEM der gematik benötigt.
+- **Audiences und Scopes** für den Zugriff auf den Resource Server müssen angegeben werden, um die Kontrolle der Zugriffsrechte der ZETA Guard Policy Engine zu definieren.
+- **Der öffentliche Signaturschlüssel** des ZETA Guard Authorization Servers wird für die Validierung von JWTs benötigt, die von ZETA Guard ausgegeben werden. Der Öffentliche Signaturschlüssel wird in die Konfiguration des Federation Masters aufgenommen. Dadurch wird die Vertrauensstellung zwischen dem Federation Master und dem ZETA Guard Authorization Server hergestellt.
 
 ## Zulassungsbedingungen
 
@@ -47,41 +46,39 @@ Vor der Inbetriebnahme von ZETA Guard müssen bestimmte Zulassungsbedingungen er
 
 ### Erstzulassung
 
-Für die Erstzulassung stellt die gematik dem Anbieter ein umfassendes Paket an Nachweisdokumenten zur Verfügung. Diese Dokumente sind die Grundlage für die Zulassung des Dienstes, der ZETA Guard integriert. Das Paket umfasst:
+Für die Erstzulassung eines TI 2.0 Dienstes stellt die gematik dem Anbieter ein umfassendes Paket an ZETA Guard Nachweisdokumenten zur Verfügung. Diese Dokumente sind die Grundlage für die Zulassung des Dienstes, der ZETA Guard integriert. Das Paket umfasst:
 
 - **Sicherheitsgutachten (SiGu) und Produktgutachten:** Unabhängige Bewertungen der Sicherheitsarchitektur und Produktreife.
 - **Testbericht ZETA-Guard:** Detaillierte Ergebnisse der funktionalen und nicht-funktionalen Tests.
 - **Software Bill of Materials (SBOM):** Eine vollständige Liste aller Software-Komponenten, die in ZETA Guard enthalten sind.
 - **Report über Sicherheitslücken:** Eine transparente Übersicht bekannter und behobener Sicherheitslücken.
 
-Anhand dieser Unterlagen kann der Anbieter die Integration in seine eigene Zulassungsdokumentation einbetten.
+Diese Unterlagen werden vom Anbieter des TI 2.0 Dienstes in die eigene Zulassungsdokumentation eingefügt.
 
 ### Management von Änderungen (Updates und Upgrades)
+
+Regelmäßige Updates und Upgrades sind notwendig, um die Sicherheit und Funktionalität von ZETA Guard zu gewährleisten. Befolgen Sie die beschriebenen Vorgehensweisen und testen Sie die Integration nach jedem Update. Der Anbieter muss sicherstellen, dass die Integration nach einem Update weiterhin wie erwartet funktioniert (Generalprobe).
 
 Änderungen an ZETA Guard werden in verschiedene Kategorien eingeteilt, die jeweils unterschiedliche Auswirkungen auf den Betrieb und die Zulassung der Fachanwendung haben. Grundsätzlich werden funktionale Änderungen nur abwärtskompatibel durchgeführt.
 
 - **Hotfix:**
-  Ein Hotfix behebt einen kritischen Fehler ohne funktionalen Bezug. Die Anwendung des Hotfixes erfordert in der Regel keinen erneuten Zulassungsprozess, sondern wird als betrieblicher Change behandelt, sofern keine sicherheitsrelevanten Komponenten betroffen sind.
+  Ein Hotfix behebt einen kritischen Fehler ohne funktionalen Bezug. Die Anwendung des Hotfixes erfordert keinen erneuten Zulassungsprozess, sondern wird als betrieblicher Change behandelt, sofern keine sicherheitsrelevanten Komponenten betroffen sind.
 
 - **Security Hotfix:**
-  Hierbei handelt es sich um einen dringenden Fix zur Behebung einer Sicherheitslücke. Die Anwendung des Security Hotfixes ist oft verpflichtend und muss nach einem vordefinierten, beschleunigten Verfahren erfolgen. Die Änderung erfordert aber eine Dokumentation im Rahmen des betrieblichen Changes.
+  Hierbei handelt es sich um einen dringenden Fix zur Behebung einer Sicherheitslücke. Die Anwendung des Security Hotfixes ist oft verpflichtend und muss nach einem vordefinierten, beschleunigten Verfahren erfolgen. Die Änderung erfordert eine Dokumentation im Rahmen des betrieblichen Change-Prozesses.
 
 - **Betrieblicher Change:**
-  Dies umfasst reguläre Updates oder Konfigurationsänderungen. Diese Änderungen sind abwärtskompatibel und erfordern keine Neuzulassung. Der Anbieter muss jedoch sicherstellen, dass die Integration nach dem Update weiterhin wie erwartet funktioniert (Generalprobe) und dies intern dokumentieren.
+  Dies umfasst reguläre Updates oder Konfigurationsänderungen. Diese Änderungen sind abwärtskompatibel und erfordern keine Neuzulassung.
 
 - **Neuzulassung:**
-  Eine Neuzulassung ist aufgrund von Änderungen an ZETA Guard ist nicht vorgesehen.
+  Eine Neuzulassung aufgrund von Änderungen an ZETA Guard ist nicht vorgesehen. Wird der TI 2.0 Dienst, unabhängig von ZETA Guard, neu zugelassen, so werden die ZETA Guard Nachweisdokumente in die Zulassungsdokumentation eingefügt.
 
 - **Abkündigung von Endpunkten**
-  Die Abwärtskompatibilität von ZETA Guard Versionen kann dazu führen, dass neu Versionen von Endpunkten eingeführt werden. Die Abkündigung älterer Endpunkt-Versionen erfolgt mit langem Vorlauf, um eine reibungslose Migration zu gewährleisten.
-
-## Updates und Upgrades an ZETA-Guard
-
-Regelmäßige Updates und Upgrades sind notwendig, um die Sicherheit und Funktionalität von ZETA Guard zu gewährleisten. Befolgen Sie die beschriebenen Vorgehensweisen und testen Sie die Integration nach jedem Update.
+  Die Abwärtskompatibilität von ZETA Guard Versionen kann dazu führen, dass neue Versionen von Endpunkten eingeführt werden. Die Abkündigung älterer Endpunkt-Versionen erfolgt mit langem Vorlauf, um eine reibungslose Migration zu gewährleisten.
 
 ## Testen der Integration
 
-Vor der endgültigen Inbetriebnahme sollten umfassende Tests durchgeführt werden, um sicherzustellen, dass ZETA Guard ordnungsgemäß in Ihre Infrastruktur integriert ist. Eine Generalprobe muss bei jeder Änderung an der Fachanwendung inklusive ZETA Guard durchgeführt werden.
+Vor der endgültigen Inbetriebnahme sollten umfassende Tests in eigenen Umgebungen des Herstellers und des Anbieters durchgeführt werden, um sicherzustellen, dass ZETA Guard ordnungsgemäß in Ihre Infrastruktur integriert ist. Eine Generalprobe muss bei jeder Änderung in der Produktionsumgebung der Fachanwendung (inklusive ZETA Guard) durchgeführt werden.
 
 ## Fehlerbehebung und Support
 
