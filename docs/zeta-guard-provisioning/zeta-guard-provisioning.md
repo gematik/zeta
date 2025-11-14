@@ -1,25 +1,84 @@
-# ZETA Guard - Dynamische Konfigurations-Provisionierung in Kubernetes mit CronJob und Shared Volumes
+# Automatisierte ZETA Guard Provisionierung mit CronJob, Shared Volume und Hot-Reloading
 
-Dieses Dokument beschreibt eine robuste Architektur zur regelmäßigen Verteilung von Konfigurationsdaten (z.B. öffentliche Schlüssel, Zertifikate, Endpunkt-URLs) aus einem OCI-Container an mehrere Anwendungen (wie Nginx, Keycloak, OPA) in einem Kubernetes-Cluster.
+Dieser Leitfaden beschreibt, wie ein Kubernetes `CronJob` verwendet wird, um regelmäßig Konfigurationsdaten aus einem OCI-Image bereitzustellen. Dabei wird ein hybrider Ansatz verfolgt:
 
-**Ziel:** Eine automatisierte, sichere und skalierbare Methode zur Aktualisierung von Konfigurationsdaten, die aufgrund ihrer Größe (> 1 MiB) nicht für `ConfigMaps` geeignet sind.
+1. **Große Dateien (> 1 MB)** für Keycloak werden in ein `PersistentVolume` geschrieben, um die etcd-Datenbank nicht zu belasten.
+2. **Kleine Konfigurationsdateien** für Nginx und OPA werden als `ConfigMaps` direkt in etcd gespeichert, um sie flexibel in Pods einbinden zu können.
+3. Eine **Signaturprüfung** der kritischen Datei `TrustedTPM.cab` wird vor jeder Provisionierung durchgeführt.
+4. **Sidecar-Container** werden eingesetzt, um Konfigurationsänderungen zu erkennen und bei Nginx und OPA einen **Hot-Reload ohne Pod-Neustart** auszulösen.
 
-## Kernkonzepte der Architektur
+## Architektur-Übersicht
 
-1. **OCI-Datencontainer (`zeta-guard-provisioning`):** Ein minimales Container-Image, das ausschließlich die benötigten Konfigurationsdateien enthält. Es hat keine laufende Anwendung.
-2. **`PersistentVolumeClaim` (PVC):** Ein zentraler, wiederbeschreibbarer Speicherort im Cluster, der als Brücke zwischen dem Provisionierer und den Anwendungen dient.
-3. **`CronJob`:** Ein Kubernetes-Objekt, das nach einem Zeitplan einen Job startet. Dieser Job führt unser OCI-Datencontainer aus, um die Daten im PVC zu aktualisieren.
-4. **`volumeMounts`:** Die Anwendungen (Nginx, Keycloak, OPA) binden das PVC als schreibgeschütztes Volume in ihr Dateisystem ein, um auf die Daten zuzugreifen.
-5. **Reload-Mechanismen:** Strategien, um die Anwendungen dazu zu bringen, die aktualisierten Daten zu erkennen und zu laden, idealerweise ohne einen Neustart.
-
-*(Textuelle Beschreibung des Flows)*
-`CronJob` → startet `Provisioner-Pod` → schreibt in `PersistentVolume` → `Nginx/Keycloak/OPA Pods` lesen aus `PersistentVolume`.
+```bash
++---------------------------+
+|                           |
+|  Provisioning-Image       |
+|  (mit kubectl, openssl)   |
+|                           |
++-------------+-------------+
+              |
+              v
++-------------+-------------+      runs on schedule
+|       CronJob Pod         | ---------------------->
+| (mit RBAC-Berechtigungen) |
++---------------------------+
+              | 1. Verifies Signature (openssl)
+              |
+  +-----------+-----------+
+  |                       |
+  v                       v
++-----------------+   +-----------------------------+
+| PersistentVolume|   |   Kubernetes API (etcd)     |
+| (für Keycloak)  |   | (für nginx, opa ConfigMaps) |
++-----------------+   +-----------------------------+
+  ^       ^       ^
+  |       |       | 2. Pods mount/use resources
+  |       |       |
++---------+---------+   +---------+---------+   +---------+---------+
+|  Keycloak Pod     |   |   Nginx Pod       |   |   OPA Pod         |
+| (mounts PV)       |   | (mounts ConfigMap)|   | (mounts ConfigMap)|
+|                   |   | + Reloader Sidecar|   | + Reloader Sidecar|
++-------------------+   +-------------------+   +-------------------+
+                              ^                       ^
+                              | 3. Triggers Hot-Reload|
+                              +-----------------------+
+```
 
 ---
 
-## Schritt 1: Erstellen des gemeinsamen Speichers (PVC)
+## Schritt 1: Das Provisionierungs-Image erweitern
 
-Zuerst fordern wir ein persistentes Volume an, das als zentraler Speicher für unsere Daten dient.
+Ihr Basis-Image (`busybox`) reicht nicht mehr aus. Es muss `openssl` für die Signaturprüfung und `kubectl` zum Erstellen von ConfigMaps enthalten.
+
+Erstellen Sie eine `Containerfile` (oder `Dockerfile`) für Ihr Image:
+
+**`Containerfile`**
+
+```dockerfile
+# Starten Sie mit einem Basis-Image, das einen Paketmanager hat
+FROM alpine:latest
+
+# Installieren Sie die benötigten Werkzeuge
+RUN apk add --no-cache openssl kubectl
+
+# Kopieren Sie Ihre Provisionierungsdaten in das Image
+COPY ./zeta-guard-provisioning /zeta-guard-provisioning
+COPY ./tpm-ca-certificate.pem /certs/tpm-ca-certificate.pem
+
+# Setzen Sie Metadaten
+LABEL author="gematik"
+
+# Standardbefehl, der nichts tut
+CMD ["/bin/true"]
+```
+
+Bauen und pushen Sie dieses neue Image mit `buildah` wie zuvor. Stellen Sie sicher, dass Ihr CA-Zertifikat zur Prüfung der Signatur (`tpm-ca-certificate.pem`) ebenfalls im Image enthalten ist.
+
+## Schritt 2: Speicher und Berechtigungen in K8s vorbereiten
+
+### 2.1. PersistentVolumeClaim (PVC) für große Dateien
+
+Dieser PVC stellt den wiederbeschreibbaren Speicher für die Keycloak-Daten bereit.
 
 **`provisioning-data-pvc.yaml`**
 
@@ -27,28 +86,60 @@ Zuerst fordern wir ein persistentes Volume an, das als zentraler Speicher für u
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: provisioning-data-pvc
+  name: keycloak-provisioning-data-pvc
 spec:
-  # ReadWriteOnce erlaubt es dem CronJob-Pod, exklusiv in das Volume zu schreiben.
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      # Passen Sie die Größe an Ihre Datenmenge an (plus Puffer).
-      storage: 1Gi
+      storage: 1Gi # Passen Sie die Größe an Ihre Bedürfnisse an
 ```
 
-**Anwendung:**
+### 2.2. RBAC: Berechtigungen für den CronJob
+
+Der CronJob benötigt die Erlaubnis, `ConfigMaps` zu erstellen und zu aktualisieren.
+
+**`provisioner-rbac.yaml`**
+
+```yaml
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: provisioner-sa
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: configmap-manager
+rules:
+- apiGroups: [""] # "" indicates the core API group
+  resources: ["configmaps"]
+  verbs: ["get", "list", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: provisioner-can-manage-configmaps
+subjects:
+- kind: ServiceAccount
+  name: provisioner-sa
+roleRef:
+  kind: Role
+  name: configmap-manager
+  apiGroup: rbac.authorization.k8s.io
+```
+
+Wenden Sie beide Dateien an:
 
 ```bash
 kubectl apply -f provisioning-data-pvc.yaml
+kubectl apply -f provisioner-rbac.yaml
 ```
 
----
+## Schritt 3: Der intelligente CronJob
 
-## Schritt 2: Einrichten des regelmäßigen Provisionierungs-Jobs (CronJob)
-
-Dieser `CronJob` startet periodisch einen Pod, der das Provisionierungs-Image verwendet, um den Inhalt des PVC zu aktualisieren.
+Dieser `CronJob` führt die Hauptlogik aus: Signaturprüfung, Kopieren großer Dateien und Erstellen/Aktualisieren von ConfigMaps.
 
 **`provisioning-cronjob.yaml`**
 
@@ -58,175 +149,128 @@ kind: CronJob
 metadata:
   name: data-provisioner-cronjob
 spec:
-  # Führt den Job täglich um 2 Uhr nachts aus. Anpassen nach Bedarf.
-  # Beispiel für alle 6 Stunden: "0 */6 * * *"
-  schedule: "0 2 * * *"
-  
-  # Verhindert, dass sich Jobs überschneiden.
+  schedule: "0 * * * *" # Jede Stunde
   concurrencyPolicy: Forbid
-
   jobTemplate:
     spec:
       template:
         spec:
+          serviceAccountName: provisioner-sa # WICHTIG: RBAC zuweisen
           restartPolicy: OnFailure
           containers:
           - name: data-provisioner
-            image: europe-west3-docker.pkg.dev/gematik-pt-zeta-test/zeta-dcr/zeta-guard-provisioning:test-latest
-            # Dieser Befehl kopiert die Daten sicher in das Volume.
-            command: ["/bin/sh", "-c", "cp -r /zeta-guard-provisioning/. /data-output/"]
+            image: <IHR-ERWEITERTES-PROVISIONING-IMAGE> # z.B. europe-west3-docker.pkg.dev/...
+            command: ["/bin/sh", "-c"]
+            args:
+            - |
+              set -e # Skript bei Fehler sofort beenden
+
+              echo "1. Signatur von TrustedTPM.cab wird geprüft..."
+              openssl cms -verify \
+                -in /zeta-guard-provisioning/TrustedTPM.cab \
+                -inform DER \
+                -CAfile /certs/tpm-ca-certificate.pem \
+                -noverify > /dev/null # -noverify, da wir nur die Signatur, nicht die Zertifikatskette prüfen
+
+              echo "Signaturprüfung erfolgreich."
+
+              echo "2. Große Dateien für Keycloak werden in das PV kopiert..."
+              # Atomares Kopieren, um inkonsistente Zustände zu vermeiden
+              cp -r /zeta-guard-provisioning/keycloak-data/. /keycloak-data-output/
+
+              echo "3. ConfigMap für Nginx wird erstellt/aktualisiert..."
+              kubectl create configmap nginx-config \
+                --from-file=/zeta-guard-provisioning/nginx/nginx.conf \
+                --dry-run=client -o yaml | kubectl apply -f -
+
+              echo "4. ConfigMap für OPA wird erstellt/aktualisiert..."
+              kubectl create configmap opa-policy \
+                --from-file=/zeta-guard-provisioning/opa/policy.rego \
+                --dry-run=client -o yaml | kubectl apply -f -
+              
+              echo "Provisionierung abgeschlossen."
             volumeMounts:
-            - name: provisioned-data-storage
-              mountPath: /data-output/ # Schreib-Zugriff für den Provisionierer
+            - name: keycloak-data-storage
+              mountPath: /keycloak-data-output
           volumes:
-          - name: provisioned-data-storage
+          - name: keycloak-data-storage
             persistentVolumeClaim:
-              claimName: provisioning-data-pvc
-          # Secret für den Zugriff auf Ihre private Artifact Registry
+              claimName: keycloak-provisioning-data-pvc
           imagePullSecrets:
           - name: gcr-json-key
 ```
 
-**Anwendung:**
+## Schritt 4: Anwendungs-Deployments anpassen
 
-```bash
-kubectl apply -f provisioning-cronjob.yaml
-```
+### 4.1. Keycloak: Mounten des PersistentVolume
 
----
+Da ein Hot-Reload bei Keycloak oft nicht trivial ist, ist hier ein geplanter Neustart (Rollout) nach der Provisionierung möglicherweise die pragmatischste Lösung.
 
-## Schritt 3: Bereitstellen der Daten für die Anwendungen
-
-Nun passen Sie die Deployments von Nginx, Keycloak und OPA an, damit sie das Volume einbinden.
-
-Fügen Sie die folgenden `volumes` und `volumeMounts` Abschnitte zur Pod-Spezifikation (`spec.template.spec`) jedes Deployments hinzu.
-
-**Beispiel für das Nginx-Deployment:**
+**`keycloak-deployment.yaml` (Ausschnitt)**
 
 ```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: nginx-deployment
-spec:
-  # ... replicas, selector, etc.
-  template:
-    spec:
+# ... spec.template.spec ...
+      containers:
+      - name: keycloak
+        # ...
+        volumeMounts:
+        - name: keycloak-provisioning-data
+          mountPath: /opt/keycloak/data/provisioning # Pfad, wo Keycloak die Daten erwartet
+          readOnly: true
+      volumes:
+      - name: keycloak-provisioning-data
+        persistentVolumeClaim:
+          claimName: keycloak-provisioning-data-pvc
+```
+
+### 4.2. Nginx & OPA: Mounten der ConfigMap mit Reloader-Sidecar
+
+Dies ist die fortschrittliche Methode zur Vermeidung von Neustarts.
+
+**`nginx-deployment.yaml` (Ausschnitt)**
+
+```yaml
+# ... spec.template.spec ...
+      # WICHTIG: Erlaubt dem Sidecar, den Nginx-Prozess zu signalisieren
+      shareProcessNamespace: true 
       containers:
       - name: nginx
         image: nginx:latest
-        # ... ports, etc.
         volumeMounts:
-        - name: provisioned-data-storage
-          # Der Pfad, unter dem Nginx die Daten erwartet
-          mountPath: /etc/nginx/provisioning-data
-          # WICHTIG: Nur-Lese-Zugriff für die Anwendung
+        - name: config-volume
+          mountPath: /etc/nginx/conf.d # Nginx liest die Konfig von hier
           readOnly: true
-      
-      # Gemeinsame Volume-Definition für alle Container im Pod
+      - name: config-reloader
+        image: alpine:latest
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          apk add --no-cache inotify-tools
+          while true; do
+            # Warten auf Änderungen im gemounteten ConfigMap-Verzeichnis
+            inotifywait -e modify,create,delete,move --timefmt '%d/%m/%y %H:%M' --format '%T %w%f %e' /config-watch/;
+            echo "Konfigurationsänderung erkannt! Sende SIGHUP an Nginx (PID 1)."
+            # Nginx Master-Prozess (PID 1) signalisieren, die Konfig neu zu laden
+            kill -HUP 1
+          done
+        volumeMounts:
+        - name: config-volume
+          mountPath: /config-watch/
+          readOnly: true
       volumes:
-      - name: provisioned-data-storage
-        persistentVolumeClaim:
-          claimName: provisioning-data-pvc
+      - name: config-volume
+        configMap:
+          name: nginx-config
 ```
 
-**Anweisungen für andere Deployments:**
-
-* **Keycloak:** Fügen Sie die identischen `volumes` und `volumeMounts` Blöcke hinzu. Passen Sie den `mountPath` an den Ort an, an dem Keycloak die Zertifikate oder Schlüssel erwartet (z.B. `/opt/keycloak/conf/certs`).
-* **OPA:** Fügen Sie die identischen `volumes` und `volumeMounts` Blöcke hinzu. Der `mountPath` könnte z.B. `/etc/opa/policies` sein, wenn Sie Richtlinien oder Datenbündel bereitstellen.
+* **Für OPA** würden Sie ein identisches Muster anwenden. Der Sidecar müsste statt `kill -HUP 1` den entsprechenden Reload-Mechanismus von OPA aufrufen (z.B. über dessen API, falls vorhanden).
 
 ---
 
-## Schritt 4: Umgang mit Updates – Pod-Neustarts vermeiden
+## Zusammenfassung der Anwendung
 
-Eine Anwendung liest ihre Konfiguration typischerweise nur beim Start. Wenn der `CronJob` die Dateien im Volume aktualisiert, müssen die laufenden Anwendungen darüber informiert werden.
+1. Wenden Sie die YAML-Dateien für PVC und RBAC an: `kubectl apply -f provisioning-data-pvc.yaml -f provisioner-rbac.yaml`.
+2. Passen Sie die Anwendungs-Deployments (Keycloak, Nginx, OPA) mit den gezeigten `volumeMounts`, `volumes` und (wo nötig) Sidecar-Containern an.
+3. Wenden Sie die `provisioning-cronjob.yaml` an.
 
-### Option A: Der kontrollierte Neustart (Fallback-Lösung)
-
-Die einfachste Methode ist, ein "Rolling Restart" der Deployments auszulösen, nachdem der `CronJob` gelaufen ist. Kubernetes tauscht dann die Pods kontrolliert aus, sodass keine komplette Downtime entsteht.
-
-**Implementierung:**
-Ein weiterer `CronJob`, der kurz nach dem Provisionierer läuft, könnte dies tun:
-
-```bash
-kubectl rollout restart deployment/nginx-deployment
-kubectl rollout restart deployment/keycloak-deployment
-# ... usw.
-```
-
-* **Vorteile:** Universell, funktioniert mit jeder Anwendung.
-* **Nachteile:** Führt zu kurzen Unterbrechungen für einzelne Verbindungen, nicht "Zero Downtime".
-
-### Option B: Dynamisches Neuladen der Konfiguration (Bevorzugte Lösung)
-
-Diese Methode ist eleganter und vermeidet Neustarts, erfordert aber, dass die Anwendung "Hot Reloads" unterstützt.
-
-#### Für Nginx: Sidecar Reloader
-
-Nginx kann seine Konfiguration über ein `SIGHUP`-Signal ohne Unterbrechung neu laden. Ein kleiner "Sidecar"-Container im selben Pod kann die Dateien überwachen und dieses Signal senden.
-
-**Ergänzung für das Nginx-Deployment:**
-
-```yaml
-# In spec.template.spec:
-shareProcessNamespace: true # Erlaubt dem Sidecar, den Nginx-Prozess zu sehen
-
-# In spec.template.spec.containers:
-# ... (Nginx Container von oben) ...
-- name: reloader-sidecar
-  image: busybox:stable # Minimales Image
-  command: ["/bin/sh", "-c"]
-  args:
-  - |
-    # Endlosschleife zur Überwachung
-    while true; do
-      # Wartet auf Dateiänderungen (modify, create, delete)
-      inotifyd -s modify,create,delete,move /data-watch
-      echo "Änderung erkannt, sende SIGHUP an Nginx (PID 1)..."
-      kill -HUP 1
-      sleep 5 # Kurze Pause
-    done
-  volumeMounts:
-  - name: provisioned-data-storage
-    mountPath: /data-watch/
-    readOnly: true
-```
-
-#### Für OPA: Natives Bundle-Loading
-
-OPA ist darauf ausgelegt, Richtlinien und Daten aus verschiedenen Quellen, einschließlich des Dateisystems, dynamisch zu laden. Ein Sidecar ist oft nicht nötig.
-
-**Konfiguration im OPA-Deployment (Beispiel):**
-
-```yaml
-# In spec.template.spec.containers:
-- name: opa
-  image: openpolicyagent/opa:latest
-  args:
-    - "run"
-    - "--server"
-    - "--config-file=/config/opa-config.yaml"
-  volumeMounts:
-    - name: provisioned-data-storage
-      mountPath: /etc/opa/bundles
-      readOnly: true
-    # ... andere Mounts
-```**`opa-config.yaml` (in einer ConfigMap):**
-```yaml
-services:
-  - name: my_service
-    url: https://...
-
-bundles:
-  authz:
-    # OPA wird dieses Verzeichnis überwachen und bei Änderungen neu laden
-    resource: file:///etc/opa/bundles/bundle.tar.gz
-```
-
-#### Für Keycloak: Herausforderung und Lösungsansätze
-
-Keycloak und viele Java-Anwendungen haben keinen einfachen, signal-basierten Reload-Mechanismus wie Nginx.
-
-1. **Dokumentation prüfen:** Überprüfen Sie, ob Ihre Keycloak-Version oder installierte Plugins eine Funktion zur Überwachung von Konfigurationsdateien bieten.
-2. **JMX / Admin API:** Manche Anwendungen bieten eine API, über die ein Reload ausgelöst werden kann. Ein Sidecar könnte `curl` verwenden, um diesen Endpunkt aufzurufen.
-3. **Fallback auf Neustart:** Wenn keine der obigen Optionen möglich ist, ist der kontrollierte Neustart (Option A) für Keycloak die pragmatischste und zuverlässigste Lösung.
+Der CronJob wird nun stündlich die Signatur prüfen und bei Erfolg die Daten verteilen. Keycloak greift auf die großen Dateien im Volume zu, während Nginx und OPA ihre Konfigurationen ohne Neustart aus den aktualisierten ConfigMaps nachladen.
