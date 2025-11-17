@@ -14,6 +14,7 @@
   - [Einsatzszenarien](#einsatzszenarien)
     - [Geo-Redundanz und Multi-Cluster-Betrieb](#geo-redundanz-und-multi-cluster-betrieb)
     - [Betrieb in einer Vertrauenswürdigen Ausführungsumgebung (VAU)](#betrieb-in-einer-vertrauenswürdigen-ausführungsumgebung-vau)
+      - [Verschlüsselte Verbindung in die VAU](#verschlüsselte-verbindung-in-die-vau)
     - [Konfiguration und Austausch von Komponenten](#konfiguration-und-austausch-von-komponenten)
     - [Konfiguration von ZETA Guard](#konfiguration-von-zeta-guard)
   - [Lokaler Cache der Artifact Registry](#lokaler-cache-der-artifact-registry)
@@ -107,6 +108,10 @@ Zwei primäre Lösungsmodelle bieten sich an:
 ### Betrieb in einer Vertrauenswürdigen Ausführungsumgebung (VAU)
 
 ZETA Guard schreibt keine spezifische Technologie für die Umsetzung einer VAU vor. Als containerisierte Anwendung kann ZETA Guard auf jeder konformen Kubernetes-Distribution betrieben werden. Die Wahl der VAU-Technologie liegt beim Anbieter und hat direkte Auswirkungen auf dessen Sicherheitskonzept und Zulassungsprozess.
+
+#### Verschlüsselte Verbindung in die VAU
+
+ZETA Guard muss so konfiguriert werden, dass eine verschlüsselte Verbindung vom ZETA Client in die VAU verwendet wird. Dies kann durch die TLS-Terminierung oder durch die Terminierung von ZETA/ALS im HTTP Proxy innerhalb der VAU erfolgen. ZETA/ASL kann auch im Resource Server terminiert werden, wenn der HTTP Proxy nicht in der VAU betrieben wird.
 
 ### Konfiguration und Austausch von Komponenten
 
