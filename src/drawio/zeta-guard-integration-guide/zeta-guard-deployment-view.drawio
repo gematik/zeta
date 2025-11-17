@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.106.0 Chrome/138.0.7204.251 Electron/37.7.0 Safari/537.36" version="29.0.2">
     <diagram name="Seite-1" id="EC1D4CuKjGgdZnLp6c-k">
-        <mxGraphModel dx="1718" dy="1144" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+        <mxGraphModel dx="694" dy="568" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -13,7 +13,7 @@
                 <mxCell id="wNfwXgeyBn939YUSDMje-20" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="wNfwXgeyBn939YUSDMje-21" target="wNfwXgeyBn939YUSDMje-29" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="wNfwXgeyBn939YUSDMje-21" value="&lt;div&gt;DDoS-Schutz&lt;/div&gt;&lt;div&gt;(Layer 3/4)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;" parent="1" vertex="1">
+                <mxCell id="wNfwXgeyBn939YUSDMje-21" value="&lt;div&gt;CDN&lt;/div&gt;&lt;div&gt;DDoS-Schutz&lt;/div&gt;&lt;div&gt;(Layer 3/4)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;" parent="1" vertex="1">
                     <mxGeometry x="460" y="140" width="100" height="80" as="geometry"/>
                 </mxCell>
                 <mxCell id="wNfwXgeyBn939YUSDMje-22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="wNfwXgeyBn939YUSDMje-23" target="wNfwXgeyBn939YUSDMje-21" edge="1">
@@ -46,7 +46,7 @@
                 <mxCell id="wNfwXgeyBn939YUSDMje-31" value="ZETA Client" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" parent="1" vertex="1">
                     <mxGeometry x="310" y="165" width="90" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="2" style="edgeStyle=none;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="wNfwXgeyBn939YUSDMje-32" target="wNfwXgeyBn939YUSDMje-25">
+                <mxCell id="2" style="edgeStyle=none;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="wNfwXgeyBn939YUSDMje-32" target="wNfwXgeyBn939YUSDMje-25" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
                 <mxCell id="wNfwXgeyBn939YUSDMje-32" value="&lt;div style=&quot;&quot;&gt;Ingress/Egress und&lt;/div&gt;&lt;div style=&quot;&quot;&gt;Load Balancer&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=center;" parent="1" vertex="1">

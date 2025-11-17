@@ -15,7 +15,7 @@
     - [Geo-Redundanz und Multi-Cluster-Betrieb](#geo-redundanz-und-multi-cluster-betrieb)
     - [Betrieb in einer Vertrauenswürdigen Ausführungsumgebung (VAU)](#betrieb-in-einer-vertrauenswürdigen-ausführungsumgebung-vau)
       - [Verschlüsselte Verbindung in die VAU](#verschlüsselte-verbindung-in-die-vau)
-    - [Konfiguration und Austausch von Komponenten](#konfiguration-und-austausch-von-komponenten)
+    - [Konfiguration und Austausch von optionalen Komponenten](#konfiguration-und-austausch-von-optionalen-komponenten)
     - [Konfiguration von ZETA Guard](#konfiguration-von-zeta-guard)
   - [Lokaler Cache der Artifact Registry](#lokaler-cache-der-artifact-registry)
   - [Tests der gematik](#tests-der-gematik)
@@ -111,11 +111,11 @@ ZETA Guard schreibt keine spezifische Technologie für die Umsetzung einer VAU v
 
 #### Verschlüsselte Verbindung in die VAU
 
-ZETA Guard muss so konfiguriert werden, dass eine verschlüsselte Verbindung vom ZETA Client in die VAU verwendet wird. Dies kann durch die TLS-Terminierung oder durch die Terminierung von ZETA/ASL im HTTP Proxy innerhalb der VAU erfolgen. ZETA/ASL kann auch im Resource Server terminiert werden, wenn der HTTP Proxy nicht in der VAU betrieben wird.
+ZETA Guard muss so konfiguriert werden, dass eine verschlüsselte Verbindung vom ZETA Client in die VAU verwendet wird. Dies kann durch die TLS-Terminierung oder durch die Terminierung von ZETA/ASL im HTTP Proxy innerhalb der VAU erfolgen.
 
 Es wird empfohlen, die TLS-Terminierung am Ingress oder an der WAF durchzuführen und die ZETA/ASL Verbindung innerhalb der VAU im HTTP Proxy zu terminieren, um die Vertraulichkeit und Integrität der Daten während der Übertragung zu gewährleisten.
 
-### Konfiguration und Austausch von Komponenten
+### Konfiguration und Austausch von optionalen Komponenten
 
 ZETA Guard wird als Helm-Chart ausgeliefert, das eine vollständige, lauffähige Konfiguration enthält. Für eine bessere Integration in bestehende Infrastrukturen und Prozesse können Anbieter jedoch bestimmte Standardkomponenten durch eigene, bereits etablierte Lösungen ersetzen.
 
@@ -126,7 +126,7 @@ Folgende Komponenten können ausgetauscht werden:
 - **Ingress Controller:**
   - **Szenario für Austausch:** Ein Anbieter hat bereits einen zentralen, gehärteten Ingress Controller (z.B. Contour, Traefik) im Einsatz, der unternehmensweite Sicherheitsrichtlinien umsetzt und vom Betriebsteam standardisiert verwaltet wird.
 - **Service Mesh (z.B. Istio, Cilium, Linkerd):**
-  - **Szenario für Austausch:** Der Anbieter nutzt bereits ein unternehmensweites Service Mesh zur Steuerung von mTLS, Observability und Traffic-Management. Die Integration von ZETA Guard in das bestehende Mesh vermeidet den Betrieb von zwei parallelen Lösungen.
+  - **Szenario für Austausch:** Der Anbieter nutzt bereits ein unternehmensweites Service Mesh zur Steuerung von mTLS, Observability und Traffic-Management. Die Integration von ZETA Guard in das bestehende Mesh vermeidet den Betrieb von zwei parallelen Lösungen. Es wird empfohlen sämtliche Verbindungen von und zu ZETA Guard Komponenten über das Service Mesh abzusichern.
 - **PDP-Datenbank (PostgreSQL):**
   - **Szenario für Austausch:** Dies ist ein sehr häufiges Szenario. Anstatt eine PostgreSQL-Instanz innerhalb des Clusters zu betreiben, kann der Anbieter eine externe, gemanagte Datenbank-Lösung anbinden. Dies bietet Vorteile wie Hochverfügbarkeit, automatisierte Backups, Skalierbarkeit und einfachere Wartung.
 - **Argo CD (GitOps-Tool):**
@@ -139,7 +139,7 @@ Die Konfiguration von ZETA Guard erfolgt über das mitgelieferte Helm-Chart und 
 - **TLS-Konfiguration:** Die Absicherung der externen Schnittstellen (Ingress) mittels TLS ist zwingend erforderlich. Der Anbieter ist für die Bereitstellung und Verwaltung der TLS-Zertifikate verantwortlich.
 - **HSM-Anbindung:** Für höchste Sicherheitsanforderungen kann der ZETA Guard Authorization Server an ein Hardware-Sicherheitsmodul (HSM) angebunden werden, um das Schlüsselmaterial für die Signatur von Token zu schützen. Der Anbieter ist für die Bereitstellung und Konfiguration des HSM sowie des zugehörigen Kubernetes-Plugins (CSI-Treiber) verantwortlich.
 - **Telemetriedaten-Erfassung:** ZETA Guard produziert umfangreiche Telemetriedaten (Metriken, Logs, Traces). Die Konfiguration des Exports dieser Daten an zentrale SIEM- und Monitoring-Systeme der gematik ist bereits vorkonfiguriert. Exports an die Anbieter-Systeme können vom Anbieter ergänzt werden.
-- **Mehrere Resource Server:** Eine einzelne ZETA Guard-Instanz kann den Zugriff auf mehrere unterschiedliche Resource Server (Fach- und Mehrwertdienste) absichern. Dies wird über die Konfiguration der `audiences` und der entsprechenden OPA-Policies gesteuert.
+- **Mehrere Resource Server:** Eine einzelne ZETA Guard-Instanz kann den Zugriff auf mehrere unterschiedliche Resource Server (Fach- und Mehrwertdienste) absichern. Dies wird über die Konfiguration der `audiences` und der entsprechenden OPA-Policies gesteuert. _Disclaimer: Es gibt noch keine Festlegung, wie die Zulassung und der Change Prozess für mehrere Resource Server gehandhabt wird._
 
 ## Lokaler Cache der Artifact Registry
 
