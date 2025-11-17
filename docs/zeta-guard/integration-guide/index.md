@@ -111,7 +111,9 @@ ZETA Guard schreibt keine spezifische Technologie für die Umsetzung einer VAU v
 
 #### Verschlüsselte Verbindung in die VAU
 
-ZETA Guard muss so konfiguriert werden, dass eine verschlüsselte Verbindung vom ZETA Client in die VAU verwendet wird. Dies kann durch die TLS-Terminierung oder durch die Terminierung von ZETA/ALS im HTTP Proxy innerhalb der VAU erfolgen. ZETA/ASL kann auch im Resource Server terminiert werden, wenn der HTTP Proxy nicht in der VAU betrieben wird.
+ZETA Guard muss so konfiguriert werden, dass eine verschlüsselte Verbindung vom ZETA Client in die VAU verwendet wird. Dies kann durch die TLS-Terminierung oder durch die Terminierung von ZETA/ASL im HTTP Proxy innerhalb der VAU erfolgen. ZETA/ASL kann auch im Resource Server terminiert werden, wenn der HTTP Proxy nicht in der VAU betrieben wird.
+
+Es wird empfohlen, die TLS-Terminierung am Ingress oder an der WAF durchzuführen und die ZETA/ASL Verbindung innerhalb der VAU im HTTP Proxy zu terminieren, um die Vertraulichkeit und Integrität der Daten während der Übertragung zu gewährleisten.
 
 ### Konfiguration und Austausch von Komponenten
 
