@@ -17,17 +17,37 @@ properties:
         description: Algorithm used to sign the JWT, which MUST be 'ES256'.
         enum:
           - ES256
-      x5c:
-        type: array
-        description:  Contains the certificate. The certificate must be the certificate containing the public key for verifying the signature. It must be base64-der-encoded.
-        items:
-          type: string
-          format: byte # Represents base64 encoded data
-        minItems: 1
+      jwk:
+        type: object
+        description: >
+          Public key of the client in JWK format.  
+          Used instead of x5c because no X.509 certificate is present.
+        properties:
+          kty:
+            type: string
+            enum: ["EC"]
+            description: Key type (elliptic curve).
+          crv:
+            type: string
+            enum: ["P-256"]
+            description: Elliptic curve used for ES256.
+          x:
+            type: string
+            format: byte
+            description: X coordinate of the EC public key (Base64URL).
+          y:
+            type: string
+            format: byte
+            description: Y coordinate of the EC public key (Base64URL).
+        required: 
+          - kty
+          - crv
+          - x
+          - y
     required:
       - typ
       - alg
-      - x5c
+      - jwk
   payload:
     type: object
     properties:

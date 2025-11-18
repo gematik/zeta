@@ -1,0 +1,64 @@
+@startuml "discovery-and-configuration"
+autonumber "(00)"
+skinparam defaultFontSize 10
+skinparam defaultFontName Helvetica
+skinparam DefaultMonospacedFontName Courier
+skinparam lengthAdjust none
+skinparam sequenceReferenceBackgroundColor White
+skinparam SequenceReferenceFontSize 12
+/'skinparam SequenceReferenceFontStyle bold
+'/
+
+
+!pragma teoz true
+
+Actor User
+box "LEI" #GhostWhite
+  box "Primärsystem" #Lavender
+    box "ZETA Client" #SandyBrown
+      participant Client as "ZETA\nClient"
+    end box
+  end box
+end box
+
+box "Anbieter TI 2.0 Dienst" #TECHNOLOGY
+  box "ZETA Guard" #SandyBrown
+    participant HP as "PEP\nHTTP Proxy"
+    participant AuthS as "PDP\nAuthorization Server" 
+  end box
+end box
+
+participant FM as "OpenID\nFederation\nMaster"
+
+note right of Client #LightYellow
+  - ZETA Client is pre-configured with Federation Master issuer (Fed-Master-issuer)
+  - ZETA Client is pre-configured with Resource Server FQDN (RS-FQDN)
+end note
+
+alt Recommended Flow
+  Client ++
+  Client -> HP++: GET /.well-known/api-catalog Host: RS-FQDN
+  HP --> Client--: Client: 200 OK; JSON body with Well-Known JSON Document  (RFC9727)
+  loop for each resource-name in list of APIs
+    Client -> HP ++ : GET /.well-known/oauth-protected-resource/resource-name   Host: RS-FQDN
+    HP --> Client--: Client: 200 OK; JSON body with Well-Known JSON Document  (RFC9728)
+  end
+
+  Client -> FM++: GET /federation/fetch?iss=<Fed-Master-issuer>&  sub=<ZETA-Guard-AS-issuer>
+  FM --> Client : 200 OK; JSON body with ZETA Guard AS Metadata
+  Client -> FM: GET /openid/v1/jwks
+  FM --> Client--: 200 OK; JSON body with JSON Web Key Set
+  Client -> Client: Verify signature of fetched JSON Document
+  Client -> Client: Update Configuration
+
+else Legacy Flow 
+
+  Client -> HP ++ : GET /.well-known/oauth-protected-resource Host: RS-FQDN
+  HP --> Client--: Client: 200 OK; JSON body with Well-Known JSON Document  (RFC9728)
+
+  Client -> AuthS ++ : GET /.well-known/oauth-authorization-server Host:  AuthS-FQDN
+  AuthS --> Client -- : 200 OK; JSON body with Well-Known JSON Document   (RFC8414)
+
+  Client -> Client: Update Configuration
+end
+@enduml

@@ -1,0 +1,27 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+description: "Schema for the ZETA Federation Master configuration file."
+
+type: object
+properties:
+  ti_federation_master:
+    type: array
+    description: "A list of Federation Master entity statements for the Telematik-Infrastruktur."
+    items:
+      type: object
+      properties:
+        environment:
+          type: string
+          description: "The environment (e.g., production, test)."
+          enum:
+            - production
+            - test
+            - development
+        entity_statement_uri:
+          type: string
+          description: "The URI of the Federation Master's entity statement."
+          format: uri
+      required:
+        - environment
+        - entity_statement_uri
+required:
+  - ti_federation_master

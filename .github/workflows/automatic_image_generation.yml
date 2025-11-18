@@ -24,19 +24,20 @@ jobs:
 
     - name: Install dependencies and draw.io
       run: |
+        set -e
         sudo apt-get update
         sudo apt-get install -y jq
         sudo apt-get install -y --no-install-recommends graphviz xvfb libasound2t64
 
-        # KORRIGIERTER BEFEHL:
-        # Dieser Filter sucht nach einem Asset, das "amd64" im Namen enthält UND mit ".deb" endet.
-        # Das ist robuster gegenüber Änderungen im Dateinamen-Schema (z.B. Versionsnummer).
-        DRAWIO_LATEST_URL=$(curl -s https://api.github.com/repos/jgraph/drawio-desktop/releases/latest | jq -r '.assets[] | select(.name | contains("amd64") and endswith(".deb")) | .browser_download_url')
+        echo "Finding latest draw.io .deb release URL..."
+        DRAWIO_LATEST_URL=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+          https://api.github.com/repos/jgraph/drawio-desktop/releases \
+          | jq -r '[.[] | .assets[] | select(.name | contains("amd64") and endswith(".deb")) | .browser_download_url] | first')
 
-        if [ -z "$DRAWIO_LATEST_URL" ]; then
-          echo "::error::Could not determine latest draw.io .deb release URL."
-          echo "Response from API:"
-          curl -s https://api.github.com/repos/jgraph/drawio-desktop/releases/latest
+
+        if [[ -z "$DRAWIO_LATEST_URL" || "$DRAWIO_LATEST_URL" == "null" ]]; then
+          echo "::error::Could not find any recent draw.io release with a .deb file. API response may be rate limited or malformed."
+          curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/rate_limit
           exit 1
         fi
         
@@ -45,7 +46,7 @@ jobs:
         
         echo "Installing draw.io..."
         sudo apt-get install -y /tmp/drawio.deb
-
+        
     - name: Download PlantUML jar
       id: download_plantuml
       run: |
@@ -80,13 +81,25 @@ jobs:
             echo "-> Generating images for PlantUML file: $file"
             mkdir -p "$output_dir"
             
-            java -jar /tmp/plantuml.jar -tpng -scale 4 "$file" -o "$output_dir"
-            java -jar /tmp/plantuml.jar -tsvg "$file" -o "$output_dir"
+            # --- BEGINN DER ÄNDERUNG ---
+            # Wir wechseln in das Verzeichnis der Quelldatei, um relative '!include' Pfade
+            # korrekt aufzulösen. Wir tun dies in einer Subshell (...), um das Hauptskript nicht zu beeinflussen.
+            # Die Pfade für die Ausgabe ($png_path, $svg_path) sind absolut und funktionieren weiterhin.
+            
+            file_dir=$(dirname "$file")
+            file_name=$(basename "$file")
+
+            echo "Generating PNG: $png_path"
+            (cd "$file_dir" && cat "$file_name" | java -jar /tmp/plantuml.jar -p -tpng -scale 4 -graphvizdot /usr/bin/dot > "$png_path")
+            
+            echo "Generating SVG: $svg_path"
+            (cd "$file_dir" && cat "$file_name" | java -jar /tmp/plantuml.jar -p -tsvg -graphvizdot /usr/bin/dot > "$svg_path")
+            # --- ENDE DER ÄNDERUNG ---
 
             if [ -f "$png_path" ] && [ -f "$svg_path" ]; then
                SUCCESSFUL_GENERATIONS=$((SUCCESSFUL_GENERATIONS + 1))
             else
-               echo "::error::One or both output files missing after generation attempt for $file."
+               echo "::error::File generation failed unexpectedly for $file. Output files are missing."
                FAILED_GENERATIONS=$((FAILED_GENERATIONS + 1))
                exit 1
             fi
@@ -101,7 +114,6 @@ jobs:
           echo "plantuml_generated=false" >> $GITHUB_OUTPUT
         fi
       shell: bash
-
     - name: Generate images from drawio files
       id: generate_drawio
       run: |
