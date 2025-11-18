@@ -1,8 +1,4 @@
----
-title: Release Notes
-nav_order: 3
-parent: ZETA
----
+# Release Notes
 
 ## ZETA API
 
