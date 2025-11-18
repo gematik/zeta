@@ -1,8 +1,4 @@
----
-title: Branch Modell
-nav_order: 5
-parent: ZETA
----
+# Branch Modell
 
 Im [ZETA GitHub Repository](https://github.com/gematik/zeta) werden Branches verwendet um den Status der Weiterentwicklung und das Review von Änderungen abzubilden.
 

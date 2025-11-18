@@ -1,8 +1,4 @@
----
-title: License
-nav_order: 6
-parent: ZETA
----
+# License
 
 Copyright (c) 2022 gematik GmbH
 
