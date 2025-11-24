@@ -1,0 +1,38 @@
+{
+  "iss": "cid-win-tpm-abcde",
+  "sub": "cid-win-tpm-abcde",
+  "aud": "https://auth-server.zeta.gematik.de/token",
+  "exp": 2678888310,
+  "jti": "unique-jwt-id-win-tpm-789",
+  "client_assertion": {
+    "sub": "cid-win-tpm-abcde",
+    "platform": "windows",
+    "posture": {
+      "platform_product_id": {
+        "package_family_name": "GematikDesktopSuite_123456789"
+      },
+      "product_id": "ZETA-Test-Client",
+      "product_version": "0.1.0",
+      "os": "Windows 11 Pro",
+      "os_version": "10.0.22621",
+      "arch": "x86_64",
+      "tpm_attestation_key": "base64-encoded-tpm-attestation-key...",
+      "tpm_quote": "base64-encoded-tpm-quote.l...",
+      "tpm_event_log": "base64-encoded-tpm-event-log...",
+      "tpm_ek_certificate_chain": [
+        "base64-encoded-ek-cert-1...",
+        "base64-encoded-ek-cert-2..."
+      ]
+    },
+    "attestation_timestamp": 1678888010
+  },
+  "user_info": {
+    "identifier": "A112233445",
+    "professionOID": "1.2.276.0.76.4.50"
+  },
+  "authorization_request": {
+    "scopes": [
+      "openid"
+    ]
+  }
+}
