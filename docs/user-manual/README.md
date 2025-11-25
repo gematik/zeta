@@ -11,8 +11,6 @@ Als Einstieg eignen sich folgende Dokumente besonders gut:
 
 * Für ein testweises Installieren eines ZETA Guard:
    [ZETA_Guard_Quickstart_fuer_lokales_deployment.md](Anleitungen/ZETA_Guard_Quickstart_fuer_lokales_deployment.md)
-* Für das Integrieren des ZETA Client SDK:
-   [Wie_Sie_das_ZETA_SDK_integrieren.md](Anleitungen/Wie_Sie_das_ZETA_SDK_integrieren.md)
 * Für das Ausführen des ZETA Testdrivers
   [Wie Sie den Testdriver nutzen](Anleitungen/Wie_Sie_den_Testdriver_nutzen.md)
 
@@ -21,6 +19,6 @@ Für den produktiven Betrieb des ZETA-Guard empfehlen sich zusätzlich folgende
 Dokumente:
 
 * Leitszenarien des Deployments des ZETA-Guard für unterschiedliche Fachdienste:
-  [Wie_Sie_den_ZETA_Testclient_ausführen.md](Referenzen/Deploymentszenarien.md)
+  [Deploymentszenarien.md](Referenzen/Deploymentszenarien.md)
 * Konfiguration des ZETA Guard mit Details zu allen relevanten Komponenten
   [Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md)
