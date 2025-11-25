@@ -64,6 +64,7 @@ scopes_are_allowed if {
 	# KORRIGIERTER PFAD
 	allowed_scope_set := {s | s := data.token.allowed_scopes[_]}
 	requested_scope_set := {s | s := input.authorization_request.scopes[_]}
+	count(requested_scope_set) > 0
 	requested_scope_set - allowed_scope_set == set()
 }
 
@@ -71,5 +72,6 @@ audience_is_allowed if {
 	# KORRIGIERTER PFAD
 	allowed_audience_set := {s | s := data.audiences.allowed_audiences[_]}
 	requested_audience_set := {audience | audience := input.authorization_request.audience[_]}
+	count(requested_audience_set) > 0
 	requested_audience_set - allowed_audience_set == set()
 }
