@@ -1,0 +1,7 @@
+{
+  "allowed_products": {
+    "vsdm_test_client": [
+      "0.1.0"
+    ]
+  }
+}
