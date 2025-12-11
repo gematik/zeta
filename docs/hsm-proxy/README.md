@@ -45,11 +45,16 @@ Keycloak erstellt Tokens (Access Tokens, ID Tokens).
 Algorithmen: ES256 (ECDSA mit P-256).
 Besonderheit: Keycloak muss den Public Key abrufen können, um ihn im JWKS (JSON Web Key Set) Endpunkt zu veröffentlichen.
 
+**Health Check (Monitoring)**
+Prüft die Erreichbarkeit des HSM-Backends und den Status des Proxies.
+**Operation: HealthCheck**.
+Output: Serving Status, Version, HSM Info.
+
 ## Implementierung
 
 Der Proxy verwendet gRPC als Kommunikationsprotokoll und bietet eine RESTful API für die Interaktion mit dem HSM. Die google.api.http Annotationen sind enthalten, damit daraus automatisch die OpenAPI/REST Schnittstelle generiert werden kann.
 
-Die Protokolldefinitionen befinden sich in der [hsm-proxy.proto](../src/gRPC/hsm-proxy.proto) Datei.
+Die Protokolldefinitionen befinden sich in der [hsm-proxy.proto](../../src/gRPC/hsm-proxy.proto) Datei.
 
 ### Hinweise zur Implementierung (NIST ECC)
 
