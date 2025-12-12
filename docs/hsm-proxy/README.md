@@ -69,4 +69,4 @@ ECC nutzt für Verschlüsselung ECDH (Elliptic Curve Diffie-Hellman). Dabei wird
 In modernen TLS-Setups (TLS 1.3 oder TLS 1.2 mit ECDHE) macht Nginx den Schlüsselaustausch (ECDH) mit Ephemeral Keys (Einmalschlüsseln), die Nginx lokal generiert. Das HSM wird nur zum Signieren des Handshakes benötigt, um die Identität zu beweisen. Daher ist eine Derive oder Decrypt Methode in dieser Schnittstelle für ZETA Guard nicht notwendig.
 
 **Abhängigkeiten**
-Um diese .proto Datei zu kompilieren, benötigen Sie die Datei google/api/annotations.proto. Diese ist Teil des googleapis Repositories.
+Um diese .proto Datei zu kompilieren, wird die Datei google/api/annotations.proto benötigt. Diese ist Teil des [googleapis](https://github.com/googleapis/googleapis) Repositories.
