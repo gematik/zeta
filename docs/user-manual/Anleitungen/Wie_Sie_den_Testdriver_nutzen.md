@@ -8,7 +8,7 @@ Seite den Aufruf an den ZETA_Guard weiterleitet. Er kann daher einfach für Test
 
 ---
 
-Status: Grob-Entwurf
+Status: Entwurf
 
 Zielgruppe: Tester und Entwickler
 
@@ -30,14 +30,22 @@ Der Container kann mit einer hier beschriebenen deployment.yml installiert werde
 
 Hierbei sind anzupassen:
 
-| Wert                  | Beschreibung                                                                                            | Beispiel                                                   |
-|-----------------------|---------------------------------------------------------------------------------------------------------|------------------------------------------------------------|
-| FACHDIENST_URL        | URL des Fachdienstes wie er über den PEP zu erreichen ist                                               | https://fachdienst.host.example.com/pep/fachdienst_url/api |
-| SMB_KEYSTORE_FILE     | Pfad zur SM-B Zertifikate-Datei (im .p12 Format)                                                        | /smcb-certificates.p12                                                           |
-| SMB_KEYSTORE_ALIAS    | Der Alias des zu verwendenden Schlüssels in der Zertifikate-Datei                                       |                                                            |
-| SMB_KEYSTORE_PASSWORD | Das Passwort dazu                                                                                       |                                                            |
+| Wert                      | Beschreibung                                                                                     | Beispiel                                                   |
+|---------------------------|--------------------------------------------------------------------------------------------------|------------------------------------------------------------|
+| FACHDIENST_URL            | URL of the resource server as reachable via the PEP                                              | https://fachdienst.host.example.com/pep/fachdienst_url/api |
+| SMB_KEYSTORE_FILE         | Path to the SM-B Certificate-File (in .p12 format)                                               | /smcb-certificates.p12                                     |
+| SMB_KEYSTORE_ALIAS        | Alias of the key in the SM-B Certificate file                                                    |                                                            |
+| SMB_KEYSTORE_PASSWORD     | Password for the private key                                                                     |                                                            |
+| SMCB_BASE_URL             | base url of the konnektor webservice interface (needs to include the "/ws")                      |                                                            |
+| SMCB_MANDANT_ID           | <mandanten-ID>  für den Konnektor-Aufruf                                                         |                                                            |
+| SMCB_CLIENT_SYSTEM_ID     | <client_system_id>  für den Konnektor-Aufruf                                                     |                                                            |
+| SMCB_WORKSPACE_ID         | <workspace_id>  für den Konnektor-Aufruf                                                         |                                                            |
+| SMCB_USER_ID              | <user-id> - diese wird nach Konnektor-Spezifikation für SMC-B Signaturen benötigt aber ignoriert |                                                            |
+| SMCB_CARD_HANDLE          | <smcb-card-handle> für den Konnektor-Aufruf                                                      |                                                            |
+| POPP_TOKEN                | Wert eines PoPP Tokens, welches an den PEP mitgegeben wird (optional)                            | eyJhbGciOiJFUzI1NiI......                                  |
+| DISABLE_SERVER_VALIDATION | falls auf "true" gesetzt, wird die TLS Zertifikateprüfung des Servers ausgesetzt (für Tests)     |                                                            |
 
-Im Beispiel unten werden die Werte durch helm Variablen gesetzt, so dass sie
+Im Beispiel unten werden die Werte durch helm Variablen gesetzt, sodass sie
 umgebungsspezifisch gesetzt werden können.
 
 Die Keystore-Datei wird als kubernetes Secret gemounted.
@@ -85,6 +93,10 @@ spec:
           env:
             - name: FACHDIENST_URL
               value: {{ .Values.fachdienst_url }}
+            - name: DISABLE_SERVER_VALIDATION
+              value: {{ quote .Values.disableServerValidation }}
+            - name: POPP_TOKEN
+              value: {{ .Values.PoppToken | quote }}
             - name: SMB_KEYSTORE_FILE
               value: "/smcb-certificates.p12"
             - name: SMB_KEYSTORE_ALIAS
@@ -94,6 +106,18 @@ spec:
                 secretKeyRef:
                   name: pdp-smcb-keystore
                   key: password
+            - name: SMCB_BASE_URL
+              value: {{ .Values.connector_base_url }}
+            - name: SMCB_MANDANT_ID
+              value: {{ .Values.connector_mandant_id }}
+            - name: SMCB_CLIENT_SYSTEM_ID
+              value: {{ .Values.connector_client_system_id }}
+            - name: SMCB_WORKSPACE_ID
+              value: {{ .Values.connector_workspace_id }}
+            - name: SMCB_USER_ID
+              value: {{ .Values.connector_user_id }}
+            - name: SMCB_CARD_HANDLE
+              value: {{ .Values.connector_card_handle }}
       volumes:
         - name: smcb-keystore
           secret:
@@ -101,8 +125,8 @@ spec:
             items:
               - key: keystore
                 path: "smcb-certificates.p12"
-
 ```
+
 
 Die service.yml dazu sieht wie folgt aus:
 
@@ -136,13 +160,13 @@ korrrekt erfolgt ist.
 
 Die URLs die der Testdriver anbietet sind dabei diese:
 
-| endpoint                     | access type      | purpose                                                                                                                                                                         |
-|------------------------------|------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| /proxy/*                     | all HTTP methods | Forward any requests path after the "/proxy/" part to the Fachdienst. According to the SDK API, includes discovery, client registration and authentication if not already done. |
-| /testdriver-api/discover     | GET              | Just the discovery part of the protocol, i.e. reading the .well-known files                                                                                                     |
-| /testdriver-api/register     | GET              | Perform client registration (includes discovery if not already done)                                                                                                            |
-| /testdriver-api/authenticate | GET              | Retrieve and store an access token (includes client registration and discovery if not already done)                                                                             |
-| /testdriver-api/storage      | GET              | Retrieve the stored data (like client instance key, access token etc)                                                                                                           |
-| /testdriver-api/reset        | GET              | forget all the stored information, so any call will start triggering a discovery, client registration and authentication again                                                  |
-| /health                      | GET              | health API for kubernetes                                                                                                                                                       |
+| endpoint                     | access type      | purpose                                                                                                                                                                                                                       |
+|------------------------------|------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| /proxy/*                     | all HTTP methods | Forward any requests path after the "/proxy/" part to the Fachdienst. According to the SDK API, includes discovery, client registration and authentication if not already done.<br/>Note this includes the websocket protocol |
+| /testdriver-api/discover     | GET              | Just the discovery part of the protocol, i.e. reading the .well-known files                                                                                                                                                   |
+| /testdriver-api/register     | GET              | Perform client registration (includes discovery if not already done)                                                                                                                                                          |
+| /testdriver-api/authenticate | GET              | Retrieve and store an access token (includes client registration and discovery if not already done)                                                                                                                           |
+| /testdriver-api/storage      | GET              | Retrieve the stored data (like client instance key, access token etc)                                                                                                                                                         |
+| /testdriver-api/reset        | GET              | forget all the stored information, so any call will start triggering a discovery, client registration and authentication again                                                                                                |
+| /health                      | GET              | health API for kubernetes                                                                                                                                                                                                     |
 

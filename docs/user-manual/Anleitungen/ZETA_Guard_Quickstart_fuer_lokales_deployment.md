@@ -94,7 +94,7 @@ export TF_VAR_keycloak_password="IhrPasswort"
 
 ###### Weisen Sie Terraform auf die zu verwendende kubeconfig und den Namespace hin:
 
-Die Datei, hier beispielhaft `demo.backend.hcl`, ermöglicht Terraform mit dem
+Die Datei [demo.backend.hcl](demo.backend.hcl) ermöglicht es Terraform mit dem
 Cluster und dem Namespace zu interagieren. Passen Sie die Werte an Ihre Umgebung
 an.
 
@@ -103,15 +103,16 @@ config_path = "~/.kube/config" # Pfad zur kubeconfig-Datei
 namespace   = "zeta-demo"      # Namespace, in dem Zeta-Guard deployt wurde
 ```
 
-###### Die PDP-Konfiguration wird über eine stage-spezifische Datei (hier beispielhaft `demo.tfvars`) gesteuert:
+###### Die PDP-Konfiguration wird über eine stage-spezifische Datei gesteuert:
 
 ```hcl
 insecure_tls       = true                          # Aktivieren bei selbst signierten Zertifikaten (optional, Default ist false)
 keycloak_url       = "https://example.domain/auth" # Externe URL des Keycloak-Servers
 keycloak_namespace = "zeta-demo"                   # Namespace des Authservers im Cluster
 pdp_scopes         = ["zero:read", "zero:write"]   # Zusätzliche PDP-Scopes
-as_fqdn            = "https://example.domain/auth" # FQDN des PDP (optional, Default ist keycloak_url)
 ```
+
+Siehe [demo.tfvars](demo.tfvars).
 
 ##### Backend initialisieren
 
@@ -206,5 +207,5 @@ Nun haben Sie den ZETA-Guard eingerichtet und ein Zugriff über den
 ZETA-Testclient und das ZETA-Client-SDK ist möglich.
 
 Der ZETA Guard ist nun fertig installiert. Für einen Test bietet es sich an, den
-[Testclient](Wie_Sie_den_ZETA_Testclient_ausführen.md) oder alternativ
+[Testclient](Wie_Sie_den_ZETA_Demo_client_ausführen.md) oder alternativ
 [Testdriver](Wie_Sie_den_Testdriver_bauen.md) aufzusetzen.

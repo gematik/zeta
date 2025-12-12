@@ -10,6 +10,8 @@ service_mesh:
 authserver:
   hostname: ""
   http_enabled: true
+  config:
+    maxClients: "256"
 
 pepproxy:
   image:
@@ -17,21 +19,23 @@ pepproxy:
   nginxConf:
     generateConfigMap: true
 
+    fachdienstUrl: https://fachdienst
     pepIssuer: http://authserver/auth/realms/zeta-guard
+    requiredAudience: "test"
+    requiredScopes: [ ]
 
     locations: |-
-          location / {
-            root /usr/share/nginx/html;
-
-            pep                  on;
-          }
+      location / {
+        root /usr/share/nginx/html;
+        pep on;
+      }
       # Proxy OAuth Authorization Server metadata to Keycloak (demo)
       # Served as: http://<host>/.well-known/oauth-authorization-server
       # Target:   http://authserver/auth/realms/zeta-guard/.well-known/zeta-guard-well-known
       location = /.well-known/oauth-authorization-server {
         proxy_pass http://authserver/auth/realms/zeta-guard/.well-known/zeta-guard-well-known;
         proxy_http_version 1.1;
-        }
+      }
 
 # DB mode switch:
 # - bitnami: local using Bitnami subchart service/secret
@@ -54,17 +58,30 @@ clusterIssuer: "letsencrypt-cd"
 
 opa:
   enabled: true
-
-# OPA policy/data configuration (example)
-# Uncomment and adjust to override policy and allowed scopes via values
+  # For demo, use inline policy by default so no registry credentials are required.
+  bundle:
+    # use Workload Identity Federation or secretRef when enabling bundle mode
+    enabled: false
+  workloadIdentityFederation:
+    enabled: false
+# Decision logs toggle used by both inline and bundle configs
 opaPolicy:
-  # Enable console decision logs in OPA
   logDecisions: true
-  # Rego v1 syntax
-#  policyRego: |
-#    package zeta.authz
-#    default allow := false
-#    allow if {input.path == ["users"] input.method == "POST"}
+  # Example fake policy: allow-all decision object.
+  # The policies should be loaded from PIP-PAP Service (workload identity federation or secretRef)
+  policyRego: |
+    package zeta.authz
+
+    # Minimal decision object compatible with callers expecting
+    # data.zeta.authz.decision => {"allow": bool, "ttl": {"access_token": number, "refresh_token": number}}
+    decision := {
+      "allow": true,
+      "ttl": {
+        "access_token": 300,
+        "refresh_token": 86400,
+      },
+    }
+
 
 admissionWebhooks:
   certManager:

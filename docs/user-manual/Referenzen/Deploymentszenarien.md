@@ -76,7 +76,15 @@ einer HSM heraus zu nutzen sind.
 
 ### Datenbank-Setup in der VAU
 
-TODO
+Aktuell sieht das Modell vor, die ZETA-Guard Datenbank innerhalb der VAU zu
+betreiben. Ein PoC ist in Arbeit, um eine für den Betrieb der Datenbank
+außerhalb der VAU notwendige anwendungsseitige Verschlüsselung umzusetzen.
+
+| VAU-Szenario                 | Kommentare                              |
+|------------------------------|-----------------------------------------|
+| Keine VAU benötigt           | z.B. VSDM                               |
+| VAU mit Datenbank in der VAU | PoPP, DiPag, …                          |
+| VAU mit separater Datenbank  | In Prüfung durch einen Proof-of-Concept |
 
 ### ZETA-Guard und Datenbank-Skalierung
 
@@ -281,7 +289,23 @@ oder indirekt über CDN-Netzwerke umgesetzt werden.
 
 ### VAU-Betrieb
 
-TODO
+Es werden aktuell zwei typische VAU-Typen unterschieden. Die eine Technologie
+nutzt Kubernetes als umgebende Technologie und lässt einzelne Prozesse
+innerhalb einer Trusted Computing Zone des Prozessors laufen. Ein Beispiel davon
+ist Intels SGX. Die andere Technologie etabliert eine komplette Art von
+virtueller Maschine (VM) innerhalb von einer Trusted Computing Zone. Ein
+Beispiel ist AMDs Secure Encrypted Virtualization (SEV) or Intels Trusted Domain
+Extensions (TDX).
+
+TODO: weitere Ausarbeitung
+
+#### VM-Type VAUs
+
+![](../assets/images/depl_sc/image-20251121-091517.png)
+
+#### Prozess-Type VAUs
+
+![](../assets/images/depl_sc/image-20251121-091546.png)
 
 ### Datenbank-Betrieb
 
@@ -291,20 +315,38 @@ Grundsätzlich wird in Test- und kleinen Setups ohne VAU von einer Datenbank im
 Container innerhalb des ZETA Guards ausgegangen.
 
 In größeren Setups bzw. in einer VAU ist das Zielbild, die Datenbank außerhalb
-des Containers als Dienst zu nutzen.
-
-TODO Storage encryption bei externer DB, vmtl. innerhalb des PDP Containers
+des Containers als Dienst zu nutzen und die Daten anwendungsseitig zu
+verschlüsseln.
 
 #### Ohne VAU, Datenbank im Container
 
 ![](../assets/images/depl_sc/image-20251120-211336.png)
 
-* TODO Storage encryption, vmtl. innerhalb des PDP Containers
+* Storage encryption innerhalb des Containers
 * Encryption keys als kubernetes secrets
 
-#### Mit VAU
+#### Mit VAU, Datenbank in der VAU
 
-TODO
+![](../assets/images/depl_sc/image-20251120-211251.png)
+
+* Storage encryption innerhalb des Containers
+* Encryption keys als KMS-verwaltete secrets (storage encryption is nur
+  effizient genug bei symmetrischer Verschlüsselung, da muss/kann der Schlüssel
+  im Prozess als vorhanden sein und kann sowieso nicht in ein HSM ausgelagert
+  werden)
+
+#### Mit VAU, Datenbank außerhalb der VAU
+
+Hinweise:
+
+* Zielzustand für das Deployment
+* Umsetzung abhängig von weiterer Untersuchung der Umsetzbarkeit
+
+![](../assets/images/depl_sc/image-20251120-211717.png)
+
+* Anwendungsspezifische Verschlüsselung im PDP Auth Server Prozess; damit
+  Möglichkeit, die Datenbank außerhalb der VAU zu betreiben
+* Storage-Verschlüsselung für die Postgres Daten?
 
 #### Datenbank-Skalierung
 
@@ -341,7 +383,58 @@ In der Untersuchung wurden unter anderem
 * openssl-basierte APIs
 * Custom ZETA-HSM-API
 
-betrachtet.
+betrachtet. Am Ende wurde aufgrund der jeweiligen Eigenschaften vorerst
+entschieden, ein Custom ZETA-HSM-API Protokoll zu entwerfen. Hierbei soll auf
+die Erfahrungen mit der API der Custom Firmware aus dem ePA Umfeld
+zurückgegriffen werden.
 
-TODO weitere Ausführung inkl. Skalierung, Hardware Austausch, Authentisierung
-und Attestierung.
+#### Als eigener Service
+
+![](../assets/images/depl_sc/image-20251120-212738.png)
+
+* Draft: Authentifizierung des HTTP Proxy und des Authorization Servers durch
+  Einbringen der Hardware-Attestierungsinformationen in das HSM, wo es durch den
+  HSM Proxy geprüft werden kann.
+* Authentifizierung des HSM Proxy am HSM durch Einbringen der
+  Hardware-Attestierungsinformationen des HSM Proxy Containers in das HSM
+
+#### Als Sidecar
+
+Der Vorteil des Aufsetzens als Sidecar-Container innerhalb des Kubernetes Pods
+einmal des HTTP Proxy und auch des Authorization Servers ist die schnelle
+Anbindung zwischen den Containern innerhalb eines Pods. Ein Nachteil ist, dass
+mehrere Container aufzusetzen mit entsprechenden Infrastrukturanforderungen
+sind.
+
+![](../assets/images/depl_sc/image-20251120-212916.png)
+
+* TODO Draft: Authentifizierung des HTTP Proxy und des Authorization Servers
+  durch Einbringen der Hardware-Attestierungsinformationen in das HSM, wo es
+  durch den HSM Proxy geprüft werden kann.
+* Authentifizierung des HSM Proxy am HSM durch Einbringen der
+  Hardware-Attestierungsinformationen des HSM Proxy Containers in das HSM
+
+#### Als HSM-Firmware
+
+![](../assets/images/depl_sc/image-20251120-213059.png)
+
+* Authentifizierung des HSM Proxy am HSM durch Einbringen der
+  Hardware-Attestierungsinformationen des HSM Proxy Containers in das HSM
+
+#### Hardware-Aktualisierung, Skalierung
+
+Für die Ausfallsicherheit sollten mehrere HSMs parallel bereitgestellt werden
+können, die auch dieselben Schlüssel enthalten. Dazu müssen Schlüssel zwischen
+HSMs ausgetauscht werden können.
+
+Ebenso müssen für Hardware-Aktualisierungen Schlüssel zwischen HSMs ausgetauscht
+werden.
+
+Für diese Szenarien existieren HSM-spezifische Prozeduren, um dies sicher
+durchführen zu können. Diese liegen in der Verantwortung der Betreiber.
+
+#### Offene Punkte:
+
+* Genaues Verfahren der Authentifizierung der HTTP Proxy und Authentication
+  Server am HSM Proxy
+* Load Balancing zwischen HTTP Proxy / Authorization Server und HSM Proxy / HSM?
