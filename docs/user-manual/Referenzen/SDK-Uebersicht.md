@@ -25,22 +25,27 @@ Kern-Verzeichnisse
 
 Hier sind die verschiedenen Module abgelegt.
 
-| Verzeichnis         | Beschreibung                                                        |
-|---------------------|---------------------------------------------------------------------|
-| common              | Gemeinsam genutzter Code - Plattform Logging und Modulkonfiguration |
-| authentication      | Authentication Modul                                                |
-| client-registration | Modul für die Client-Registrierung                                  |
-| configuration       | Laufzeit-Configuration API                                          |
-| flow-controller     | Core SDK controller logic                                           |
-| network             | Netzwerk-Modul (z.B. HttpClient)                                    |
-| storage             | Speichermodul                                                       |
+| Folder              | Description                                                |
+|---------------------|------------------------------------------------------------|
+| common              | commonly used code like logging and platform configuration |
+| asl                 | ASL implementation                                         |
+| attestation         | Attestation module                                         |
+| authentication      | authentication module                                      |
+| client-registration | Modul for the client registration                          |
+| configuration       | Runtime configuration                                      |
+| crypto              | Crypto functionality                                       |
+| flow-controller     | Core SDK controller logic                                  |
+| network             | Network module (e.g. HttpClient)                           |
+| storage             | Storage module                                             |
+| tpm                 | Access to the TPM or alternate implementations             |
 
 ### Technische Verzeichnisse
 
-| Verzeichnis    | Beschreibung                                   |
-|----------------|------------------------------------------------|
-| build-logic    | Gradle/Kotlin Code um die Komponenten zu bauen |
-| gradle         | Gradle Installation                            |
+| Verzeichnis | Beschreibung                                   |
+|-------------|------------------------------------------------|
+| build-logic | Gradle/Kotlin Code um die Komponenten zu bauen |
+| gradle      | Gradle Installation                            |
+| build       | Build-Ergebnisse                               |
 
 ### Strukture der Module
 
@@ -61,24 +66,9 @@ sowie die ggf. plattformspezifischen Implementierungen der Module.
 | jvm         | Code spezifisch für JVM-Implementierung         |
 | android     | Code spezifisch für die Android-Implementierung |
 | ios         | Code spezifisch für die iOS-Implementierung     |
+| desktop    | Code specific for the desktop implementations (windows, linux, mac) |
 
+Hinweis: nicht alle Plattformen werden aktuell unterstützt.
 
-## Module
-
-### zeta-sdk
-
-Das ZETA SDK Modul enthält die API, die das ZETA SDK an den eigentlichen Client exportiert.
-
-### network
-
-Das network Modul enthält den plattformspezifisch gekapselten HttpClient code,
-der im Rest des ZETA SDKs verwendet wird.
-
-### Konfiguration
-
-Die Konfigurationen sind im package com.ey.zeta.network.http.client.config zu finden.
-
-## Build
-
-
+Weitere Details sind dem Umsetzungskonzept zu entnehmen.
 

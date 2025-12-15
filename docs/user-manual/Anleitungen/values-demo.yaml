@@ -1,68 +1,41 @@
-global:
-  # <TODO-REPO-URL>
-  registry: ""
-  # <TODO-repo-public?>
-  image_pull_secret: ""
+ingress_controller:
+  enabled: false
+
+management_service:
+  enabled: false
+
+service_mesh:
+  enabled: false
 
 authserver:
   hostname: ""
   http_enabled: true
+  config:
+    maxClients: "256"
 
 pepproxy:
   image:
-    tag: main
     pullPolicy: Always
   nginxConf:
     generateConfigMap: true
-    fileContent: |
-      worker_processes  auto;
 
-      load_module modules/libngx_pep.so;
+    fachdienstUrl: https://fachdienst
+    pepIssuer: http://authserver/auth/realms/zeta-guard
+    requiredAudience: "test"
+    requiredScopes: [ ]
 
-      error_log  /dev/stdout debug;
-      pid        /run/nginx.pid;
-
-
-      events {
-        worker_connections 16384;
-        multi_accept       on;
-        use                epoll;
+    locations: |-
+      location / {
+        root /usr/share/nginx/html;
+        pep on;
       }
-
-      http {
-        include       /etc/nginx/mime.types;
-        default_type  application/octet-stream;
-
-        log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
-        '$status $body_bytes_sent "$http_referer" '
-        '"$http_user_agent" "$http_x_forwarded_for"';
-
-        access_log  /dev/stdout  main;
-
-        sendfile    on;
-        aio         threads;
-        aio_write   on;
-        tcp_nopush  on;
-
-        keepalive_timeout  65;
-
-        gzip  on;
-
-        pep_issuer http://authserver/auth/realms/zeta-guard;
-        pep_http_client_accept_invalid_certs on;
-
-        server {
-          listen 80;
-          server_name  pep-proxy-svc;
-          location / {
-            root /usr/share/nginx/html;
-
-            pep                  on;
-          }
-        }
+      # Proxy OAuth Authorization Server metadata to Keycloak (demo)
+      # Served as: http://<host>/.well-known/oauth-authorization-server
+      # Target:   http://authserver/auth/realms/zeta-guard/.well-known/zeta-guard-well-known
+      location = /.well-known/oauth-authorization-server {
+        proxy_pass http://authserver/auth/realms/zeta-guard/.well-known/zeta-guard-well-known;
+        proxy_http_version 1.1;
       }
-
-
 
 # DB mode switch:
 # - bitnami: local using Bitnami subchart service/secret
@@ -81,7 +54,35 @@ postgresql:
       enabled: false
 
 # Which cert-manager ClusterIssuer to use for TLS on the Ingress (default)
-clusterIssuer: "letsencrypt-staging"
+clusterIssuer: "letsencrypt-cd"
 
 opa:
+  logLevel: info
   enabled: true
+  # For demo, use inline policy by default so no registry credentials are required.
+  bundle:
+    # use Workload Identity Federation or secretRef when enabling bundle mode
+    enabled: false
+  workloadIdentityFederation:
+    enabled: false
+# Decision logs toggle used by both inline and bundle configs
+opaPolicy:
+  logDecisions: true
+  # Example fake policy: allow-all decision object.
+  # The policies should be loaded from PIP-PAP Service (workload identity federation or secretRef)
+  policyRego: |
+    package zeta.authz
+
+    # Minimal decision object compatible with callers expecting
+    # data.zeta.authz.decision => {"allow": bool, "ttl": {"access_token": number, "refresh_token": number}}
+    decision := {
+      "allow": true,
+      "ttl": {
+        "access_token": 300,
+        "refresh_token": 86400,
+      },
+    }
+
+admissionWebhooks:
+  certManager:
+    enabled: true
