@@ -24,6 +24,9 @@ Als Einstieg eignen sich folgende Dokumente besonders gut:
 * Wie Sie den ZETA-Guard Cluster lokal in einem `KIND` Setup ausführen
   [Wie Sie das Cluster lokal mit KIND aufsetzen](Anleitungen/Wie_Sie_das_Cluster_lokal_mit_KIND_aufsetzen.md)
 
+> [!WARNING]  
+> Beim aktuellen Stand handelt sich um einen funktional vollständigen Stand, bei dem die sicherheitstechnische Prüfung noch nicht abgeschlossen ist. In diesem Kontext fehlt ebenfalls noch eine abschließende Bewertung der Sicherheitsrisiken bei den eingesetzten Drittkomponenten für ZETA SDK und ZETA Guard. Der aktuelle Stand ist nicht für den produktiven Einsatz geeignet, und sollte zusätzlich nur in lokalen Umgebungen für Test- und Integrationszwecke eingesetzt werden. Siehe auch Bewertungen von potenziellen Schwachstellen für [ZETA-Guard](./cve-assessment/ZETA-ZETA-Guard%20Bewertung%20von%20potenziellen%20Schwachstellen-121225-192905.pdf) und [Zeta SDK](./cve-assessment/ZETA-ZETA-SDK%20Bewertung%20von%20Sicherheitsrisiken%20Version%200.2.3-121225-193106.pdf)
+
 
 Für den produktiven Betrieb des ZETA-Guard empfehlen sich zusätzlich folgende
 Dokumente:
