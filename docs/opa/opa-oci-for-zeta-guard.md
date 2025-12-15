@@ -146,6 +146,20 @@ policy save gematik-pt-zeta-test/zeta-policies/pip-policy-example:latest
 
 Dies erzeugt standardmäßig eine Datei namens `bundle.tar.gz` im aktuellen Verzeichnis.
 
+Man kann sich den Inhalt anzeigen lassen mit:
+
+```bash
+tar -tf bundle.tar.gz
+```
+
+Den Inhalt einer bestimmten Datei im Bundle kann man mit:
+
+```bash
+tar -xvf bundle.tar.gz -O /opa-bundle/policies/zeta/authz.rego
+```
+anzeigen lassen.
+
+
 ### Schritt 7: Lokales Bundle evaluieren
 
 Verwenden Sie den `opa eval`-Befehl, um Ihre Policy lokal gegen eine Beispieldaten-Datei zu testen.
