@@ -51,6 +51,9 @@ properties:
         description: Methods used for user authentication (Authentication Methods References).
         items:
           type: string
+      acr:
+        type: string
+        description: Authentication Context Class Reference (e.g. 'loa2').
     required:
       - scopes
       - aud
