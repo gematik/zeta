@@ -49,7 +49,7 @@ Mit dieser [values-demo.yaml](values-demo.yaml) können Sie ZETA Guard über
 folgendes Kommando installieren:
 
 ```shell
-    helm upgrade --install zeta-guard oci://europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/zeta-guard-helm/zeta-guard:0.1.2 -f values-demo.yaml --wait --atomic
+    helm upgrade --install zeta-guard oci://europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/zeta-guard-helm/zeta-guard:0.2.3 -f values-demo.yaml --wait --atomic
 ```
 
 #### 2. PDP konfigurieren

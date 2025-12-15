@@ -57,6 +57,7 @@ postgresql:
 clusterIssuer: "letsencrypt-cd"
 
 opa:
+  logLevel: info
   enabled: true
   # For demo, use inline policy by default so no registry credentials are required.
   bundle:
@@ -81,7 +82,6 @@ opaPolicy:
         "refresh_token": 86400,
       },
     }
-
 
 admissionWebhooks:
   certManager:

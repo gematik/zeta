@@ -4,8 +4,8 @@
 Dieses Produkthandbuch beinhaltet einerseits Anleitungsdokumente unter
 [Anleitungen](Anleitungen/Anleitungen.md). Anderseits beinhaltet es Referenzen unter
 [Referenzen](Referenzen/Referenzen.md), welche die einzelnen Komponenten des ZETA Guard,
-ZETA SDK und ZETA Testclienten im Detail erklären. (TODO: Referenzen in die
-jeweiligen Sub Repositories verschieben und hier verlinken.)
+ZETA SDK und ZETA Testclienten im Detail erklären. Die Referenzen werden ggf.
+in Zukunft in die jeweiligen Repositories der Subkomponenten verschoben.
 
 Als Einstieg eignen sich folgende Dokumente besonders gut:
 

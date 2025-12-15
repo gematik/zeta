@@ -73,8 +73,8 @@ sudo apt-get update && sudo apt-get dist-upgrade
 > - Go 1.25.5,
 > - KIND v0.30.0,
 > - kubectl v1.34.x,
-> - Terraform 1.14.1-6,
-> - helm 3.19.2-1,
+> - Terraform 1.14.2,
+> - helm 3.19.3,
 > - k9s v0.50.16.
 >
 > Bei anderen Versionen ggf. die Download-URLs bzw. Variablen anpassen.
@@ -228,9 +228,9 @@ ausführen:
 kubectl version --client
 ```
 
-## Schritt 3: zeta-kind.com als localhost (127.0.0.1) in der wsl auflösen
+## Schritt 3: zeta-kind.local als localhost (127.0.0.1) in der wsl auflösen
 
-localhost ``(127.0.0.1)`` soll als ``zeta-kind.com``
+localhost ``(127.0.0.1)`` soll als ``zeta-kind.local``
 aufgelöst werden.
 Dazu muss ein Eintrag in der Datei ``/etc/hosts`` in Ubuntu erfolgen.
 
@@ -241,8 +241,8 @@ Dies sollte konsistent innerhalb der Datei sein.
 In der Ubuntu-Shell dafür Folgendes eingeben:
 
 ```shell
-grep -q "zeta-kind.com" /etc/hosts || \
-  echo -e "127.0.0.1\tzeta-kind.com" | sudo tee -a /etc/hosts
+grep -q "zeta-kind.local" /etc/hosts || \
+  echo -e "127.0.0.1\tzeta-kind.local" | sudo tee -a /etc/hosts
 ```
 
 oder die Datei mit einem Editor bearbeiten:
@@ -254,7 +254,7 @@ sudo nano /etc/hosts
 Danach prüfen:
 
 ```shell
-getent hosts zeta-kind.com
+getent hosts zeta-kind.local
 ```
 
 ## Schritt 4: IP-Adresse ermitteln und Windows bekanntgeben
@@ -287,14 +287,14 @@ Die IP-Adresse mit Domain-Namen in Windows in
 > ändert sich die IP häufig; daher Schritt 4 bei Bedarf wiederholen.
 
 ```text
-192.168.40.10 zeta-kind.com
+192.168.40.10 zeta-kind.local
 ```
 
 Danach in Windows prüfen (als Administrator-Eingabeaufforderung oder
 PowerShell):
 
 ```bash
-ping zeta-kind.com
+ping zeta-kind.local
 ```
 
 ## Schritt 5: Cluster konfigurieren und starten
@@ -310,18 +310,11 @@ helm-Repository clonen:
 cd C:\Users\username\Projects\ZETA\git-zeta
 ```
 
-Beispiel (PowerShell, SSH oder HTTPS je nach Host):
+Beispiel (SSH oder HTTPS je nach Host):
 
 ```shell
-$env:GIT_URL="https://github.com/gematik/zeta-guard-helm.git"
-git clone $env:GIT_URL
-```
-
-Beispiel (Git Bash):
-
-```bash
-GIT_URL=https://github.com/gematik/zeta-guard-helm.git
-git clone "$GIT_URL"
+export GIT_URL="https://github.com/gematik/zeta-guard-helm.git"
+git clone $GIT_URL
 ```
 
 > [!NOTE]
@@ -332,13 +325,13 @@ git clone "$GIT_URL"
 
 ### Schritt 5.2: Keystore und Passwort setzen
 
-Den Keystore und das zugehörige Passwort in einem Verzeichnis parallel zum
+Den SM(C)-B Keystore und das zugehörige Passwort in einem Verzeichnis parallel zum
 zeta-guard-helm Verzeichnis ablegen entpacken.
 Dann in Ubuntu die folgenden Umgebungsvariablen setzen:
 
 ```shell
-export SMB_KEYSTORE_PW_FILE=../help/pdp-keystore-pass
-export SMB_KEYSTORE_FILE_B64=../help/pdp-keystore.b64
+export SMB_KEYSTORE_PW_FILE=../keystore/pdp-keystore-pass
+export SMB_KEYSTORE_FILE_B64=../keystore/pdp-keystore.b64
 ```
 
 Falls die Dateien direkt neben dem Repository liegen, können die relativen Pfade
@@ -346,8 +339,8 @@ oben genutzt werden. Liegen sie außerhalb des Repos, absolute Pfade verwenden
 und auf ``chmod 600`` setzen:
 
 ```shell
-export SMB_KEYSTORE_PW_FILE=/pfad/zum/keystore/pdp-keystore-pass
-export SMB_KEYSTORE_FILE_B64=/pfad/zum/keystore/pdp-keystore.b64
+export SMB_KEYSTORE_PW_FILE=/keystore/pdp-keystore-pass
+export SMB_KEYSTORE_FILE_B64=/keystore/pdp-keystore.b64
 ```
 
 Diese Exports könne auch in die ``~/.bashrc`` hinterlegt werden,
@@ -362,8 +355,12 @@ In der Ubuntu-Shell in den Ordner vom zeta-guard-helm Repository navigieren und
 Folgendes eingeben:
 
 ```shell
+cd zeta-guard-helm/
+# zuerst wird, falls vorhanden, der lokale kind cluster komplett gelöscht
 kind delete cluster --name zeta-local
+# kind cluster anlegen
 kind create cluster --config kind-local.yaml
+# namespace anlegen
 kubectl get namespace zeta-local >/dev/null 2>&1 || kubectl create namespace zeta-local
 ```
 
@@ -408,11 +405,11 @@ Thank you for installing zeta-testenv.
 
 Your Fachdienst is at
 
-    https://zeta-kind.com/pep/
+    https://zeta-kind.local/pep/
 
 and your administration frontend is at
 
-    zeta-kind.com/auth
+    zeta-kind.local/auth
 ```
 
 In der Ubuntu-Shell Folgendes eingeben:
@@ -465,14 +462,26 @@ eine Resource Abfrage über den Testtreiber (ZETA-Client) durchführen:
 
 ```text
 # Tiger Proxy
-http://zeta-kind.com:9999
+http://zeta-kind.local:9999
 # Tiger Testsuite
-http://zeta-kind.com:9010
+http://zeta-kind.local:9010
 # Reset Zeta-Client
-https://zeta-kind.com/testdriver-api/reset
+https://zeta-kind.local/testdriver-api/reset
 # Resource Abfrage über Zeta Guard
-https://zeta-kind.com/proxy/achelos_testfachdienst/hellozeta
+https://zeta-kind.local/proxy/achelos_testfachdienst/hellozeta
 ```
+
+## Schritt 7: Hilfe
+
+### Schritt 7.1: Reset
+
+In Schritt 5.3 wird mittels `kind delete cluster --name zeta-local` der Cluster 
+komplett gelöscht und in der Folge wird der Cluster komplett neu aufgesetzt.
+
+### Schritt 7.1: Reset der Tiger Testsuite
+
+Hat sich die Tiger Testsuite mit einem Fehler beendet, kann mittel klick auf den Beenden 
+Button oben links im Browser Fenster der Pod neu gestartet werden.
 
 > [!NOTE]
 > Die Zertifikate sind ggf. selbstsigniert; Browser-Warnungen sind daher

@@ -99,7 +99,7 @@ Die Verwaltung der TLS Zertifikate obliegt dem Anbieter und erfolgt in der Regel
 über Kubernetes Secrets oder eine HSM Anbindung.
 
 TODO: Eine genauere Beschreibung zur Konfiguration des ZETA Guard eigenen
-Ingress Controllers folgt mit Meilenstein 2.
+Ingress Controllers folgt.
 
 ### 2. Egress konfigurieren
 
@@ -261,10 +261,6 @@ folgendem [Helm-Chart][ZGchrtOPA] als Beispiel.
 
 OPA kann horizontal skaliert werden (-> helm values).
 
-TODO kommt später
-
-* _To-do: PIP – kommt in Meilenstein 2_
-* _To-do: Sidecar Container mit OpenTelemetry Collector_
 * _To-do: Skalierung
 
 ##### Verwandte Dokumentation
@@ -361,7 +357,7 @@ entscheidend:
         * ASL Zertifikate werden via Kubernetes Secrets bereitgestellt oder in
           der VAU via HSM verfügbar gemacht
 
-* _Kommt in Meilenstein 2:_
+* _kommt noch_
     * _To-do: Horizontale Skalierung via Helm Values verfügbar machen_
     * _To-do: Sidecar Container mit OpenTelemetry Collector_
 
