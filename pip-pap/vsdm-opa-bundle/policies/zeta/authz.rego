@@ -28,20 +28,20 @@ reasons[msg] if {
 	msg := "User profession is not allowed"
 }
 
-reasons[msg] if {
-	not client_product_is_allowed
-	msg := "Client product or version is not allowed"
-}
+#reasons[msg] if {
+#	not client_product_is_allowed
+#	msg := "Client product or version is not allowed"
+#}
 
 reasons[msg] if {
 	not scopes_are_allowed
 	msg := "One or more requested scopes are not allowed"
 }
 
-reasons[msg] if {
-	not audience_is_allowed
-	msg := "One or more requested audiences are not allowed"
-}
+#reasons[msg] if {
+#	not audience_is_allowed
+#	msg := "One or more requested audiences are not allowed"
+#}
 
 # --- HELPER-REGELN ---
 
@@ -51,14 +51,14 @@ user_profession_is_allowed if {
 	input.user_info.professionOID == data.professions.allowed_professions[i]
 }
 
-client_product_is_allowed if {
-	posture := input.client_assertion.posture
-
-	# KORRIGIERTER PFAD
-	allowed_versions := data.products.allowed_products[posture.product_id]
-	some i
-	posture.product_version == allowed_versions[i]
-}
+#client_product_is_allowed if {
+#	posture := input.client_assertion.posture
+#
+#	# KORRIGIERTER PFAD
+#	allowed_versions := data.products.allowed_products[posture.product_id]
+#	some i
+#	posture.product_version == allowed_versions[i]
+#}
 
 scopes_are_allowed if {
 	# KORRIGIERTER PFAD
@@ -68,10 +68,10 @@ scopes_are_allowed if {
 	requested_scope_set - allowed_scope_set == set()
 }
 
-audience_is_allowed if {
-	# KORRIGIERTER PFAD
-	allowed_audience_set := {s | s := data.audiences.allowed_audiences[_]}
-	requested_audience_set := {audience | audience := input.authorization_request.audience[_]}
-	count(requested_audience_set) > 0
-	requested_audience_set - allowed_audience_set == set()
-}
+#audience_is_allowed if {
+#	# KORRIGIERTER PFAD
+#	allowed_audience_set := {s | s := data.audiences.allowed_audiences[_]}
+#	requested_audience_set := {audience | audience := input.authorization_request.audience[_]}
+#	count(requested_audience_set) > 0
+#	requested_audience_set - allowed_audience_set == set()
+#}

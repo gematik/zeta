@@ -53,6 +53,26 @@ Stellen Sie sicher, dass die folgenden Werkzeuge installiert und konfiguriert si
 - `products.json`: Erlaubte Client-Produkte und deren Versionen.
 - `token.json`: Konfiguration für Token-Gültigkeitsdauern (TTL) und erlaubte Scopes.
 
+### Artifact Registry Repositories
+
+#### GCP Artifact Registry Test
+
+https://europe-west3-docker.pkg.dev/gematik-pt-zeta-test
+
+Die Repositories sind:
+
+- `zeta-policies-dev`: PIP-PAP Repository für Entwickler ohne Authentifizierung.
+- `zeta-policies-test`: PIP-PAP Repository für Testumgebung.
+
+#### GCP Artifact Registry Production
+
+https://europe-west3-docker.pkg.dev/gematik-pt-zeta-prod
+
+Die Repositories sind:
+
+- `zeta-policies`: PIP-PAP Repository für die Produktionsumgebung.
+- `zeta-policies-test`: PIP-PAP Simulations-Repository.
+
 ## Schritt-für-Schritt-Anleitung
 
 ### Schritt 1: Authentifizierung bei der Google Cloud
@@ -102,13 +122,13 @@ Dieser Befehl kompiliert die OPA-Policies im aktuellen Verzeichnis (`.`), signie
 - `-t`: Der Tag für das Image im Format `<region>-docker.pkg.dev/<projekt-id>/<repository-name>/<image-name>:<tag>`.
 
 ```bash
-policy build . --signing-key=<private-key.pem> --signing-alg="ES256" -t europe-west3-docker.pkg.dev/gematik-pt-zeta-test/zeta-policies/pip-policy-example:latest
+policy build . --signing-key=<private-key.pem> --signing-alg="ES256" -t europe-west3-docker.pkg.dev/gematik-pt-zeta-test/zeta-policies-dev/test-fachdienst-policy:latest
 
 Created new image.
 digest: sha256:a993a5d0a8ba8a45ed1f46c19143f68af8023e47fee35afd7144f2abb981d75d
 
 Tagging image.
-reference: europe-west3-docker.pkg.dev/gematik-pt-zeta-test/zeta-policies/pip-policy-example:latest
+reference: europe-west3-docker.pkg.dev/gematik-pt-zeta-test/zeta-policies-dev/test-fachdienst-policy:latest
 ```
 
 ### Schritt 4: Lokale Images auflisten
@@ -119,7 +139,7 @@ reference: europe-west3-docker.pkg.dev/gematik-pt-zeta-test/zeta-policies/pip-po
 policy images
 
   REPOSITORY                                             TAG          IMAGE ID      CREATED               SIZE
-  gematik-pt-zeta-test/zeta-policies/pip-policy-example  latest       a993a5d0a8ba  2025-11-10T10:55:34Z  911B
+  gematik-pt-zeta-test/zeta-policies-dev/test-fachdienst-policy  latest       a993a5d0a8ba  2025-11-10T10:55:34Z  911B
 ```
 
 ### Schritt 5: Bundle in die Artifact Registry pushen
@@ -127,13 +147,21 @@ policy images
 Laden Sie das erstellte und getaggte Image in Ihre GCP Artifact Registry hoch.
 
 ```bash
-policy push gematik-pt-zeta-test/zeta-policies/pip-policy-example:latest
+policy push gematik-pt-zeta-test/zeta-policies-dev/test-fachdienst-policy:latest
 
-Resolved ref [europe-west3-docker.pkg.dev/gematik-pt-zeta-test/zeta-policies/pip-policy-example:latest].
+Resolved ref [europe-west3-docker.pkg.dev/gematik-pt-zeta-test/zeta-policies-dev/test-fachdienst-policy:latest].
 digest: sha256:a993a5d0a8ba8a45ed1f46c19143f68af8023e47fee35afd7144f2abb981d75d
 
-Pushed ref [europe-west3-docker.pkg.dev/gematik-pt-zeta-test/zeta-policies/pip-policy-example:latest].
+Pushed ref [europe-west3-docker.pkg.dev/gematik-pt-zeta-test/zeta-policies-dev/test-fachdienst-policy:latest].
 digest: sha256:a993a5d0a8ba8a45ed1f46c19143f68af8023e47fee35afd7144f2abb981d75d
+```
+
+#### Wenn policy push eine Fehlermeldung liefert:
+
+ALternativ zu policy kann man oras direkt verwenden. Dazu muss man den Digest aus dem policy build Kommando kopieren. 
+
+```bash
+oras cp --from-oci-layout ~/.policy/policies-root@sha256:a993a5d0a8ba8a45ed1f46c19143f68af8023e47fee35afd7144f2abb981d75d europe-west3-docker.pkg.dev/gematik-pt-zeta-test/zeta-policies-dev/test-fachdienst-policy:latest
 ```
 
 ### Schritt 6: Bundle lokal als Tarball speichern (Optional)
@@ -141,7 +169,7 @@ digest: sha256:a993a5d0a8ba8a45ed1f46c19143f68af8023e47fee35afd7144f2abb981d75d
 Wenn Sie das Bundle für lokale Tests als `.tar.gz`-Datei benötigen, können Sie es mit dem `save`-Befehl exportieren.
 
 ```bash
-policy save gematik-pt-zeta-test/zeta-policies/pip-policy-example:latest
+policy save gematik-pt-zeta-test/zeta-policies-dev/test-fachdienst-policy:latest
 ```
 
 Dies erzeugt standardmäßig eine Datei namens `bundle.tar.gz` im aktuellen Verzeichnis.
@@ -184,7 +212,7 @@ ACCESS_TOKEN=$(gcloud auth print-access-token)
 policy login --username=oauth2accesstoken --server=europe-west3-docker.pkg.dev --password=$ACCESS_TOKEN
 
 # Bundle erstellen, signieren und pushen
-REPO="europe-west3-docker.pkg.dev/gematik-pt-zeta-test/zeta-policies/pip-policy-example:latest"
+REPO="europe-west3-docker.pkg.dev/gematik-pt-zeta-test/zeta-policies-dev/test-fachdienst-policy:latest"
 policy build . --signing-key=/path/to/your/private-key.pem --signing-alg="ES256" -t $REPO
 policy push $REPO
 
