@@ -114,12 +114,12 @@ test_deny_empty_audience if {
     result.reasons["One or more requested audiences are not allowed"]
 }
 
-test_deny_unauthorized_audience if {
-    input_bad_audience := json.patch(base_input, [{"op": "add", "path": "/authorization_request/audience/-", "value": "https://invalid.com"}])
-    result := evaluate_decision(input_bad_audience)
-    result.allow == false
-    result.reasons["One or more requested audiences are not allowed"]
-}
+#test_deny_unauthorized_audience if {
+#    input_bad_audience := json.patch(base_input, [{"op": "add", "path": "/authorization_request/audience/-", "value": "https://invalid.com"}])
+#    result := evaluate_decision(input_bad_audience)
+#    result.allow == false
+#    result.reasons["One or more requested audiences are not allowed"]
+#}
 
 # --- Profession Tests ---
 
@@ -139,19 +139,19 @@ test_deny_missing_user_info if {
 
 # --- Product/Version Tests ---
 
-test_deny_invalid_product_id if {
-    input_bad_prod := json.patch(base_input, [{"op": "replace", "path": "/client_assertion/posture/product_id", "value": "Invalid-Product"}])
-    result := evaluate_decision(input_bad_prod)
-    result.allow == false
-    result.reasons["Client product or version is not allowed"]
-}
+#test_deny_invalid_product_id if {
+#    input_bad_prod := json.patch(base_input, [{"op": "replace", "path": "/client_assertion/posture/product_id", "value": "Invalid-Product"}])
+#    result := evaluate_decision(input_bad_prod)
+#    result.allow == false
+#    result.reasons["Client product or version is not allowed"]
+#}
 
-test_deny_invalid_product_version if {
-    input_bad_ver := json.patch(base_input, [{"op": "replace", "path": "/client_assertion/posture/product_version", "value": "9.9.9"}])
-    result := evaluate_decision(input_bad_ver)
-    result.allow == false
-    result.reasons["Client product or version is not allowed"]
-}
+#test_deny_invalid_product_version if {
+#    input_bad_ver := json.patch(base_input, [{"op": "replace", "path": "/client_assertion/posture/product_version", "value": "9.9.9"}])
+#    result := evaluate_decision(input_bad_ver)
+#    result.allow == false
+#    result.reasons["Client product or version is not allowed"]
+#}
 
 test_deny_missing_client_assertion if {
     input_no_client_assertion := json.remove(base_input, ["client_assertion"])

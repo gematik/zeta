@@ -1,0 +1,142 @@
+syntax = "proto3";
+
+package gematik.zetaguard.hsmproxy.v1;
+
+// Import für die REST/JSON Transcoding Annotationen.
+// Diese Datei muss im Include-Pfad des Protoc-Compilers liegen.
+// Normalerweise zu finden unter: github.com/googleapis/googleapis
+import "google/api/annotations.proto";
+
+option java_multiple_files = true;
+option java_package = "de.gematik.zetaguard.hsmproxy.v1";
+option java_outer_classname = "HsmProxyProto";
+// Option für Go, Repositorey existiert noch nicht
+option go_package = "github.com/zeta-hsm-proxy/api/v1;hsmproxyv1";
+
+// Der ZETA Guard HSM Proxy Service.
+// Stellt kryptographische Operationen für ECC-Schlüssel (NIST-Kurven) bereit.
+service HsmProxyService {
+
+  // Führt eine digitale Signatur mit einem ECC-Schlüssel aus.
+  // Wird genutzt für:
+  // - TLS 1.3 Handshake (Certificate Verify)
+  // - JWT Signatur (ES256, ES384, ES512)
+  // - CBOR Object Signing and Encryption (COSE)
+  rpc Sign (SignRequest) returns (SignResponse) {
+    option (google.api.http) = {
+      post: "/v1/sign"
+      body: "*"
+    };
+  }
+
+  // Ruft den öffentlichen Schlüssel ab.
+  // Unterstützt JWK (JSON Web Key) für Keycloak und PEM/DER für Nginx.
+  rpc GetPublicKey (GetPublicKeyRequest) returns (GetPublicKeyResponse) {
+    option (google.api.http) = {
+      get: "/v1/keys/{key_id}"
+    };
+  }
+
+  // Prüft die Erreichbarkeit des HSM-Backends.
+  rpc HealthCheck (HealthCheckRequest) returns (HealthCheckResponse) {
+    option (google.api.http) = {
+      get: "/v1/health"
+    };
+  }
+}
+
+// --- Enums für ECC NIST Kurven und Algorithmen ---
+
+enum EcdsaAlgorithm {
+  ECDSA_ALGORITHM_UNSPECIFIED = 0;
+
+  // NIST P-256 Kurve mit SHA-256 (Entspricht JWT "ES256")
+  ECDSA_SHA256 = 1;
+
+  // NIST P-384 Kurve mit SHA-384 (Entspricht JWT "ES384")
+  ECDSA_SHA384 = 2;
+
+  // NIST P-521 Kurve mit SHA-512 (Entspricht JWT "ES512")
+  ECDSA_SHA512 = 3;
+}
+
+enum EccCurve {
+  ECC_CURVE_UNSPECIFIED = 0;
+  ECC_CURVE_NIST_P256 = 1; // secp256r1
+  ECC_CURVE_NIST_P384 = 2; // secp384r1
+  ECC_CURVE_NIST_P521 = 3; // secp521r1
+}
+
+// --- Request / Response Nachrichten ---
+
+message SignRequest {
+  // Die eindeutige ID oder der Alias des Schlüssels im HSM.
+  string key_id = 1;
+
+  // Die zu signierenden Daten.
+  // Für optimale Performance sollte der Client bereits den Hash (Digest) senden.
+  bytes data = 2;
+
+  // Gibt an, ob 'data' bereits ein Hash ist.
+  // true: 'data' ist z.B. 32 Bytes (SHA-256 Digest). Das HSM signiert direkt.
+  // false: 'data' ist der Roh-Payload. Der Proxy/HSM muss erst hashen.
+  bool is_digest = 3;
+
+  // Der gewünschte Signatur-Algorithmus.
+  EcdsaAlgorithm algorithm = 4;
+}
+
+message SignResponse {
+  // Die rohe Signatur.
+  // Bei ECDSA ist dies üblicherweise die Konkatenierung von R und S (IEEE P1363),
+  // wie es für JWT benötigt wird.
+  // Falls DER-Encoding (ASN.1) für TLS benötigt wird, sollte dies dokumentiert
+  // oder per Flag steuerbar sein. Standard hier: Raw (R|S).
+  bytes signature = 1;
+
+  // Die ID des verwendeten Schlüssels (zur Bestätigung).
+  string key_id = 2;
+}
+
+message GetPublicKeyRequest {
+  // Die ID oder der Alias des Schlüssels.
+  string key_id = 1;
+}
+
+message GetPublicKeyResponse {
+  // Der Algorithmus/Kurve des Schlüssels.
+  EccCurve curve = 1;
+
+  // Option 1: Public Key im PEM Format (PKIX / X.509 SubjectPublicKeyInfo).
+  // Ideal für Nginx / OpenSSL Tools.
+  string public_key_pem = 2;
+
+  // Option 2: Public Key als rohe Bytes (DER).
+  bytes public_key_der = 3;
+
+  // Option 3: Public Key als JSON Web Key (JWK) Struktur.
+  // Dies wird als JSON-String zurückgegeben, da Protobuf Map<string, value>
+  // für heterogene JWK-Felder unhandlich ist.
+  // Ideal für Keycloak Integration.
+  string jwk_json = 4;
+}
+
+message HealthCheckRequest {
+  // Leer
+}
+
+message HealthCheckResponse {
+  enum ServingStatus {
+    UNKNOWN = 0;
+    SERVING = 1;     // HSM verbunden und betriebsbereit
+    NOT_SERVING = 2; // Verbindung zum HSM unterbrochen
+  }
+
+  ServingStatus status = 1;
+
+  // Version der Proxy-Software
+  string version = 2;
+
+  // Informationen zum HSM Backend (z.B. "Utimaco CryptoServer Se-Series")
+  string hsm_info = 3;
+}
