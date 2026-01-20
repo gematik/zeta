@@ -1,0 +1,9 @@
+{
+    "roots": [
+        "policies",
+        "audiences",
+        "products",
+        "professions",
+        "token"
+    ]
+}
