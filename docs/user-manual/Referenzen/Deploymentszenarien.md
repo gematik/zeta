@@ -24,7 +24,7 @@ Das folgende Diagramm zeigt die logischen Komponenten des ZETA-Guard und wie sie
 miteinander verbunden sind. Das Diagramm dient als Grundlage für die weitere
 Diskussion bezüglich Skalierung, Failover und anderen Aspekten.
 
-![](../assets/images/depl_sc/image-20251121-091130.png)
+![](../assets/images/depl_sc/ZETA-Guard-Logisches-Deployment.png)
 
 In diesem Diagram sind im Vergleich zum reinen Architekturüberblick insbesondere
 die Datenbanken explizit aufgeführt, sowie die HSM-Anbindung detailliert worden.
@@ -102,8 +102,6 @@ Bei horizontaler Skalierung des PEP ist allerdings eine „Sticky Session“ zu
 beachten, da die ASL Schlüssel nicht über die PEP Instanzen hinweg ausgetauscht
 werden.
 
-TODO: Spezifikationskonform?
-
 ### Einbindung in Infrastruktur und Anbindung des Fachdienstes
 
 Die Zerotrust Architektur nimmt an, dass alle Akteure potenziell gefährlich sind
@@ -118,7 +116,7 @@ sind denkbar.
 Im folgenden Diagram sind zwei Optionen dargestellt, wobei die grau hinterlegten
 Komponenten optional sind.
 
-![](../assets/images/depl_sc/zeta-guard-deployment-view.drawio.png)
+![](../assets/images/depl_sc/ZETA-Guard-Deployment-View.png)
 
 Falls der Fachdienst in einer eigenen Infrastruktur separat vom ZETA-Guard
 betrieben wird, muss eine sichere Verbindung zwischen ZETA-Guard und Fachdienst
@@ -147,7 +145,7 @@ Das Deployment-Szenario „Test“ fokussiert sich auf die Anbindung eines Clien
 an einen Fachdienst und lässt einige Punkte, die in einem produktiven Betrieb
 notwendig sind, weg, um den Aufwand und die Komplexität zu reduzieren.
 
-![](../assets/images/depl_sc/image-20251121-091246.png)
+![](../assets/images/depl_sc/ZETA-Guard-Test-Deployment.png)
 
 Dieses Setup kann mithilfe einer lokalen Installation in einem „kind“
 Kubernetes Setup aufgebaut werden. Dort ist auch noch der Proxy Test-Client
@@ -179,7 +177,7 @@ Anti-Affinity auf unterschiedliche Kubernetes Nodes verteilt, um eine Kongruenz
 der beiden Teil-Instanzen herzustellen, diese aber auf unterschiedlichen Nodes
 zu betreiben, um Verfügbarkeiten zu erhöhen.
 
-![](../assets/images/depl_sc/image-20251121-091334.png)
+![](../assets/images/depl_sc/ZETA-Guard-Deployment-Klein.png)
 
 Der Management-Service muss dabei nur einmal installiert werden, da nur ein
 Cluster betrieben wird.
@@ -219,8 +217,8 @@ ist bei Anycast- (oder anderen) Ansätzen zu beachten.
 
 Falls eine ZETA-Instanz ausfällt, so nutzt der Client dann – bei mehreren
 Endpunkten im DNS - automatisch den (bzw. einen der) anderen Endpunkte und
-implementiert damit ein automatisches Failover (TODO: hier sind ggf.
-Connect-Timeouts abzustimmen).
+implementiert damit ein automatisches Failover (die Timeouts sind
+dabei vom Client zu konfigurieren und ggf. mit den Fachdiensten abzusprechen).
 
 #### Service-Mesh
 
@@ -241,7 +239,7 @@ von diesem dahingehend, dass es mindestens drei Knoten annimmt, die auch in
 unterschiedlichen Clustern installiert sind. Diese sind in regionaler Nähe
 aufgesetzt.
 
-![](../assets/images/depl_sc/image-20251121-091436.png)
+![](../assets/images/depl_sc/ZETA-Guard-Deployment-Mittel.png)
 
 Bei unterschiedlichen Clustern ist der Management-Service pro Cluster zu
 installieren.
@@ -297,15 +295,40 @@ virtueller Maschine (VM) innerhalb von einer Trusted Computing Zone. Ein
 Beispiel ist AMDs Secure Encrypted Virtualization (SEV) or Intels Trusted Domain
 Extensions (TDX).
 
-TODO: weitere Ausarbeitung
-
 #### VM-Type VAUs
 
-![](../assets/images/depl_sc/image-20251121-091517.png)
+In diesen VAUs werden komplette VMs in einer sicheren Umgebung
+betrieben. Hierzu kann der gesamte ZETA-Guard in einer VM
+betrieben werden. Das folgende Diagramm zeigt ein solches
+Beispiel.
+
+![](../assets/images/depl_sc/ZETA-Guard-Deployment-VAU-VM.png)
+
+Die Vertrauensbeziehung zwischen den ZETA-Guard Komponenten
+muss dabei innerhalb der VAU sichergestellt werden.
+
+Die Skalierung in einem solchen Umfeld ist dabei gesondert
+zu betrachten, das hier einfacher sein dürfte, eine komplette VM
+zu skalieren statt einzelne Komponenten innerhalb der VAU.
+
+Allerdings kann hier auch ein Hybrid-Ansatz genutzt werden,
+in dem Teile des ZETA-Guard in einer VM und andere Komponenten
+in einer anderen VM ausgeführt werden. Dabei sind aber
+Vertrauensbeziehungen entsprechend zwischen den VMs herzustellen.
 
 #### Prozess-Type VAUs
 
-![](../assets/images/depl_sc/image-20251121-091546.png)
+In diesen VAUs werden die einzelnen Komponenten in separaten
+VAUs ausgeführt. Das folgende Diagramm zeigt ein solches Beispiel.
+
+![](../assets/images/depl_sc/ZETA-Guard-Deployment-VAU-Prozess.png)
+
+Die Vertrauensbeziehung muss dabei durch z.B. Service-Mesh oder andere
+Mittel zwischen den VAUs eines ZETA-Guards sichergestellt werden.
+
+Die Skalierung in einem solchen Umfeld kann hier
+einzeln pro Komponente geschehen und helfen, die Skalierung
+besser auf die Workload anzupassen.
 
 ### Datenbank-Betrieb
 
@@ -390,9 +413,13 @@ zurückgegriffen werden.
 
 #### Als eigener Service
 
-![](../assets/images/depl_sc/image-20251120-212738.png)
+![](../assets/images/depl_sc/ZETA-Guard-Deployment-HSM-Proxy.png)
 
-* Draft: Authentifizierung des HTTP Proxy und des Authorization Servers durch
+Hier sind mögliche Ansätze, die Vertrauensbeziehung zwischen den Komponenten herzustellen.
+Diese dienen als Denkansätze und müssen im konkreten Fall ausgearbeitet und durch
+die Zertifizierung des jeweiligen Fachdienstes bewertet werden.
+
+* Die Authentifizierung des HTTP Proxy und des Authorization Servers durch
   Einbringen der Hardware-Attestierungsinformationen in das HSM, wo es durch den
   HSM Proxy geprüft werden kann.
 * Authentifizierung des HSM Proxy am HSM durch Einbringen der
@@ -406,20 +433,27 @@ Anbindung zwischen den Containern innerhalb eines Pods. Ein Nachteil ist, dass
 mehrere Container aufzusetzen mit entsprechenden Infrastrukturanforderungen
 sind.
 
-![](../assets/images/depl_sc/image-20251120-212916.png)
+![](../assets/images/depl_sc/ZETA-Guard-Deployment-HSM-Sidecar.png)
 
-* TODO Draft: Authentifizierung des HTTP Proxy und des Authorization Servers
-  durch Einbringen der Hardware-Attestierungsinformationen in das HSM, wo es
-  durch den HSM Proxy geprüft werden kann.
+Hier sind mögliche Ansätze, die Vertrauensbeziehung zwischen den Komponenten herzustellen.
+Diese dienen als Denkansätze und müssen im konkreten Fall ausgearbeitet und durch
+die Zertifizierung des jeweiligen Fachdienstes bewertet werden.
+
+* Vertrauensbeziehung zwischen HTTP Proxy und Authorization Server und dem Sidecar
+  muss durch die VAU Funktionalität hergestellt werden.
 * Authentifizierung des HSM Proxy am HSM durch Einbringen der
-  Hardware-Attestierungsinformationen des HSM Proxy Containers in das HSM
+  Hardware-Attestierungsinformationen des HSM Proxy Sidecars in das HSM
 
 #### Als HSM-Firmware
 
-![](../assets/images/depl_sc/image-20251120-213059.png)
+![](../assets/images/depl_sc/ZETA-Guard-Deployment-HSM-Firmware.png)
 
-* Authentifizierung des HSM Proxy am HSM durch Einbringen der
-  Hardware-Attestierungsinformationen des HSM Proxy Containers in das HSM
+Hier sind mögliche Ansätze, die Vertrauensbeziehung zwischen den Komponenten herzustellen.
+Diese dienen als Denkansätze und müssen im konkreten Fall ausgearbeitet und durch
+die Zertifizierung des jeweiligen Fachdienstes bewertet werden.
+
+* Authentifizierung des HTTP Proxy und des Authorization Servers am HSM durch Einbringen der
+  Hardware-Attestierungsinformationen des jeweiligen Containers in das HSM
 
 #### Hardware-Aktualisierung, Skalierung
 

@@ -27,7 +27,7 @@ Die Installation gliedert sich grob in folgende Schritte
 
 Das ZETA Guard Helm Chart ist für Helm 3 konzipiert.
 
-Kopieren Sie nun die Datei [values-demo.yaml](values-demo.yaml) in das Arbeitsverzeichnis.
+Kopieren Sie nun die Datei [values-demo.yaml](https://github.com/gematik/zeta-guard-helm/blob/main/charts/zeta-guard/values-demo.yaml) in das Arbeitsverzeichnis.
 Sie können diese Datei als Konfigurationsvorlage verwenden, umbenennen und
 anpassen.
 
@@ -45,7 +45,7 @@ authserver:
 Im Produktivbetrieb kann das Passwort z.B. via Helm Parameter `--set-file` von
 einem CD Server gesetzt werden.
 
-Mit dieser [values-demo.yaml](values-demo.yaml) können Sie ZETA Guard über
+Mit dieser [values-demo.yaml](https://github.com/gematik/zeta-guard-helm/blob/main/charts/zeta-guard/values-demo.yaml) können Sie ZETA Guard über
 folgendes Kommando installieren:
 
 ```shell
@@ -129,11 +129,10 @@ terraform -chdir=terraform/authserver init \
 ##### Konfiguration anwenden
 
 Sobald Variablen und Backend korrekt eingerichtet sind, spielen Sie die
-Konfiguration ein (`common.tfvars` enthält den Realm-Namen):
+Konfiguration ein:
 
 ```shell
 terraform -chdir=terraform/authserver apply \
-  -var-file=environments/common.tfvars \
   -var-file=demo.tfvars \
   -auto-approve
 ```
@@ -148,7 +147,6 @@ werden kann.
 
 ```shell
 terraform -chdir=terraform/authserver plan \
-  -var-file=environments/common.tfvars \
   -var-file=demo.tfvars
 ```
 
@@ -163,7 +161,7 @@ vorhanden ist. Die angezeigten Unterschiede werden unterteilt in
 
 #### 3. PEP konfigurieren
 
-Die values-demo.yaml enthält eine PEP-Beispielkonfiguration, welche eine
+Die [values-demo.yaml](https://github.com/gematik/zeta-guard-helm/blob/main/charts/zeta-guard/values-demo.yaml) enthält eine PEP-Beispielkonfiguration, welche eine
 nginx-Welcome-Seite ausliefert.
 Für den Demo-Use-Case können Sie diesen Abschnitt überspringen.
 
@@ -171,10 +169,10 @@ Falls der PEP an einen Fachdienst angeschlossen werden soll, geht dies wie
 folgt:
 
 Der PEP ist auf Basis von nginx umgesetzt. In
-der [values-demo.yaml](values-demo.yaml) ist im Feld
+der [values-demo.yaml](https://github.com/gematik/zeta-guard-helm/blob/main/charts/zeta-guard/values-demo.yaml) ist im Feld
 `pepproxy.nginxConf.fileContent` der Dateiinhalt einer nginx-Konfiguration
 (.../nginx.conf) anzugeben.
-Dort sind in der [values-demo.yaml](values-demo.yaml) die folgenden Direktiven
+Dort sind in der [values-demo.yaml](https://github.com/gematik/zeta-guard-helm/blob/main/charts/zeta-guard/values-demo.yaml) die folgenden Direktiven
 auf die Konfiguration des PDP abzustimmen:
 
 * `pep_issuer`
@@ -185,18 +183,18 @@ auf die Konfiguration des PDP abzustimmen:
 * `proxy_pass`
 
   Das abzusichernde Ziel.
-  In der values-demo.yaml ist das Ausliefern des http-Verzeichnisses via
+  In der [values-demo.yaml](https://github.com/gematik/zeta-guard-helm/blob/main/charts/zeta-guard/values-demo.yaml) ist das Ausliefern des http-Verzeichnisses via
   `root ...` eingerichtet.
   Der Fachdienst ist in der Regel über die nginx-Standarddirektive `proxy_pass`
   anzubinden.
-  In der values-demo.yaml wäre dann die `root`-Direktive zu ersetzen, z.B. durch
+  In der [values-demo.yaml](https://github.com/gematik/zeta-guard-helm/blob/main/charts/zeta-guard/values-demo.yaml) wäre dann die `root`-Direktive zu ersetzen, z.B. durch
   `proxy_pass https://testfachdienst/`
 
 Anmerkung: Die nginx-Direktive `pep on;` schaltet das PEP-spezifische Verhalten
 auf dem entsprechenden Pfad ein. Eine genauere Referenz zur PEP-Konfiguration
 findet sich [hier](../Referenzen/Konfiguration_des_PEP_Http_Proxy.md).
 
-Nachdem Sie die values-demo.yaml entsprechend angepasst haben, können Sie Ihre
+Nachdem Sie die [values-demo.yaml](https://github.com/gematik/zeta-guard-helm/blob/main/charts/zeta-guard/values-demo.yaml) entsprechend angepasst haben, können Sie Ihre
 Änderungen über folgendes Helm-Kommando ausrollen:
 
 ```shell

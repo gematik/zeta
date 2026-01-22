@@ -19,7 +19,7 @@ die Software nicht zwangsläufig unmittelbar selbst nutzen müssen._
 
 ## Überblick
 
-![Abbildung Zero Trust-Architektur der TI 2.0](../assets/images/depl_sc/image-20251121-091130.png)
+![Abbildung Zero Trust-Architektur der TI 2.0](../assets/images/depl_sc/ZETA-Guard-Logisches-Deployment.png)
 
 ## Voraussetzungen
 
@@ -309,18 +309,19 @@ setzen. Weitere Konfiguration ist dann nicht erforderlich, es wird dann über
 das Helm Chart vom Operator eine Datenbank angefordert und der Keycloak passend
 konfiguriert.
 
-TODO: späterer Meilenstein: Andere Datenbank via Helm Values konfigurierbar
-machen. Als Basis dient dann Folgendes:
+Es ist möglich, eine externe Datenbank für den PDP zu konfigurieren. Dazu ist
+einerseits `databaseMode: external` zu setzen. Anderseits werden untenstehende
+Helm Values eingerichtet, die entsprechend den Keycloak Umgebungsvariablen für
+diesen Zweck verwendet werden. Siehe dazu
+[hier](https://www.keycloak.org/server/db#_configuring_a_database).
 
-Die Konfiguration einer Datenbankverbindung für Keycloak wird
-in [dieser Anleitung](https://www.keycloak.org/server/db#_configuring_a_database)
-erklärt. Die für die Datenbankverbindung relevanten Umgebungsvariablen am
-Keycloak sind:
-
-* `KC_DB` (Standardwert `postgres`)
-* `KC_DB_URL`: (Standardwert `jdbc:postgresql://keycloak-db:5432/keycloak`)
-* `KC_DB_USERNAME`: (Technischer Datenbank-User)
-* `KC_DB_PASSWORD`: (DB-Passwort)
+| Helm Value                            | Keycloak Entsprechung | Bemerkung                                                                                                                                                                                    |
+|---------------------------------------|-----------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `authserverDb.kcDb`                   | `KC_DB`               |                                                                                                                                                                                              |
+| `authserverDb.kcDbUrl`                | `KC_DB_URL`           |                                                                                                                                                                                              |
+| `authserverDb.kcDbUsername`           | `KC_DB_USERNAME`      |                                                                                                                                                                                              |
+| `authserverDb.kcDbPasswordSecretName` | `KC_DB_PASSWORD`      | Hierbei ist im Helm Value der Name eines Secrets zu konfigurieren. Aus dem Secret wir das Feld `password` ausgelesen und dieses in die entsprechende Keycloak Umgebungsvariable geschrieben. |
+| `authserverDb.kcDbSchema`             | `KC_DB_SCHEMA`        |                                                                                                                                                                                              |
 
 ##### Verwandte Dokumentation
 

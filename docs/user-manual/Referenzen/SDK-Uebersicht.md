@@ -54,7 +54,7 @@ plattformspezifische Unterverzeichnisse vorhanden.
 
 Hier ein Beispiel für das Netzwerk-Modul:
 
-![Netzwerk-Modul](../assets/images/sdk-modul-beispiel.png)
+![Netzwerk-Modul](../assets/images/depl_sc/sdk-modul-beispiel.png)
 
 Die verschiedenen Verzeichnisse beinhalten gemeinsamen Code - mindestens die API des Moduls,
 sowie die ggf. plattformspezifischen Implementierungen der Module.

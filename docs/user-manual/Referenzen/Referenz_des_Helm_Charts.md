@@ -1,3 +1,3 @@
 # ZETA-Guard Helm Chart
 
-TODO: Genaue Referenz kommt mit Meilenstein 2
+Hier folgt eine Referenzdokumentation der einzelnen values des Helm Charts
