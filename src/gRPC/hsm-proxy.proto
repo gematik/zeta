@@ -6,6 +6,8 @@ package gematik.zetaguard.hsmproxy.v1;
 // Diese Datei muss im Include-Pfad des Protoc-Compilers liegen.
 // Normalerweise zu finden unter: github.com/googleapis/googleapis
 import "google/api/annotations.proto";
+import "google/rpc/status.proto";
+import "google/rpc/error_details.proto";
 
 option java_multiple_files = true;
 option java_package = "de.gematik.zetaguard.hsmproxy.v1";
@@ -47,17 +49,11 @@ service HsmProxyService {
 
 // --- Enums für ECC NIST Kurven und Algorithmen ---
 
-enum EcdsaAlgorithm {
-  ECDSA_ALGORITHM_UNSPECIFIED = 0;
-
-  // NIST P-256 Kurve mit SHA-256 (Entspricht JWT "ES256")
-  ECDSA_SHA256 = 1;
-
-  // NIST P-384 Kurve mit SHA-384 (Entspricht JWT "ES384")
-  ECDSA_SHA384 = 2;
-
-  // NIST P-521 Kurve mit SHA-512 (Entspricht JWT "ES512")
-  ECDSA_SHA512 = 3;
+enum DigestAlgorithm {
+  NONE = 0;
+  SHA256 = 1;
+  SHA384 = 2;
+  SHA512 = 3;
 }
 
 enum EccCurve {
@@ -74,16 +70,11 @@ message SignRequest {
   string key_id = 1;
 
   // Die zu signierenden Daten.
-  // Für optimale Performance sollte der Client bereits den Hash (Digest) senden.
+  // Für optimale Performance sollte der Client bereits den Hash (DigestAlgorithm.NONE) senden.
   bytes data = 2;
 
-  // Gibt an, ob 'data' bereits ein Hash ist.
-  // true: 'data' ist z.B. 32 Bytes (SHA-256 Digest). Das HSM signiert direkt.
-  // false: 'data' ist der Roh-Payload. Der Proxy/HSM muss erst hashen.
-  bool is_digest = 3;
-
-  // Der gewünschte Signatur-Algorithmus.
-  EcdsaAlgorithm algorithm = 4;
+  // Der gewünschte Hash-Algorithmus.
+  DigestAlgorithm algorithm = 3;
 }
 
 message SignResponse {
