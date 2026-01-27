@@ -6,6 +6,8 @@ package gematik.zetaguard.hsmproxy.v1;
 // Diese Datei muss im Include-Pfad des Protoc-Compilers liegen.
 // Normalerweise zu finden unter: github.com/googleapis/googleapis
 import "google/api/annotations.proto";
+import "google/rpc/status.proto";
+import "google/rpc/error_details.proto";
 
 option java_multiple_files = true;
 option java_package = "de.gematik.zetaguard.hsmproxy.v1";
@@ -47,17 +49,11 @@ service HsmProxyService {
 
 // --- Enums für ECC NIST Kurven und Algorithmen ---
 
-enum EcdsaAlgorithm {
-  ECDSA_ALGORITHM_UNSPECIFIED = 0;
-
-  // NIST P-256 Kurve mit SHA-256 (Entspricht JWT "ES256")
-  ECDSA_SHA256 = 1;
-
-  // NIST P-384 Kurve mit SHA-384 (Entspricht JWT "ES384")
-  ECDSA_SHA384 = 2;
-
-  // NIST P-521 Kurve mit SHA-512 (Entspricht JWT "ES512")
-  ECDSA_SHA512 = 3;
+enum DigestAlgorithm {
+  NONE = 0;
+  SHA256 = 1;
+  SHA384 = 2;
+  SHA512 = 3;
 }
 
 enum EccCurve {
@@ -73,25 +69,25 @@ message SignRequest {
   // Die eindeutige ID oder der Alias des Schlüssels im HSM.
   string key_id = 1;
 
-  // Die zu signierenden Daten.
-  // Für optimale Performance sollte der Client bereits den Hash (Digest) senden.
+  // Die Eingabedaten für die Signatur.
+  // - Wenn algorithm != NONE: Beliebige Rohdaten (werden vom Proxy gehasht).
+  // - Wenn algorithm == NONE: Muss bereits der Hash (Digest) sein.
+  //   ACHTUNG: Die Länge muss zur Kurve passen (32 Bytes für P-256, 48 Bytes für P-384).
   bytes data = 2;
 
-  // Gibt an, ob 'data' bereits ein Hash ist.
-  // true: 'data' ist z.B. 32 Bytes (SHA-256 Digest). Das HSM signiert direkt.
-  // false: 'data' ist der Roh-Payload. Der Proxy/HSM muss erst hashen.
-  bool is_digest = 3;
-
-  // Der gewünschte Signatur-Algorithmus.
-  EcdsaAlgorithm algorithm = 4;
+  // Der Hash-Algorithmus, der auf 'data' angewendet werden soll.
+  // Wählen Sie NONE, wenn 'data' bereits ein Hash ist (Empfohlen für Nginx/TLS).
+  DigestAlgorithm algorithm = 3;
 }
 
 message SignResponse {
-  // Die rohe Signatur.
-  // Bei ECDSA ist dies üblicherweise die Konkatenierung von R und S (IEEE P1363),
-  // wie es für JWT benötigt wird.
-  // Falls DER-Encoding (ASN.1) für TLS benötigt wird, sollte dies dokumentiert
-  // oder per Flag steuerbar sein. Standard hier: Raw (R|S).
+  // Die Signatur im IEEE P1363 Format (Raw R|S).
+  // - P-256: 64 Bytes (32 Byte R + 32 Byte S)
+  // - P-384: 96 Bytes
+  //
+  // HINWEIS FÜR NGINX/TLS:
+  // TLS benötigt meist ASN.1 DER Encoding. Der Client (Nginx Engine) muss
+  // dieses Raw-Format selbst in DER umwandeln (OpenSSL: ECDSA_SIG_set0).
   bytes signature = 1;
 
   // Die ID des verwendeten Schlüssels (zur Bestätigung).
