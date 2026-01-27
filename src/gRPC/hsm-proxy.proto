@@ -69,20 +69,25 @@ message SignRequest {
   // Die eindeutige ID oder der Alias des Schlüssels im HSM.
   string key_id = 1;
 
-  // Die zu signierenden Daten.
-  // Für optimale Performance sollte der Client bereits den Hash (DigestAlgorithm.NONE) senden.
+  // Die Eingabedaten für die Signatur.
+  // - Wenn algorithm != NONE: Beliebige Rohdaten (werden vom Proxy gehasht).
+  // - Wenn algorithm == NONE: Muss bereits der Hash (Digest) sein.
+  //   ACHTUNG: Die Länge muss zur Kurve passen (32 Bytes für P-256, 48 Bytes für P-384).
   bytes data = 2;
 
-  // Der gewünschte Hash-Algorithmus.
+  // Der Hash-Algorithmus, der auf 'data' angewendet werden soll.
+  // Wählen Sie NONE, wenn 'data' bereits ein Hash ist (Empfohlen für Nginx/TLS).
   DigestAlgorithm algorithm = 3;
 }
 
 message SignResponse {
-  // Die rohe Signatur.
-  // Bei ECDSA ist dies üblicherweise die Konkatenierung von R und S (IEEE P1363),
-  // wie es für JWT benötigt wird.
-  // Falls DER-Encoding (ASN.1) für TLS benötigt wird, sollte dies dokumentiert
-  // oder per Flag steuerbar sein. Standard hier: Raw (R|S).
+  // Die Signatur im IEEE P1363 Format (Raw R|S).
+  // - P-256: 64 Bytes (32 Byte R + 32 Byte S)
+  // - P-384: 96 Bytes
+  //
+  // HINWEIS FÜR NGINX/TLS:
+  // TLS benötigt meist ASN.1 DER Encoding. Der Client (Nginx Engine) muss
+  // dieses Raw-Format selbst in DER umwandeln (OpenSSL: ECDSA_SIG_set0).
   bytes signature = 1;
 
   // Die ID des verwendeten Schlüssels (zur Bestätigung).
