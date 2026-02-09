@@ -1,0 +1,15 @@
+{
+  "allowed_audiences": [
+    "https://example.com/testresource",
+    "https://some-service.de/api/v1",
+    "https://zeta-cd.spree.de/",
+    "https://zeta-cd.westeurope.cloudapp.azure.com/",
+    "https://zeta-dev.spree.de/",
+    "https://zeta-dev.westeurope.cloudapp.azure.com/",
+    "https://zeta-staging.spree.de/",
+    "https://zeta-staging.westeurope.cloudapp.azure.com/",
+    "https://zeta-achelos.spree.de/",
+    "https://zeta-achelos.westeurope.cloudapp.azure.com/",
+    "https://test-ik-nr.vsdm2.ti-dienste.de"
+  ]
+}

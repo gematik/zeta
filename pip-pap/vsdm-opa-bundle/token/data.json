@@ -1,0 +1,7 @@
+{
+  "access_token_ttl": 300,
+  "refresh_token_ttl": 86400,
+  "allowed_scopes": [
+    "vsdservice"
+  ]
+}

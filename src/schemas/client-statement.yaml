@@ -17,6 +17,14 @@ properties:
       - apple
       - windows
       - linux
+  posture_type:
+    type: string
+    description: The type of the supplied posture
+    enum:
+      - android
+      - apple
+      - software
+      - tpm
   posture:
     description: The posture of the client instance. The structure depends on the platform.
     $ref: "./posture.yaml"
@@ -32,5 +40,6 @@ oneOf:
 required:
   - sub
   - platform
+  - posture_type
   - posture
   - attestation_timestamp

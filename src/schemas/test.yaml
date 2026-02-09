@@ -1,0 +1,55 @@
+# JSON Schema for an API Catalog based on RFC 9727
+$schema: "http://json-schema.org/draft-07/schema#"
+$id: "https://www.example.com/schemas/api-catalog.schema.yaml"
+title: "API Catalog"
+description: "A catalog of available APIs on a server, following RFC 9727 best practices."
+type: object
+properties:
+  apis:
+    type: array
+    description: "A list of available APIs."
+    items:
+      $ref: "#/definitions/apiEntry"
+    minItems: 1
+
+required:
+  - apis
+
+definitions:
+  apiEntry:
+    title: "API Entry"
+    description: "Describes a single available API, including its version."
+    type: object
+    properties:
+      name:
+        type: string
+        description: "A human-readable name for the API."
+      description:
+        type: string
+        description: "A short description of what the API does."
+      baseURL:
+        type: string
+        description: "The version-specific base URL for making API calls."
+        format: uri
+      version:
+        type: string
+        description: "The explicit semantic version string (SemVer) of the API."
+        pattern: '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$'
+      ik_list:
+        type: array
+        description: "Liste der Institutions-Kennzeichen als Strings."
+        minItems: 1
+        items:
+          type: string
+          description: "Institutions-Kennzeichen"
+      documentation:
+        type: string
+        description: "A URL pointing to the human-readable documentation."
+        format: uri
+
+    required:
+      - name
+      - description
+      - baseURL
+      - version
+      - ik_list

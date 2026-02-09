@@ -96,7 +96,7 @@ Damit dies funktioniert, ist insbesondere die Direktive
 `pep_issuer https://my.zeta.service.de/auth/realms/zeta-guard;` wichtig, die die
 Verbindung zum PDP herstellt.
 
-## Konfigurationsparameter
+### Konfigurationsparameter
 
 * `pep_issuer`
     * Typ: string
@@ -169,4 +169,13 @@ Verbindung zum PDP herstellt.
 
 ## libngx_asl.so
 
-_(Im Prototyp noch nicht enthalten.)_
+Mehr Details zu MS2
+
+### Konfigurationsparameter
+
+* `asl`
+    * Typ: `on` | `off`
+    * Beschreibung: Konfiguriert, ob der nginx ASL spricht (i.d.R. auf `location /ASL`)
+    * Pflichtfeld: Nein
+    * Context: `server`
+    * Standardwert: `off`
