@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Antigravity/1.107.0 Chrome/142.0.7444.175 Electron/39.2.3 Safari/537.36" version="29.3.8">
     <diagram name="Seite-1" id="rmcg_aQgjtSpjyozXI4n">
-        <mxGraphModel dx="1153" dy="658" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+        <mxGraphModel dx="949" dy="658" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -495,13 +495,13 @@
                     <mxGeometry height="40" width="83.25" x="960" y="325" as="geometry"/>
                 </mxCell>
                 <mxCell id="8" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;dashed=1;" value="" vertex="1">
-                    <mxGeometry height="20" width="70" x="649" y="678" as="geometry"/>
+                    <mxGeometry height="20" width="70" x="640" y="678" as="geometry"/>
                 </mxCell>
                 <mxCell id="9" parent="1" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" value="Optionale&lt;div&gt;Komponenten&lt;/div&gt;" vertex="1">
-                    <mxGeometry height="20" width="70" x="837" y="678" as="geometry"/>
+                    <mxGeometry height="20" width="70" x="798" y="678" as="geometry"/>
                 </mxCell>
                 <mxCell id="10" parent="1" style="rounded=0;whiteSpace=wrap;html=1;dashed=1;" value="" vertex="1">
-                    <mxGeometry height="20" width="67" x="760" y="678" as="geometry"/>
+                    <mxGeometry height="20" width="67" x="721" y="678" as="geometry"/>
                 </mxCell>
                 <mxCell id="13" parent="1" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" value="Von ZETA oder vom Anbieter bereitgestellt" vertex="1">
                     <mxGeometry height="20" width="126" x="399" y="678" as="geometry"/>
@@ -510,7 +510,7 @@
                     <mxGeometry height="20" width="70" x="320" y="678" as="geometry"/>
                 </mxCell>
                 <mxCell id="16" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;dashed=1;" value="" vertex="1">
-                    <mxGeometry height="20" width="69" x="560" y="678" as="geometry"/>
+                    <mxGeometry height="20" width="71" x="560" y="678" as="geometry"/>
                 </mxCell>
                 <mxCell id="46" edge="1" parent="1" source="17" style="edgeStyle=none;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="20">
                     <mxGeometry relative="1" as="geometry"/>
