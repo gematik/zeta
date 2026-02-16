@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Antigravity/1.107.0 Chrome/142.0.7444.175 Electron/39.2.3 Safari/537.36" version="29.3.8">
     <diagram name="Seite-1" id="rmcg_aQgjtSpjyozXI4n">
-        <mxGraphModel dx="933" dy="658" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+        <mxGraphModel dx="1012" dy="658" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -286,12 +286,12 @@
                 </mxCell>
                 <mxCell id="78" connectable="0" parent="jJOLbxmHub2SlFU7AWsx-9" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="(24)" vertex="1">
                     <mxGeometry relative="1" x="-0.7966" as="geometry">
-                        <mxPoint x="-284" y="28" as="offset"/>
+                        <mxPoint x="-305" y="-30" as="offset"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="79" connectable="0" parent="jJOLbxmHub2SlFU7AWsx-9" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="(25)" vertex="1">
                     <mxGeometry relative="1" x="0.8644" as="geometry">
-                        <mxPoint x="10" as="offset"/>
+                        <mxPoint x="12" as="offset"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="VlHYgpy21l1go6Lui4qg-58" edge="1" parent="1" source="VlHYgpy21l1go6Lui4qg-45" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;dashed=1;curved=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;startArrow=none;startFill=0;" target="VlHYgpy21l1go6Lui4qg-10">
