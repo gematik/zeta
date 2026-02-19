@@ -24,7 +24,7 @@ Das folgende Diagramm zeigt die logischen Komponenten des ZETA-Guard und wie sie
 miteinander verbunden sind. Das Diagramm dient als Grundlage für die weitere
 Diskussion bezüglich Skalierung, Failover und anderen Aspekten.
 
-![](../assets/images/depl_sc/ZETA-Guard-Logisches-Deployment.png)
+![](../assets/images/deployment_szenarien/ZETA-Guard-Logisches-Deployment.png)
 
 In diesem Diagram sind im Vergleich zum reinen Architekturüberblick insbesondere
 die Datenbanken explizit aufgeführt, sowie die HSM-Anbindung detailliert worden.
@@ -116,7 +116,7 @@ sind denkbar.
 Im folgenden Diagram sind zwei Optionen dargestellt, wobei die grau hinterlegten
 Komponenten optional sind.
 
-![](../assets/images/depl_sc/ZETA-Guard-Deployment-View.png)
+![](../assets/images/deployment_szenarien/ZETA-Guard-Deployment-View.png)
 
 Falls der Fachdienst in einer eigenen Infrastruktur separat vom ZETA-Guard
 betrieben wird, muss eine sichere Verbindung zwischen ZETA-Guard und Fachdienst
@@ -145,7 +145,7 @@ Das Deployment-Szenario „Test“ fokussiert sich auf die Anbindung eines Clien
 an einen Fachdienst und lässt einige Punkte, die in einem produktiven Betrieb
 notwendig sind, weg, um den Aufwand und die Komplexität zu reduzieren.
 
-![](../assets/images/depl_sc/ZETA-Guard-Test-Deployment.png)
+![](../assets/images/deployment_szenarien/ZETA-Guard-Test-Deployment.png)
 
 Dieses Setup kann mithilfe einer lokalen Installation in einem „kind“
 Kubernetes Setup aufgebaut werden. Dort ist auch noch der Proxy Test-Client
@@ -177,7 +177,7 @@ Anti-Affinity auf unterschiedliche Kubernetes Nodes verteilt, um eine Kongruenz
 der beiden Teil-Instanzen herzustellen, diese aber auf unterschiedlichen Nodes
 zu betreiben, um Verfügbarkeiten zu erhöhen.
 
-![](../assets/images/depl_sc/ZETA-Guard-Deployment-Klein.png)
+![](../assets/images/deployment_szenarien/ZETA-Guard-Deployment-Klein.png)
 
 Der Management-Service muss dabei nur einmal installiert werden, da nur ein
 Cluster betrieben wird.
@@ -239,7 +239,7 @@ von diesem dahingehend, dass es mindestens drei Knoten annimmt, die auch in
 unterschiedlichen Clustern installiert sind. Diese sind in regionaler Nähe
 aufgesetzt.
 
-![](../assets/images/depl_sc/ZETA-Guard-Deployment-Mittel.png)
+![](../assets/images/deployment_szenarien/ZETA-Guard-Deployment-Mittel.png)
 
 Bei unterschiedlichen Clustern ist der Management-Service pro Cluster zu
 installieren.
@@ -302,7 +302,7 @@ betrieben. Hierzu kann der gesamte ZETA-Guard in einer VM
 betrieben werden. Das folgende Diagramm zeigt ein solches
 Beispiel.
 
-![](../assets/images/depl_sc/ZETA-Guard-Deployment-VAU-VM.png)
+![](../assets/images/deployment_szenarien/ZETA-Guard-Deployment-VAU-VM.png)
 
 Die Vertrauensbeziehung zwischen den ZETA-Guard Komponenten
 muss dabei innerhalb der VAU sichergestellt werden.
@@ -321,7 +321,7 @@ Vertrauensbeziehungen entsprechend zwischen den VMs herzustellen.
 In diesen VAUs werden die einzelnen Komponenten in separaten
 VAUs ausgeführt. Das folgende Diagramm zeigt ein solches Beispiel.
 
-![](../assets/images/depl_sc/ZETA-Guard-Deployment-VAU-Prozess.png)
+![](../assets/images/deployment_szenarien/ZETA-Guard-Deployment-VAU-Prozess.png)
 
 Die Vertrauensbeziehung muss dabei durch z.B. Service-Mesh oder andere
 Mittel zwischen den VAUs eines ZETA-Guards sichergestellt werden.
@@ -329,6 +329,16 @@ Mittel zwischen den VAUs eines ZETA-Guards sichergestellt werden.
 Die Skalierung in einem solchen Umfeld kann hier
 einzeln pro Komponente geschehen und helfen, die Skalierung
 besser auf die Workload anzupassen.
+
+#### Kommunikation zwischen den VAUs
+
+In diesem Abschnitt werden nochmal die Anforderungen an die Kommunikation
+zwischen den VAUs dargestellt. Hierbei wird nur auf skalierte bzw.
+redundante Installationen eingegangen, da im Wesentlichen hier mehrere ZETA-Guard
+zusammenarbeiten.
+ZG
+
+![Notwendige Kommunikation der VAU untereinander](../assets/images/deployment_szenarien/zeta-guard-vau-comm.png)
 
 ### Datenbank-Betrieb
 
@@ -343,14 +353,14 @@ verschlüsseln.
 
 #### Ohne VAU, Datenbank im Container
 
-![](../assets/images/depl_sc/image-20251120-211336.png)
+![](../assets/images/deployment_szenarien/image-20251120-211336.png)
 
 * Storage encryption innerhalb des Containers
 * Encryption keys als kubernetes secrets
 
 #### Mit VAU, Datenbank in der VAU
 
-![](../assets/images/depl_sc/image-20251120-211251.png)
+![](../assets/images/deployment_szenarien/image-20251120-211251.png)
 
 * Storage encryption innerhalb des Containers
 * Encryption keys als KMS-verwaltete secrets (storage encryption is nur
@@ -365,7 +375,7 @@ Hinweise:
 * Zielzustand für das Deployment
 * Umsetzung abhängig von weiterer Untersuchung der Umsetzbarkeit
 
-![](../assets/images/depl_sc/image-20251120-211717.png)
+![](../assets/images/deployment_szenarien/image-20251120-211717.png)
 
 * Anwendungsspezifische Verschlüsselung im PDP Auth Server Prozess; damit
   Möglichkeit, die Datenbank außerhalb der VAU zu betreiben
@@ -413,7 +423,7 @@ zurückgegriffen werden.
 
 #### Als eigener Service
 
-![](../assets/images/depl_sc/ZETA-Guard-Deployment-HSM-Proxy.png)
+![](../assets/images/deployment_szenarien/ZETA-Guard-Deployment-HSM-Proxy.png)
 
 Hier sind mögliche Ansätze, die Vertrauensbeziehung zwischen den Komponenten herzustellen.
 Diese dienen als Denkansätze und müssen im konkreten Fall ausgearbeitet und durch
@@ -433,7 +443,7 @@ Anbindung zwischen den Containern innerhalb eines Pods. Ein Nachteil ist, dass
 mehrere Container aufzusetzen mit entsprechenden Infrastrukturanforderungen
 sind.
 
-![](../assets/images/depl_sc/ZETA-Guard-Deployment-HSM-Sidecar.png)
+![](../assets/images/deployment_szenarien/ZETA-Guard-Deployment-HSM-Sidecar.png)
 
 Hier sind mögliche Ansätze, die Vertrauensbeziehung zwischen den Komponenten herzustellen.
 Diese dienen als Denkansätze und müssen im konkreten Fall ausgearbeitet und durch
@@ -446,7 +456,7 @@ die Zertifizierung des jeweiligen Fachdienstes bewertet werden.
 
 #### Als HSM-Firmware
 
-![](../assets/images/depl_sc/ZETA-Guard-Deployment-HSM-Firmware.png)
+![](../assets/images/deployment_szenarien/ZETA-Guard-Deployment-HSM-Firmware.png)
 
 Hier sind mögliche Ansätze, die Vertrauensbeziehung zwischen den Komponenten herzustellen.
 Diese dienen als Denkansätze und müssen im konkreten Fall ausgearbeitet und durch

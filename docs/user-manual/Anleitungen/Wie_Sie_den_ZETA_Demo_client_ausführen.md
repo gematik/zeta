@@ -144,7 +144,7 @@ leer sein, wenn der Test-Fachdienst z.B. auch neu gestartet wurde.
 
 Hier ein Bild mit einem Rezept in der Liste:
 
-![Darstellung des Demo-Clients](../assets/images/depl_sc/demo-client-header.png)
+![Darstellung des Demo-Clients](../assets/images/demo-client-header.png)
 
 Hinweis: das ist selbstverständlich kein echter e-Rezept Fachdienst, sondern nur
 eine Anmutung dessen, um dem Testfachdienst eine fachliche Bedeutung zu geben und damit
@@ -153,7 +153,7 @@ die CRUD-Operationen testen bzw. vorstellen zu können.
 Mit dem Klick auf den "Add" Button bzw. den "Bleistift" in der Rezept-Zeile
 kann ein neuer Eintrag erstellt bzw. geändert werden.
 
-![Eingabe-/Änderungsformular](../assets/images/depl_sc/demo-client-form.png)
+![Eingabe-/Änderungsformular](../assets/images/demo-client-form.png)
 
 Bei der Erstellung eines neuen Eintrags kann mit dem "Fill Form" Button
 das Formular mit Testdaten gefüllt werden.
