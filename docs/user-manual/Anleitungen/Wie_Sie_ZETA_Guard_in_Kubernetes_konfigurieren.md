@@ -19,7 +19,7 @@ die Software nicht zwangsläufig unmittelbar selbst nutzen müssen._
 
 ## Überblick
 
-![Abbildung Zero Trust-Architektur der TI 2.0](../assets/images/depl_sc/ZETA-Guard-Logisches-Deployment.png)
+![Abbildung Zero Trust-Architektur der TI 2.0](../assets/images/deployment_szenarien/ZETA-Guard-Logisches-Deployment.png)
 
 ## Voraussetzungen
 
@@ -73,7 +73,7 @@ geeigneten Kubernetes Clusters.
 ## Vorgehen bei der Installation
 
 Letztlich besteht die Installation aus den 2 Schritten `helm upgrade --install`
-und `terraform apply`, wie im [Quickstart](ZETA_Guard_Quickstart_fuer_lokales_deployment.md) beschrieben.
+und `terraform apply`, wie im [Quickstart](ZETA_Guard_Quickstart.md) beschrieben.
 Damit sind dann alle Komponenten des ZETA Guard installiert.
 
 Im Folgenden soll auf die Konfiguration der einzelnen Komponenten etwas mehr
@@ -86,9 +86,10 @@ im Detail eingegangen werden. Ergänzend dazu gibt es die
 
 In dem Cluster muss ein [Ingress-Controller][K8s Ingress Controllers]
 installiert sein und erlaubter [Ingress][K8s Ingress] definiert werden.
-Das ZETA Guard Helm Chart beinhaltet einen optionalen Ingress Controller. Über
-die values kann dieser an- bzw. abgewählt werden
-(`ingress_controller.enabled: false`).
+Das ZETA Guard Helm Chart beinhaltet einen optionalen Ingress Controller (
+[F5 nginx-ingress](https://docs.nginx.com/nginx-ingress-controller/) ).
+Über die values kann dieser an- bzw. abgewählt werden
+(`nginx-ingress.enabled: false`).
 
 Der eingesetzte Ingress Controller muss die Kubernetes APIs für
 [Ingresses](https://kubernetes.io/docs/concepts/services-networking/ingress/)
@@ -98,8 +99,15 @@ unterstützen.
 Die Verwaltung der TLS Zertifikate obliegt dem Anbieter und erfolgt in der Regel
 über Kubernetes Secrets oder eine HSM Anbindung.
 
-TODO: Eine genauere Beschreibung zur Konfiguration des ZETA Guard eigenen
-Ingress Controllers folgt.
+Bei Verwendung von mehreren ZETA Guard in unterschiedlichen Namespaces ist es
+möglich, über ingress classes die Ingress Controller der jeweiligen
+Installationen voneinander zu isolieren. Hierfür müssen die values
+`ingressClassName` und `nginx-ingress.controller.ingressClass.name` auf
+denselben jeweils für die Installation einzigartigen Namen gesetzt werden
+(sinnvollerweise enthält dies den Namen des Namespace).
+
+Es folgt hier in späteren Releases noch die Möglichkeit, die Ingressressourecen
+insb. über Annotationen für andere IngressController besser nutzbar zu machen.
 
 ### 2. Egress konfigurieren
 
@@ -111,8 +119,9 @@ dessen ZETA Guard, obliegen dem Anbieter.
 
 Bekannte, valide Egress Ziele außerhalb des Clusters sind insbesondere:
 
-* TODO: Momentan werden manche Images (z.B. OPA) noch von docker.io bezogen.
-  Dies entfällt mit Meilenstein 3.
+* Momentan werden manche Images (z.B. OPA) noch von docker.io bezogen.
+  Dies soll in Zukunft konfigurierbar gestaltet werden, um eine eigene Registry
+  verwenden zu können.
 * Aufrufende Clients (Responses)
 * TI Dienste
     * OCSP Responder der TI TSL (! d.h. der Responder im Internet nicht der im
@@ -354,25 +363,25 @@ entscheidend:
       (die gematik muss diese in zentrale Policys für den OPA integrieren).
     * Eventuelle Konfiguration für WebSockets findet hier mit nginx
       Standardmethoden statt.
-    * TODO: Beschreibung von ASL
-        * ASL Zertifikate werden via Kubernetes Secrets bereitgestellt oder in
-          der VAU via HSM verfügbar gemacht
+* Für die Verwendung von ASL muss der Value `pepproxy.asl_enabled` auf `true`
+  gesetzt werden.
+    * ASL Zertifikate werden momentan bei Serverstart generiert. Zukünftig
+      werden diese via Kubernetes Secrets bereitgestellt oder in der VAU via
+      HSM verfügbar gemacht
 
 * _kommt noch_
     * _To-do: Horizontale Skalierung via Helm Values verfügbar machen_
-    * _To-do: Sidecar Container mit OpenTelemetry Collector_
 
 ### 7. Servie Mesh konfigurieren
 
-TODO: Das Service Mesh _kommt in Meilenstein 3_. Hier sei trotzdem schon
-angedeutet:
-
-Die Verwendung des Management Service ist optional und das ZETA Guard Helm Chart
-beinhaltet einen optionalen Ingress Controller. Über die values kann dieser an-
-bzw. abgewählt werden (`service_mesh.enabled: true`). Optional bedeutet hier,
-dass bei Abwahl des ZETA Guard Service Mesh ein eigenes Service Mesh eingesetzt
+Es wird seitens ZETA Guard istio verwendet. (Anm. in Version 0.3.2 des Helm
+Charts noch nicht enthalten, folgt bald)
+Die Verwendung des Service Mesh ist optional. Über die values kann dieses an-
+bzw. abgewählt werden (`service-mesh.enabled: true`). Optional bedeutet hier,
+dass bei Abwahl des ZETA Guard Service Mesh ein Verfahren eingesetzt
 werden muss, welches insbesondere Verschlüsselung und wechselseitige
-Authentisierung des Clusterinternen Traffics umsetzt.
+Authentisierung des Clusterinternen Traffics umsetzt. Wir empfeheln hierfür ein
+Service Mesh.
 
 ## Querschnittliche Konzepte
 
@@ -398,7 +407,7 @@ entsprechend gesteuert werden:
 * PEP Http Proxy
     * `pepproxy.image.repository` Name des authserver Images auf der Registry
     * `pepproxy.image.tag` Zu verwendender Image Tag
-* TODO mit späterem Meilenstein weitere Images
+* Analoges wird für die weiteren Images stückweise folgen
 
 [K8s Ingress]: https://kubernetes.io/docs/concepts/services-networking/ingress/
 

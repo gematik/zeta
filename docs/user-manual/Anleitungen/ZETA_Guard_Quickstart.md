@@ -1,5 +1,24 @@
 # ZETA-Guard-Quickstart
 
+Dieses Dokument beschreibt ein generisches Deployment von ZETA Guard auf einem
+Kubernetes-Cluster. Es dient als Referenz- und Einstiegsszenario, um ZETA Guard
+reproduzierbar zu installieren, zu konfigurieren und in einen Fachdienst zu
+integrieren.
+
+Die beschriebenen Schritte und Konfigurationen sind bewusst umgebungsneutral
+gehalten und lassen sich sowohl auf lokale Entwicklungsumgebungen (siehe auch
+[Wie_Sie_den_Cluster_lokal_mit_KIND_aufsetzen.md](Wie_Sie_den_Cluster_lokal_mit_KIND_aufsetzen.md))
+als auch auf Cloud- oder On-Premise-Cluster übertragen. Spezifische
+Anforderungen an Produktivumgebungen – wie Härtung, Hochverfügbarkeit,
+Backup-Strategien, Secret-Management oder mandantenspezifische Anpassungen –
+sind nicht Bestandteil dieses Dokuments und müssen projektspezifisch ergänzt
+werden.
+
+Der Fokus liegt auf:
+- einer funktionalen End-to-End-Installation von ZETA Guard,
+- einer reproduzierbaren Konfiguration des PDP mittels Terraform,
+- sowie der exemplarischen Anbindung eines Fachdienstes über den PEP.
+
 [TOC]
 
 ## Installation
@@ -7,11 +26,10 @@
 ### Benötigte Werkzeuge
 
 * Helm, kubectl und Terraform
-* ein Kubernetes-Cluster (für lokale Deployments bietet sich [KIND](https://kind.sigs.k8s.io/) an)
+* ein Kubernetes-Cluster (für lokale Deployments siehe [Wie_Sie_den_Cluster_lokal_mit_KIND_aufsetzen.md](Wie_Sie_den_Cluster_lokal_mit_KIND_aufsetzen.md))
     * mit über Stateful Sets provisionierbarem Storage
-    * mit eingerichtetem Ingress-Controller _(zukünftig optionaler Bestandteil
-      des ZETA Guard)_
-    * lokal den passenden Kontext in kubectl eingerichtet
+    * mit eingerichtetem Ingress-Controller _(aktuell erforderlich, perspektivisch optional)_
+    * den passenden Kontext in kubectl eingerichtet
 * Einen Fachdienst – in diesem Dokument wird dieser als verfügbar
   unter https://testfachdienst angenommen.
 
@@ -23,7 +41,7 @@ Die Installation gliedert sich grob in folgende Schritte
 2. PDP konfigurieren
 3. PEP konfigurieren
 
-#### 1. Helm aufsetzen
+### 1. Helm aufsetzen
 
 Das ZETA Guard Helm Chart ist für Helm 3 konzipiert.
 
@@ -49,10 +67,10 @@ Mit dieser [values-demo.yaml](https://github.com/gematik/zeta-guard-helm/blob/ma
 folgendes Kommando installieren:
 
 ```shell
-    helm upgrade --install zeta-guard oci://europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/zeta-guard-helm/zeta-guard:0.2.3 -f values-demo.yaml --wait --atomic
+    helm upgrade --install zeta-guard oci://europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-helm/zeta-guard:${TAG} -f values-demo.yaml  --rollback-on-failure --timeout 15m
 ```
 
-#### 2. PDP konfigurieren
+### 2. PDP konfigurieren
 
 Der PDP wird über Terraform konfiguriert. Terraform übernimmt dabei die
 vollständige Verwaltung der Keycloak-Konfiguration des ZETA-Guard-Realms:
@@ -64,10 +82,10 @@ Die folgenden Schritte beschreiben, wie Sie die notwendigen Variablen
 definieren, das Terraform-Backend initialisieren und anschließend die gewünschte
 Konfiguration sicher und reproduzierbar anwenden.
 
-Die relevanten Terraform Templates finden sich im Unterverzeichnis `terraform`
+Die relevanten Terraformtemplates finden sich im Unterverzeichnis `terraform`
 [hier](https://github.com/gematik/zeta-guard-helm).
 
-##### Voraussetzungen
+#### Voraussetzungen
 
 Stellen Sie sicher, dass folgende Voraussetzungen erfüllt sind:
 
@@ -79,20 +97,38 @@ benötigten Providern kompatibel ist (1.5.x aufwärts).
 Cluster-Secret hinterlegt sind (siehe Abschnitt
 [Helm aufsetzen](#1-helm-aufsetzen)).
 
-##### Terraform Variablen definieren
+#### Hinweis: Erforderliche Kubernetes-Rechte für Terraform
+
+Der für die PDP-Konfiguration verwendete Terraform-Provider interagiert direkt
+mit dem Kubernetes-Cluster. Dafür benötigt der ausführende Service Account
+entsprechende Berechtigungen im Ziel-Namespace.
+
+Insbesondere werden folgende Rechte vorausgesetzt:
+
+- Secrets (`apiGroups: [""]`)
+Terraform speichert seinen State als Kubernetes-Secret (z.B. `tfstate-default-state`) und benötigt dafür Lese-, Schreib- und Listenrechte.
+- Leases (`apiGroups: ["coordination.k8s.io"]`)
+Zur Absicherung gegen parallele Terraform-Ausführungen wird ein Lock über Kubernetes-Leases realisiert.
+- Pods Exec (`apiGroups: [""], resources: ["pods/exec"]`)
+Diese Berechtigung wird benötigt, falls Terraform local-exec oder vergleichbare Mechanismen nutzt, die ein kubectl exec erfordern.
+
+Fehlende Berechtigungen führen typischerweise zu Initialisierungsfehlern beim
+Backend (`terraform init`) oder zu Abbrüchen während `apply`.
+
+#### Terraform Variablen definieren
 
 Unterteilt in drei Kategorien müssen diese gesetzt werden:
 - Admin-Rechte, um den PDP zu konfigurieren
 - Informationen, um im Cluster zu agieren
 - Ihre Zeta-Guard-Konfiguration
 
-###### Setzen Sie ihr Admin-Passwort als Umgebungsvariablen, um Terraform den Zugriff auf den PDP zu ermöglichen:
+##### Setzen Sie ihr Admin-Passwort als Umgebungsvariablen, um Terraform den Zugriff auf den PDP zu ermöglichen:
 
 ```shell
 export TF_VAR_keycloak_password="IhrPasswort"
 ```
 
-###### Weisen Sie Terraform auf die zu verwendende kubeconfig und den Namespace hin:
+##### Weisen Sie Terraform auf die zu verwendende kubeconfig und den Namespace hin:
 
 Die Datei [demo.backend.hcl](demo.backend.hcl) ermöglicht es Terraform mit dem
 Cluster und dem Namespace zu interagieren. Passen Sie die Werte an Ihre Umgebung
@@ -103,7 +139,7 @@ config_path = "~/.kube/config" # Pfad zur kubeconfig-Datei
 namespace   = "zeta-demo"      # Namespace, in dem Zeta-Guard deployt wurde
 ```
 
-###### Die PDP-Konfiguration wird über eine stage-spezifische Datei gesteuert:
+##### Die PDP-Konfiguration wird über eine stage-spezifische Datei gesteuert:
 
 ```hcl
 insecure_tls       = true                          # Aktivieren bei selbst signierten Zertifikaten (optional, Default ist false)
@@ -114,7 +150,7 @@ pdp_scopes         = ["zero:read", "zero:write"]   # Zusätzliche PDP-Scopes
 
 Siehe [demo.tfvars](demo.tfvars).
 
-##### Backend initialisieren
+#### Backend initialisieren
 
 Terraform speichert den zustandsführenden State im Kubernetes-Cluster als Secret
 unter dem Namen `tfstate-default-state`.
@@ -126,7 +162,7 @@ terraform -chdir=terraform/authserver init \
   -reconfigure
 ```
 
-##### Konfiguration anwenden
+#### Konfiguration anwenden
 
 Sobald Variablen und Backend korrekt eingerichtet sind, spielen Sie die
 Konfiguration ein:
@@ -143,7 +179,7 @@ werden kann.
 > Die Konfiguration ist beliebig wiederholbar; Terraform sorgt dafür, dass nur
 > notwendige Änderungen ausgeführt werden.
 
-###### Optional: Konfiguration vor Anwendung prüfen:
+##### Optional: Konfiguration vor Anwendung prüfen:
 
 ```shell
 terraform -chdir=terraform/authserver plan \
@@ -159,7 +195,7 @@ vorhanden ist. Die angezeigten Unterschiede werden unterteilt in
 - _delete_ (löschen)
 - _replace_ (ersetzen, eine Kombination aus _delete_ und _create_)
 
-#### 3. PEP konfigurieren
+### 3. PEP konfigurieren
 
 Die [values-demo.yaml](https://github.com/gematik/zeta-guard-helm/blob/main/charts/zeta-guard/values-demo.yaml) enthält eine PEP-Beispielkonfiguration, welche eine
 nginx-Welcome-Seite ausliefert.
@@ -198,7 +234,7 @@ Nachdem Sie die [values-demo.yaml](https://github.com/gematik/zeta-guard-helm/bl
 Änderungen über folgendes Helm-Kommando ausrollen:
 
 ```shell
-    helm upgrade --install zeta-guard zeta/zeta-guard -f values-demo.yaml --wait --atomic
+    helm upgrade --install zeta-guard zeta/zeta-guard -f values-demo.yaml --rollback-on-failure --timeout 15m
 ```
 
 Nun haben Sie den ZETA-Guard eingerichtet und ein Zugriff über den
