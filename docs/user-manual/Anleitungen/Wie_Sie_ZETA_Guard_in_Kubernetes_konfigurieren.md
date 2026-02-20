@@ -36,6 +36,7 @@ die Software nicht zwangsläufig unmittelbar selbst nutzen müssen._
       (siehe [Egress konfigurieren](#2-egress-konfigurieren))
     * eine geeignete Imagesignaturprüfung z.B. via Kyverno (signierte Images
       kommen in späterem Meilenstein)
+    * mit Gateway API CRDs
 * eine lokale, cachende OCI Registry
 * alle Dienste aus der Liste
   der [Abhängigkeiten unten](#abhängigkeiten--erforderliche-konfiguration)
@@ -43,10 +44,10 @@ die Software nicht zwangsläufig unmittelbar selbst nutzen müssen._
 
 Optionale Voraussetzungen:
 
-* ein Ingress Controller (alternativ zum ZETA eigenen)
-* ein geeignetes Service Mesh mit Verschlüsselung und wechselseitiger
-  Authentisierung (alternativ zum ZETA eigenen, welches in einem späteren
-  Meilenstein kommt)
+* Falls der ZETA eigene Ingress Controller nicht verwendet wird: ein geeigneter
+  Ingress Controller
+* Falls das ZETA eigene Service Mesh nicht verwendet wird: eine alternative
+  Lösung die TLS Kommunikation der ZETA Komponenten untereinander sicherstellt
 
 ## Überblick über die Konfiguration des ZETA Guard
 
@@ -235,7 +236,6 @@ finden sie das Manifest mit allen Exportern, die Sie verwenden können.
 ### 5. Notification Service konfigurieren
 
 * _Kommt erst in Umsetzungsstufe 2_
-* _To-do: Sidecar Container mit OpenTelemetry Collector_
 
 #### Abhängigkeiten / erforderliche Konfiguration
 
@@ -372,16 +372,56 @@ entscheidend:
 * _kommt noch_
     * _To-do: Horizontale Skalierung via Helm Values verfügbar machen_
 
-### 7. Servie Mesh konfigurieren
+### 8. Servie Mesh konfigurieren
 
-Es wird seitens ZETA Guard istio verwendet. (Anm. in Version 0.3.2 des Helm
-Charts noch nicht enthalten, folgt bald)
-Die Verwendung des Service Mesh ist optional. Über die values kann dieses an-
-bzw. abgewählt werden (`service-mesh.enabled: true`). Optional bedeutet hier,
-dass bei Abwahl des ZETA Guard Service Mesh ein Verfahren eingesetzt
-werden muss, welches insbesondere Verschlüsselung und wechselseitige
-Authentisierung des Clusterinternen Traffics umsetzt. Wir empfeheln hierfür ein
-Service Mesh.
+Hier sei beschrieben, wie Istio im ambient mode installiert wird um mTLS für
+service-zu-service Kommunikation im Kubernetes Cluster für den ZETA Guard, zu
+installieren.
+
+Es wird hier davon ausgegangen, dass das ZETA Guard Helm Chart bereits installiert
+ist.
+
+0) falls noch nicht geschehen, istioctl auf dem Admin Rechner Installieren (
+   [siehe diese Anweisungen](https://istio.io/latest/docs/setup/additional-setup/download-istio-release/) )
+
+1) installieren der Kubernetes Gateway API CRDs, falls nicht schon vorhanden
+    - `kubectl get crd gateways.gateway.networking.k8s.io &> /dev/null || kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.0/experimental-install.yaml`
+
+2) installieren von Istio Using mit Ambient Profil
+    - `istioctl install --set profile=ambient --skip-confirmation`
+
+3) Einschalten des Ambient Mode für den Namespace des ZETA Guard (`zeta-local`
+   in diesem Beispiel
+    - `kubectl label namespace zeta-local istio.io/dataplane-mode=ambient`
+
+Man kann nun über das Kommando `istioctl ztunnel-config workloads` verifizieren,
+dass die workloads korrekt eingerichtet sind. Das erkennt man daran, dass HBONE
+in der PROTOCOL Spalte angezeigt wird.
+
+Beispielhaft sieht das dann wie folgt aus:
+```
+zeta-local         authserver-75899b88f-rvzcr                                   10.244.1.26 zeta-local-worker        None     HBONE
+zeta-local         exauthsim-7bbdb8577d-4zbm5                                   10.244.1.14 zeta-local-worker        None     HBONE
+zeta-local         frontend-proxy-7d6fd97668-sdbbl                              10.244.1.24 zeta-local-worker        None     HBONE
+zeta-local         grafana-7b4994695-d5m2h                                      10.244.1.30 zeta-local-worker        None     HBONE
+zeta-local         jaeger-5b7c68bd78-ckvzc                                      10.244.1.16 zeta-local-worker        None     HBONE
+zeta-local         keycloak-db-0                                                10.244.1.31 zeta-local-worker        None     HBONE
+zeta-local         llm-84df6b4845-cdbmc                                         10.244.1.29 zeta-local-worker        None     HBONE
+zeta-local         opa-5459844d9d-b8q2h                                         10.244.1.27 zeta-local-worker        None     HBONE
+zeta-local         opensearch-0                                                 10.244.1.20 zeta-local-worker        None     HBONE
+zeta-local         pep-deployment-767b676cfd-k9hnb                              10.244.1.13 zeta-local-worker        None     HBONE
+zeta-local         popp-mock-55bd588677-fjmjj                                   10.244.1.18 zeta-local-worker        None     HBONE
+zeta-local         product-reviews-64998d7fdb-xm5tg                             10.244.1.11 zeta-local-worker        None     HBONE
+zeta-local         prometheus-766df54ff-nszqf                                   10.244.1.15 zeta-local-worker        None     HBONE
+zeta-local         telemetry-gateway-local-76f8b8b578-x4t7b                     10.244.1.17 zeta-local-worker        None     HBONE
+zeta-local         test-monitoring-collector-local-7ff997447f-wjp5w             10.244.1.28 zeta-local-worker        None     HBONE
+zeta-local         testdriver-6f8dfcdb98-qlj26                                  10.244.1.25 zeta-local-worker        None     HBONE
+zeta-local         testfachdienst-5bd688cdc5-vt2cv                              10.244.1.19 zeta-local-worker        None     HBONE
+zeta-local         tiger-proxy-bbf4ccbbf-w292g                                  10.244.1.23 zeta-local-worker        None     HBONE
+zeta-local         zeta-testenv-local-log-collector-agent-bk86q                 10.244.1.10 zeta-local-worker        None     HBONE
+zeta-local         zeta-testenv-local-nginx-ingress-controller-867757f4d8-wv2db 10.244.1.12 zeta-local-worker        None     HBONE
+zeta-local         zeta-testenv-local-tiger-testsuite-79f555b6c8-mcn68          10.244.1.21 zeta-local-worker        None     HBONE
+```
 
 ## Querschnittliche Konzepte
 
