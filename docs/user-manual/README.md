@@ -13,10 +13,11 @@ genutzt werden können.
 
 ### Dokumenteninformation
 
-| Version | Stand    | Zusammenfassung der Änderungen  |
-|---------|----------|---------------------------------|
-| 0.2.x   | 29.12.25 | Einarbeitung Kommentare         |
-| 0.3.0   | 11.2.26  | Update auf ZETA release 0.3.0   |
+| Version | Stand    | Zusammenfassung der Änderungen                                 |
+|---------|----------|----------------------------------------------------------------|
+| 0.2.x   | 29.12.25 | Einarbeitung Kommentare                                        |
+| 0.3.0   | 11.02.26 | Update auf ZETA release 0.3.0                                  |
+| 0.3.1   | 20.02.26 | Update auf ZETA release 0.3.1 (Dokumentation zum Service Mesh) |
 
 ### Hinweise
 
@@ -236,7 +237,6 @@ bei eigenen Anpassungen nötig.
 
 * Die URL des Testdriver-Proxys enthält für alle Anfragen an den Fachdienst das
 Präfix `/proxy`. Dies ist zu berücksichtigen.
-* Ein Service-Mesh wird aktuell nicht mitgeliefert.
 * Die Art der gegenseitigen
 Authentifizierung des ZETA-Guard mit dem Fachdienst ist noch nicht spezifiziert.
 
