@@ -55,10 +55,9 @@ Es wird die Liste der von der Anwendung angeforderten Berechtigungen mit der Lis
 
 **Beispiel:**
 
-* Erlaubte Berechtigungen sind: `daten_lesen`, `daten_schreiben`
-* Anwendung fordert an: `daten_lesen` -> **Erfolg**
-* Anwendung fordert an: `daten_lesen`, `daten_schreiben` -> **Erfolg**
-* Anwendung fordert an: `daten_lesen`, `daten_löschen` -> **Fehler** (da `daten_löschen` nicht erlaubt ist)
+* Erlaubte Berechtigungen sind: `vsdservice`
+* Anwendung fordert an: `vsdservice` -> **Erfolg**
+* Anwendung fordert an: `vsd_daten_schreiben` -> **Fehler** (da `vsd_daten_schreiben` nicht erlaubt ist)
 
 ### 4. Prüfung der Ziel-Ressource (Audience)
 
@@ -71,9 +70,9 @@ Es wird abgeglichen, ob die von der Anwendung angefragten Ziel-Ressourcen in der
 
 **Beispiel:**
 
-* Erlaubte Ziel-Ressourcen: `patienten-api`, `abrechnungs-dienst`
-* Anwendung fordert Zugriff auf: `patienten-api` -> **Erfolg**
-* Anwendung fordert Zugriff auf: `patienten-api`, `statistik-dienst` -> **Fehler** (da `statistik-dienst` nicht erlaubt ist)
+* Erlaubte Ziel-Ressourcen: `vsdm2-url`
+* Anwendung fordert Zugriff auf: `vsdm2-url` -> **Erfolg**
+* Anwendung fordert Zugriff auf: `unknown-url` -> **Fehler** (da `unknown-url` nicht erlaubt ist)
 
 ## Gültigkeitsdauer der Zugriffstoken (TTL)
 
