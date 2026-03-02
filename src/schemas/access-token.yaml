@@ -92,7 +92,6 @@ properties:
       - aud
       - sub
       - profession_oid
-      - common_name
       - client_id
       - ip_address
       - product_id
