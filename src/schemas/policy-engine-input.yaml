@@ -1,5 +1,5 @@
 # Policy Engine Input Schema for ZETA Guard
-# This schema combines client-instance.yaml and user-info.yaml.
+# This schema combines authorization_request data, client-statement.yaml and user-info.yaml.
 $schema: "http://json-schema.org/draft-07/schema#"
 title: Policy Engine Input Schema for ZETA Guard
 type: object

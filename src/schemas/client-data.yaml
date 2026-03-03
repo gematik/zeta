@@ -1,0 +1,28 @@
+# Schema for client information used by the ZETA HTTP Proxy in the header zeta-client-data
+$schema: "http://json-schema.org/draft-07/schema#"
+title: ClientData
+description: The client instance contains information about the client.
+type: object
+properties:
+  client_id:
+    type: string
+    description: The client identifier
+  product_id:
+    type: string
+    description: The product identifier
+  product_version:
+    type: string
+    description: The product version
+  platform:
+    type: string
+    description: The platform of the client instance
+    enum:
+      - android
+      - apple
+      - windows
+      - linux
+required:
+  - client_id
+  - product_id
+  - product_version
+  - platform

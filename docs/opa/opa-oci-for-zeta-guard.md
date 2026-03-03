@@ -158,7 +158,7 @@ digest: sha256:a993a5d0a8ba8a45ed1f46c19143f68af8023e47fee35afd7144f2abb981d75d
 
 #### Wenn policy push eine Fehlermeldung liefert:
 
-ALternativ zu policy kann man oras direkt verwenden. Dazu muss man den Digest aus dem policy build Kommando kopieren. 
+Alternativ zu policy kann man oras direkt verwenden. Dazu muss man den Digest aus dem policy build Kommando kopieren. 
 
 ```bash
 oras cp --from-oci-layout ~/.policy/policies-root@sha256:a993a5d0a8ba8a45ed1f46c19143f68af8023e47fee35afd7144f2abb981d75d europe-west3-docker.pkg.dev/gematik-pt-zeta-test/zeta-policies-dev/test-fachdienst-policy:latest
