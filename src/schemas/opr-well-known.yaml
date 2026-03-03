@@ -133,10 +133,12 @@ properties:
     description: >-
       Indicates whether and how the ZETA/ASL protocol is utilized by this resource server.
       `not_supported`: ZETA/ASL is not used or supported.
-      `required`: ZETA/ASL is mandatory for interaction with this resource server.
+      `required`: ZETA/ASL is mandatory for interaction with this resource server. ZETA/ASL is terminated at the HTTP Proxy.
+      `required_passthrough`: ZETA/ASL is mandatory for interaction with this resource server. ZETA/ASL is terminated at the Resource Server.
     enum:
       - not_supported
       - required
+      - required_passthrough
 
   # --- API Versioning ---
   api_versions_supported:

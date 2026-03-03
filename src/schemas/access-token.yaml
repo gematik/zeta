@@ -19,17 +19,14 @@ properties:
         description: Asymmetric algorithm used to sign the JWT.
         enum:
           - ES256
-      x5c:
-        type: array
-        description: Contains the certificate chain. The first certificate must be the leaf certificate containing the public key for verifying the signature. It must be base64-der-encoded.
-        items:
-          type: string
-          format: byte # Represents base64 encoded data
-        minItems: 1
+          - ES384
+      kid:
+        type: string
+        description: The key ID of the public key used to sign the JWT.
     required:
       - typ
       - alg
-      - x5c
+      - kid
   payload:
     type: object
     description: The JWT Claims Set of the Access Token.
@@ -49,10 +46,28 @@ properties:
         description: The intended recipients (audiences) of the token.
       sub:
         type: string
-        description: The subject of the token.
+        description: "The subject of the token; Telematik-ID, KVNR or other unique identifier"
+      profession_oid:
+        type: string
+        description: "Profession identifier (OID)"
+      common_name:
+        type: string
+        description: "Common name of the subject"
+      organization_name:
+        type: string
+        description: "Organization name of the subject"
       client_id:
         type: string
         description: The client identifier of the OAuth 2.0 client that requested the token.
+      ip_address:
+        type: string
+        description: The IP address of the client that requested the token.
+      product_id:
+        type: string
+        description: The product ID of the client that requested the token.
+      product_version:
+        type: string
+        description: The product version of the client that requested the token.
       iat:
         type: integer
         description: Issued at time of the token as a Unix timestamp.
@@ -76,7 +91,11 @@ properties:
       - exp
       - aud
       - sub
+      - profession_oid
       - client_id
+      - ip_address
+      - product_id
+      - product_version
       - iat
       - jti
       - cnf

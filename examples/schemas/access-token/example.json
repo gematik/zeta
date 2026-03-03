@@ -1,0 +1,28 @@
+{
+    "header": {
+        "typ": "at+jwt",
+        "alg": "ES256",
+        "kid": "pdp-signing-key-2024-01"
+    },
+    "payload": {
+        "iss": "https://pdp.example.zeta.ti-dienste.de",
+        "exp": 1740931200,
+        "aud": [
+            "https://test-ik-nr.vsdm2.ti-dienste.de"
+        ],
+        "sub": "1-2-ARZT-WalterWalter01",
+        "profession_oid": "1.2.276.0.76.4.30",
+        "common_name": "Walter Walter",
+        "organization_name": "Arztpraxis Walter",
+        "client_id": "cid-win-sw-pqrst",
+        "ip_address": "192.0.2.150",
+        "product_id": "vsdm_test_client",
+        "product_version": "0.1.0",
+        "iat": 1740924000,
+        "jti": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "scope": "vsdservice",
+        "cnf": {
+            "jkt": "0ZcOCORZNYy-DWpqq30jZyJGHTN0d2HglBV3uiguA4I"
+        }
+    }
+}
