@@ -157,7 +157,7 @@ alt Initial SM(C)-B Token Exchangewith Attestation
     &scope=<Resource Server scopes>
     ...
     end note
-  AuthS -> AuthS : Validate Request (Client Assertion,\nAttestation, DPoP Proof,\nSubject Token)
+  AuthS -> AuthS : Validate Request (Client Assertion,\nAttestation, DPoP Proof,\nSubject Token and Key bindings)
 
 else Refresh Token use (without Attestation)
   Client -> Client : Create Client Assertion JWT without Attestation
