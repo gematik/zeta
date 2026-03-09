@@ -1,0 +1,26 @@
+{
+    "header": {
+        "alg": "ES256",
+        "typ": "JWT",
+        "x5c": [
+            "MIICpDCCAYwCCQDU3pQ4pHESpDANBgkqhkiG9w0BAQsFADAUMRIwEAYDVQQDDAls..."
+        ]
+    },
+    "payload": {
+        "jti": "unique-smcb-token-id-abc123",
+        "nonce": "bfb76c3e-8b4a-4f91-9d2a-3c7e5f8a1b20",
+        "iss": "cid-win-tpm-abcde",
+        "sub": "3-SMC-B-Testkarte-883110000129068",
+        "aud": [
+            "https://auth-server.zeta.gematik.de/token"
+        ],
+        "exp": 1678888370,
+        "iat": 1678888070,
+        "client_key": {
+            "jkt": "NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs"
+        },
+        "dpop_key": {
+            "jkt": "0ZcOCORZNYy-DWpqq30jZyJGHTN0d2HglBV3uiguA4I"
+        }
+    }
+}
