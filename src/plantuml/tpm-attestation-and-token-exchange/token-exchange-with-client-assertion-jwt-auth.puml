@@ -106,13 +106,19 @@ alt Initial SM(C)-B Token Exchangewith Attestation
   note right #lightblue
       **SM(C)-B ID Token Claims:**
       {
-        "iss": "<client_id>", // Issuer is the client
+        "jti": "...", // JWT ID
         "nonce": "<nonce from AS>", // Binding to AS
+        "iss": "<client_id>", // Issuer is the client
         "sub": "<Telematik-ID from SM(C)-B>", // Subject is the institution
         "aud": "[<Resource_Server_Endpoint_URL>]", // Audience is the Resource Server
         "exp": ..., // Short-lived
         "iat": ...,
-        "jti": "..."
+        "client_key": {
+          "jkt": "..." // JWK Thumbprint of the public client instance key.
+        },
+        "dpop_key": {
+          "jkt": "..." // JWK Thumbprint of the public DPoP key.
+        }
       }
   end note
 
