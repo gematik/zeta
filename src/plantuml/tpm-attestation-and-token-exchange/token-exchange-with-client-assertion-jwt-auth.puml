@@ -65,62 +65,16 @@ alt Initial SM(C)-B Token Exchangewith Attestation
     ZAS --> Client --: Return Attestation\n(Quote, EventLog, CertChain)
     Client -> Client: Create client_statement\nwith posture-tpm
     note right: client_statement includes:\n- sub\n- product_id\n- product_version\n- posture (containing TPM Quote etc.)\n- attestation-info
-    Client -> Client : Create Client Assertion JWT
-    note right #lightblue
-        **Client Assertion JWT Claims (with Attestation):**
-        {
-          "iss": "<client_id>", "sub": "<client_id>",
-          "aud": "<AS_Token_Endpoint_URL>",
-          "exp": ..., "jti": "...",
-          // Embed the client_statement with attestation
-          "urn:gematik:params:oauth:client-attestation:tpm2": {
-             "attestation_data": "<Base64(client_statement)>",
-             "client_statement_format": "client-statement"
-           }
-        }
-        (sig by Client_Instance_Private_Key)
-    end note
+    Client -> Client : Create Client Assertion JWT (with TPM Attestation, sig by Client_Instance_Private_Key)
   else Fallback: Software-basierte Attestierung
     Client -> Client: Create client_statement\nwith posture-software
     note right: client_statement includes:\n- sub\n- product_id\n- product_version\n- posture (containing attestation_challenge etc.)\n- attestation-info
-    Client -> Client : Create Client Assertion JWT
-    note right #lightblue
-        **Client Assertion JWT Claims (with Attestation):**
-        {
-          "iss": "<client_id>", "sub": "<client_id>",
-          "aud": "<AS_Token_Endpoint_URL>",
-          "exp": ..., "jti": "...",
-          // Embed the client_statement
-          "urn:gematik:params:oauth:client-attestation:software": {
-             "attestation_data": "<Base64(client_statement)>",
-             "client_statement_format": "client-statement"
-           }
-        }
-        (sig by Client_Instance_Private_Key)
-    end note
+    Client -> Client : Create Client Assertion JWT (with SW Attestation, sig by Client_Instance_Private_Key)
   end alt
   ' === END: ATTESTATION SECTION ===
 
   ' === START: SM(C)-B ID Token Creation ===
-  Client -> Client : Create "SM(C)-B ID Token" (JWT)
-  note right #lightblue
-      **SM(C)-B ID Token Claims:**
-      {
-        "jti": "...", // JWT ID
-        "nonce": "<nonce from AS>", // Binding to AS
-        "iss": "<client_id>", // Issuer is the client
-        "sub": "<Telematik-ID from SM(C)-B>", // Subject is the institution
-        "aud": "[<Resource_Server_Endpoint_URL>]", // Audience is the Resource Server
-        "exp": ..., // Short-lived
-        "iat": ...,
-        "client_key": {
-          "jkt": "..." // JWK Thumbprint of the public client instance key.
-        },
-        "dpop_key": {
-          "jkt": "..." // JWK Thumbprint of the public DPoP key.
-        }
-      }
-  end note
+  Client -> Client : Create "SM(C)-B ID Token" (JWT, with Bindigs for nonce, client_key, dpop_key)
 
   Client -> Konnektor ++ : externalAuthenticate (JWT-hash)
   Konnektor -> SMB ++ : sign (hash)
@@ -129,60 +83,17 @@ alt Initial SM(C)-B Token Exchangewith Attestation
   Client -> Client : Add JWT-Signature to SM(C)-B ID Token
 
   Client -> Client : Create DPoP Proof JWT for Token Exchange
-  note right #lightblue
-      **DPoP Proof JWT Claims (for Token Exchange):**
-      {
-        "typ": "dpop+jwt",
-        "alg": "ES256",
-        "jwk": { ... }
-      }.{
-        "jti": "...",
-        "htm": "POST",
-        "htu": "<AS_Token_Endpoint_URL>",
-        "nonce": "<nonce from AS>", // Binding to AS
-        "iat": ...
-      }.(sig by DPoP_Private_Key)
-  end note
   ' === END: SM(C)-B ID Token Creation ===
 
   Client -> AuthS ++ : POST /token (RFC 8693) DPoP: <signed_dpop_jwt>
-    note right of Client #lightblue
-    **Token Exchange Request Body:**
-    grant_type=urn:ietf:params:oauth:grant-type:token-exchange
-    &subject_token=<SM(C)-B signed ID Token>
-    &subject_token_type=urn:ietf:params:oauth:token-type:jwt
-    &client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
-    &client_assertion=<Client_Assertion_JWT>
-    &audience=<Resource Server Endpoint>
-    &scope=<Resource Server scopes>
-    ...
-    end note
   AuthS -> AuthS : Validate Request (Client Assertion,\nAttestation, DPoP Proof,\nSubject Token and Key bindings)
 
 else Refresh Token use (without Attestation)
   Client -> Client : Create Client Assertion JWT without Attestation
-  note right #lightblue
-      **Client Assertion JWT Claims (without Attestation):**
-      {
-        "iss": "<client_id>",
-        "sub": "<client_id>",
-        "aud": "<AS_Token_Endpoint_URL>",
-        "exp": ...,
-        "jti": "..."
-      }
-      (sig by Client_Instance_Private_Key)
-  end note
 
   Client -> Client : Create DPoP Proof JWT for Token Exchange
 
   Client -> AuthS: POST /token DPoP: <signed_dpop_jwt>
-  note right of Client #lightblue
-    **Token Exchange Request Body:**
-    grant_type=refresh_token
-    &refresh_token=<Refresh_Token>
-    &client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
-    &client_assertion=<Client_Assertion_JWT_**without**_Attestation>
-  end note
   AuthS -> AuthS : Validate Request (Client Assertion,\nDPoP Proof, Refresh Token)
   AuthS -> AuthS: Invalidate Refresh token
   AuthS -> PDPDB ++ : Get Client Data, Session Data, User Data
@@ -193,34 +104,12 @@ end alt
 '  === START: VALIDATION SECTION ===
 alt Validations Successful
   AuthS -> PE ++ : POST /v1/data/authz, body\n{  "input": {...}}
-    note left of PE #lightgreen
-    **Policy Engine Response Body:**
-    {
-      ...
-      "allow": true,
-      "ttl": {
-        "access_token": 300,
-        "refresh_token": 86400
-      },
-      ...
-    }
-    end note
   PE --> AuthS --: 200 OK
   alt Policy Decision allowed
     AuthS -> AuthS : Generate AS Access Token (AT)\nand Refresh Token (RT)
     AuthS -> PDPDB ++ : Update Client Data\nUpdate Session\nUpdate User Data
     PDPDB --> AuthS --: updated
     AuthS --> Client: 200 OK, new tokens
-        note left of AuthS #lightgreen
-        **Token Response Body:**
-        {
-          "access_token": "<AS_Access_Token>",
-          "token_type": "DPoP", // Indicate DPoP is required
-          "expires_in": 300,
-          "refresh_token": "<AS_Refresh_Token>"
-          // ... other parameters
-        }
-    end note
   else Policy Decision denied
     AuthS --> Client: 403 Forbidden
   end alt
