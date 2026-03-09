@@ -1,12 +1,15 @@
 {
   "iss": "cid-win-tpm-abcde",
   "sub": "cid-win-tpm-abcde",
-  "aud": "https://auth-server.zeta.gematik.de/token",
+  "aud": [
+    "https://auth-server.zeta.gematik.de/token"
+  ],
   "exp": 1678888310,
   "jti": "unique-jwt-id-win-tpm-789",
   "client_statement": {
     "sub": "cid-win-tpm-abcde",
     "platform": "windows",
+    "posture_type": "tpm",
     "posture": {
       "platform_product_id": {
         "package_family_name": "GematikDesktopSuite_123456789"
