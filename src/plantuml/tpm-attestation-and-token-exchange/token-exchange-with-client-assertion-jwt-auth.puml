@@ -41,7 +41,7 @@ alt Initial SM(C)-B Token Exchangewith Attestation
   note right: Session-based Key Pair for DPoP binding.
 
   Client -> Client: Calculate attestation_challenge
-  note right: The attestation_challenge is a cryptographic hash\nof the Public Client Instance Key Hash and a nonce.\nIt is used to bind the attestation to the client instance.\nattestation_challenge = HASH(pubKeyHash + nonce)
+  note right: The attestation_challenge is a cryptographic hash\nof the PuK.Client.Sig and a nonce.\nIt is used to bind the attestation to the client instance.\nattestation_challenge = HASH(JWK Thumbprint ofPuK.Client.Sig + nonce)
   
   ' === START: ATTESTATION SECTION ===
   alt ZETA Attestation Service available
@@ -56,19 +56,17 @@ alt Initial SM(C)-B Token Exchangewith Attestation
     end alt
 
     ZAS -> ZAS: Select AK Handle
-    ZAS -> TPM: Get TPM Quote for PCRs\n(4, 5, 7, 10, 11, 22 or 23)\nand `attestation_challenge`\n(as qualifyingData),\nsigned with AK
-    note left: Binding: `attestation_challenge` enthält Hash des\nClient Instance Public Keys und die Nonce.\nDas TPM signiert PCRs + `attestation_challenge`.
-    note right: PCR 4: Boot Loader Code, Digest\nPCR 5: Boot Loader Configuration, Digest\nPCR 7: Secure Boot State / Policy, Digest\nPCR   10:OS Kernel / IMA, Digest\nPCR 11: OS Components / VSM, Digest,\nPCR 22 or 23 (if available) App Data, Digest
+    ZAS -> TPM: Get TPM Quote for PCRs\n(7, 22 or 23)\nand `attestation_challenge`\n(as qualifyingData),\nsigned with AK
+    note left: Binding: `attestation_challenge`.\nDas TPM signiert PCRs + `attestation_challenge`.
+    note right: PCR 7: Secure Boot State / Policy, Digest\nPCR 22 or 23 (if available) App Data, Digest
     TPM --> ZAS --: Return TPM Quote
     ZAS -> ZAS: Get TCG Event Log (from OS/Firmware)
     note right: Quote contains:\n- `attestation_challenge` (as qualifyingData)\n- Attested Data (PCR Select, PCR Digest),\n- Signature
     ZAS --> Client --: Return Attestation\n(Quote, EventLog, CertChain)
     Client -> Client: Create client_statement\nwith posture-tpm
-    note right: client_statement includes:\n- sub\n- product_id\n- product_version\n- posture (containing TPM Quote etc.)\n- attestation-info
     Client -> Client : Create Client Assertion JWT (with TPM Attestation, sig by Client_Instance_Private_Key)
   else Fallback: Software-basierte Attestierung
     Client -> Client: Create client_statement\nwith posture-software
-    note right: client_statement includes:\n- sub\n- product_id\n- product_version\n- posture (containing attestation_challenge etc.)\n- attestation-info
     Client -> Client : Create Client Assertion JWT (with SW Attestation, sig by Client_Instance_Private_Key)
   end alt
   ' === END: ATTESTATION SECTION ===
