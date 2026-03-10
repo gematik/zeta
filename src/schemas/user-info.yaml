@@ -4,23 +4,19 @@
 # The PEP can request user-info records for a user by sending a request.
 #
 $schema: "http://json-schema.org/draft-07/schema#"
-title: zeta user info
-description: Schema for the zeta_user_info JSON object.
+title: User Info
+description: Schema for the user-info JSON object.
 type: object
 properties:
   identifier:
     type: string
     description: "Telematik-ID, KVNR or other unique identifier"
-  profession_oid:
+  professionOID:
     type: string
     description: "Profession identifier (OID)"
-  common_name:
+  mail:
     type: string
-    description: "Kurzname der Institution"
-  organization_name:
-    type: string
-    description: "Name der Organisation oder Institution"
+    description: The mail address of the owner
 required:
   - identifier
-  - profession_oid
-  - common_name
+  - professionOID
