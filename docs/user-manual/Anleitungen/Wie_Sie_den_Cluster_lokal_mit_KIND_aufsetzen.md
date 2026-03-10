@@ -19,9 +19,9 @@ Zielgruppe: Tester und Entwickler
     können über die Gematik bezogen werden: https://fachportal.gematik.de/shop/testkarten
 > - pdp-keystore-pass: Passwort für Keystore
 > - REGISTRY_URL: Url zu der Registry
-> - DOCKER_REGISTRY_TOKEN: Token mit Leserechten für die Docker Registry
+> - Optional: DOCKER_REGISTRY_TOKEN: Token mit Leserechten für die Docker Registry
     (startet mit `glpat-`)
-> - DOCKER_REGISTRY_TOKEN_NAME: Zum Token dazugehöriger Username
+> - Optional: DOCKER_REGISTRY_TOKEN_NAME: Zum Token dazugehöriger Username
 > - GIT_URL: URL des Helm-Repositories (SSH oder HTTPS, je nach Git-Host)
 > - Docker Desktop (mit aktivierter WSL-Integration) ist vorab installiert
     (https://docs.docker.com/desktop/install/windows-install/). In WSL sollte
@@ -75,7 +75,7 @@ sudo apt-get update && sudo apt-get dist-upgrade
 > - KIND v0.30.0,
 > - kubectl v1.34.x,
 > - Terraform 1.14.2,
-> - helm 3.19.4,
+> - helm v4.1.0,
 > - k9s v0.50.16.
 >
 > Bei anderen Versionen ggf. die Download-URLs bzw. Variablen anpassen.
@@ -266,6 +266,10 @@ In der Ubuntu-Shell Folgendes eingeben:
 nslookup host.docker.internal
 ```
 
+> [!NOTE]
+> Die IP Adresse ändert sich bei Wechsel von WLAN / Netzwerk. 
+> Ggf. die IP Adresse des Rechners im lokalen Netzwerk verwenden.
+
 Die Ausgabe sieht ähnlich zu dem Folgenden aus:
 
 ```text
@@ -449,7 +453,7 @@ and your administration frontend is at
 In der Ubuntu-Shell Folgendes eingeben:
 
 ```shell
-make config stage=local
+make config stage=local TF_VAR_keycloak_password=local-dev-password
 ```
 
 Der Befehl sollte Folgendes zurückgeben:

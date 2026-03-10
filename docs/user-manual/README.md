@@ -13,9 +13,11 @@ genutzt werden können.
 
 ### Dokumenteninformation
 
-| Version | Stand    | Zusammenfassung der Änderungen |
-|---------|----------|--------------------------------|
-| 0.2.x   | 29.12.25 | Einarbeitung Kommentare        |
+| Version | Stand    | Zusammenfassung der Änderungen                                 |
+|---------|----------|----------------------------------------------------------------|
+| 0.2.x   | 29.12.25 | Einarbeitung Kommentare                                        |
+| 0.3.0   | 11.02.26 | Update auf ZETA release 0.3.0                                  |
+| 0.3.1   | 20.02.26 | Update auf ZETA release 0.3.1 (Dokumentation zum Service Mesh) |
 
 ### Hinweise
 
@@ -65,7 +67,7 @@ den fachlichen Clients und den Fachdiensten. Sie ermöglichen
 den sicheren Zugriff auf geschützte Ressourcen über
 ein ungeschütztes Netzwerk (Internet).
 
-![High Level Architekturübersicht](assets/images/depl_sc/ZETA-AOD-High-Level.png)
+![High Level Architekturübersicht](assets/images/ZETA-AOD-High-Level.png)
 
 Der verfolgte Ansatz ist hier, dass sich die ZETA-Komponenten möglichst
 transparent zwischen Client und Fachdienst einfügen – dabei aber die notwendigen
@@ -83,7 +85,7 @@ gematik PIP/PAP Repository gespeist wird
   (Postgres) Datenbank
 * PEP Datenbank wurde durch eine API am Authorization Server ersetzt
 
-![ZETA-Architekturübersicht](assets/images/depl_sc/ZETA-Architektur.png)
+![ZETA-Architekturübersicht](assets/images/ZETA-Architektur.png)
 
 Die folgenden Bereiche betrachten die Spezifika fokussiert
 auf die Interessen der einzelnen, wie oben identifizierten
@@ -109,7 +111,7 @@ werden.
 
 Das folgende Diagram zeigt ein solches angenommenes Szenario:
 
-![Setup für Fachdienst-Hersteller](assets/images/depl_sc/ZETA-Guard-AOD-FD-Hersteller.png)
+![Setup für Fachdienst-Hersteller](assets/images/ZETA-Guard-AOD-FD-Hersteller.png)
 
 Hierbei wird Folgendes angenommen:
 
@@ -118,7 +120,7 @@ Hierbei wird Folgendes angenommen:
 * Dieser Fachdienst-Test-Client ist konfigurierbar und insbesondere kann ein
   veränderter Basis-Pfad für die Aufrufe der Fachdienst-API genutzt werden.
 
-![Deployment-Szenario für FD-Hersteller](assets/images/depl_sc/ZETA-GUARD-AOD-FD-Hersteller-2.png)
+![Deployment-Szenario für FD-Hersteller](assets/images/ZETA-GUARD-AOD-FD-Hersteller-2.png)
 
 Die ZETA-Komponenten – inklusive des ZETA-Testdriver-Clients – werden als
 Container-Images geliefert, und in einem Kubernetes-Cluster betrieben.
@@ -174,7 +176,7 @@ in der [Anleitung einen ZETA-Guard im Kubernetes zu konfigurieren](Anleitungen/W
 
 * Kubernetes - kubectl
 * Terraform
-* Helm 3+
+* Helm 4
 
 #### Konfiguration, Keys
 
@@ -195,11 +197,13 @@ Die relevanten Anleitungen und Referenzen sind hier verlinkt:
 
 * Für ein testweises Installieren eines ZETA-Guard in einer sehr reduzierten Form
 auf einem unspezifizierten Kubernetes-Cluster
-  [ZETA-Guard Quickstart für lokales Deployment.md](Anleitungen/ZETA_Guard_Quickstart_fuer_lokales_deployment.md)
+  [ZETA-Guard Quickstart für lokales Deployment.md](Anleitungen/ZETA_Guard_Quickstart.md)
 * Wie Sie den ZETA-Guard Cluster lokal in einem `KIND` Setup ausführen
   [Wie Sie den Cluster lokal mit KIND aufsetzen](Anleitungen/Wie_Sie_den_Cluster_lokal_mit_KIND_aufsetzen.md)
 * Für die Konfiguration und das Ausführen des ZETA-Testdrivers
   [Wie Sie den Testdriver nutzen](Anleitungen/Wie_Sie_den_Testdriver_nutzen.md)
+* Konfigurationshinweise für den ZETA-Guard
+  [Konfigurationshinweise](Referenzen/Konfigurationshinweise.md)
 
 Für den produktiven Betrieb des ZETA-Guard empfehlen sich zusätzlich folgende
 Dokumente:
@@ -233,7 +237,6 @@ bei eigenen Anpassungen nötig.
 
 * Die URL des Testdriver-Proxys enthält für alle Anfragen an den Fachdienst das
 Präfix `/proxy`. Dies ist zu berücksichtigen.
-* Ein Service-Mesh wird aktuell nicht mitgeliefert.
 * Die Art der gegenseitigen
 Authentifizierung des ZETA-Guard mit dem Fachdienst ist noch nicht spezifiziert.
 
@@ -259,7 +262,7 @@ Firewalls, Load Balancer, oder Application Firewalls.
 
 Das folgende Diagram zeigt zwei solcher angenommenen Szenarien:
 
-![Betreiber-Szenarien](assets/images/depl_sc/ZETA-Guard-Deployment-View.png)
+![Betreiber-Szenarien](assets/images/deployment_szenarien/ZETA-Guard-Deployment-View.png)
 
 Hierbei wird Folgendes angenommen:
 
@@ -296,7 +299,7 @@ wird nur die Skalierung der ZETA-Guard Komponenten betrachtet.
 Das folgende Diagram zeigt ein einfaches (Mittel) Deployment-Szenario,
 wobei statt zwei auch mehr Instanzen zusammengeschaltet werden können.
 
-![Skaliertes Deployment-Szenario](assets/images/depl_sc/ZETA-Guard-Deployment-View-Scaling.png)
+![Skaliertes Deployment-Szenario](assets/images/deployment_szenarien/ZETA-Guard-Deployment-View-Scaling.png)
 
 Hier wird angenommen, dass die Infrastruktur redundant aufgebaut wird.
 So kann ein Content-Delivery-Network als Vorschaltsystem verwendet werden,
@@ -317,7 +320,7 @@ welche Komponenten unabhängig
 voneinander skaliert werden können (unter Berücksichtigung
 der Lastabhängigkeiten z.B. vom PDP zur Datenbank).
 
-![Skalierungsdomainen des ZETA-Guard](assets/images/depl_sc/ZETA-Guard-Skalierungsdomainen.png)
+![Skalierungsdomainen des ZETA-Guard](assets/images/ZETA-Guard-Skalierungsdomainen.png)
 
 Die beiden Domainen für Infinispan und die PDP Datenbank
 erfordern hierbei besondere Berücksichtigung, da sie Zustandsinformationen
@@ -373,7 +376,7 @@ in der [Anleitung einen ZETA-Guard im Kubernetes zu konfigurieren](Anleitungen/W
 
 * Kubernetes - kubectl
 * Terraform
-* Helm 3+
+* Helm 4
 
 #### Konfiguration, Keys
 
@@ -399,9 +402,11 @@ Die relevanten Anleitungen und Referenzen sind hier verlinkt:
 Als Einstieg eignen sich folgende Dokumente besonders gut:
 
 * Für ein testweises Installieren eines ZETA-Guard in einem unspezifizierten Kubernetes-Cluster:
-  [ZETA-Guard Quickstart für lokales deployment.md](Anleitungen/ZETA_Guard_Quickstart_fuer_lokales_deployment.md)
+  [ZETA-Guard Quickstart für lokales deployment.md](Anleitungen/ZETA_Guard_Quickstart.md)
 * Wie Sie den ZETA-Guard Cluster lokal in einem `KIND` Setup ausführen
   [Wie Sie den Cluster lokal mit KIND aufsetzen](Anleitungen/Wie_Sie_den_Cluster_lokal_mit_KIND_aufsetzen.md)
+* Konfigurationshinweise für den ZETA-Guard
+  [Konfigurationshinweise](Referenzen/Konfigurationshinweise.md)
 
 Für den produktiven Betrieb des ZETA-Guard empfehlen sich zusätzlich folgende
 Dokumente:
@@ -417,15 +422,15 @@ Dokumente:
 
 ### Known Issues und Fehleranalysen
 
-Hier werden nach Informationen nach Rückmeldungen aus der Nutzung eingetragen.
+Hier werden noch Informationen nach Rückmeldungen aus der Nutzung eingetragen.
 
 #### Besonderer Fehlersituationen
 
-Hier werden nach Informationen nach Rückmeldungen aus der Nutzung eingetragen.
+Hier werden noch Informationen nach Rückmeldungen aus der Nutzung eingetragen.
 
 #### Weitere Hinweise
 
-Hier werden nach Informationen nach Rückmeldungen aus der Nutzung eingetragen.
+Hier werden noch Informationen nach Rückmeldungen aus der Nutzung eingetragen.
 
 ### Wartung
 
@@ -462,6 +467,28 @@ Im Folgenden wird daher nur auf die Voraussetzungen und Informationen
 für die Integration des SDK in Fachdienst-Clients hingewiesen.
 
 ### Systemvoraussetzungen
+
+#### Registrierung
+
+* Der Client, spezifischer die Client-ID muss bei der gematik registriert werden.
+  Nur mit einer registrierten Client-ID wird der Zugriff auf die Fachdienste
+  in den OPA Policies freigeschaltet. Existierende Client-IDs können wiederverwendet
+  werden. Die Beantragung neuer Client-IDs wird noch in das Fachdienst-Portal
+  der gematik aufgenommen ( https://fachportal.gematik.de/ )
+* Registrierung der Produktversion des Clients. Diese Version wird ebenso in die
+  Regeln eingetragen.
+* Falls das Primärsystem die TPM-Attestierung verwendet, müssen die entsprechenden
+  Informationen (wie Liste der unveränderlichen Dateien, Hashwerte) an die gematik
+  gemeldet werden, damit diese auch in die OPA-Regeln aufgenommen werden können.
+
+Die aktuell definierte Liste der Informationen für die Beantragung einer
+Produktversion ist
+
+
+1. verwendete ZETA Client SDK Version
+2. verwendete TI Fachdienste mit den dazugehörigen Version (z.B. ePA 3.2.1) ( Mehrfachnennung möglich)
+3. **bei Nutzung von TPM-Attestierung und ZETA-Attestierungsservice auf dem Client**: Übermittelung des Hash
+  Gesamthash gebildet über alle einzelne Hashes der unveränderlichen Dateien einer Clientproduktversion
 
 #### Zugänge
 
@@ -549,11 +576,11 @@ diese Anleitungen als Basis für Eigenentwicklungen hilfreich sein:
 
 ### Known Issues und Fehleranalysen
 
-Hier werden nach Informationen nach Rückmeldungen aus der Nutzung eingetragen.
+Hier werden noch Informationen nach Rückmeldungen aus der Nutzung eingetragen.
 
 #### Besonderer Fehlersituationen
 
-Hier werden nach Informationen nach Rückmeldungen aus der Nutzung eingetragen.
+Hier werden noch Informationen nach Rückmeldungen aus der Nutzung eingetragen.
 
 #### Weitere Hinweise
 
@@ -584,9 +611,9 @@ in Zukunft in die jeweiligen Repositories der Subkomponenten verschoben.
 Als Einstieg eignen sich folgende Dokumente besonders gut:
 
 * Für ein testweises Installieren eines ZETA-Guard:
-   [ZETA-Guard Quickstart für lokales deployment.md](Anleitungen/ZETA_Guard_Quickstart_fuer_lokales_deployment.md)
+   [ZETA-Guard Quickstart für lokales deployment.md](Anleitungen/ZETA_Guard_Quickstart.md)
 * Für das Einrichten des ZETA-Demo-Clients:
-   [Wie Sie den ZETA-Demo-Client ausführen.md](Anleitungen/Wie_Sie_den_ZETA_Demo_client_ausf%C3%BChren.md)
+   [Wie Sie den ZETA-Demo-Client ausführen.md](Anleitungen/Wie_Sie_den_ZETA_Demo_client_ausführen.md)
 * Für das Integrieren des ZETA-Client-SDK:
    [Wie Sie das ZETA-SDK integrieren.md](Anleitungen/Wie_Sie_das_ZETA_SDK_integrieren.md)
 * Für das Bauen des ZETA-Testdrivers (ein ZETA-Client, der als Proxy dient)
@@ -597,6 +624,8 @@ Als Einstieg eignen sich folgende Dokumente besonders gut:
   [Wie Sie einen Ende-zu-Ende-Integrationstest ausführen](Anleitungen/Wie_Sie_einen_Ende_zu_Ende_Integrationstest_ausführen.md)
 * Wie Sie den ZETA-Guard Cluster lokal in einem `KIND` Setup ausführen
   [Wie Sie den Cluster lokal mit KIND aufsetzen](Anleitungen/Wie_Sie_den_Cluster_lokal_mit_KIND_aufsetzen.md)
+* Konfigurationshinweise für den ZETA-Guard
+  [Konfigurationshinweise](Referenzen/Konfigurationshinweise.md)
 
 
 Für den produktiven Betrieb des ZETA-Guard empfehlen sich zusätzlich folgende
@@ -613,7 +642,7 @@ Dokumente:
 
 Apache License, Version 2.0
 
-See the [LICENSE](../LICENSE) for the specific language governing permissions and limitations under the License
+See the [LICENSE](LICENSE) for the specific language governing permissions and limitations under the License
 
 ### Additional Notes and Disclaimer from gematik GmbH
 
