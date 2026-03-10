@@ -11,16 +11,16 @@ properties:
   identifier:
     type: string
     description: "Telematik-ID, KVNR or other unique identifier"
-  profession_oid:
+  professionOID:
     type: string
     description: "Profession identifier (OID)"
-  common_name:
+  commonName:
     type: string
     description: "Kurzname der Institution"
-  organization_name:
+  organizationName:
     type: string
     description: "Name der Organisation oder Institution"
 required:
   - identifier
-  - profession_oid
-  - common_name
+  - professionOID
+  - commonName
