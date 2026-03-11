@@ -6,5 +6,5 @@
   "token_type": "DPoP",
   "not-before-policy": 0,
   "session_state": "4c1a0db3-e67d-41db-aa46-b81b4c071de9",
-  "scope": "vsdservice openid"
+  "scope": "vsdservice"
 }
