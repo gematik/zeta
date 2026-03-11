@@ -1,24 +1,25 @@
 {
-  "iss": "cid-win-tpm-abcde",
-  "sub": "cid-win-tpm-abcde",
+  "iss": "cid-lin-tpm-abcde",
+  "sub": "cid-lin-tpm-abcde",
   "aud": [
     "https://auth-server.zeta.gematik.de/token"
   ],
   "exp": 1678888310,
-  "jti": "unique-jwt-id-win-tpm-789",
+  "jti": "unique-jwt-id-lin-tpm-789",
   "client_statement": {
-    "sub": "cid-win-tpm-abcde",
-    "platform": "windows",
+    "sub": "cid-lin-tpm-abcde",
+    "platform": "linux",
     "posture_type": "tpm",
     "posture": {
       "platform_product_id": {
-        "platform": "windows",
-        "package_family_name": "GematikDesktopSuite_123456789"
+        "platform": "linux",
+        "packaging_type": "snap",
+        "application_id": "org.gematik.desktop-suite"
       },
-      "product_id": "gematik-desktop-suite-win-v3",
+      "product_id": "gematik-desktop-suite-linux-v3",
       "product_version": "3.5.0",
-      "os": "Windows 11 Pro",
-      "os_version": "10.0.22621",
+      "os": "Ubuntu",
+      "os_version": "22.04",
       "arch": "x86_64",
       "tpm_attestation_key": "base64-encoded-tpm-attestation-key...",
       "tpm_quote": "base64-encoded-tpm-quote.l...",
