@@ -68,6 +68,14 @@ properties:
       product_version:
         type: string
         description: The product version of the client that requested the token.
+      platform:
+        type: string
+        description: The platform of the client that requested the token.
+        enum:
+          - android
+          - apple
+          - windows
+          - linux
       iat:
         type: integer
         description: Issued at time of the token as a Unix timestamp.

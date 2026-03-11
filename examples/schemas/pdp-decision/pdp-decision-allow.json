@@ -1,0 +1,22 @@
+{
+  "result": [
+    {
+      "expressions": [
+        {
+          "value": {
+            "allow": true,
+            "ttl": {
+              "access_token": 300,
+              "refresh_token": 86400
+            }
+          },
+          "text": "data.policies.zeta.authz.decision",
+          "location": {
+            "row": 1,
+            "col": 1
+          }
+        }
+      ]
+    }
+  ]
+}
