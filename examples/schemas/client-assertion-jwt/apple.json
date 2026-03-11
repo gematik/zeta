@@ -7,8 +7,10 @@
   "client_statement": {
     "sub": "cid-ios-67890",
     "platform": "apple",
+    "posture_type": "apple",
     "posture": {
       "platform_product_id": {
+        "platform": "apple",
         "platform_type": "ios",
         "app_bundle_ids": [
           "de.gematik.exampleapp"

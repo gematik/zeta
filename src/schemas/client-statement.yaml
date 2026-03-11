@@ -32,11 +32,6 @@ properties:
     description: The attestation timestamp of the client instance
     type: integer
     format: unix-time
-oneOf:
-  - $ref: "./posture-android.yaml"
-  - $ref: "./posture-apple.yaml"
-  - $ref: "./posture-tpm.yaml"
-  - $ref: "./posture-software.yaml"
 required:
   - sub
   - platform

@@ -26,9 +26,9 @@ properties:
       version:
         type: object
         properties:
-          sdk_init:
+          sdk_int:
             type: integer
-            description: Build.VERSION.SDK_INIT
+            description: Build.VERSION.SDK_INT
           security_patch:
             type: string
             description: Build.VERSION.SECURITY_PATCH
