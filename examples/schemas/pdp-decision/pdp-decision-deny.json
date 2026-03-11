@@ -1,0 +1,22 @@
+{
+  "result": [
+    {
+      "expressions": [
+        {
+          "value": {
+            "allow": false,
+            "reasons": [
+              "User profession is not allowed",
+              "One or more requested audiences are not allowed"
+            ]
+          },
+          "text": "data.policies.zeta.authz.decision",
+          "location": {
+            "row": 1,
+            "col": 1
+          }
+        }
+      ]
+    }
+  ]
+}
