@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Antigravity/1.107.0 Chrome/142.0.7444.175 Electron/39.2.3 Safari/537.36" version="29.6.1">
     <diagram name="Seite-1" id="rmcg_aQgjtSpjyozXI4n">
-        <mxGraphModel dx="1006" dy="658" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+        <mxGraphModel dx="1009" dy="658" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -289,7 +289,7 @@
                     <mxGeometry height="40" width="120" x="330" y="510" as="geometry"/>
                 </mxCell>
                 <mxCell id="VlHYgpy21l1go6Lui4qg-74" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;" value="" vertex="1">
-                    <mxGeometry height="20" width="70" x="423" y="630" as="geometry"/>
+                    <mxGeometry height="20" width="70" x="355" y="630" as="geometry"/>
                 </mxCell>
                 <mxCell id="VlHYgpy21l1go6Lui4qg-75" parent="1" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" value="ZETA Komponenten und ZETA&lt;div&gt;Guard Kernkomponenten&lt;/div&gt;" vertex="1">
                     <mxGeometry height="20" width="150" x="443" y="630" as="geometry"/>
