@@ -39,6 +39,22 @@ service HsmProxyService {
     };
   }
 
+  // Verschlüsselt kleine Datenmengen (z.B. einen Data Encryption Key - DEK).
+  rpc Encrypt (EncryptRequest) returns (EncryptResponse) {
+    option (google.api.http) = {
+      post: "/v1/encrypt"
+      body: "*"
+    };
+  }
+
+  // Entschlüsselt kleine Datenmengen (z.B. einen DEK).
+  rpc Decrypt (DecryptRequest) returns (DecryptResponse) {
+    option (google.api.http) = {
+      post: "/v1/decrypt"
+      body: "*"
+    };
+  }
+
   // Prüft die Erreichbarkeit des HSM-Backends.
   rpc HealthCheck (HealthCheckRequest) returns (HealthCheckResponse) {
     option (google.api.http) = {
@@ -61,6 +77,13 @@ enum EccCurve {
   ECC_CURVE_NIST_P256 = 1; // secp256r1
   ECC_CURVE_NIST_P384 = 2; // secp384r1
   ECC_CURVE_NIST_P521 = 3; // secp521r1
+}
+
+// Algorithmen für das Sealing (Envelope Encryption)
+enum SymmetricEncryptionAlgorithm {
+  SYMMETRIC_ENCRYPTION_UNSPECIFIED = 0;
+  // AES mit 256 Bit im Galois/Counter Mode (AEAD)
+  AES_256_GCM = 1;
 }
 
 // --- Request / Response Nachrichten ---
@@ -115,6 +138,54 @@ message GetPublicKeyResponse {
   // für heterogene JWK-Felder unhandlich ist.
   // Ideal für Keycloak Integration.
   string jwk_json = 4;
+}
+
+message EncryptRequest {
+  // Die ID des Key Encryption Keys (KEK) im HSM (z.B. "zeta-keycloak-kek-v1")
+  string key_id = 1;
+
+  // Der Klartext, der verschlüsselt werden soll (i.d.R. der 32-Byte DEK von Keycloak)
+  bytes plaintext = 2;
+
+  // Der Algorithmus
+  SymmetricEncryptionAlgorithm algorithm = 3;
+
+  // Optional: Authenticated Additional Data (AAD)
+  // WICHTIG für Datenbanken: Hier sollte z.B. die User-ID oder Row-ID übergeben werden.
+  // Das verhindert, dass ein Angreifer in der DB den verschlüsselten DEK 
+  // von Zeile A in Zeile B kopiert (Ciphertext Swapping).
+  bytes associated_data = 4;
+}
+
+message EncryptResponse {
+  // Der verschlüsselte Ciphertext.
+  bytes ciphertext = 1;
+
+  // Der Initialisierungsvektor (IV) / Nonce.
+  // Muss bei GCM in der DB neben dem Ciphertext gespeichert werden!
+  bytes iv = 2;
+
+  // Der Authentication Tag (für AES-GCM).
+  // Manche Krypto-Libs hängen den Tag automatisch ans Ende des Ciphertexts an.
+  // Wird explizit angegeben, falls getrennt geliefert.
+  bytes tag = 3;
+}
+
+message DecryptRequest {
+  string key_id = 1;
+  bytes ciphertext = 2;
+  SymmetricEncryptionAlgorithm algorithm = 3;
+  
+  bytes iv = 4;
+  bytes tag = 5;
+  
+  // Muss exakt dem AAD entsprechen, das beim Encrypt übergeben wurde!
+  bytes associated_data = 6;
+}
+
+message DecryptResponse {
+  // Der entschlüsselte Klartext (der DEK)
+  bytes plaintext = 1;
 }
 
 message HealthCheckRequest {
