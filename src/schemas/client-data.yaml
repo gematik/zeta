@@ -25,4 +25,3 @@ required:
   - client_id
   - product_id
   - product_version
-  - platform
