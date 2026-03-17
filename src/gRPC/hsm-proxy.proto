@@ -55,6 +55,15 @@ service HsmProxyService {
     };
   }
 
+  // Ruft das zugehörige X.509 Zertifikat zum Schlüssel ab.
+  // Wird vom TLS-Terminierungspunkt und vom ZETA/ASL-Endpunkt beim Start aufgerufen, 
+  // um das öffentliche Zertifikat in den Speicher zu laden.
+  rpc GetCertificate (GetCertificateRequest) returns (GetCertificateResponse) {
+    option (google.api.http) = {
+      get: "/v1/certs/{key_id}"
+    };
+  }
+
   // Prüft die Erreichbarkeit des HSM-Backends.
   rpc HealthCheck (HealthCheckRequest) returns (HealthCheckResponse) {
     option (google.api.http) = {
@@ -186,6 +195,23 @@ message DecryptRequest {
 message DecryptResponse {
   // Der entschlüsselte Klartext (der DEK)
   bytes plaintext = 1;
+}
+
+message GetCertificateRequest {
+  // Die ID oder der Alias des Schlüssels, zu dem das Zertifikat gehört.
+  // (Entspricht der key_id aus dem SignRequest).
+  string key_id = 1;
+}
+
+message GetCertificateResponse {
+  // Das End-Entity (Leaf) Zertifikat im PEM-Format.
+  // Enthält den öffentlichen Schlüssel und die Identität.
+  string certificate_pem = 1;
+
+  // Die Zertifikatskette (Leaf + Intermediates) im PEM-Format.
+  // Das Array sollte bei Index 0 das Leaf-Zertifikat enthalten, 
+  // gefolgt von den Intermediates bis hin zur (optionalen) Root-CA.
+  repeated string certificate_chain_pem = 2;
 }
 
 message HealthCheckRequest {
