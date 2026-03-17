@@ -1,0 +1,147 @@
+type: object
+title: Policy Engine Client Data
+description: >
+  Enthält die vom AuthS verifizierten Client-Registrierungsdaten sowie die 
+  ausgewerteten Attestation-Claims (aus posture-*.yaml) zur Übergabe an die OPA Policy Engine.
+properties:
+  client_id:
+    type: string
+    description: Die eindeutige ID der Client-Instanz (aus client-assertion-jwt.yaml).
+    example: "client-id-12345"
+    
+  product_id:
+    type: string
+    description: Die Identifikation der Client-Software (aus dem Client-Statement).
+    example: "PS-000"
+    
+  product_version:
+    type: string
+    description: Die Version der Client-Software.
+    example: "0.5.0"
+    
+  device_info:
+    type: object
+    description: Generische, vom AuthS aus der JWT-Assertion extrahierte Informationen zum Gerät.
+    properties:
+      os:
+        type: string
+        enum: [Android, iOS, Windows, macOS, Linux, other]
+      os_version:
+        type: string
+      device_model:
+        type: string
+        
+  attestation_result:
+    type: object
+    description: >
+      Vom AuthS verifizierte und aufbereitete Attestation-Claims.
+      Spezifische Claims stammen aus den jeweiligen posture-*.yaml Dateien.
+    properties:
+      platform:
+        type: string
+        description: Die Plattform der verwendeten Attestierung (abgeleitet aus posture-*.yaml).
+        enum: [tpm, android, apple, software, other]
+        example: tpm
+        
+      tpm:
+        type: object
+        description: Verifizierte Claims aus posture-tpm.yaml.
+        properties:
+          arch:
+            type: string
+            description: Architektur des Systems.
+            example: "x86_64"
+          pcrs:
+            type: object
+            description: Map der für OPA relevanten PCR-Werte.
+            additionalProperties:
+              type: string
+          quote_verified:
+            type: boolean
+            
+      android:
+        type: object
+        description: Verifizierte Claims aus posture-android.yaml.
+        properties:
+          manufacturer:
+            type: string
+            example: "Google"
+          product:
+            type: string
+            example: "shiba"
+          model:
+            type: string
+            example: "Pixel 8"
+          board:
+            type: string
+            example: "shiba"
+          build:
+            type: object
+            properties:
+              version:
+                type: object
+                properties:
+                  sdk_int:
+                    type: integer
+                    description: Android SDK Version (z. B. 34 für Android 14).
+                    example: 34
+                  security_patch:
+                    type: string
+                    description: Datum des Security-Patches.
+                    example: "2024-03-05"
+          meets_basic_integrity:
+            type: boolean
+          meets_device_integrity:
+            type: boolean
+          meets_strong_integrity:
+            type: boolean
+          boot_state:
+            type: string
+            enum:[VERIFIED, SELF_SIGNED, UNVERIFIED, FAILED]
+            
+      apple:
+        type: object
+        description: Verifizierte Claims aus posture-apple.yaml.
+        properties:
+          system_name:
+            type: string
+            description: Name des Apple-Betriebssystems.
+            example: "iOS"
+          system_version:
+            type: string
+            description: Version des Betriebssystems.
+            example: "17.4.1"
+          device_model:
+            type: string
+            description: Hardware-Modell.
+            example: "iPhone15,2"
+          environment:
+            type: string
+            enum: [development, production]
+          app_id:
+            type: string
+          risk_metric:
+            type: integer
+            minimum: 0
+            maximum: 3
+            
+      software:
+        type: object
+        description: Verifizierte Claims aus posture-software.yaml.
+        properties:
+          arch:
+            type: string
+            description: Architektur des Systems.
+            example: "x86_64"
+          binding_verified:
+            type: boolean
+
+    required:
+      - platform
+      
+required:
+  - client_id
+  - product_id
+  - product_version
+  - device_info
+  - attestation_result

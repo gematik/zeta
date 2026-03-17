@@ -95,6 +95,11 @@ properties:
     description: The certificate chain from the Android Key Attestation
     items:
       type: string
+  play_integrity_token:
+    type: string
+    description: >
+      Das von der Google Play Integrity API ausgestellte und base64-enkodierte Token.
+      Wird vom AuthS validiert, um die meets_*_integrity Claims zu generieren.
 required:
   - product_id
   - product_version

@@ -1,0 +1,43 @@
+@startuml
+title DCR mit AK-CI Bindung (Präzise Darstellung)
+
+participant "TPM" as TPM
+participant "ZAS" as ZAS
+participant "ZETA Client" as Client
+participant "AuthS" as AuthS
+
+== 1. Vorbereitung der Bindungs-Signatur ==
+Client -> ZAS: Request CI & AK Bindung
+ZAS -> ZAS: Generiere CI_KeyPair (CI_pub/prk)
+ZAS -> ZAS: dataToSign = Hash(CI_pub)
+ZAS -> TPM: TPM2_Sign(AK_Handle, dataToSign)
+TPM --> ZAS: signature_CI (Signatur über CI_pub)
+ZAS --> Client: CI_pub, CI_prk, signature_CI
+
+== 2. DCR Request (Registrierung) ==
+note over Client, AuthS: Client sendet alle Identitäts- & Vertrauens-Daten
+Client -> AuthS: POST /register {EK_pub, AK_pub, EK_Cert, CI_pub, signature_CI}
+
+== 3. Validierung durch AuthS ==
+note right of AuthS
+  1. Validierung des EK_Cert (TPM ist echt).
+  2. Start der Credential Activation (MakeCredential).
+     * AuthS antwortet mit CredentialBlob.
+  3. Prüfe Signatur: 
+     - Ist 'signature_CI' valide für 'AK_pub'?
+     - Wenn ja: CI_pub ist an dieses TPM gebunden!
+end note
+
+AuthS --> Client: 202 Accepted {CredentialBlob}
+
+== 4. Aktivierung & Abschluss ==
+Client -> ZAS: ActivateCredential(CredentialBlob)
+ZAS -> TPM: TPM2_ActivateCredential(...)
+TPM --> ZAS: ActivationSecret
+ZAS --> Client: ActivationSecret
+Client -> AuthS: POST /register/verify {ActivationSecret}
+
+AuthS -> AuthS: Registriere Client-Instanz:
+AuthS -> AuthS: Store Mapping: {client_id: [CI_pub, AK_pub]}
+AuthS --> Client: 201 Created {client_id}
+@enduml

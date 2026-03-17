@@ -17,6 +17,7 @@ properties:
       - apple
       - windows
       - linux
+      - other
   posture_type:
     type: string
     description: The type of the supplied posture

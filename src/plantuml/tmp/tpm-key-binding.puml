@@ -1,0 +1,62 @@
+@startuml
+skinparam maxMessageSize 250
+skinparam sequenceMessageAlign center
+
+title ZETA DCR: Bindung des AK an den EK (MakeCredential/ActivateCredential)
+
+participant "TPM\n(Hardware)" as TPM
+participant "ZETA Attestation Service\n(ZAS)" as ZAS
+participant "ZETA Client" as Client
+participant "ZETA Guard AuthS\n(Verifier)" as AuthS
+
+== Dynamic Client Registration (Phase 1: Key Submission) ==
+
+ZAS -> TPM: Generiere AK
+TPM --> ZAS: AK_pub
+ZAS -> TPM: Lese EK_pub & EK_Cert
+TPM --> ZAS: EK_pub & EK_Cert
+ZAS --> Client: EK_pub, EK_Cert, AK_pub
+
+Client -> AuthS: POST /register/init\nPayload: {EK_pub, EK_Cert, AK_pub}
+
+note over AuthS
+  AuthS validiert EK_Cert gegen
+  TPM-Hersteller Root CA.
+  Ist das TPM echt?
+end note
+
+== Dynamic Client Registration (Phase 2: MakeCredential Challenge) ==
+
+note over AuthS
+  AuthS generiert ein Secret.
+  Führt kryptografisches "MakeCredential" aus:
+  Secret wird mit EK_pub verschlüsselt UND
+  fest an den Hash von AK_pub gebunden.
+end note
+AuthS -> AuthS: Erstelle Credential Blob
+
+AuthS --> Client: 401 Unauthorized / Challenge\nPayload: {Credential Blob}
+
+== Dynamic Client Registration (Phase 3: ActivateCredential) ==
+
+Client -> ZAS: Löse Challenge (Credential Blob)
+ZAS -> TPM: TPM2_ActivateCredential(Blob, AK_Handle, EK_Handle)
+
+note over TPM
+  TPM entschlüsselt mit EK_priv NUR, 
+  wenn der angebundene AK im selben TPM existiert!
+end note
+
+TPM --> ZAS: Entschlüsseltes Secret
+ZAS --> Client: Secret
+
+Client -> AuthS: POST /register/verify\nPayload: {Secret}
+
+note over AuthS
+  AuthS vergleicht Secret.
+  Bei Match: AK ist erfolgreich
+  an den Hardware-EK gebunden.
+end note
+
+AuthS --> Client: 201 Created (client_id)
+@enduml
