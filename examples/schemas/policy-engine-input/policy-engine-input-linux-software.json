@@ -1,0 +1,61 @@
+{
+  "version": "1.0",
+  "client_registration_data": {
+    "client_id": "cid-linux-sw-klmno",
+    "product_id": "gematik-client-linux-sw-v1",
+    "product_version": "1.0.0",
+    "platform": "linux",
+    "posture_type": "software",
+    "registration_timestamp": 1678891000,
+    "device_info": {
+      "os": "Fedora Linux 39",
+      "os_version": "6.5.6-300.fc39.x86_64"
+    },
+    "attestation_result": {
+      "platform": "software",
+      "software": {
+        "arch": "x86_64",
+        "binding_verified": true
+      }
+    }
+  },
+  "client_assertion": {
+    "sub": "cid-linux-sw-klmno",
+    "platform": "linux",
+    "posture_type": "software",
+    "posture": {
+      "platform_product_id": {
+        "platform": "linux",
+        "packaging_type": "flatpak",
+        "application_id": "de.gematik.exampleclient"
+      },
+      "product_id": "gematik-client-linux-sw-v1",
+      "product_version": "1.0.0",
+      "os": "Fedora Linux 39",
+      "os_version": "6.5.6-300.fc39.x86_64",
+      "arch": "x86_64",
+      "public_key": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQY...(self-signed EC key)...\n-----END PUBLIC KEY-----",
+      "attestation_challenge": "base64-encoded-signed-nonce-from-as..."
+    },
+    "attestation_timestamp": 1678891010
+  },
+  "user_info": {
+    "identifier": "B334455667",
+    "professionOID": "1.2.276.0.76.4.30"
+  },
+  "delegation_context": null,
+  "authorization_request": {
+    "scopes": [
+      "openid",
+      "urn:telematik:fachdienst"
+    ],
+    "audience": [
+      "https://fachdienst-resource.de/api/v3"
+    ],
+    "ip_address": "10.0.0.42",
+    "previous_ip_address": "10.0.0.42",
+    "grant_type": "authorization_code",
+    "amr": ["pwd"],
+    "acr": "loa2"
+  }
+}
