@@ -25,45 +25,46 @@ ZAS --> ZAS: Messung des PS
 ZAS -> TPM: PCR_Extend(23, Messwerte)
 
 == 3: Bindungs-Vorbereitung ==
-Client -> Client: Generiere CI_KeyPair (CI_pub/CI_prk)
-Client -> ZAS: dataToSign = Hash(CI_pub)
-ZAS -> TPM: TPM2_Sign(AK_Handle, dataToSign)
-TPM --> ZAS: signature_CI
-ZAS --> Client: AK_pub, signature_CI
+Client -[#red]> Client: Generiere CI_KeyPair (CI_pub/CI_prk)
+Client -[#red]> ZAS: dataToSign = Hash(CI_pub)
+ZAS -[#red]> TPM: TPM2_Sign(AK_Handle, dataToSign)
+TPM -[#red]-> ZAS: signature_CI
+ZAS -[#red]-> Client: AK_pub, signature_CI
 
 == 4: Dynamic Client Registration (DCR) mit AK-EK Bindung ==
 alt Kein ZETA Guard Attestation Token vorhanden
-  Client -> ZAS: Request EK_pub, EK_Cert
-  ZAS -> TPM: TPM2_ReadPublic(EK)
-  TPM --> ZAS: EK_pub, EK_Cert
-  ZAS --> Client: EK_pub, EK_Cert
+  Client -[#red]> ZAS: Request EK_pub, EK_Cert
+  ZAS -[#red]> TPM: TPM2_ReadPublic(EK)
+  TPM -[#red]-> ZAS: EK_pub, EK_Cert
+  ZAS -[#red]-> Client: EK_pub, EK_Cert
 
-  Client -> AuthS: POST /register\n{EK_pub, EK_Cert, AK_pub,\nCI_pub, signature_CI}
+  Client -[#green]> AuthS: POST /register\n{EK_pub, EK_Cert, AK_pub,\nCI_pub, signature_CI}
 
-  AuthS -> AuthS: Validiere EK_Cert-Chain\n(Hersteller CA)
-  AuthS -> AuthS: Prüfe signature_CI mit AK_pub\n→ CI_pub ist TPM-gebunden ✓
-  AuthS -> AuthS: CredentialBlob =\nMakeCredential(EK_pub, Secret, AK_Name)
+  AuthS -[#red]> AuthS: Validiere EK_Cert-Chain\n(Hersteller CA)
+  AuthS -[#red]> AuthS: Prüfe signature_CI mit AK_pub\n→ CI_pub ist TPM-gebunden ✓
+  AuthS -[#red]> AuthS: CredentialBlob =\nMakeCredential(EK_pub, Secret, AK_Name)
 
-  AuthS --> Client: 202 Accepted {CredentialBlob}
+  AuthS -[#red]-> Client: 202 Accepted {CredentialBlob}
 
-  Client -> ZAS: Activate(CredentialBlob)
-  ZAS -> TPM: TPM2_ActivateCredential(CredentialBlob)
-  TPM --> ZAS: Secret
-  ZAS --> Client: Secret
+  Client -[#red]> ZAS: Activate(CredentialBlob)
+  ZAS -[#red]> TPM: TPM2_ActivateCredential(CredentialBlob)
+  TPM -[#red]-> ZAS: Secret
+  ZAS -[#red]-> Client: Secret
 
-  Client -> AuthS: POST /register/verify {Secret}
+  Client -[#red]> AuthS: POST /register/verify {Secret}
   AuthS -> AuthS: Secret korrekt?\n→ AK ist TPM-gebunden ✓\nclient_id ↔ AK ↔ EK ↔ CI_pub
+  AuthS -[#green]-> Client: 201 Created {client_id}
 
 else ZETA Guard Attestation Token vorhanden
-  Client -> AuthS: POST /register\n{ZETA Guard Attestation Token,\nCI_pub, signature_CI}
+  Client -[#green]> AuthS: POST /register\n{ZETA Guard Attestation Token,\nCI_pub, signature_CI}
   AuthS -> AuthS: Prüfe Token & signature_CI\n→ CI_pub ist TPM-gebunden ✓
+  AuthS -[#green]-> Client: 201 Created {client_id}
 end
 
-AuthS --> Client: 201 Created {client_id}
 
 == 5: RATS Ablauf (Evidence & Token Exchange) ==
-Client -> AuthS: GET /nonce
-AuthS --> Client: Nonce
+Client -[#green]> AuthS: GET /nonce
+AuthS -[#green]-> Client: Nonce
 
 Client -> ZAS: GetEvidence(Nonce)
 ZAS -> TPM: TPM2_Quote(PCR=[7,23], Nonce, AK_Handle)
@@ -72,7 +73,7 @@ ZAS -> TPM: TPM2_GetEventLog()
 TPM --> ZAS: tpm_event_log
 ZAS --> Client: Evidence\n{tpm_quote, tpm_event_log, posture}
 
-Client -> AuthS: POST /token\n{client_assertion (JWT, CI_prk signiert),\nEvidence, Nonce}
+Client -[#green]> AuthS: POST /token\n{client_assertion (JWT, CI_prk signiert),\nEvidence, Nonce}
 
 group AuthS (Verifier & Policy Check)
     AuthS -> AuthS: Verifiziere client_assertion\nmit CI_pub (aus DCR)
@@ -84,8 +85,8 @@ group AuthS (Verifier & Policy Check)
 end
 
 alt Attestation erfolgreich
-    AuthS --> Client: 200 OK\n{Access Token, Refresh Token,\nZETA Guard Attestation Token}
+    AuthS -[#green]-> Client: 200 OK\n{Access Token, Refresh Token,\nZETA Guard Attestation Token}
 else Attestation fehlerhaft
-    AuthS --> Client: 403 Forbidden
+    AuthS -[#green]-> Client: 403 Forbidden
 end
 @enduml
