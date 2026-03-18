@@ -20,8 +20,8 @@ alt Hardware Attestation (TPM / SE)
         ZAS -> TPM: TPM2_Load(SRK, AK_priv, AK_pub) → AK_Handle
         ZAS -> TPM: PCR_Extend(23, Messwerte)
     else macOS (Secure Enclave)
-        ZAS -[#red]> TPM: CryptoKit: Generate Key in SE
-        TPM -[#red]-> ZAS: SE_AK_pub
+        ZAS -[#purple]> TPM: CryptoKit: Generate Key in SE
+        TPM -[#purple]-> ZAS: SE_AK_pub
     end
 else Software Attestation (Fallback)
     Client -[#green]> Client: Installation (ohne ZAS)
@@ -41,17 +41,17 @@ else Software Attestation (Fallback)
 end
 
 == 3: Bindungs-Vorbereitung ==
-Client -[#red]> Client: Generiere CI_KeyPair (CI_pub/CI_prk)
+Client -[#purple]> Client: Generiere CI_KeyPair (CI_pub/CI_prk)
 alt Hardware Attestation (TPM / SE)
-    Client -[#red]> ZAS: dataToSign = Hash(CI_pub)
+    Client -[#purple]> ZAS: dataToSign = Hash(CI_pub)
     alt Windows / Linux (TPM)
-        ZAS -[#red]> TPM: TPM2_Sign(AK_Handle, dataToSign)
-        TPM -[#red]-> ZAS: signature_CI
-        ZAS -[#red]-> Client: AK_pub, signature_CI
+        ZAS -[#purple]> TPM: TPM2_Sign(AK_Handle, dataToSign)
+        TPM -[#purple]-> ZAS: signature_CI
+        ZAS -[#purple]-> Client: AK_pub, signature_CI
     else macOS (Secure Enclave)
-        ZAS -[#red]> TPM: SE_Sign(SE_AK, dataToSign)
-        TPM -[#red]-> ZAS: signature_CI
-        ZAS -[#red]-> Client: SE_AK_pub, signature_CI
+        ZAS -[#purple]> TPM: SE_Sign(SE_AK, dataToSign)
+        TPM -[#purple]-> ZAS: signature_CI
+        ZAS -[#purple]-> Client: SE_AK_pub, signature_CI
     end
 else Software Attestation (Fallback)
     note right of Client: Keine Hardware-Bindung.\nIdentität besteht nur aus CI_KeyPair.
@@ -59,33 +59,33 @@ end
 
 == 4: Dynamic Client Registration (DCR) ==
 alt Hardware Attestation: Windows / Linux (TPM)
-    Client -[#red]> ZAS: Request EK_pub, EK_Cert
-    ZAS -[#red]> TPM: TPM2_ReadPublic(EK)
-    TPM -[#red]-> ZAS: EK_pub, EK_Cert
-    ZAS -[#red]-> Client: EK_pub, EK_Cert
+    Client -[#purple]> ZAS: Request EK_pub, EK_Cert
+    ZAS -[#purple]> TPM: TPM2_ReadPublic(EK)
+    TPM -[#purple]-> ZAS: EK_pub, EK_Cert
+    ZAS -[#purple]-> Client: EK_pub, EK_Cert
 
     Client -[#green]> AuthS: POST /register\n{EK_pub, EK_Cert, AK_pub, CI_pub, signature_CI}
-    AuthS -[#red]> AuthS: Validiere EK_Cert-Chain & signature_CI
-    AuthS -[#red]> AuthS: CredentialBlob = MakeCredential(...)
+    AuthS -[#purple]> AuthS: Validiere EK_Cert-Chain & signature_CI
+    AuthS -[#purple]> AuthS: CredentialBlob = MakeCredential(...)
     AuthS -[#red]-> Client: 202 Accepted {CredentialBlob}
 
-    Client -[#red]> ZAS: Activate(CredentialBlob)
-    ZAS -[#red]> TPM: TPM2_ActivateCredential(CredentialBlob)
-    TPM -[#red]-> ZAS: Secret
-    ZAS -[#red]-> Client: Secret
+    Client -[#purple]> ZAS: Activate(CredentialBlob)
+    ZAS -[#purple]> TPM: TPM2_ActivateCredential(CredentialBlob)
+    TPM -[#purple]-> ZAS: Secret
+    ZAS -[#purple]-> Client: Secret
 
     Client -[#red]> AuthS: POST /register/verify {Secret}
     AuthS -> AuthS: Secret korrekt? → CI_pub hardware-gebunden ✓
     AuthS -[#green]-> Client: 201 Created {client_id}
 
 else Hardware Attestation: macOS (Secure Enclave)
-    Client -[#red]> ZAS: Request Attestation Object
-    ZAS -[#red]> TPM: Request Attestation (Apple Server)
-    TPM -[#red]-> ZAS: Apple_Attestation_Object
-    ZAS -[#red]-> Client: Apple_Attestation_Object
+    Client -[#purple]> ZAS: Request Attestation Object
+    ZAS -[#purple]> TPM: Request Attestation (Apple Server)
+    TPM -[#purple]-> ZAS: Apple_Attestation_Object
+    ZAS -[#purple]-> Client: Apple_Attestation_Object
     
     Client -[#green]> AuthS: POST /register\n{SE_AK_pub, Apple_Attestation_Object, CI_pub, signature_CI}
-    AuthS -[#red]> AuthS: Validiere Apple Root CA & signature_CI
+    AuthS -[#purple]> AuthS: Validiere Apple Root CA & signature_CI
     AuthS -[#green]-> Client: 201 Created {client_id}
 
 else Software Attestation (Fallback)
@@ -125,7 +125,7 @@ Client -[#green]> AuthS: POST /token\n{client_assertion (JWT, CI_prk signiert),\
 group AuthS (Verifier & Policy Check)
     AuthS -> AuthS: Verifiziere client_assertion mit CI_pub (aus DCR)
     AuthS -> AuthS: Verifiziere subject_token (SMC-B Zertifikat TI-PKI)
-    AuthS -[#red]> AuthS: Extrahiere Nonce aus subject_token
+    AuthS -[#purple]> AuthS: Extrahiere Nonce aus subject_token
     
     alt Hardware Attestation (TPM / SE)
         AuthS -> AuthS: Verifiziere Hardware-Signatur (Quote/SE)\ngegen extrahierte Nonce (Replay-Schutz)
