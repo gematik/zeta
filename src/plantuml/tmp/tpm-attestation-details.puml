@@ -2,6 +2,7 @@
 skinparam sequenceMessageAlign center
 title ZETA RATS Integration (inkl. macOS SE, SW-Fallback & SMC-B)
 
+participant "Apple\nServices" as Apple
 participant "TPM / SE\n(Hardware)" as TPM
 participant "ZAS\n(Attester)" as ZAS
 participant "PS und ZETA\nClient" as Client
@@ -16,15 +17,15 @@ alt Hardware Attestation (TPM / SE)
         ZAS --> ZAS: Messung des PS & Vergleich
         ZAS -> TPM: TPM2_CreatePrimary() → SRK
         ZAS -> TPM: TPM2_Create(SRK, restricted=sign, fixedTPM=true)
-        TPM --> ZAS: AK_pub, AK_priv (blob)
-        ZAS -> TPM: TPM2_Load(SRK, AK_priv, AK_pub) → AK_Handle
+        TPM --> ZAS: C.Client.Att, AK_priv (blob)
+        ZAS -> TPM: TPM2_Load(SRK, AK_priv, C.Client.Att) → C.Client.Att_Handle
         ZAS -> TPM: PCR_Extend(23, Messwerte)
     else macOS (Secure Enclave)
-        ZAS -[#purple]> TPM: CryptoKit: Generate Key in SE
-        TPM -[#purple]-> ZAS: SE_AK_pub
+        ZAS -[#purple]> TPM: SecKeyCreateRandomKey\n(kSecAttrTokenIDSecureEnclave)
+        TPM -[#purple]-> ZAS: SE_C.Client.Att_Handle
     end
 else Software Attestation (Fallback)
-    Client -[#green]> Client: Installation (ohne ZAS)
+    Client -> Client: Installation (ohne ZAS)
 end
 
 == 2: PS Start ==
@@ -34,24 +35,24 @@ alt Hardware Attestation (TPM / SE)
         ZAS --> ZAS: Messung des PS
         ZAS -> TPM: PCR_Extend(23, Messwerte)
     else macOS (Secure Enclave)
-        ZAS --> ZAS: Ermittle System Posture\n(SIP, SSV, FileVault)
+        ZAS --> ZAS: Ermittle aktuelle Posture\n(SIP-Status, Gatekeeper,\nOS-Version, Secure Boot Policy)
     end
 else Software Attestation (Fallback)
     Client -[#green]> Client: Start & lokale Datensammlung
 end
 
 == 3: Bindungs-Vorbereitung ==
-Client -[#purple]> Client: Generiere CI_KeyPair (CI_pub/CI_prk)
+Client -> Client: Generiere CI_KeyPair (PuK.Client.Sig/PrK.Client.Sig)
 alt Hardware Attestation (TPM / SE)
-    Client -[#purple]> ZAS: dataToSign = Hash(CI_pub)
+    Client -[#purple]> ZAS: dataToSign = Hash_PuK.Client.Sig
     alt Windows / Linux (TPM)
-        ZAS -[#purple]> TPM: TPM2_Sign(AK_Handle, dataToSign)
-        TPM -[#purple]-> ZAS: signature_CI
-        ZAS -[#purple]-> Client: AK_pub, signature_CI
+        ZAS -[#purple]> TPM: TPM2_Sign(C.Client.Att_Handle, dataToSign)
+        TPM -[#purple]-> ZAS: signed_Hash_PuK.Client.Sig
+        ZAS -[#purple]-> Client: C.Client.Att, signed_Hash_PuK.Client.Sig
     else macOS (Secure Enclave)
         ZAS -[#purple]> TPM: SE_Sign(SE_AK, dataToSign)
-        TPM -[#purple]-> ZAS: signature_CI
-        ZAS -[#purple]-> Client: SE_AK_pub, signature_CI
+        TPM -[#purple]-> ZAS: signed_Hash_PuK.Client.Sig
+        ZAS -[#purple]-> Client: C.Client.Att, signed_Hash_PuK.Client.Sig
     end
 else Software Attestation (Fallback)
     note right of Client: Keine Hardware-Bindung.\nIdentität besteht nur aus CI_KeyPair.
@@ -59,13 +60,13 @@ end
 
 == 4: Dynamic Client Registration (DCR) ==
 alt Hardware Attestation: Windows / Linux (TPM)
-    Client -[#purple]> ZAS: Request EK_pub, EK_Cert
-    ZAS -[#purple]> TPM: TPM2_ReadPublic(EK)
-    TPM -[#purple]-> ZAS: EK_pub, EK_Cert
-    ZAS -[#purple]-> Client: EK_pub, EK_Cert
+    Client -[#purple]> ZAS: Request PuK.TPM.EK, C.TPM.EK
+    ZAS -[#purple]> TPM: TPM2_ReadPublic(EndorsementKey)
+    TPM -[#purple]-> ZAS: PuK.TPM.EK, C.TPM.EK
+    ZAS -[#purple]-> Client: PuK.TPM.EK, C.TPM.EK
 
-    Client -[#green]> AuthS: POST /register\n{EK_pub, EK_Cert, AK_pub, CI_pub, signature_CI}
-    AuthS -[#purple]> AuthS: Validiere EK_Cert-Chain & signature_CI
+    Client -[#green]> AuthS: POST /register\n{PuK.TPM.EK, C.TPM.EK, C.Client.Att, PuK.Client.Sig, signed_Hash_PuK.Client.Sig}
+    AuthS -[#purple]> AuthS: Validiere C.TPM.EK-Chain & signed_Hash_PuK.Client.Sig
     AuthS -[#purple]> AuthS: CredentialBlob = MakeCredential(...)
     AuthS -[#red]-> Client: 202 Accepted {CredentialBlob}
 
@@ -75,7 +76,7 @@ alt Hardware Attestation: Windows / Linux (TPM)
     ZAS -[#purple]-> Client: Secret
 
     Client -[#red]> AuthS: POST /register/verify {Secret}
-    AuthS -> AuthS: Secret korrekt? → CI_pub hardware-gebunden ✓
+    AuthS -> AuthS: Secret korrekt? → PuK.Client.Sig hardware-gebunden ✓
     AuthS -[#green]-> Client: 201 Created {client_id}
 
 else Hardware Attestation: macOS (Secure Enclave)
@@ -84,12 +85,12 @@ else Hardware Attestation: macOS (Secure Enclave)
     TPM -[#purple]-> ZAS: Apple_Attestation_Object
     ZAS -[#purple]-> Client: Apple_Attestation_Object
     
-    Client -[#green]> AuthS: POST /register\n{SE_AK_pub, Apple_Attestation_Object, CI_pub, signature_CI}
-    AuthS -[#purple]> AuthS: Validiere Apple Root CA & signature_CI
+    Client -[#green]> AuthS: POST /register\n{C.Client.Att, Apple_Attestation_Object, PuK.Client.Sig, signed_Hash_PuK.Client.Sig}
+    AuthS -[#purple]> AuthS: Validiere Apple Root CA & signed_Hash_PuK.Client.Sig
     AuthS -[#green]-> Client: 201 Created {client_id}
 
 else Software Attestation (Fallback)
-    Client -[#green]> AuthS: POST /register\n{CI_pub, attestation_type="software"}
+    Client -[#green]> AuthS: POST /register\n{PuK.Client.Sig, attestation_type="software"}
     AuthS -[#green]> AuthS: Registriere Client-Instanz ohne HW-Bindung
     AuthS -[#green]-> Client: 201 Created {client_id}
 end
@@ -120,10 +121,10 @@ else Software Attestation (Fallback)
     note right of Client: client-statement wird direkt ins\nClient Assertion JWT eingebettet
 end
 
-Client -[#green]> AuthS: POST /token\n{client_assertion (JWT, CI_prk signiert),\nsubject_token (SMC-B signiert, inkl. Nonce),\n[Evidence]}
+Client -[#green]> AuthS: POST /token\n{client_assertion (JWT, PrK.Client.Sig signiert),\nsubject_token (SMC-B signiert, inkl. Nonce),\n[Evidence]}
 
 group AuthS (Verifier & Policy Check)
-    AuthS -> AuthS: Verifiziere client_assertion mit CI_pub (aus DCR)
+    AuthS -> AuthS: Verifiziere client_assertion mit PuK.Client.Sig (aus DCR)
     AuthS -> AuthS: Verifiziere subject_token (SMC-B Zertifikat TI-PKI)
     AuthS -[#purple]> AuthS: Extrahiere Nonce aus subject_token
     
