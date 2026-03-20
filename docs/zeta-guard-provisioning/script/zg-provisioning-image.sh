@@ -104,6 +104,7 @@ if [ $? -eq 0 ]; then
     echo -e "${BLUE}So kannst du das Image inspizieren:${NC}"
     echo ""
     echo -e "  ${GREEN}skopeo inspect docker://$FULL_REPO${NC}"
+    echo -e "  ${GREEN}buildah unshare"
     echo -e "  ${GREEN}buildah mount $(buildah from $FULL_REPO)${NC}"
     echo "----------------------------------------------------"
 else
