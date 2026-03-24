@@ -44,15 +44,21 @@ end
 == 3: Bindungs-Vorbereitung ==
 Client -> Client: Generiere CI_KeyPair (PuK.Client.Sig/PrK.Client.Sig)
 alt Hardware Attestation (TPM / SE)
-    Client -> ZAS: dataToSign = Hash_PuK.Client.Sig
+    Client -[#purple]> ZAS: dataToSign = Hash_PuK.Client.Sig
     alt Windows / Linux (TPM)
-        ZAS -> TPM: TPM2_Sign(Handle_PrK.AK.Sig, dataToSign)
-        TPM --> ZAS: signed_Hash_PuK.Client.Sig
-        ZAS --> Client: PuK.AK.Sig, signed_Hash_PuK.Client.Sig
+        ZAS -[#purple]> TPM: TPM2_Sign(Handle_PrK.AK.Sig, dataToSign)
+        TPM -[#purple]-> ZAS: signed_Hash_PuK.Client.Sig
+        ZAS -[#purple]-> Client: PuK.AK.Sig, signed_Hash_PuK.Client.Sig
+        Client -[#purple]> ZAS: Request PuK.EK.Sig, C.EK.Sig
+        ZAS -[#purple]> TPM: TPM2_ReadPublic(EndorsementKey)
+        TPM -[#purple]-> ZAS: PuK.EK.Sig
+        ZAS -[#purple]> TPM: TPM2_NV_Read(EndorsementKey)
+        TPM -[#purple]-> ZAS: C.EK.Sig
+        ZAS -[#purple]-> Client: PuK.EK.Sig, C.EK.Sig
     else macOS (Secure Enclave)
-        ZAS -> TPM: SE_Sign(Handle_PrK.AK.Sig, dataToSign)
-        TPM --> ZAS: signed_Hash_PuK.Client.Sig
-        ZAS --> Client: PuK.AK.Sig, signed_Hash_PuK.Client.Sig
+        ZAS -[#purple]> TPM: SE_Sign(Handle_PrK.AK.Sig, dataToSign)
+        TPM -[#purple]-> ZAS: signed_Hash_PuK.Client.Sig
+        ZAS -[#purple]-> Client: PuK.AK.Sig, signed_Hash_PuK.Client.Sig
     end
 else Software Attestation (Fallback)
     note right of Client: Keine Hardware-Bindung.\nIdentität besteht nur aus CI_KeyPair.
@@ -60,13 +66,6 @@ end
 
 == 4: Dynamic Client Registration (DCR) ==
 alt Hardware Attestation: Windows / Linux (TPM)
-    Client -> ZAS: Request PuK.EK.Sig, C.EK.Sig
-    ZAS -> TPM: TPM2_ReadPublic(EndorsementKey)
-    TPM --> ZAS: PuK.EK.Sig
-    ZAS -> TPM: TPM2_NV_Read(EndorsementKey)
-    TPM --> ZAS: C.EK.Sig
-    ZAS --> Client: PuK.EK.Sig, C.EK.Sig
-
     Client -[#red]> AuthS: POST /register\n{PuK.EK.Sig, C.EK.Sig, PuK.AK.Sig, PuK.Client.Sig, signed_Hash_PuK.Client.Sig}
     AuthS -[#purple]> AuthS: Validiere C.EK.Sig-Chain & signed_Hash_PuK.Client.Sig
     AuthS -[#purple]> AuthS: CredentialBlob = MakeCredential(...)

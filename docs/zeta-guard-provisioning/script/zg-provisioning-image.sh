@@ -34,9 +34,8 @@ usage() {
     echo "  [daten_verzeichnis]  Optional: Pfad zu dem Verzeichnis, das die Daten enthält."
     echo "                       Wird dies weggelassen, wird das aktuelle Verzeichnis ( . ) verwendet."
     echo ""
-    echo "Beispiele:"
-    echo "  $0 gematik-pt-zeta-test/zeta-dcr/zeta-guard-provisioning:test-latest"
-    echo "  $0 gematik-pt-zeta-test/zeta-dcr/zeta-guard-provisioning:v1.2.3 ./my-data"
+    echo "Beispiel:"
+    echo "  $0 gematik-pt-zeta-test/zeta-provisioning/zeta-guard-provisioning:test-latest"
     echo ""
     exit 1
 }
