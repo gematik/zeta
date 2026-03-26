@@ -2,10 +2,8 @@
 
 ## Übersicht
 
-Der PEP ist über einen nginx mit folgenden ZETA-spezifischen Plugins umgesetzt:
-
-* libngx_pep.so
-* libngx_asl.so _(Ist im Prototyp noch nicht enthalten.)_
+Der PEP ist über einen nginx mit dem ZETA-spezifischen Plugin `libngx_pep.so`
+umgesetzt.
 
 ## libngx_pep.so
 
@@ -96,7 +94,7 @@ Damit dies funktioniert, ist insbesondere die Direktive
 `pep_issuer https://my.zeta.service.de/auth/realms/zeta-guard;` wichtig, die die
 Verbindung zum PDP herstellt.
 
-### Konfigurationsparameter
+### Konfigurationsparameter (PEP-Basis)
 
 * `pep_issuer`
     * Typ: string
@@ -167,15 +165,62 @@ Verbindung zum PDP herstellt.
     * Context: `server`
     * Standardwert: `60`
 
-## libngx_asl.so
+### Konfigurationsparameter (ASL)
 
-Mehr Details zu MS2
-
-### Konfigurationsparameter
+Diese Parameter werden nur benötigt, wenn tatsächlich ASL verwendet werden
+soll. Pflichtfeld ist in diesem Sinne zu verstehen.
 
 * `asl`
     * Typ: `on` | `off`
     * Beschreibung: Konfiguriert, ob der nginx ASL spricht (i.d.R. auf `location /ASL`)
-    * Pflichtfeld: Nein
+    * Pflichtfeld: Ja
     * Context: `server`
     * Standardwert: `off`
+* `pep_asl_signer_key`, `pep_asl_signer_cert`, `pep_asl_ca_cert`
+    * Typ: string
+    * Beschreibung: Absoluter Pfad zu den Bestandteilen der
+      ASL-Signer-Identität im PEM-Format. Typischerweise ein Secret-Mount.
+    * Pflichtfeld: Ja
+    * Context: `http`
+    * Standardwert: `/etc/nginx/signer_key.pem`, `/etc/nginx/signer_cert.pem`, `/etc/nginx/issuer_cert.pem`
+* `pep_asl_roots_json`
+    * Typ: string
+    * Beschreibung: Absoluter Pfad zum Vertrauensanker roots.json.
+      Typischerweise ein Secret-Mount.
+    * Pflichtfeld: Ja
+    * Context: `http`
+    * Standardwert: `/etc/nginx/roots.json`
+* `pep_asl_testing`
+    * Typ: `on` | `off`
+    * Beschreibung: Muss eingeschaltet werden, wenn der PEP in der
+      Test/Refertenzumgebung der TI betrieben wird.
+    * Pflichtfeld: Nein (aber siehe Beschreibung)
+    * Context: `http`
+    * Standardwert: `off`
+* `pep_asl_root_ca`
+    * Typ: string
+    * Beschreibung: CN einer anderen Root-CA in roots.json, die anstelle von
+      GEM.RCA7 verwendet werden soll (Override).
+      Normalerweise nur zu Testzwecken verwendet.
+    * Pflichtfeld: Nein
+    * Context: `http`
+    * Standardwert: `""`
+* `pep_asl_ocsp`
+    * Typ: string
+    * Beschreibung: Optionale OCSP-URL, die anstatt der URL in
+      `pep_asl_signer_cert` verwendet werden soll (Override).
+      Alternativ der Wert `off` um OCSP stapling zu deaktivieren.
+      Normalerweise nur zu Testzwecken verwendet.
+    * Pflichtfeld: Nein
+    * Context: `http`
+    * Standardwert: `""`
+* `pep_asl_ocsp_ttl`
+    * Typ: duration
+    * Beschreibung: Maximale Gültigkeit einer OCSP-Antwort im Cache bis ein
+      erneuter Abruf erforderlich ist. Mögliche Einheiten sind
+      `d` Tage, `h` Stunden, `m` Minuten (Standard), oder `s` Sekunden.
+      Normalerweise nur zu Testzwecken verwendet.
+    * Pflichtfeld: Nein
+    * Context: `http`
+    * Standardwert: `"24h"`
+

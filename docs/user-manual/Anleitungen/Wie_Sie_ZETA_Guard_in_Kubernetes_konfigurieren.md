@@ -87,28 +87,30 @@ im Detail eingegangen werden. Ergänzend dazu gibt es die
 
 In dem Cluster muss ein [Ingress-Controller][K8s Ingress Controllers]
 installiert sein und erlaubter [Ingress][K8s Ingress] definiert werden.
-Das ZETA Guard Helm Chart beinhaltet einen optionalen Ingress Controller (
-[F5 nginx-ingress](https://docs.nginx.com/nginx-ingress-controller/) ).
-Über die values kann dieser an- bzw. abgewählt werden
-(`nginx-ingress.enabled: false`).
+Das ZETA-Guard-Helm-Chart beinhaltet einen optionalen
+Ingress-Controller ([F5 nginx-ingress](https://docs.nginx.com/nginx-ingress-controller/)).
+Über den Value `nginxIngressEnabled` kann dieser ein- bzw. ausgeschaltet werden.
+Die Ingresses selbst können über `ingressEnabled` ein- bzw. ausgeschaltet
+werden.
 
-Der eingesetzte Ingress Controller muss die Kubernetes APIs für
-[Ingresses](https://kubernetes.io/docs/concepts/services-networking/ingress/)
+Der eingesetzte Ingress-Controller muss die Kubernetes-APIs
+für [Ingresses](https://kubernetes.io/docs/concepts/services-networking/ingress/)
 und [Gateways](https://kubernetes.io/docs/concepts/services-networking/gateway/)
 unterstützen.
 
-Die Verwaltung der TLS Zertifikate obliegt dem Anbieter und erfolgt in der Regel
-über Kubernetes Secrets oder eine HSM Anbindung.
+Die Verwaltung der TLS-Zertifikate obliegt dem Anbieter und erfolgt in der Regel
+über Kubernetes-Secrets oder eine HSM-Anbindung.
 
-Bei Verwendung von mehreren ZETA Guard in unterschiedlichen Namespaces ist es
-möglich, über ingress classes die Ingress Controller der jeweiligen
-Installationen voneinander zu isolieren. Hierfür müssen die values
+Bei Verwendung von mehreren ZETA-Guards in unterschiedlichen Namespaces ist es
+möglich, über Ingress-Classes die Ingress-Controller der jeweiligen
+Installationen voneinander zu isolieren. In jedem Namespace müssen die Values
 `ingressClassName` und `nginx-ingress.controller.ingressClass.name` auf
-denselben jeweils für die Installation einzigartigen Namen gesetzt werden
-(sinnvollerweise enthält dies den Namen des Namespace).
+denselben, Cluster-weit einzigartigen Namen gesetzt werden. Bei mehreren
+Namespace-spezifischen Ingress-Controllern sollte jeder Ingress-Class-Name den
+Namespace-Namen enthalten.
 
-Es folgt hier in späteren Releases noch die Möglichkeit, die Ingressressourecen
-insb. über Annotationen für andere IngressController besser nutzbar zu machen.
+In späteren Releases werden die Ingress-Ressourcen für andere Ingress-Controller
+besser nutzbar gemacht werden.
 
 ### 2. Egress konfigurieren
 
@@ -150,7 +152,6 @@ beinhaltet einen optionalen Ingress Controller. Über die values kann dieser an-
 bzw. abgewählt werden (`management_service.enabled: true`).
 
 * _Kommt mit späterem Meilenstein_
-* _To-Do: Sidecar Container mit OpenTelemetry Collector_
 * _Ggf. mit Zugang zur UI für Administratoren einrichten_
 
 #### Verwandte Dokumentation
@@ -161,77 +162,36 @@ bzw. abgewählt werden (`management_service.enabled: true`).
 
 ### 4. Telemetriedaten Service (OpenTelemetry Collector) konfigurieren
 
-Zunächst erfassen Komponenten-spezifische Collector-Instanzen Telemetriedaten.
-Ein zentraler Collector – das Telemetry-Gateway – bündelt und filtert diese,
-bevor sie an die Monitoring- und SIEM-Dienste der TI weitergeleitet werden.
+ZETA-Guard umfasst mehrere OpenTelemetry-Collectoren, die Logs, Metriken und
+Traces aller ZETA-Guard-Komponenten empfangen bzw. einsammeln. Es gibt einen
+zentralen Collector – das Telemetry-Gateway – das die gesammelte Telemetrie von
+ZETA-Guard und Resource Server verarbeitet und an die Monitoring- und
+SIEM-Dienste der TI weiterleitet.
 
-Um eigene Observability-Backends anzuschließen, empfehlen wir einen eigenen
-OpenTelemetry-Collector einzurichten, der den Fanout an Ihre
-Observability-Backends (wie etwa Prometheus, OpenSearch und Jaeger) vornimmt.
-Ferner empfehlen wir Collectoren über das OpenTelemetry Protocol (OTELP)
-kommunizieren zu lassen, da es alle Signalarten (Logs, Metriken, und Traces)
-übertragen kann und der dafür notwendige Receiver in allen offiziellen
-Distributionen enthalten ist.
+Sie müssen die Verbindung vom Resource Server zum Telemetry-Gateway, und die
+Verbindung vom Telemetry-Gateway zu den Monitoring- und SIEM-Diensten der TI
+herstellen. Optional können Sie das Telemetry-Gateway auch an ein eigenes
+Observability-Backend anschließen, um Logs, Metriken und Traces einfach einsehen
+zu können.
 
-Der Telemetriedaten Service ist Teil des `zeta-guard`-Charts, und ist
-standardmäßig eingeschaltet – benötigt jedoch eine valide Zieladresse für
-seinen [OTELP-Exporter](https://github.com/open-telemetry/opentelemetry-collector/blob/main/exporter/otlpexporter/README.md).
-Sie können die Konfiguration des Exporters wie folgt überschreiben:
+Bei Bedarf können Sie den Log-Collector von ZETA-Guard durch einen eigenen
+ersetzen. Dafür müssen Sie zunächst den Log-Collector im ZETA-Guard-Helm-Chart
+abschalten (`logCollectorEnabled: false`), und dann ihren eigenen mit dem
+Telemetry-Gateway verbinden. Das Vorgehen ist analog zum Liefern von
+Resource-Server-Telemetrie an das Telemetry-Gateway und wird in der
+Anleitung [Wie Sie Telemetrie des Resource Servers an die gematik schicken.md](Wie_Sie_Telemetrie_des_Resource_Servers_an_die_gematik_schicken.md)
+beschrieben.
 
-```yaml
-telemetry-gateway:
-    config:
-        exporters:
-            otlp/observability-backends:
-                endpoint: <Adresse Ihres OTELP-Receivers>
-```
+Detaillierte Anleitungen finden Sie hier:
 
-Bitte beachten Sie, dass `telemetry-gateway.config` ein direktes Fenster in
-die [Konfiguration des Collectors](https://opentelemetry.io/docs/collector/configuration/)
-ist, und Sie bei Bedarf weitere Exporter hinzufügen und existierende
-deaktivieren können:
-
-```yaml
-telemetry-gateway:
-    config:
-        exporters:
-            otlp/observability-backends:
-                endpoint: <Adresse Ihres OTELP-Receivers>
-                tls: ...
-            otlp/gematik:
-                endpoint: <Adresse des gematik-OTELP-Receivers>
-                tls: ...
-        service:
-            pipelines:
-                logs:
-                    exporters: [ debug, otlp/observability-backends, otlp/gematik ]
-                metrics:
-                    exporters: [ debug, otlp/observability-backends, otlp/gematik ]
-                traces:
-                    exporters: [ debug, otlp/observability-backends, otlp/gematik ]
-```
-
-Das Telemetry-Gateway verwendet die Distribution _opentelemetry-collector-k8s_
-(latest). [Hier](https://github.com/open-telemetry/opentelemetry-collector-releases/blob/main/distributions/otelcol-k8s/manifest.yaml)
-finden sie das Manifest mit allen Exportern, die Sie verwenden können.
-
-* _To-do: als Kubernetes Sidecar Container für jede Komponente_
-* _To-do: Telemetriedatentransfer an gematik einrichten_
-* _To-do: Telemetriedatentransfer mit TLS und Authentifizierung absichern_
+* [Wie Sie Telemetrie des Resource Servers an die gematik schicken.md](Wie_Sie_Telemetrie_des_Resource_Servers_an_die_gematik_schicken.md)
+* [Wie Sie ein Observability-Backend an ZETA-Guard anschließen](Wie_Sie_ein_Observability-Backend_an_ZETA-Guard_anschließen.md)
 
 #### Verwandte Dokumentation
 
 * [OpenTelemetry with Kubernetes][OTelK8s]
 * [OpenTelemetry Collector Chart][OTelColChrt]
 * [OpenTelemetry – Collector – Configuration][OTelColCnfg]
-* ggf. [OpenTelemetry Operator for Kubernetes][OTelO]
-* ggf. [OpenTelemetry Operator Chart][OTelOChrt]
-
-#### Abhängigkeiten / erforderliche Konfiguration
-
-* Muss wahrscheinlich die Adressen der Open-Telemetrie-Endpunkte kennen, von
-  denen er Telemetrie-Daten einsammeln soll
-* Muss ggf. die Adresse des nächsten Telemetrie-Dienstes in der Kette kennen
 
 ### 5. Notification Service konfigurieren
 
@@ -246,31 +206,40 @@ finden sie das Manifest mit allen Exportern, die Sie verwenden können.
 
 #### 6.1 PDP Datenbank (PostgreSQL) installieren und konfigurieren
 
-Keycloak benötigt eine [PostgreSQL-Datenbank][Pstgrs17] die aktuell in Form des
-[Zalandos Postgres-Operator][PstgrsOp] installiert werden sollte. (Für größere
-Deploymentszenarien mit Multicluster ggf. abweichend).
+Keycloak benötigt eine [PostgreSQL-Datenbank][Pstgrs17], die in der Regel über den
+[CloudNativePG‑Operator][PstgrsOp] bereitgestellt wird – idealerweise einmal
+clusterweit (z.B. im Namespace `cnpg-system`). Für größere Deploymentszenarien
+mit Multicluster ist der Vorgang ggf. abweichend.
 
-Als Anschauungsbeispiel kann [das entsprechende Terraform Template ][ZTfPSTGRS]
-herangezogen werden. Zukünftig wird dieser Teil ggf. noch in das ZETA Guard
-Helm Chart integriert.
+Hinweis (Ownership/Conflicts): CloudNativePG installiert clusterweite Ressourcen
+(CRDs/Webhooks/ClusterRoles). Vermeiden Sie mehrere Helm‑Releases des Operators
+in verschiedenen Namespaces, da dies zu Ownership/Conflicts führt.
+Installieren Sie stattdessen genau einen Operator clusterweit.
 
 Die Datenbank wird als Active-Passive eingesetzt. Durch den gut abgestimmten
 Einsatz eines verteilten 2nd level Datenbankcaches im PDP skaliert dies trotzdem
 gut.
 
-_To-do: Sidecar Container mit OpenTelemetry Collector_
-
 #### 6.2 Policy Engine (OPA) konfigurieren
 
-Jede OPA-Instanz muss Policys vom PIP abfragen und Metriken für seinen
-OpenTelemetry Collector bereitstellen.
+Jede OPA-Instanz muss Policys vom PIP abfragen und Metriken für das Monitoring bereitstellen.
 
 Zur Veranschaulichung dienen Deployment- und Service-Definitionen in
 folgendem [Helm-Chart][ZGchrtOPA] als Beispiel.
 
-OPA kann horizontal skaliert werden (-> helm values).
+OPA kann horizontal skaliert werden. Die Anzahl der Replikate wird über den Helm Value
+`opa.replicaCount` (Standard: `1`) gesteuert. Für die Simulation-Instanz gilt entsprechend
+`opa.simulation.replicaCount` (Standard: `1`).
 
-* _To-do: Skalierung
+Beispiel:
+
+```yaml
+zeta-guard:
+  opa:
+    replicaCount: 2
+    simulation:
+      replicaCount: 2
+```
 
 ##### Verwandte Dokumentation
 
@@ -287,18 +256,23 @@ OPA kann horizontal skaliert werden (-> helm values).
 
 #### 6.3 Authorization Service (Keycloak) konfigurieren
 
-Keycloak muss mit seiner Datenbank und seinem OPA verbunden sein, einen
-eigenen Open Telemetry Collector besitzen und von außerhalb des Clusters
-erreichbar sein.
+Keycloak muss mit seiner Datenbank und seinem OPA verbunden sein und von
+außerhalb des Clusters erreichbar sein.
 
 Die Installation erfolgt über den Helm-Chart. Zusätzlich zur Konfiguration im
 Helm Chart erfolgt ein großer Teil der Konfiguration zur Laufzeit des deployten
 Keycloak und wird mittels Terraform vorgenommen.
 
-Der Authorization Service kann horizontal skaliert werden (→ helm values).
-Ab 4 Knoten ist ein Tuning des Keycloak internen Infinispan Caches angeraten.
+Der Authorization Service kann horizontal skaliert werden. Die Anzahl der Replikate wird über
+den Helm Value `authserver.replicaCount` (Standard: `1`) gesteuert.
 
-* _To-do: Sidecar Container mit OpenTelemetry Collector_
+```yaml
+zeta-guard:
+  authserver:
+    replicaCount: 2
+```
+
+Ab 4 Knoten ist ein Tuning des Keycloak internen Infinispan Caches angeraten.
 
 ##### Abhängigkeiten / erforderliche Konfiguration
 
@@ -311,12 +285,12 @@ Ab 4 Knoten ist ein Tuning des Keycloak internen Infinispan Caches angeraten.
 
 Das Helm Chart unterstützt einen Datenbankmodus für Testsetups mit einer
 Postgres über ein Legacy Bitnami Helm Chart und einen produktivtauglichen
-Modus aufbauend auf einem existierenden [Zalando Postgres Operator][PstgrsOp].
+Modus auf Basis des [CloudNativePG‑Operators][PstgrsOp].
 
-Für die Verwendung des Operator ist `databaseMode: operator` als helm value zu
-setzen. Weitere Konfiguration ist dann nicht erforderlich, es wird dann über
-das Helm Chart vom Operator eine Datenbank angefordert und der Keycloak passend
-konfiguriert.
+Für die Verwendung des Operators ist `databaseMode: cloudnative` als Helm‑Value zu
+setzen. Weitere Konfiguration ist in der Regel nicht erforderlich: Das Helm Chart
+erzeugt eine CNPG `Cluster`‑Ressource im Release‑Namespace und der Operator stellt
+die Datenbank bereit. Keycloak wird passend konfiguriert.
 
 Es ist möglich, eine externe Datenbank für den PDP zu konfigurieren. Dazu ist
 einerseits `databaseMode: external` zu setzen. Anderseits werden untenstehende
@@ -324,13 +298,13 @@ Helm Values eingerichtet, die entsprechend den Keycloak Umgebungsvariablen für
 diesen Zweck verwendet werden. Siehe dazu
 [hier](https://www.keycloak.org/server/db#_configuring_a_database).
 
-| Helm Value                            | Keycloak Entsprechung | Bemerkung                                                                                                                                                                                    |
-|---------------------------------------|-----------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `authserverDb.kcDb`                   | `KC_DB`               |                                                                                                                                                                                              |
-| `authserverDb.kcDbUrl`                | `KC_DB_URL`           |                                                                                                                                                                                              |
-| `authserverDb.kcDbUsername`           | `KC_DB_USERNAME`      |                                                                                                                                                                                              |
-| `authserverDb.kcDbPasswordSecretName` | `KC_DB_PASSWORD`      | Hierbei ist im Helm Value der Name eines Secrets zu konfigurieren. Aus dem Secret wir das Feld `password` ausgelesen und dieses in die entsprechende Keycloak Umgebungsvariable geschrieben. |
-| `authserverDb.kcDbSchema`             | `KC_DB_SCHEMA`        |                                                                                                                                                                                              |
+| Helm Value                    | Keycloak Entsprechung | Bemerkung                                                                                                                                                                                    |
+|-------------------------------|-----------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `authserverDb.kcDb`           | `KC_DB`               |                                                                                                                                                                                              |
+| `authserverDb.kcDbUrl`        | `KC_DB_URL`           |                                                                                                                                                                                              |
+| `authserverDb.kcDbSecretName` | `KC_DB_USERNAME`      | Hierbei ist im Helm Value der Name eines Secrets zu konfigurieren. Aus dem Secret wir das Feld `username` ausgelesen und dieses in die entsprechende Keycloak Umgebungsvariable geschrieben. |
+| `authserverDb.kcDbSecretName` | `KC_DB_PASSWORD`      | Hierbei ist im Helm Value der Name eines Secrets zu konfigurieren. Aus dem Secret wir das Feld `password` ausgelesen und dieses in die entsprechende Keycloak Umgebungsvariable geschrieben. |
+| `authserverDb.kcDbSchema`     | `KC_DB_SCHEMA`        |                                                                                                                                                                                              |
 
 ##### Verwandte Dokumentation
 
@@ -364,13 +338,31 @@ entscheidend:
     * Eventuelle Konfiguration für WebSockets findet hier mit nginx
       Standardmethoden statt.
 * Für die Verwendung von ASL muss der Value `pepproxy.asl_enabled` auf `true`
-  gesetzt werden.
-    * ASL Zertifikate werden momentan bei Serverstart generiert. Zukünftig
-      werden diese via Kubernetes Secrets bereitgestellt oder in der VAU via
-      HSM verfügbar gemacht
+  gesetzt werden. Dazu ist Schlüsselmaterial erforderlich, welches über die
+  gematik bezogen werden kann. Dieses muss im PEM-Format im Kubernetes-Secret
+  `asl-identity` unter folgenden Keys abgelegt werden:
+    * `signer-key`: ECC-Private-Key auf Basis der NIST-Kurve P256
+    * `signer-cert`: Entsprechendes Signatur-Zertifikat, Profil C.FD.AUT,
+      technische Rolle
+      `oid_zeta-guard`
+    * `issuer-cert`: Zugehöriges KOMP-CA-Zertifikat
+    * In einer VAU soll dafür zukünftig auch ein HSM genutzt werden können.
+    * Falls der PEP in der TI-Referenzumgebung (RU) betrieben werden soll,
+      muss zusätzlich der Value `pepproxy.nginxConf.aslTestmode: true`
+      gesetzt werden.
 
-* _kommt noch_
-    * _To-do: Horizontale Skalierung via Helm Values verfügbar machen_
+Der PEP kann horizontal skaliert werden. Die Anzahl der Replikate wird über den Helm Value
+`pepproxy.replicaCount` (Standard: `1`) gesteuert.
+
+```yaml
+zeta-guard:
+  pepproxy:
+    replicaCount: 3
+```
+
+Hinweis: Bei horizontaler Skalierung des PEP ist eine „Sticky Session" zu beachten, da die
+ASL-Schlüssel nicht über PEP-Instanzen hinweg geteilt werden (siehe
+[Deploymentszenarien](../Referenzen/Deploymentszenarien.md)).
 
 ### 8. Servie Mesh konfigurieren
 
@@ -425,29 +417,8 @@ zeta-local         zeta-testenv-local-tiger-testsuite-79f555b6c8-mcn68          
 
 ## Querschnittliche Konzepte
 
-### Verwenden einer eigenen OCI Registry
-
-Das ZETA Guard Helm Chart verweist standardmäßig auf Images bei den Upstream
-Registries. Für den produktiven Einsatz ist aus Gründen der Verfügbarkeit und
-Trafficvermeidung eine puffernde lokale Registry vom Anbieter zu nutzen.
-
-Damit dann die Images von dort bezogen werden, muss dies über Helm Values
-entsprechend gesteuert werden:
-
-* allgemeine Konfiguration
-    * `global.registry_host` Name der Registry, z.B.
-      `my.registry.corp.internal:443`
-    * `global.image_pull_secret` (optional) Name eines Image Pull Secrets.
-      Sofern zum Pullen ein Secret erforderlich ist, muss diese als Image Pull
-      Secret in Kubernetes eingerichtet werden. Der Name dieses Secrets wird
-      dann hier konfiguriert.
-* Authorization Server
-    * `authserver.image.repository` Name des authserver Images auf der Registry
-    * `authserver.image.tag` Zu verwendender Image Tag
-* PEP Http Proxy
-    * `pepproxy.image.repository` Name des authserver Images auf der Registry
-    * `pepproxy.image.tag` Zu verwendender Image Tag
-* Analoges wird für die weiteren Images stückweise folgen
+* [Wie Sie eine eigenen OCI Registry verwenden](Wie_Sie_eine_eigene_OCI_Registry_verwenden.md)
+* [Wie Sie Ressourcen für ZETA-Guard-Pods verwalten](Wie_Sie_Ressourcen_für_ZETA_Guard_Pods_verwalten.md)
 
 [K8s Ingress]: https://kubernetes.io/docs/concepts/services-networking/ingress/
 
@@ -487,7 +458,7 @@ entsprechend gesteuert werden:
 
 [Pstgrs17]: https://www.postgresql.org/docs/17/admin.html
 
-[PstgrsOp]: https://postgres-operator.readthedocs.io/en/latest/
+[PstgrsOp]: https://cloudnative-pg.io/documentation/
 
 [ZGchrtNGNX]:   https://github.com/gematik/zeta-guard-helm/tree/main/charts/zeta-guard/templates/pep-proxy.yaml
 
@@ -496,7 +467,5 @@ entsprechend gesteuert werden:
 [ZGchrtHelm]:   https://github.com/gematik/zeta-guard-helm/tree/main/charts/zeta-guard
 
 [ZGchrtTf]:     https://github.com/gematik/zeta-guard-helm/tree/main/terraform
-
-[ZTfPSTGRS]:    https://github.com/gematik/zeta-guard-terraform/blob/main/gematik-azure/showcase-stage/postgres-operator.tf
 
 [ZGclusterTf]:    https://github.com/gematik/zeta-guard-terraform/

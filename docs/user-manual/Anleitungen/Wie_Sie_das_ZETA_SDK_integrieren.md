@@ -46,7 +46,7 @@ class ZetaSdkTest {
             "https://<resource-url>",
             BuildConfig(
                 "demo_client",
-                "0.1.0",
+                "0.4.2",
                 "client-sdk",
                 StorageConfig(),
                 object : TpmConfig {},
@@ -56,7 +56,8 @@ class ZetaSdkTest {
                     ),
                     30,
                     true,
-                    SmbTokenProvider(SmbTokenProvider.Credentials("", "", "")),
+                    SmbTokenProvider(SmbTokenProvider.Credentials("", "", "", "")),
+                    AttestationConfig.software(),
                 ),
             ),
         )
@@ -85,6 +86,53 @@ von SM(C)-B Tokens oder eine sichere (verschlüsselte) Ablage von Informationen.
 
 Die genauen Definitionen sind im Quellcode nachzusehen, wo auch der jeweils aktuelle Stand liegt.
 
+### Java
+
+Das ZETA-SDK kann als Maven-Abhängigkeit in Java-Projekte eingebunden werden:
+Vor der Nutzung muss das SDK in das lokale Maven-Repository publiziert werden:
+```
+./gradlew publishToMavenLocal
+```
+
+Ein vollständiges Beispiel der Java-Integration findet sich in `zeta-client-java/`.
+
+### C++
+
+Das ZETA-SDK kann als native Shared Library (`.dylib` / `.so` / `.dll`) in C++-Projekte eingebunden werden.
+
+#### Schritt 1 — SDK Shared Library bauen
+```bash
+./gradlew :zeta-sdk:linkDebugSharedMacosArm64   # macOS
+./gradlew :zeta-sdk:linkDebugSharedLinuxX64      # Linux
+./gradlew :zeta-sdk:linkDebugSharedMingwX64      # Windows
+```
+
+#### Schritt 2 — Header einbinden
+
+Das SDK liefert einen einzigen generierten Header:
+- `libzeta_sdk_api.h` (Linux / macOS)
+- `zeta_sdk_api.h` (Windows)
+```cpp
+#ifdef _WIN32
+    #include "zeta_sdk_api.h"
+#else
+    #include "libzeta_sdk_api.h"
+#endif
+```
+
+#### Schritt 3 — Gegen die Library linken
+```bash
+clang++ main.cpp \
+    -I /path/to/sdk/build/bin/macosArm64/debugShared \
+    -L /path/to/sdk/build/bin/macosArm64/debugShared \
+    -lzeta_sdk \
+    -Wl,-rpath,@executable_path \
+    -o my-client
+```
+
+Ein vollständiges Beispiel mit cross-platform Makefile (macOS, Linux, Windows) findet sich in `zeta-nativeclient-cpp/`.
+
+
 ## API Übersicht
 
 Dieser Abschnitt gibt einen Überblick über die Nutzung der API.
@@ -100,7 +148,7 @@ Die API bietet dem ZETA client die folgenden Operationen an:
 | Operation               | Beschreibung                                                                                                                                                                                                                                                 | Return value         | Errors                                                                                                                                                                                   |
 |-------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | build(resource, config) | Statische Methode, um einen neuen SDK Client zu erstellen. Die Resource URL des Endpunkts wird hierbei als Input gegeben. D.h. für jeden Fachdienst kann ein separater Client erzeugt werden. Weitere Parameter sind z.B. notwendige Callback-Informationen. | ZetaSDKClient Object |                                                                                                                                                                                          |
-| forget(fqdn)            | statische Methode, um alle Informationen zu einem FQDN zu vergessen wie client ID, client instance key, ...                                                                                                                                                  | -                    | error codes                                                                                                                                                                              |
+| forget()                | statische Methode, um alle Informationen zu einem FQDN zu vergessen wie client ID, client instance key, ...                                                                                                                                                  | -                    | error codes                                                                                                                                                                              |
 | -                       |                                                                                                                                                                                                                                                              |                      |                                                                                                                                                                                          |
 | discover()              | Umsetzen der Discovery und Configuration. Dieser Call ist optional und wird ggf. automatisch nachgeholt                                                                                                                                                      | -                    | Fehler bei der Discovery und Configuration, insb. wenn für die Resource URL keine gültige Endpunkt-Konfiguration (im Sinne eines Eintrags in einer OPR .well-known Datei) gefunden wurde |
 | register()              | Ausführen der Client registration, wenn nötig (keine client_id vorhanden). Includiert discover() falls dieses noch nicht ausgeführt wurde.                                                                                                                   | -                    | error codes                                                                                                                                                                              |
@@ -152,12 +200,15 @@ Hier ist u.a. zu klären, wie authcode, oder IDP URL übertragen werden (wenn si
 
 Mit dieses Objekt wird die Authentifizierung parameterisiert.
 
-| Attribut               | Beschreibung                                                                                                                                                               |
-|------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| scopes                 | Scope-Werte für die Erstellung des Access Tokens                                                                                                                           |
-| exp                    | Token expiry                                                                                                                                                               |
-| enableAslTracingHeader | wenn true, werden die ASL keys (für Testing) als Header im outer ASL Request mitgegeben                                                                                    |
-| subjectTokenProvider   | Objekt, mit dem ein Subject Token erzeugt werden kann. Es werden aktuell zwei Implementierungen bereitgestellt, einmal für SM-B Dateien und einmal für SMC-B via Konnektor |
+| Attribut                | Beschreibung                                                                                                                                                              |
+|-------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| scopes                  | Scope-Werte für die Erstellung des Access Tokens                                                                                                                          |
+| exp                     | Token expiry                                                                                                                                                              |
+| enableAslTracingHeader  | wenn true, werden die ASL keys (für Testing) als Header im outer ASL Request mitgegeben                                                                                   |
+| subjectTokenProvider    | Objekt, mit dem ein Subject Token erzeugt werden kann. Es werden aktuell zwei Implementierungen bereitgestellt, einmal für SM-B Dateien und einmal für SMC-B via Konnektor |
+| aslProdEnvironment      | wenn true, werden die ASL keys (für Testing) als Header im outer ASL Request mitgegeben                                                                                   |
+| subjectTokenProvider    | Objekt, mit dem ein Subject Token erzeugt werden kann. Es werden aktuell zwei Implementierungen bereitgestellt, einmal für SM-B Dateien und einmal für SMC-B via Konnektor |
+| attestation             | Konfiguriert den Attestierungsmodus und die Verbindung zum Attestierungsservice. Default: `AttestationConfig.software()`                                                  |
 
 
 ### StorageConfig
