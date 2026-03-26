@@ -1,4 +1,3 @@
-
 # ZETA Produkthandbuch
 
 ## Einführung und Übersicht
@@ -13,11 +12,14 @@ genutzt werden können.
 
 ### Dokumenteninformation
 
-| Version | Stand    | Zusammenfassung der Änderungen                                 |
-|---------|----------|----------------------------------------------------------------|
-| 0.2.x   | 29.12.25 | Einarbeitung Kommentare                                        |
-| 0.3.0   | 11.02.26 | Update auf ZETA release 0.3.0                                  |
-| 0.3.1   | 20.02.26 | Update auf ZETA release 0.3.1 (Dokumentation zum Service Mesh) |
+| Version | Stand    | Zusammenfassung der Änderungen                                                             |
+|---------|----------|--------------------------------------------------------------------------------------------|
+| 0.2.x   | 29.12.25 | Einarbeitung Kommentare                                                                    |
+| 0.3.0   | 11.02.26 | Update auf ZETA release 0.3.0                                                              |
+| 0.3.1   | 20.02.26 | Update auf ZETA release 0.3.1 (Dokumentation zum Service Mesh)                             |
+| 0.4.0   | 19.03.26 | Update auf ZETA release 0.4.0                                                              |
+| 0.4.2   | 24.03.26 | C++ native client with cross-platform Makefile, extended HTTP CRUD and WebSocket STOMP API |
+
 
 ### Hinweise
 
@@ -48,8 +50,8 @@ des Fachdienstes mit dem ZETA-Guard getestet werden kann.
 ### Fachdienst-Betreiber
 
 Dieser Bereich ist für Betreiber von Fachdiensten, die den ZETA-Guard integrieren.
-Hier werden verschiedene Produktionssetups dargestellt, sowie gezeigt, der wie ZETA-Guard
-konfiguriert und betrieben werden kann.
+Hier werden verschiedene Produktionssetups dargestellt sowie gezeigt, wie
+ZETA-Guard konfiguriert und betrieben werden kann.
 
 ### Primärsystem-Hersteller
 
@@ -74,18 +76,10 @@ transparent zwischen Client und Fachdienst einfügen – dabei aber die notwendi
 Sicherheitsniveaus für die Kommunikation mit geschützten Ressourcen
 bereitstellen.
 
-Das folgende Diagram zeigt die interne ZETA-Architekturübersicht mit einem stärkeren
-Fokus auf die zu betreibenden Komponenten.
+Das folgende Diagram zeigt die interne ZETA-Architekturübersicht mit einem Fokus
+auf die zu betreibenden Komponenten.
 
-Die wesentlichen Anpassungen zu gemspec_ZETA 1.2.0 bestehen in:
-
-* Nutzung eines lokalen PIP/PAP Repositories des Herstellers, welches vom
-gematik PIP/PAP Repository gespeist wird
-* Aufteilung der PDP Datenbanken in eine Infinispan und eine relationale
-  (Postgres) Datenbank
-* PEP Datenbank wurde durch eine API am Authorization Server ersetzt
-
-![ZETA-Architekturübersicht](assets/images/ZETA-Architektur.png)
+![ZETA-Architekturübersicht](assets/images/ZETA-Architektur_gemSpec_ZETA_V1.3.0_CC.svg)
 
 Die folgenden Bereiche betrachten die Spezifika fokussiert
 auf die Interessen der einzelnen, wie oben identifizierten
@@ -147,11 +141,11 @@ Fachdienst-Komponenten – benötigt werden.
       * OCSP Responder der TI TSL (! d.h. der Responder im Internet nicht der im
         TI 1.0 Netz)
       * Federation Master
-  * Abhängig von Fachdienst, ab Umsetzungsstufe 2:
-      * Federated IDP bzw. Sektorale IdPs
-  * Optional:
       * TI-Monitoring
       * TI-SIEM
+  * Abhängig vom Fachdienst, ab Umsetzungsstufe 2:
+      * Federated IDP bzw. Sektorale IdPs
+  * Optional:
       * PIP/PAP Repository
 
 #### Eigene Dienste
@@ -164,13 +158,13 @@ Fachdienst-Komponenten – benötigt werden.
     * Email Confirmation-Code – Mailversand
 
     * Optional:
-        * Dienstanbieter-Monitoring (Opentelemtry Collector)
+        * Dienstanbieter-Monitoring (OpenTelemetry Collector)
         * Dienstanbieter-SIEM
 
 #### Infrastruktur
 
 Die Infrastrukturanforderungen sind im Detail beschrieben
-in der [Anleitung einen ZETA-Guard im Kubernetes zu konfigurieren](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md).
+in der [Anleitung, einen ZETA-Guard im Kubernetes zu konfigurieren](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md).
 
 #### Tooling
 
@@ -186,8 +180,13 @@ in der [Anleitung einen ZETA-Guard im Kubernetes zu konfigurieren](Anleitungen/W
   konfiguriert werden, um SM-B-basierte Authentifizierung vornehmen
   zu können, und wird dann im PDP gegen den TI Vertrauensanker (Federation Master, TSL)
   geprüft.
+* Für ASL-Betrieb des PEP muss ein ECC-Schlüssel (Kurve P256) erstellt und ein
+  entsprechendes Signatur-Zertifikat (Profil C.FD.AUT, technische Rolle
+  oid_zeta-guard) von der gematik bestellt werden. Ferner wird das
+  zugehörige KOMP-CA-Zertifikat benötigt, es wird normalerweise zusammen mit
+  dem Signatur-Zertifikat ausgeliefert.
 
-Die genaue Art der Zertifikateprüfung - z.B. über Federation Master und/oder
+Die genaue Art der Zertifikatsprüfung – z.B. über Federation Master und/oder
 Vertrauensanker-Container ist noch in Ausarbeitung der Spezifikation.
 
 
@@ -210,6 +209,8 @@ Dokumente:
 
 * Konfiguration des ZETA-Guard mit Details zu allen relevanten Komponenten
   [Wie Sie ZETA-Guard in Kubernetes konfigurieren](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md)
+* [Wie Sie Telemetrie des Resource Servers an die gematik schicken](Anleitungen/Wie_Sie_Telemetrie_des_Resource_Servers_an_die_gematik_schicken.md)
+* [Wie Sie ein Observability-Backend anschließen](Anleitungen/Wie_Sie_ein_Observability-Backend_an_ZETA-Guard_anschließen.md)
 
 Optionale Informationen:
 
@@ -232,6 +233,18 @@ bei eigenen Anpassungen nötig.
 * Server-Fehler mit HTTP-Response-Code 500 (Internal Server Error) müssen
   mithilfe der Logs aus Kubernetes analysiert werden. Dazu kann`kubectl logs`
   genutzt werden.
+* Bei der Nutzung des testdriver als Test-Client für den Fachdienst ist zu beachten, dass
+  der testdriver die `Host`, die er im Request an sich bekommt eins-zu-eins weiterleitet.
+  Diese Funktionalität wird für den Betrieb mit dem Tiger-Proxy verwendet, kann aber in Infrastrukturen
+  in denen ein `Host` Header automatisch gesetzt wird zu problemen führen. Der Fehler zeigt sich dann
+  erst beim ersten eigentlichen Aufruf des Fachdienstes (ohne wie auch mit ASL), typischerweise
+  durch einen 404 Not Found Fehler. Analog die X-Forwarded Header, insb. auch X-Forwarded-Host.
+  Dieser wird im PEP für die Ermittlung des Ziel-Hosts (PEP Endpunkt) verwendet, mit dem
+  die Audience und HTU DPoP claims verifiziert werden.
+  Ein Fix dafür könnte sein, beim selbst-gebautem testdriver container, in der Klasse
+  `zeta-testdriver/src/main/kotlin/de.gematik.zeta.driver/DriverUtils.kt`, in der statischen
+  Variable `notForwardedHeaders` die entsprechenden Header einzufügen wie `HttpHeaders.Host`.
+
 
 #### Weitere Hinweise
 
@@ -307,7 +320,7 @@ um z.B. Denial-of-Service-Attacks abzuwehren, und auch die Requests auf
 die redundanten Instanzen zu verteilen.
 
 Die Datenbanken der einzelnen ZETA-Guard Instanzen müssen dann
-zwischen den Instanzen synchronisiert werden,
+zwischen den Instanzen synchronisiert werden.
 
 Auch innerhalb des ZETA-Guard können unterschiedliche Skalierungen z.B.
 zwischen PEP und PDP verwendet werden. Dies wird durch die Nutzung der
@@ -330,7 +343,9 @@ Komponenten stateless, und damit unabhängig betreibbar/skalierbar sind.
 Details dazu finden sich in der Dokumentation der [Deployment-Szenarien](Referenzen/Deploymentszenarien.md).
 
 Hinweis: die Datenbanken (infinispan, postgres) werden aktuell mit den Helm-Charts
-installiert. Die Nutzung externer Datenbanken befindet sich in Prüfung.
+installiert. Die Nutzung externer Datenbanken ist
+in [Wie Sie ZETA Guard in Kubernetes konfigurieren](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md)
+beschrieben.
 
 Die genauen Bedingungen für bestimmte Skalierungen der Datenbanken
 (Infinispan und PDP Datenbank) befinden sich noch in der Entwicklung.
@@ -370,7 +385,7 @@ benötigt werden.
 #### Infrastruktur
 
 Die Infrastrukturanforderungen sind im Detail beschrieben
-in der [Anleitung einen ZETA-Guard im Kubernetes zu konfigurieren](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md).
+in der [Anleitung, einen ZETA-Guard im Kubernetes zu konfigurieren](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md).
 
 #### Tooling
 
@@ -386,8 +401,13 @@ in der [Anleitung einen ZETA-Guard im Kubernetes zu konfigurieren](Anleitungen/W
   konfiguriert werden, um SM-B-basierte Authentifizierung vornehmen
   zu können, und wird dann im PDP gegen den TI Vertrauensanker (Federation Master, TSL)
   geprüft.
+* Für ASL-Betrieb des PEP muss ein ECC-Schlüssel (Kurve P256) erstellt und ein
+  entsprechendes Signatur-Zertifikat (Profil C.FD.AUT, technische Rolle
+  oid_zeta-guard) von der gematik bestellt werden. Ferner wird das
+  zugehörige KOMP-CA-Zertifikat benötigt, es wird normalerweise zusammen mit
+  dem Signatur-Zertifikat ausgeliefert.
 
-Die genaue Art der Zertifikateprüfung - z.B. über Federation Master und/oder
+Die genaue Art der Zertifikatsprüfung – z.B. über Federation Master und/oder
 Vertrauensanker-Container ist noch in Ausarbeitung der Spezifikation.
 
 
@@ -413,6 +433,8 @@ Dokumente:
 
 * Konfiguration des ZETA-Guard mit Details zu allen relevanten Komponenten
   [Wie Sie ZETA-Guard in Kubernetes konfigurieren](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md)
+* [Wie Sie Telemetrie des Resource Servers an die gematik schicken](Anleitungen/Wie_Sie_Telemetrie_des_Resource_Servers_an_die_gematik_schicken.md)
+* [Wie Sie ein Observability-Backend anschließen](Anleitungen/Wie_Sie_ein_Observability-Backend_an_ZETA-Guard_anschließen.md)
 
 * Administrative Aufgaben - diese Punkte werden noch weiter ausgeführt. Beispiele sind dafür:
   * Festlegung der Skalierung
@@ -422,15 +444,15 @@ Dokumente:
 
 ### Known Issues und Fehleranalysen
 
-Hier werden noch Informationen nach Rückmeldungen aus der Nutzung eingetragen.
+Hier werden noch Informationen zu Rückmeldungen aus der Nutzung eingetragen.
 
 #### Besonderer Fehlersituationen
 
-Hier werden noch Informationen nach Rückmeldungen aus der Nutzung eingetragen.
+Hier werden noch Informationen zu Rückmeldungen aus der Nutzung eingetragen.
 
 #### Weitere Hinweise
 
-Hier werden noch Informationen nach Rückmeldungen aus der Nutzung eingetragen.
+Hier werden noch Informationen zu Rückmeldungen aus der Nutzung eingetragen.
 
 ### Wartung
 
@@ -470,11 +492,12 @@ für die Integration des SDK in Fachdienst-Clients hingewiesen.
 
 #### Registrierung
 
-* Der Client, spezifischer die Client-ID muss bei der gematik registriert werden.
-  Nur mit einer registrierten Client-ID wird der Zugriff auf die Fachdienste
-  in den OPA Policies freigeschaltet. Existierende Client-IDs können wiederverwendet
-  werden. Die Beantragung neuer Client-IDs wird noch in das Fachdienst-Portal
-  der gematik aufgenommen ( https://fachportal.gematik.de/ )
+* Der Client, spezifischer die Product_ID muss bei der gematik registriert
+  werden. Nur mit einer registrierten Product_ID wird der Zugriff auf die
+  Fachdienste in den OPA Policies freigeschaltet. Existierende Product_IDs
+  können wiederverwendet werden. Die Beantragung neuer Product_IDs wird noch in
+  das Fachdienst-Portal der gematik
+  aufgenommen ( https://fachportal.gematik.de/ )
 * Registrierung der Produktversion des Clients. Diese Version wird ebenso in die
   Regeln eingetragen.
 * Falls das Primärsystem die TPM-Attestierung verwendet, müssen die entsprechenden
@@ -486,8 +509,9 @@ Produktversion ist
 
 
 1. verwendete ZETA Client SDK Version
-2. verwendete TI Fachdienste mit den dazugehörigen Version (z.B. ePA 3.2.1) ( Mehrfachnennung möglich)
-3. **bei Nutzung von TPM-Attestierung und ZETA-Attestierungsservice auf dem Client**: Übermittelung des Hash
+2. verwendete TI Fachdienste mit den dazugehörigen Versionen (z.B. ePA 3.2.1)
+   (Mehrfachnennung möglich)
+3. **bei Nutzung von TPM-Attestierung und ZETA-Attestierungsservice auf dem Client**: Übermittlung des Hash
   Gesamthash gebildet über alle einzelne Hashes der unveränderlichen Dateien einer Clientproduktversion
 
 #### Zugänge
@@ -530,7 +554,7 @@ Hierbei wird aber immer von gradle und damit Java als Build-Tool ausgegangen.
 
 ##### Java, kotlin
 
-Bei beiden Zielplattformen wird Java als build-tool sowie Laufzeitumgebung
+Bei beiden Zielplattformen wird Java als build-tool sowie als Laufzeitumgebung
 verwendet.
 
 * Java
@@ -538,21 +562,18 @@ verwendet.
 
 ##### C++ auf Windows
 
-* Java (für gradle als build-Tool)
-* gradle als build-Tool
-* Mingw
+* Java (für gradle als build-Tool) nur für den Gradle-basierten C++ Client
+* MinGW (`g++`, `mingw32-make`) für den nativen C++ Client ohne Gradle
 
 ##### C++ auf Apple
 
-* Java (für gradle als build-Tool)
-* gradle als build-Tool
-* Apple XCode
+* Java (für gradle als build-Tool) nur für den Gradle-basierten C++ Client
+* `clang++`, `make` für den nativen C++ Client ohne Gradle
 
 ##### C++ auf Linux
 
-* Java (für gradle als build-Tool)
-* gradle als build-Tool
-* gcc/g++ oder clang/clang++
+* Java (für gradle als build-Tool) nur für den Gradle-basierten C++ Client
+* `gcc/g++` oder `clang/clang++`, `make` für den nativen C++ Client ohne Gradle
 
 ### Relevante Anleitungen und Referenzen
 
@@ -576,17 +597,17 @@ diese Anleitungen als Basis für Eigenentwicklungen hilfreich sein:
 
 ### Known Issues und Fehleranalysen
 
-Hier werden noch Informationen nach Rückmeldungen aus der Nutzung eingetragen.
+Hier werden noch Informationen zu Rückmeldungen aus der Nutzung eingetragen.
 
 #### Besonderer Fehlersituationen
 
-Hier werden noch Informationen nach Rückmeldungen aus der Nutzung eingetragen.
+Hier werden noch Informationen zu Rückmeldungen aus der Nutzung eingetragen.
 
 #### Weitere Hinweise
 
 * Wie in der Dokumentation zur Integration beschrieben, ist das SDK darauf ausgelegt,
   bestehende Infrastruktur des existierenden Clients wiederzuverwenden. D.h.
-  es kann Überschneidungen in der Funktionalität das Clients mit dem Primärsystem geben.
+  es kann Überschneidungen in der Funktionalität des Clients mit dem Primärsystem geben.
   In solchen Fällen ist die existierende Funktionalität des Clients vorzuziehen.
   Die Nutzung existierender Funktionen ist über die Injection der
   Funktionalität bei der Laufzeitkonfiguration des SDK möglich. Dies
@@ -635,6 +656,8 @@ Dokumente:
   [Deploymentszenarien](Referenzen/Deploymentszenarien.md)
 * Konfiguration des ZETA-Guard mit Details zu allen relevanten Komponenten
   [Wie Sie ZETA-Guard in Kubernetes konfigurieren](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md)
+* [Wie Sie Telemetrie des Resource Servers an die gematik schicken](Anleitungen/Wie_Sie_Telemetrie_des_Resource_Servers_an_die_gematik_schicken.md)
+* [Wie Sie ein Observability-Backend anschließen](Anleitungen/Wie_Sie_ein_Observability-Backend_an_ZETA-Guard_anschließen.md)
 
 ## License
 

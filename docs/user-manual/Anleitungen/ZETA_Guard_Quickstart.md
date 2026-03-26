@@ -43,14 +43,18 @@ Die Installation gliedert sich grob in folgende Schritte
 
 ### 1. Helm aufsetzen
 
-Das ZETA Guard Helm Chart ist für Helm 3 konzipiert.
+Das ZETA Guard Helm Chart ist für Helm 4 konzipiert.
 
 Kopieren Sie nun die Datei [values-demo.yaml](https://github.com/gematik/zeta-guard-helm/blob/main/charts/zeta-guard/values-demo.yaml) in das Arbeitsverzeichnis.
 Sie können diese Datei als Konfigurationsvorlage verwenden, umbenennen und
 anpassen.
 
-Unter `authserver` können Sie Name und Passwort des Admin-Accounts für den PDP
-festlegen.
+Beim **ersten Deployment** (Initialinstallation) müssen zusätzlich zu den
+Admin-Zugangsdaten auch die Werte für `authserver.genesisHash` und
+`authserver.smcbHashingPepper` im Values-File gesetzt werden.
+Diese Werte sind für die Erstellung der zugehörigen Kubernetes-Secrets
+erforderlich und werden bei der ersten Installation zwingend benötigt
+
 Zum Beispiel:
 
 ```yaml
@@ -58,10 +62,14 @@ authserver:
   admin:
     username: admin-Name
     password: admin-Passwort
+  genesisHash: 4841c2142fef441daa6ee6c57db65c011935964b14e94a6c8f5ec0447b83526c
+  smcbHashingPepper: 085c1245-1234-5678-95b4-97496bec6182
 ```
 
-Im Produktivbetrieb kann das Passwort z.B. via Helm Parameter `--set-file` von
-einem CD Server gesetzt werden.
+- Im Produktivbetrieb kann das Passwort z.B. via Helm Parameter `--set-file` von
+  einem CD Server gesetzt werden.
+- Die Werte für `genesisHash` und `smcbHashingPepper` sollten selbst generiert werden. Z.B. mit `openssl rand -hex 16` für den Pepper und einer UUID für den Genesis Hash.
+- Nach dem initialen Deployment werden die Secrets im Cluster gespeichert. Bei späteren Upgrades müssen die Werte im Values-File **nicht erneut gesetzt werden**, solange die Secrets im Cluster bestehen bleiben.
 
 Mit dieser [values-demo.yaml](https://github.com/gematik/zeta-guard-helm/blob/main/charts/zeta-guard/values-demo.yaml) können Sie ZETA Guard über
 folgendes Kommando installieren:
@@ -130,7 +138,7 @@ export TF_VAR_keycloak_password="IhrPasswort"
 
 ##### Weisen Sie Terraform auf die zu verwendende kubeconfig und den Namespace hin:
 
-Die Datei [demo.backend.hcl](demo.backend.hcl) ermöglicht es Terraform mit dem
+Die Datei [demo.backend.hcl](https://github.com/gematik/zeta-guard-helm/blob/main/terraform/authserver/environments/demo.backend.hcl) ermöglicht es Terraform mit dem
 Cluster und dem Namespace zu interagieren. Passen Sie die Werte an Ihre Umgebung
 an.
 
@@ -148,7 +156,7 @@ keycloak_namespace = "zeta-demo"                   # Namespace des Authservers i
 pdp_scopes         = ["zero:read", "zero:write"]   # Zusätzliche PDP-Scopes
 ```
 
-Siehe [demo.tfvars](demo.tfvars).
+Siehe [demo.tfvars](https://github.com/gematik/zeta-guard-helm/blob/main/terraform/authserver/environments/demo.tfvars).
 
 #### Backend initialisieren
 

@@ -1,0 +1,85 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0" version="29.3.4">
+  <diagram name="Page-1" id="7WchvCbhQ2MPnfByR-CC">
+    <mxGraphModel dx="1008" dy="644" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2FlTF4-R9S6SGD7ufvO9-1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Ingress&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;Multiple Hostnames&lt;/div&gt;&lt;div&gt;Using X-Forwarded&lt;/div&gt;&lt;div&gt;headers&lt;/div&gt;" vertex="1">
+          <mxGeometry height="240" width="150" x="240" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="2FlTF4-R9S6SGD7ufvO9-2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="PEP&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;Normal endpoints&lt;/div&gt;&lt;div&gt;/vsdservice/...&lt;/div&gt;&lt;div&gt;/ASL&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;X-Forwarded&lt;/div&gt;&lt;div&gt;headers determine&lt;/div&gt;&lt;div&gt;target/tenant&lt;/div&gt;" vertex="1">
+          <mxGeometry height="240" width="160" x="510" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="2FlTF4-R9S6SGD7ufvO9-3" edge="1" parent="1" source="2FlTF4-R9S6SGD7ufvO9-1" style="endArrow=none;dashed=1;html=1;dashPattern=1 3;strokeWidth=2;rounded=0;entryX=0;entryY=0.708;entryDx=0;entryDy=0;entryPerimeter=0;exitX=0.994;exitY=0.709;exitDx=0;exitDy=0;exitPerimeter=0;" target="2FlTF4-R9S6SGD7ufvO9-1" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="400" y="380" as="sourcePoint" />
+            <mxPoint x="450" y="330" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2FlTF4-R9S6SGD7ufvO9-5" edge="1" parent="1" source="2FlTF4-R9S6SGD7ufvO9-1" style="endArrow=none;dashed=1;html=1;dashPattern=1 3;strokeWidth=2;rounded=0;entryX=0;entryY=0.708;entryDx=0;entryDy=0;entryPerimeter=0;exitX=1.005;exitY=0.29;exitDx=0;exitDy=0;exitPerimeter=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="400" y="140" as="sourcePoint" />
+            <mxPoint x="240" y="150" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2FlTF4-R9S6SGD7ufvO9-6" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;entryX=0.008;entryY=0.167;entryDx=0;entryDy=0;entryPerimeter=0;" target="2FlTF4-R9S6SGD7ufvO9-1" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="80" y="120" as="sourcePoint" />
+            <mxPoint x="530" y="200" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2FlTF4-R9S6SGD7ufvO9-11" connectable="0" parent="2FlTF4-R9S6SGD7ufvO9-6" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="host1/vsdservice/...&lt;div&gt;host1/ASL&lt;/div&gt;" vertex="1">
+          <mxGeometry relative="1" x="-0.4848" y="-3" as="geometry">
+            <mxPoint y="17" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2FlTF4-R9S6SGD7ufvO9-7" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;entryX=0.008;entryY=0.167;entryDx=0;entryDy=0;entryPerimeter=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="79" y="199.5" as="sourcePoint" />
+            <mxPoint x="240" y="199.5" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2FlTF4-R9S6SGD7ufvO9-12" connectable="0" parent="2FlTF4-R9S6SGD7ufvO9-7" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="host2/vsdservice/...&lt;div&gt;host2/ASL&lt;/div&gt;" vertex="1">
+          <mxGeometry relative="1" x="-0.6965" y="5" as="geometry">
+            <mxPoint x="16" y="26" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2FlTF4-R9S6SGD7ufvO9-8" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;entryX=0.008;entryY=0.167;entryDx=0;entryDy=0;entryPerimeter=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="79" y="280" as="sourcePoint" />
+            <mxPoint x="240" y="280" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2FlTF4-R9S6SGD7ufvO9-13" connectable="0" parent="2FlTF4-R9S6SGD7ufvO9-8" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="host3/vsdservice/...&lt;div&gt;host3/ASL&lt;/div&gt;" vertex="1">
+          <mxGeometry relative="1" x="-0.5664" y="-2" as="geometry">
+            <mxPoint y="18" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2FlTF4-R9S6SGD7ufvO9-9" edge="1" parent="1" source="2FlTF4-R9S6SGD7ufvO9-1" style="endArrow=classic;html=1;rounded=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" target="2FlTF4-R9S6SGD7ufvO9-2" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="360" y="199.5" as="sourcePoint" />
+            <mxPoint x="480" y="200" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2FlTF4-R9S6SGD7ufvO9-14" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Resource Server" vertex="1">
+          <mxGeometry height="240" width="160" x="790" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="2FlTF4-R9S6SGD7ufvO9-15" edge="1" parent="1" source="2FlTF4-R9S6SGD7ufvO9-2" style="endArrow=classic;html=1;rounded=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" target="2FlTF4-R9S6SGD7ufvO9-14" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="470" y="280" as="sourcePoint" />
+            <mxPoint x="520" y="230" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2FlTF4-R9S6SGD7ufvO9-16" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="Request is forwarded normally using X-Fowarded-* headers to communicate target host" vertex="1">
+          <mxGeometry height="30" width="170" x="230" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="2FlTF4-R9S6SGD7ufvO9-17" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="Requests are forwarded&lt;div&gt;normally for non-ASL&lt;/div&gt;&lt;div&gt;Requests, with X-Forwared headers&lt;/div&gt;&lt;div&gt;ASL requests copy X-Forwarded headers from outside HTTPS request into&lt;/div&gt;&lt;div&gt;Resource server requests&lt;/div&gt;" vertex="1">
+          <mxGeometry height="30" width="230" x="475" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="2FlTF4-R9S6SGD7ufvO9-18" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="Resource server&lt;div&gt;must evaluate&lt;/div&gt;&lt;div&gt;X-Fortwarded headers&lt;/div&gt;&lt;div&gt;to determine tenant&lt;/div&gt;" vertex="1">
+          <mxGeometry height="30" width="170" x="785" y="360" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

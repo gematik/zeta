@@ -1,0 +1,200 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0" version="29.3.8">
+  <diagram name="Page-1" id="u5zV9JiMi4lwDqV_8s0_">
+    <mxGraphModel dx="2018" dy="1116" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-10" parent="1" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#fff2cc;strokeColor=#d6b656;" value="ZETA Guard" vertex="1">
+          <mxGeometry height="690" width="710" x="390" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="EUGfUbTwuWc5B6dLC-zP-1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;align=right;verticalAlign=bottom;" value="&lt;div&gt;Ingress/&amp;nbsp;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;openshift routes&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;ingress.yaml&lt;/div&gt;" vertex="1">
+          <mxGeometry height="650" width="190" x="410" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="8gv2lV-85tl2EbkdnQtZ-1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#ffe6cc;strokeColor=#d79b00;" value="Testdriver (optional)&lt;div&gt;externer Hostname&lt;/div&gt;" vertex="1">
+          <mxGeometry height="100" width="170" x="420" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="xVArpT3vCe5As1kIshGG-4" parent="1" style="rounded=0;whiteSpace=wrap;html=1;align=right;verticalAlign=bottom;" value="&lt;div&gt;zeta-guard&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;authserver config in values.yaml&lt;/div&gt;" vertex="1">
+          <mxGeometry height="240" width="430" x="630" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="xVArpT3vCe5As1kIshGG-1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;align=right;verticalAlign=bottom;" value="&lt;div&gt;&lt;br&gt;&lt;/div&gt;PEP&amp;nbsp;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;Proxy&lt;/span&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;pep-proxy.yaml&lt;/div&gt;&lt;div&gt;pepproxy nginxConf in values.yaml&lt;/div&gt;" vertex="1">
+          <mxGeometry height="260" width="430" x="630" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#d5e8d4;strokeColor=#82b366;" value="Client&lt;div&gt;(Primärsystem)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="140" width="160" x="120" y="270" as="geometry" />
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="ZETA SDK" vertex="1">
+          <mxGeometry height="70" width="120" x="160" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-3" parent="1" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#ffe6cc;strokeColor=#d79b00;" value="PEP Endpunkt &lt;br&gt;externer Hostname" vertex="1">
+          <mxGeometry height="190" width="170" x="420" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-4" edge="1" parent="1" source="aJOXWCklKPL6GkMPz0iD-2" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;edgeStyle=orthogonalEdgeStyle;" target="aJOXWCklKPL6GkMPz0iD-5" value="1">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="360" y="348" />
+              <mxPoint x="360" y="220" />
+            </Array>
+            <mxPoint x="400" y="620" as="sourcePoint" />
+            <mxPoint x="450" y="570" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-5" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="/.well-known/oauth-protected-resource" vertex="1">
+          <mxGeometry height="40" width="120" x="690" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-6" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="PEP Fachdienst-Endpunkt" vertex="1">
+          <mxGeometry height="40" width="120" x="690" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-7" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Fachdienst&lt;div&gt;Resource Server&lt;/div&gt;" vertex="1">
+          <mxGeometry height="80" width="210" x="1200" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-8" edge="1" parent="1" source="aJOXWCklKPL6GkMPz0iD-2" style="endArrow=classic;html=1;rounded=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;edgeStyle=orthogonalEdgeStyle;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" target="aJOXWCklKPL6GkMPz0iD-6" value="4">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="280" y="360" />
+              <mxPoint x="380" y="360" />
+              <mxPoint x="380" y="280" />
+            </Array>
+            <mxPoint x="280" y="370" as="sourcePoint" />
+            <mxPoint x="710" y="370" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-9" edge="1" parent="1" source="aJOXWCklKPL6GkMPz0iD-6" style="endArrow=classic;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="aJOXWCklKPL6GkMPz0iD-7" value="5">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="1140" y="280" />
+              <mxPoint x="1140" y="280" />
+            </Array>
+            <mxPoint x="700" y="360" as="sourcePoint" />
+            <mxPoint x="1180" y="250" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-11" parent="1" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#ffe6cc;strokeColor=#d79b00;" value="PDP / auth server Endpunkt&lt;br&gt;externer Hostname" vertex="1">
+          <mxGeometry height="150" width="170" x="420" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-12" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="/auth/realms/zeta-guard/.well-known/zeta-guard-well-known" vertex="1">
+          <mxGeometry height="40" width="180" x="710" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-13" edge="1" parent="1" source="aJOXWCklKPL6GkMPz0iD-2" style="endArrow=classic;html=1;rounded=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;edgeStyle=orthogonalEdgeStyle;exitX=1;exitY=0.75;exitDx=0;exitDy=0;" target="xVArpT3vCe5As1kIshGG-3" value="2">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="280" y="375" />
+              <mxPoint x="380" y="375" />
+              <mxPoint x="380" y="510" />
+            </Array>
+            <mxPoint x="320" y="450" as="sourcePoint" />
+            <mxPoint x="610" y="370" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-14" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="PDP Endpunkt&lt;div&gt;/auth/realms/zeta-guard/&lt;/div&gt;" vertex="1">
+          <mxGeometry height="40" width="180" x="710" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-15" edge="1" parent="1" source="aJOXWCklKPL6GkMPz0iD-2" style="endArrow=classic;html=1;rounded=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;edgeStyle=orthogonalEdgeStyle;exitX=1.006;exitY=0.898;exitDx=0;exitDy=0;exitPerimeter=0;" target="aJOXWCklKPL6GkMPz0iD-14" value="3">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="281" y="390" />
+              <mxPoint x="360" y="390" />
+              <mxPoint x="360" y="570" />
+            </Array>
+            <mxPoint x="440" y="470" as="sourcePoint" />
+            <mxPoint x="730" y="565" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-16" parent="1" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;fontSize=8;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;" value="Client Configuration für das ZETA SDK:&lt;div&gt;FACHDIENST_URL&lt;/div&gt;&lt;div&gt;(4)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="70" width="90" x="200" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-17" edge="1" parent="1" style="curved=1;endArrow=classic;html=1;rounded=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="340" y="210" />
+            </Array>
+            <mxPoint x="290" y="210" as="sourcePoint" />
+            <mxPoint x="320" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-18" parent="1" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;fontSize=8;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" value="&lt;div&gt;PEP&lt;/div&gt;&lt;div&gt;pep-proxy.yaml mount from -&amp;gt;&amp;nbsp;&lt;/div&gt;&lt;div&gt;zeta-guard/files/well-known&lt;/div&gt;&lt;div&gt;Enthält:&lt;/div&gt;Resource base URI (4)&lt;div&gt;Auth Server URI (3)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="90" width="120" x="560" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-22" edge="1" parent="1" source="aJOXWCklKPL6GkMPz0iD-5" style="endArrow=classic;html=1;rounded=0;entryX=0.63;entryY=0.773;entryDx=0;entryDy=0;exitX=0.25;exitY=0;exitDx=0;exitDy=0;edgeStyle=orthogonalEdgeStyle;curved=1;entryPerimeter=0;" target="aJOXWCklKPL6GkMPz0iD-18" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="840" y="250" as="sourcePoint" />
+            <mxPoint x="690.0000000000002" y="85" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-23" parent="1" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;fontSize=8;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;" value="ZETA SDK&lt;div&gt;Resource Server URL&lt;/div&gt;&lt;div&gt;Regel in pepproxy nginx conf&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;zeta guard quickstart Produkthandbuch&lt;/div&gt;" vertex="1">
+          <mxGeometry height="100" width="160" x="1080" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="xVArpT3vCe5As1kIshGG-3" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Proxy_pass /.well-known/oauth-authorization-server" vertex="1">
+          <mxGeometry height="50" width="150" x="435" y="485" as="geometry" />
+        </mxCell>
+        <mxCell id="xVArpT3vCe5As1kIshGG-5" edge="1" parent="1" source="xVArpT3vCe5As1kIshGG-3" style="endArrow=classic;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="aJOXWCklKPL6GkMPz0iD-12" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="610" y="510" />
+              <mxPoint x="610" y="510" />
+            </Array>
+            <mxPoint x="630" y="388" as="sourcePoint" />
+            <mxPoint x="780" y="380" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="EUGfUbTwuWc5B6dLC-zP-2" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="/auth" vertex="1">
+          <mxGeometry height="30" width="60" x="425" y="540" as="geometry" />
+        </mxCell>
+        <mxCell id="EUGfUbTwuWc5B6dLC-zP-5" parent="1" style="rounded=0;whiteSpace=wrap;html=1;align=right;verticalAlign=bottom;" value="&lt;div&gt;testdriver&lt;/div&gt;" vertex="1">
+          <mxGeometry height="130" width="430" x="630" y="660" as="geometry" />
+        </mxCell>
+        <mxCell id="EUGfUbTwuWc5B6dLC-zP-6" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="testdriver proxy" vertex="1">
+          <mxGeometry height="40" width="180" x="710" y="710" as="geometry" />
+        </mxCell>
+        <mxCell id="EUGfUbTwuWc5B6dLC-zP-8" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="/proxy" vertex="1">
+          <mxGeometry height="30" width="60" x="430" y="700" as="geometry" />
+        </mxCell>
+        <mxCell id="EUGfUbTwuWc5B6dLC-zP-10" edge="1" parent="1" source="EUGfUbTwuWc5B6dLC-zP-11" style="endArrow=classic;html=1;rounded=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;edgeStyle=orthogonalEdgeStyle;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" target="EUGfUbTwuWc5B6dLC-zP-6" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="300" y="730" />
+              <mxPoint x="300" y="730" />
+            </Array>
+            <mxPoint x="280" y="500" as="sourcePoint" />
+            <mxPoint x="530" y="725" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="EUGfUbTwuWc5B6dLC-zP-11" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Test framework" vertex="1">
+          <mxGeometry height="70" width="120" x="160" y="695" as="geometry" />
+        </mxCell>
+        <mxCell id="EUGfUbTwuWc5B6dLC-zP-13" edge="1" parent="1" source="aJOXWCklKPL6GkMPz0iD-23" style="endArrow=classic;html=1;rounded=0;exitX=0.241;exitY=1.006;exitDx=0;exitDy=0;exitPerimeter=0;edgeStyle=orthogonalEdgeStyle;curved=1;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="780" y="530" as="sourcePoint" />
+            <mxPoint x="1140" y="280" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="EUGfUbTwuWc5B6dLC-zP-18" edge="1" parent="1" source="EUGfUbTwuWc5B6dLC-zP-6" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;edgeStyle=orthogonalEdgeStyle;entryX=0.014;entryY=0.732;entryDx=0;entryDy=0;entryPerimeter=0;" target="EUGfUbTwuWc5B6dLC-zP-1" value="1,2,3,4">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="900" y="730" />
+              <mxPoint x="900" y="680" />
+              <mxPoint x="360" y="680" />
+              <mxPoint x="360" y="616" />
+            </Array>
+            <mxPoint x="620" y="410" as="sourcePoint" />
+            <mxPoint x="670" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="EUGfUbTwuWc5B6dLC-zP-20" parent="1" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;fontSize=8;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;" value="ZETA SDK&lt;div&gt;FACHDIENST_URL&lt;/div&gt;&lt;div&gt;Umgebungsvariable&lt;/div&gt;&lt;div&gt;values.yaml&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="130" x="1130" y="710" as="geometry" />
+        </mxCell>
+        <mxCell id="EUGfUbTwuWc5B6dLC-zP-22" edge="1" parent="1" source="EUGfUbTwuWc5B6dLC-zP-20" style="endArrow=classic;html=1;rounded=0;exitX=-0.019;exitY=0.407;exitDx=0;exitDy=0;exitPerimeter=0;edgeStyle=orthogonalEdgeStyle;curved=1;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="820" y="570" as="sourcePoint" />
+            <mxPoint x="900" y="720" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="EUGfUbTwuWc5B6dLC-zP-23" edge="1" parent="1" source="EUGfUbTwuWc5B6dLC-zP-1" style="endArrow=none;dashed=1;html=1;dashPattern=1 3;strokeWidth=2;rounded=0;entryX=1.001;entryY=0.413;entryDx=0;entryDy=0;entryPerimeter=0;exitX=0.005;exitY=0.414;exitDx=0;exitDy=0;exitPerimeter=0;" target="EUGfUbTwuWc5B6dLC-zP-1" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="420" y="410" as="sourcePoint" />
+            <mxPoint x="790" y="390" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

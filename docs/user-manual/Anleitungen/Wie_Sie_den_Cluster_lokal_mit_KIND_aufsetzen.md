@@ -61,7 +61,7 @@ wsl.exe -d Ubuntu
 
 ### Schritt 1: Linux aktualisieren
 
-In der Ubuntu-Shell folgendes eingeben:
+In der Ubuntu-Shell Folgendes eingeben:
 
 ```shell
 sudo apt-get update && sudo apt-get dist-upgrade
@@ -267,7 +267,7 @@ nslookup host.docker.internal
 ```
 
 > [!NOTE]
-> Die IP Adresse ändert sich bei Wechsel von WLAN / Netzwerk. 
+> Die IP Adresse ändert sich bei Wechsel von WLAN / Netzwerk.
 > Ggf. die IP Adresse des Rechners im lokalen Netzwerk verwenden.
 
 Die Ausgabe sieht ähnlich zu dem Folgenden aus:

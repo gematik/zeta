@@ -1,0 +1,45 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0" version="29.2.9">
+  <diagram name="Seite-1" id="EC1D4CuKjGgdZnLp6c-k">
+    <mxGraphModel dx="1058" dy="676" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="wNfwXgeyBn939YUSDMje-18" parent="1" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;" value="TI 2.0 Fachdienst" vertex="1">
+          <mxGeometry height="200" width="335" x="885" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="wNfwXgeyBn939YUSDMje-22" edge="1" parent="1" source="lYhZLmYy5Fq1fud96bfd-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="wNfwXgeyBn939YUSDMje-25">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="795" y="180" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="wNfwXgeyBn939YUSDMje-23" parent="1" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#d5e8d4;strokeColor=#82b366;" value="Clientsystem" vertex="1">
+          <mxGeometry height="80" width="100" x="490" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="wNfwXgeyBn939YUSDMje-24" edge="1" parent="1" source="wNfwXgeyBn939YUSDMje-25" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="wNfwXgeyBn939YUSDMje-30">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="wNfwXgeyBn939YUSDMje-25" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="&lt;div style=&quot;text-align: start;&quot;&gt;ZETA Guard&lt;/div&gt;" vertex="1">
+          <mxGeometry height="80" width="101" x="935" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="wNfwXgeyBn939YUSDMje-30" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="&lt;div style=&quot;text-align: start;&quot;&gt;Resource Server&lt;/div&gt;" vertex="1">
+          <mxGeometry height="80" width="101" x="1075" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="wNfwXgeyBn939YUSDMje-31" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="ZETA Client" vertex="1">
+          <mxGeometry height="30" width="90" x="500" y="165" as="geometry" />
+        </mxCell>
+        <mxCell id="lYhZLmYy5Fq1fud96bfd-3" edge="1" parent="1" source="wNfwXgeyBn939YUSDMje-23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="lYhZLmYy5Fq1fud96bfd-2" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="590" y="180" as="sourcePoint" />
+            <mxPoint x="1010" y="180" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lYhZLmYy5Fq1fud96bfd-2" parent="1" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;" value="Internet" vertex="1">
+          <mxGeometry height="80" width="120" x="690" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="lYhZLmYy5Fq1fud96bfd-4" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="N:M Beziehung zwischen ZETA Clients und Fachdiensten&lt;div&gt;über das Internet&lt;/div&gt;" vertex="1">
+          <mxGeometry height="30" width="190" x="650" y="240" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

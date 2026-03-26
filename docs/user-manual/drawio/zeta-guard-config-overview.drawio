@@ -1,0 +1,142 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0" version="29.3.7">
+  <diagram name="Page-1" id="u5zV9JiMi4lwDqV_8s0_">
+    <mxGraphModel dx="1153" dy="638" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-10" parent="1" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#fff2cc;strokeColor=#d6b656;" value="ZETA Guard" vertex="1">
+          <mxGeometry height="510" width="500" x="390" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#d5e8d4;strokeColor=#82b366;" value="Client&lt;div&gt;(Primärsystem)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="140" width="160" x="120" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="ZETA SDK" vertex="1">
+          <mxGeometry height="70" width="120" x="160" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-3" parent="1" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#ffe6cc;strokeColor=#d79b00;" value="PEP Endpunkt &lt;br&gt;(same hostname, Internet)" vertex="1">
+          <mxGeometry height="160" width="210" x="570" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-4" edge="1" parent="1" source="aJOXWCklKPL6GkMPz0iD-2" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;edgeStyle=orthogonalEdgeStyle;" target="aJOXWCklKPL6GkMPz0iD-5" value="1">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="400" y="600" as="sourcePoint" />
+            <mxPoint x="450" y="550" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-5" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="/.well-known/oauth-protected-resource" vertex="1">
+          <mxGeometry height="40" width="120" x="570" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-6" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="PEP Fachdienst-Endpunkt" vertex="1">
+          <mxGeometry height="40" width="120" x="570" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-7" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Fachdienst&lt;div&gt;Resource Server&lt;/div&gt;" vertex="1">
+          <mxGeometry height="80" width="210" x="980" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-8" edge="1" parent="1" source="aJOXWCklKPL6GkMPz0iD-2" style="endArrow=classic;html=1;rounded=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;edgeStyle=orthogonalEdgeStyle;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" target="aJOXWCklKPL6GkMPz0iD-6" value="4">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="450" y="340" />
+              <mxPoint x="450" y="260" />
+            </Array>
+            <mxPoint x="280" y="350" as="sourcePoint" />
+            <mxPoint x="710" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-9" edge="1" parent="1" source="aJOXWCklKPL6GkMPz0iD-6" style="endArrow=classic;html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="aJOXWCklKPL6GkMPz0iD-7" value="5">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="920" y="260" />
+              <mxPoint x="920" y="260" />
+            </Array>
+            <mxPoint x="480" y="340" as="sourcePoint" />
+            <mxPoint x="960" y="230" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-11" parent="1" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#ffe6cc;strokeColor=#d79b00;" value="PDP / auth server Endpunkt&lt;br&gt;(same hostname, Internet)" vertex="1">
+          <mxGeometry height="150" width="210" x="570" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-12" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="/.well-known/oauth-authorization-server" vertex="1">
+          <mxGeometry height="40" width="120" x="570" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-13" edge="1" parent="1" source="aJOXWCklKPL6GkMPz0iD-2" style="endArrow=classic;html=1;rounded=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;edgeStyle=orthogonalEdgeStyle;exitX=1;exitY=0.75;exitDx=0;exitDy=0;" target="aJOXWCklKPL6GkMPz0iD-12" value="2">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="280" y="355" />
+              <mxPoint x="450" y="355" />
+              <mxPoint x="450" y="490" />
+            </Array>
+            <mxPoint x="320" y="430" as="sourcePoint" />
+            <mxPoint x="610" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-14" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="PDP Endpunkt" vertex="1">
+          <mxGeometry height="40" width="120" x="570" y="530" as="geometry" />
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-15" edge="1" parent="1" source="aJOXWCklKPL6GkMPz0iD-2" style="endArrow=classic;html=1;rounded=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;edgeStyle=orthogonalEdgeStyle;exitX=1.006;exitY=0.898;exitDx=0;exitDy=0;exitPerimeter=0;" target="aJOXWCklKPL6GkMPz0iD-14" value="3">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="281" y="370" />
+              <mxPoint x="420" y="370" />
+              <mxPoint x="420" y="550" />
+            </Array>
+            <mxPoint x="440" y="450" as="sourcePoint" />
+            <mxPoint x="730" y="545" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-16" parent="1" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;fontSize=8;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;" value="Client Configuration für das ZETA SDK:&lt;div&gt;&quot;FACHDIENST_URL&quot;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="70" width="90" x="200" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-17" edge="1" parent="1" style="curved=1;endArrow=classic;html=1;rounded=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="340" y="190" />
+            </Array>
+            <mxPoint x="290" y="190" as="sourcePoint" />
+            <mxPoint x="370" y="330" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-18" parent="1" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;fontSize=8;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" value="&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(51, 51, 51), rgb(193, 193, 193));&quot;&gt;Enthält:&lt;/span&gt;&lt;/div&gt;Resource URI (4)&lt;div&gt;Auth Server URI (2/3)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="70" width="120" x="450" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-19" edge="1" parent="1" source="aJOXWCklKPL6GkMPz0iD-18" style="curved=1;endArrow=classic;html=1;rounded=0;exitX=0.019;exitY=0.584;exitDx=0;exitDy=0;exitPerimeter=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="370" y="190" />
+            </Array>
+            <mxPoint x="300" y="190" as="sourcePoint" />
+            <mxPoint x="420" y="390" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-20" edge="1" parent="1" source="aJOXWCklKPL6GkMPz0iD-18" style="curved=1;endArrow=classic;html=1;rounded=0;exitX=0.119;exitY=0.872;exitDx=0;exitDy=0;exitPerimeter=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="450" y="130" />
+              <mxPoint x="450" y="160" />
+              <mxPoint x="460" y="190" />
+              <mxPoint x="480" y="230" />
+            </Array>
+            <mxPoint x="472" y="250" as="sourcePoint" />
+            <mxPoint x="510" y="260" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-22" edge="1" parent="1" source="aJOXWCklKPL6GkMPz0iD-5" style="endArrow=classic;html=1;rounded=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;exitX=0.25;exitY=0;exitDx=0;exitDy=0;edgeStyle=orthogonalEdgeStyle;curved=1;" target="aJOXWCklKPL6GkMPz0iD-18" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="620" y="230" as="sourcePoint" />
+            <mxPoint x="670" y="180" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="aJOXWCklKPL6GkMPz0iD-23" parent="1" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;fontSize=8;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;" value="PEP Konfiguration&lt;div&gt;Resource Server&lt;/div&gt;" vertex="1">
+          <mxGeometry height="50" width="90" x="850" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="aKIPJHK1WCOr59wzELd6-1" edge="1" parent="1" source="aJOXWCklKPL6GkMPz0iD-23" style="endArrow=classic;html=1;rounded=0;exitX=0.333;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;edgeStyle=orthogonalEdgeStyle;curved=1;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="700" y="320" as="sourcePoint" />
+            <mxPoint x="870" y="260" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="aKIPJHK1WCOr59wzELd6-2" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&quot;/.well-known&quot; Endpunkte nutzen denselben Hostnamen wie die zugehörigen PEP und PDP Endpunkte" vertex="1">
+          <mxGeometry height="30" width="190" x="580" y="350" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
