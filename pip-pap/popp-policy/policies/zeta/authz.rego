@@ -23,10 +23,10 @@ decision := response if {
 }
 
 # Regel zum Sammeln von Fehlern
-reasons[msg] if {
-	not user_profession_is_allowed
-	msg := "User profession is not allowed"
-}
+#reasons[msg] if {
+#	not user_profession_is_allowed
+#	msg := "User profession is not allowed"
+#}
 
 #reasons[msg] if {
 #	not client_product_is_allowed
