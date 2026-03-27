@@ -31,6 +31,21 @@ properties:
         description: The audience for the authorization
         items:
           type: string
+      country_code:
+        type: string
+        description: "ISO 3166-1 alpha-2 country code of the source IP, resolved by AuthS via GeoIP."
+        pattern: "^[A-Z]{2}$"
+      http_method:
+        type: string
+        description: The HTTP method of the request.
+        enum:
+          - GET
+          - POST
+          - PUT
+          - PATCH
+          - DELETE
+          - HEAD
+          - OPTIONS
       ip_address:
         type: string
         description: The source IP address of the request.
