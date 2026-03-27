@@ -1,0 +1,248 @@
+# Schema für die vom AuthS verifizierten und aufbereiteten Client-Daten
+# zur Übergabe an die OPA Policy Engine.
+#
+# Herleitung der Claims:
+#   client_id       ← client-assertion-jwt.yaml: payload.iss / payload.sub
+#   product_id      ← client-assertion-jwt.yaml: payload.client_statement.posture.product_id
+#   product_version ← client-assertion-jwt.yaml: payload.client_statement.posture.product_version
+#   platform        ← client-assertion-jwt.yaml: payload.client_statement.platform
+#   posture_type    ← client-assertion-jwt.yaml: payload.client_statement.posture_type
+#   device_info     ← client-assertion-jwt.yaml: payload.client_statement.posture (plattformspezifisch)
+#   attestation_result ← vom AuthS nach Verifikation der posture-*.yaml Claims erzeugt
+#   registration_timestamp ← Zeitpunkt der initialen Client-Registrierung am AuthS
+
+$schema: "http://json-schema.org/draft-07/schema#"
+type: object
+title: Policy Engine Client Data
+description: >
+  Enthält die vom AuthS verifizierten Client-Registrierungsdaten sowie die
+  ausgewerteten Attestation-Claims (aus posture-*.yaml) zur Übergabe an die OPA Policy Engine.
+  Alle Signaturprüfungen und Attestation-Validierungen sind bereits erfolgt.
+properties:
+  client_id:
+    type: string
+    description: >
+      Die eindeutige ID der Client-Instanz.
+      Quelle: client-assertion-jwt.yaml → payload.iss (= payload.sub).
+    example: "cid-win-tpm-abcde"
+
+  product_id:
+    type: string
+    description: >
+      Der gematik-Produktbezeichner der Client-Software.
+      Quelle: client-assertion-jwt.yaml → payload.client_statement.posture.product_id.
+    example: "gematik-desktop-suite-win-v3"
+
+  product_version:
+    type: string
+    description: >
+      Die Version der Client-Software.
+      Quelle: client-assertion-jwt.yaml → payload.client_statement.posture.product_version.
+    example: "3.5.0"
+
+  platform:
+    type: string
+    description: >
+      Die Plattform der Client-Instanz.
+      Quelle: client-assertion-jwt.yaml → payload.client_statement.platform.
+    enum: [android, apple, windows, linux, other]
+    example: "windows"
+
+  posture_type:
+    type: string
+    description: >
+      Der Typ der verwendeten Attestierung.
+      Quelle: client-assertion-jwt.yaml → payload.client_statement.posture_type.
+    enum: [tpm, android, apple, software]
+    example: "tpm"
+
+  registration_timestamp:
+    type: integer
+    description: >
+      Unix-Timestamp der initialen Client-Registrierung am AuthS.
+    example: 1678888000
+
+  device_info:
+    type: object
+    description: >
+      Generische Geräteinformationen, die der AuthS aus der Client-Assertion extrahiert.
+      Quelle: client-assertion-jwt.yaml → payload.client_statement.posture (plattformspezifisch).
+    properties:
+      os:
+        type: string
+        description: Betriebssystem des Geräts (normalisiert).
+        example: "Windows 11 Pro"
+      os_version:
+        type: string
+        description: >
+          Betriebssystemversion.
+          Quelle: posture-tpm.yaml/posture-software.yaml → os_version;
+                  posture-apple.yaml → system_version.
+        example: "10.0.22621"
+      device_model:
+        type: string
+        description: >
+          Hardware-Modell des Geräts.
+          Quelle: posture-apple.yaml → device_model;
+                  posture-android.yaml → build.model.
+        example: "iPhone15,2"
+
+  attestation_result:
+    type: object
+    description: >
+      Vom AuthS verifizierte und aufbereitete Attestation-Claims.
+      Spezifische Claims stammen aus den jeweiligen posture-*.yaml Dateien.
+      Nur das zum posture_type passende Unterobjekt ist befüllt.
+    properties:
+      tpm:
+        type: object
+        description: >
+          Verifizierte Claims aus posture-tpm.yaml (posture_type = "tpm").
+          Quelle: client-assertion-jwt.yaml → payload.client_statement.posture (posture-tpm.yaml).
+        properties:
+          arch:
+            type: string
+            description: >
+              Hardwarearchitektur.
+              Quelle: posture-tpm.yaml → arch.
+            example: "x86_64"
+          pcrs:
+            type: object
+            description: >
+              Map der sicherheitsrelevanten PCR-Werte (Key = PCR-Index als String).
+              Quelle: posture-tpm.yaml → tpm_quote (vom AuthS ausgewertet).
+              Typische Indizes: PCR 7 (Secure Boot Policy), PCR 23 (Application).
+            additionalProperties:
+              type: string
+            example:
+              "7": "3d458cfe55cc03ea1f443f1562beec8df51c75e14a9fcf9a7234a13f198e7969"
+              "23": "0000000000000000000000000000000000000000000000000000000000000000"
+          quote_verified:
+            type: boolean
+            description: True, wenn die TPM-Quote-Signatur erfolgreich gegen den Attestation Key geprüft wurde.
+
+      android:
+        type: object
+        description: >
+          Verifizierte Claims aus posture-android.yaml (posture_type = "android").
+          Quelle: client-assertion-jwt.yaml → payload.client_statement.posture (posture-android.yaml).
+        properties:
+          manufacturer:
+            type: string
+            description: >
+              Gerätehersteller.
+              Quelle: posture-android.yaml → build.manufacturer.
+            example: "Google"
+          model:
+            type: string
+            description: >
+              Gerätemodell.
+              Quelle: posture-android.yaml → build.model.
+            example: "Pixel 8"
+          sdk_int:
+            type: integer
+            description: >
+              Android SDK Version.
+              Quelle: posture-android.yaml → build.version.sdk_int.
+            example: 34
+          security_patch:
+            type: string
+            description: >
+              Datum des letzten Security-Patches.
+              Quelle: posture-android.yaml → build.version.security_patch.
+            example: "2024-03-05"
+          meets_basic_integrity:
+            type: boolean
+            description: >
+              Ergebnis der Google Play Integrity API – Basic Integrity.
+              Quelle: posture-android.yaml → play_integrity_token (vom AuthS ausgewertet).
+          meets_device_integrity:
+            type: boolean
+            description: >
+              Ergebnis der Google Play Integrity API – Device Integrity (GMS-zertifiziertes Gerät).
+              Quelle: posture-android.yaml → play_integrity_token (vom AuthS ausgewertet).
+          meets_strong_integrity:
+            type: boolean
+            description: >
+              Ergebnis der Google Play Integrity API – Strong Integrity (aktuelles Sicherheitspatch-Level).
+              Quelle: posture-android.yaml → play_integrity_token (vom AuthS ausgewertet).
+          key_attestation_verified:
+            type: boolean
+            description: >
+              True, wenn die Android Key Attestation Certificate Chain erfolgreich
+              gegen den Google-Anker verifiziert wurde.
+              Quelle: posture-android.yaml → key_attestation_certificate_chain (vom AuthS ausgewertet).
+
+      apple:
+        type: object
+        description: >
+          Verifizierte Claims aus posture-apple.yaml (posture_type = "apple").
+          Quelle: client-assertion-jwt.yaml → payload.client_statement.posture (posture-apple.yaml).
+        properties:
+          system_name:
+            type: string
+            description: >
+              Apple-Betriebssystemname.
+              Quelle: posture-apple.yaml → system_name.
+            example: "iOS"
+          system_version:
+            type: string
+            description: >
+              Betriebssystemversion.
+              Quelle: posture-apple.yaml → system_version.
+            example: "17.4.1"
+          device_model:
+            type: string
+            description: >
+              Hardware-Modell.
+              Quelle: posture-apple.yaml → device_model.
+            example: "iPhone15,2"
+          environment:
+            type: string
+            description: >
+              Ausführungsumgebung (development = TestFlight, production = App Store).
+              Quelle: posture-apple.yaml → authData.aaguid (vom AuthS ausgewertet).
+            enum: [development, production]
+          app_id:
+            type: string
+            description: >
+              Verifizierte App-ID (Relying-Party-ID der App-Attest-Verifikation).
+              Quelle: posture-apple.yaml → authData.rpidHash (vom AuthS ausgewertet).
+            example: "de.gematik.exampleapp"
+          assertion_verified:
+            type: boolean
+            description: >
+              True, wenn die Apple-Assertion-Signatur erfolgreich verifiziert wurde.
+              Quelle: posture-apple.yaml → signature (vom AuthS geprüft).
+
+      software:
+        type: object
+        description: >
+          Verifizierte Claims aus posture-software.yaml (posture_type = "software").
+          Quelle: client-assertion-jwt.yaml → payload.client_statement.posture (posture-software.yaml).
+        properties:
+          arch:
+            type: string
+            description: >
+              Hardwarearchitektur.
+              Quelle: posture-software.yaml → arch.
+            example: "x86_64"
+          binding_verified:
+            type: boolean
+            description: >
+              True, wenn die Client-Instanz-Bindung (Nonce-Signatur mit dem self-signed Public Key)
+              erfolgreich verifiziert wurde.
+              Quelle: posture-software.yaml → attestation_challenge (vom AuthS geprüft).
+
+    required:
+      - platform
+
+required:
+  - client_id
+  - product_id
+  - product_version
+  - platform
+  - posture_type
+  - registration_timestamp
+  - device_info
+  - attestation_result

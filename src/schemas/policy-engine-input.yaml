@@ -10,7 +10,7 @@ properties:
     type: string
   client_registration_data:
     description: The client registration data stored at the authorization server.
-    "$ref": "./client-instance.yaml"
+    "$ref": "./policy-engine-client-data.yaml"
   client_assertion:
     description: The client assertion data from the client's JWT.
     "$ref": "./client-statement.yaml"
@@ -31,6 +31,21 @@ properties:
         description: The audience for the authorization
         items:
           type: string
+      country_code:
+        type: string
+        description: "ISO 3166-1 alpha-2 country code of the source IP, resolved by AuthS via GeoIP."
+        pattern: "^[A-Z]{2}$"
+      http_method:
+        type: string
+        description: The HTTP method of the request.
+        enum:
+          - GET
+          - POST
+          - PUT
+          - PATCH
+          - DELETE
+          - HEAD
+          - OPTIONS
       ip_address:
         type: string
         description: The source IP address of the request.

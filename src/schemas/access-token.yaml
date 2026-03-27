@@ -7,13 +7,14 @@ type: object
 properties:
   header:
     type: object
-    description: The JOSE Header of the PoPP-Token.
+    description: The JOSE Header of the Access Token.
     properties:
       typ:
         type: string
-        description: Type of the JWT. Must be "at+jwt".
+        description: Type of the JWT. Must be "at+jwt" or "jwt".
         enum:
           - at+jwt
+          - jwt
       alg:
         type: string
         description: Asymmetric algorithm used to sign the JWT.
@@ -80,7 +81,7 @@ properties:
         type: integer
         description: Issued at time of the token as a Unix timestamp.
       jti:
-        type: string
+        type: stringextended
         description: The JWT ID.
       scope:
         type: string
