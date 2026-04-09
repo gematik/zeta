@@ -63,8 +63,9 @@ nachschlagen.
 Wenn Sie ZETA-Guard in einem Cluster mit einem Service-Mesh für mTLS verwenden,
 können Sie Telemetrie an den bestehenden OTLP-Receiver des Telemetry-Gateways
 exportieren. In diesem Fall ist keine Konfigurationsänderung am
-Telemetry-Gateway erforderlich. Sie können den OTLP-Exporter in der ConfigMap
-des Log-Collectors als Vorlage für ihren eigenen Exporter verwenden.
+Telemetry-Gateway erforderlich. Sie können den OTLP-gRPC-Exporter in der
+ConfigMap des Telemetry-Gateways als Vorlage für ihren eigenen Exporter
+verwenden.
 
 Wenn Sie kein Service-Mesh für mTLS verwenden, müssen Sie einen neuen, separaten
 OTLP-Receiver für das Telemetry-Gateway konfigurieren. Der Receiver muss separat
@@ -82,9 +83,9 @@ telemetry-gateway:
                     grpc:
                         endpoint: mysite.local:55690  # hier muss die Adresse Ihres Receivers stehen
                         tls:
-                            client_ca_file: "/etc/tls/client.pem"
-                            cert_file: "/etc/tls/server.crt"
-                            key_file: "/etc/tls/server.key"
+                            cert_file: "/etc/tls/server-cert.pem"
+                            key_file: "/etc/tls/server-key.pem"
+                            client_ca_file: "/etc/tls/ca.pem"
         service:
             pipelines:
                 logs:
@@ -108,13 +109,14 @@ telemetry-gateway:
 
 Dieses Beispiel verwendet einen
 gemeinsamen [OTLP Receiver](https://github.com/open-telemetry/opentelemetry-collector/blob/main/receiver/otlpreceiver/README.md)
+mit [mTLS-Konfiguration](https://opentelemetry.io/docs/collector/configuration/#mtls-configuration-mutual-tls)
 für Logs, Metriken und Traces. Die Beispielkonfiguration definiert einen neuen
 Receiver und fügt ihn in die bestehenden Pipelines des Telemetry-Gateways (
 `logs`, `metrics`und `traces`) ein. Achten Sie darauf, außer dem neuen Receiver
-auch alle Receiver aus dem `zeta-guard`-Chart zu nennen, um
-keinen Receiver versehentlich zu deaktiviren. Das Secret
-`gematik-telemetrie-mtls` ist ebenfalls nicht Teil des `zeta-guard`-Helm-Charts,
-und muss von Ihnen mit den erforderlichen Dateien angelegt werden.
+auch alle Receiver aus dem `zeta-guard`-Chart zu nennen, um keinen Receiver
+versehentlich zu deaktiviren. Das Secret `gematik-telemetrie-mtls` ist ebenfalls
+nicht Teil des `zeta-guard`-Helm-Charts, und muss von Ihnen mit den
+erforderlichen Dateien angelegt werden.
 
 ## Wie Sie das Telemetry-Gateway für den Export an die gematik einrichten
 

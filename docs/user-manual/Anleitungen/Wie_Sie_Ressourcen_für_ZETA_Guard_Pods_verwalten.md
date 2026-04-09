@@ -25,10 +25,6 @@ pepproxy:
     resources:
         limits:
             memory: 1Gi
-log-collector:
-    resources:
-        limits:
-            memory: 1Gi
 telemetry-gateway:
     resources:
         limits:
