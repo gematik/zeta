@@ -6,19 +6,20 @@ Der ZETA-Guard und der ZETA-Client bzw. das ZETA-SDK sind essenzielle
 Bestandteile der Telematikinfrastruktur 2.0. Sie schützen die fachlichen
 Ressourcen gegen unautorisierte Zugriffe.
 
-In diesem Produkthandbuch werden die einzelnen Komponenten beschrieben,
+In diesem Produkthandbuch werden die einzelnen Komponenten beschrieben
 sowie dargelegt, wie die Komponenten integriert, betrieben, und fachlich
 genutzt werden können.
 
 ### Dokumenteninformation
 
-| Version | Stand    | Zusammenfassung der Änderungen                                                             |
-|---------|----------|--------------------------------------------------------------------------------------------|
-| 0.2.x   | 29.12.25 | Einarbeitung Kommentare                                                                    |
-| 0.3.0   | 11.02.26 | Update auf ZETA release 0.3.0                                                              |
-| 0.3.1   | 20.02.26 | Update auf ZETA release 0.3.1 (Dokumentation zum Service Mesh)                             |
-| 0.4.0   | 19.03.26 | Update auf ZETA release 0.4.0                                                              |
-| 0.4.2   | 24.03.26 | C++ native client with cross-platform Makefile, extended HTTP CRUD and WebSocket STOMP API |
+| Version | Stand    | Zusammenfassung der Änderungen                                                                                                                                                                         |
+|---------|----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 0.2.x   | 29.12.25 | Einarbeitung Kommentare                                                                                                                                                                                |
+| 0.3.0   | 11.02.26 | Update auf ZETA release 0.3.0                                                                                                                                                                          |
+| 0.3.1   | 20.02.26 | Update auf ZETA release 0.3.1 Dokumentation zum Service Mesh                                                                                                                                           |
+| 0.4.0   | 19.03.26 | Update auf ZETA release 0.4.0 OpenShift-Kompatibilität, Observability-Backends, ASL-Schlüssel, Ressourcenverwaltung, horizontale Skalierung, Helm 4-Quickstart, CloudNativePG-Datenbankdokumentation   |
+| 0.4.2   | 24.03.26 | Update auf ZETA release 0.4.2 C++ native client with cross-platform Makefile, extended HTTP CRUD and WebSocket STOMP API                                                                               |
+| 0.5.0   | 02.04.26 | Update auf ZETA release 0.5.0 OpenShift-Ingress-to-Route (ersetzt OpenShift-Route), Terraform mit optionalem K8s-Backend, No-Travel-Option des PEP, ASL- und Telemetrie-TLS-Konfiguration aktualisiert |
 
 
 ### Hinweise
@@ -89,7 +90,7 @@ Zielgruppen des Produkthandbuchs.
 
 Fachdienst-Hersteller stellen die Software her, die zur Bereitstellung und Betrieb
 eines Fachdienstes nötig ist. Dies können zum Beispiel Hersteller von
-VSDM 2.0 Diensten, oder des PoPP Dienstes sein. In späteren Ausbaustufen der
+VSDM 2.0 Diensten, oder des PoPP-Dienstes sein. In späteren Ausbaustufen der
 TI 2.0 können weitere Fachdienste hinzukommen.
 
 ### Betrachtete Nutzungsszenarien
@@ -117,13 +118,13 @@ Hierbei wird Folgendes angenommen:
 ![Deployment-Szenario für FD-Hersteller](assets/images/ZETA-GUARD-AOD-FD-Hersteller-2.png)
 
 Die ZETA-Komponenten – inklusive des ZETA-Testdriver-Clients – werden als
-Container-Images geliefert, und in einem Kubernetes-Cluster betrieben.
+Container-Images geliefert und in einem Kubernetes-Cluster betrieben.
 
 Der ZETA-Testdriver wirkt damit mit der Ausnahme des Pfades als transparenter Proxy
 zwischen Fachdienst-Test-Client und Fachdienst. Der am ZETA-Testdriver-Proxy
 aufzurufende Pfad erhält dabei das Präfix `/proxy`, nur die Pfadsegmente hinter
 `proxy` werden an den Fachdienst weitergereicht. Dies erlaubt weitere API
-Funktionen am Testdriver, mehr Details dazu siehe dazu in
+Funktionen am Testdriver, mehr Details dazu in
 der [Anleitung zum Testdriver](Anleitungen/Wie_Sie_den_Testdriver_nutzen.md).
 
 ### Systemvoraussetzungen
@@ -234,9 +235,9 @@ bei eigenen Anpassungen nötig.
   mithilfe der Logs aus Kubernetes analysiert werden. Dazu kann`kubectl logs`
   genutzt werden.
 * Bei der Nutzung des testdriver als Test-Client für den Fachdienst ist zu beachten, dass
-  der testdriver die `Host`, die er im Request an sich bekommt eins-zu-eins weiterleitet.
-  Diese Funktionalität wird für den Betrieb mit dem Tiger-Proxy verwendet, kann aber in Infrastrukturen
-  in denen ein `Host` Header automatisch gesetzt wird zu problemen führen. Der Fehler zeigt sich dann
+  der testdriver die `Host`, die er im Request an sich bekommt eins zu eins weiterleitet.
+  Diese Funktionalität wird für den Betrieb mit dem Tiger-Proxy verwendet, kann aber in Infrastrukturen,
+  in denen ein `Host` Header automatisch gesetzt wird zu Problemen führen. Der Fehler zeigt sich dann
   erst beim ersten eigentlichen Aufruf des Fachdienstes (ohne wie auch mit ASL), typischerweise
   durch einen 404 Not Found Fehler. Analog die X-Forwarded Header, insb. auch X-Forwarded-Host.
   Dieser wird im PEP für die Ermittlung des Ziel-Hosts (PEP Endpunkt) verwendet, mit dem
@@ -302,7 +303,7 @@ Der ZETA-Testdriver wirkt damit mit der Ausnahme des Pfades als transparenter Pr
 zwischen Fachdienst-Test-Client und Fachdienst. Der am ZETA-Testdriver-Proxy
 aufzurufende Pfad erhält dabei das Präfix `/proxy`, nur der Teil hinter dem
 Proxy wird an den Fachdienst weitergereicht. Dies erlaubt weitere API Funktionen
-am Testdriver, mehr Details dazu siehe dazu in
+am Testdriver, mehr Details dazu in
 der [Anleitung zum Testdriver](Anleitungen/Wie_Sie_den_Testdriver_nutzen.md).
 
 Die Skalierung der einzelnen Komponenten kann unabhängig erfolgen und ist in der
@@ -512,7 +513,7 @@ Produktversion ist
 2. verwendete TI Fachdienste mit den dazugehörigen Versionen (z.B. ePA 3.2.1)
    (Mehrfachnennung möglich)
 3. **bei Nutzung von TPM-Attestierung und ZETA-Attestierungsservice auf dem Client**: Übermittlung des Hash
-  Gesamthash gebildet über alle einzelne Hashes der unveränderlichen Dateien einer Clientproduktversion
+  Gesamthash gebildet über alle einzelnen Hashes der unveränderlichen Dateien einer Clientproduktversion
 
 #### Zugänge
 
@@ -539,7 +540,7 @@ Produktversion ist
 
 * anbietereigene Dienste (Abhängig vom Fachdienst, ab Umsetzungsstufe 2)
     * Clientsystem Notification Service(s) – Apple Push Notifications, Firebase
-    * Email Confirmation-Code – Mail-Empfang
+    * E-Mail Confirmation-Code – Mail-Empfang
 
 #### Infrastruktur
 

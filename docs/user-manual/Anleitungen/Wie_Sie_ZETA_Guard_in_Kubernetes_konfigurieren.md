@@ -54,8 +54,11 @@ Optionale Voraussetzungen:
 Zentraler Dreh- und Angelpunkt der Konfiguration und auch Installation des ZETA
 Guard ist das [ZETA Guard Helm Chart][ZGchrtHelm]. Zusätzlich relevant sind die
 [PDP Terraform Templates][ZGchrtTf], welche für diverse Konfiguration des PDP
-relevant sind und in dieser Hinsicht das Helm Chart begleitet. Diese beiden
-Konfigurationswerkzeuge gehören praktisch mit zum ZETA Guard und werden
+relevant sind und in dieser Hinsicht das Helm Chart begleitet. Terraform kann
+dabei wahlweise mit Kubernetes-Backend (State im Cluster) oder im lokalen Modus
+(State auf der Festplatte, ohne dass Terraform selbst Cluster-Zugang benötigt)
+betrieben werden. Diese
+beiden Konfigurationswerkzeuge gehören praktisch mit zum ZETA Guard und werden
 ebenfalls in Updates des ZETA Guard gepflegt.
 
 Nicht zu verwechseln mit den [PDP Terraform Templates][ZGchrtTf] sind die
@@ -109,8 +112,12 @@ denselben, Cluster-weit einzigartigen Namen gesetzt werden. Bei mehreren
 Namespace-spezifischen Ingress-Controllern sollte jeder Ingress-Class-Name den
 Namespace-Namen enthalten.
 
-In späteren Releases werden die Ingress-Ressourcen für andere Ingress-Controller
-besser nutzbar gemacht werden.
+Für OpenShift-Umgebungen wird der OpenShift-Ingress-to-Route-Controller
+unterstützt. Dabei wird `openshiftIngress.enabled` auf `true` gesetzt, womit
+die Ingress-Ressourcen automatisch um TLS-Blöcke ergänzt werden. OpenShift
+erzeugt daraus edge-terminated Routes mit TLS-Redirect.
+Weitere Details finden sich unter
+[OpenShift-Kompatibilität](ZETA_OpenShift_Kompatibilität.md).
 
 ### 2. Egress konfigurieren
 
@@ -173,14 +180,6 @@ Verbindung vom Telemetry-Gateway zu den Monitoring- und SIEM-Diensten der TI
 herstellen. Optional können Sie das Telemetry-Gateway auch an ein eigenes
 Observability-Backend anschließen, um Logs, Metriken und Traces einfach einsehen
 zu können.
-
-Bei Bedarf können Sie den Log-Collector von ZETA-Guard durch einen eigenen
-ersetzen. Dafür müssen Sie zunächst den Log-Collector im ZETA-Guard-Helm-Chart
-abschalten (`logCollectorEnabled: false`), und dann ihren eigenen mit dem
-Telemetry-Gateway verbinden. Das Vorgehen ist analog zum Liefern von
-Resource-Server-Telemetrie an das Telemetry-Gateway und wird in der
-Anleitung [Wie Sie Telemetrie des Resource Servers an die gematik schicken.md](Wie_Sie_Telemetrie_des_Resource_Servers_an_die_gematik_schicken.md)
-beschrieben.
 
 Detaillierte Anleitungen finden Sie hier:
 
@@ -254,16 +253,21 @@ zeta-guard:
 
 * PIP stellt Policy Bundles und Bundle Signer Zertifikate bereit
 
-#### 6.3 Authorization Service (Keycloak) konfigurieren
+#### 6.3 Authorization Server (Keycloak) konfigurieren
 
 Keycloak muss mit seiner Datenbank und seinem OPA verbunden sein und von
-außerhalb des Clusters erreichbar sein.
+außerhalb des Clusters erreichbar sein. Die externe Erreichbarkeit wird über
+die Ingress-Konfiguration gesteuert (siehe
+[Ingress-Controller und Ingress konfigurieren](#1-ingress-controller-und-ingress-konfigurieren)).
+Das Helm Chart erzeugt eine Ingress-Ressource für den Authorization Server,
+deren Verhalten über `ingressEnabled`, `ingressClassName` und ggf.
+`openshiftIngress` konfiguriert wird.
 
 Die Installation erfolgt über den Helm-Chart. Zusätzlich zur Konfiguration im
 Helm Chart erfolgt ein großer Teil der Konfiguration zur Laufzeit des deployten
 Keycloak und wird mittels Terraform vorgenommen.
 
-Der Authorization Service kann horizontal skaliert werden. Die Anzahl der Replikate wird über
+Der Authorization Server kann horizontal skaliert werden. Die Anzahl der Replikate wird über
 den Helm Value `authserver.replicaCount` (Standard: `1`) gesteuert.
 
 ```yaml
@@ -277,9 +281,10 @@ Ab 4 Knoten ist ein Tuning des Keycloak internen Infinispan Caches angeraten.
 ##### Abhängigkeiten / erforderliche Konfiguration
 
 * Der externe Hostname muss konfiguriert werden:
-    * in helm via `authserver.hostname=auth.example.com.internal`
+    * in Helm via `authserver.hostname=auth.example.com.internal`
     * in Terraform via
         * `keycloak_url = "https://zeta-dev.westeurope.cloudapp.azure.com/auth"`
+* Terraform kann im Kubernetes-Modus (`use_kubernetes = true`, Standard) oder im lokalen Modus (`use_kubernetes = false`) betrieben werden. Details siehe [Quickstart – PDP konfigurieren](ZETA_Guard_Quickstart.md#2-pdp-konfigurieren).
 
 ###### Datenbankverbindung und Benutzer-Credentials für die PDP Datenbank
 
@@ -410,7 +415,6 @@ zeta-local         test-monitoring-collector-local-7ff997447f-wjp5w             
 zeta-local         testdriver-6f8dfcdb98-qlj26                                  10.244.1.25 zeta-local-worker        None     HBONE
 zeta-local         testfachdienst-5bd688cdc5-vt2cv                              10.244.1.19 zeta-local-worker        None     HBONE
 zeta-local         tiger-proxy-bbf4ccbbf-w292g                                  10.244.1.23 zeta-local-worker        None     HBONE
-zeta-local         zeta-testenv-local-log-collector-agent-bk86q                 10.244.1.10 zeta-local-worker        None     HBONE
 zeta-local         zeta-testenv-local-nginx-ingress-controller-867757f4d8-wv2db 10.244.1.12 zeta-local-worker        None     HBONE
 zeta-local         zeta-testenv-local-tiger-testsuite-79f555b6c8-mcn68          10.244.1.21 zeta-local-worker        None     HBONE
 ```

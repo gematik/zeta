@@ -48,8 +48,9 @@ fassen die beiden (externen) Hostnamen zusammen, die geroutet werden müssen. In
 die wesentlichen Konfigurationsdateien genannt, mit denen die Konfiguration
 durchgeführt wird.
 
-In einem Openshift Umfeld wären hier z.B. der Ingress durch Openshift Routes
-zu ersetzen.
+In einem OpenShift-Umfeld wird der Ingress mit TLS-Konfiguration verwendet;
+der OpenShift-Ingress-to-Route-Controller erzeugt daraus automatisch
+edge-terminated Routes (siehe [OpenShift-Kompatibilität](../Anleitungen/ZETA_OpenShift_Kompatibilität.md)).
 
 ![Konkrete Endpunktkonfiguration](../assets/images/zeta-config-trg.png)
 
@@ -76,7 +77,7 @@ Hierbei ist zu beachten, dass der Ingress
 - die Pfade unter `/auth` auf den keycloak routet
 - alle anderen Pfade auf das PEP Modul routet, welcher diese dann entsprechend
   der Konfiguration zum Fachdienst weiterleitet. Hinweis: In den
-  Konfigurationsbeispielen auf die auch der testdriver abgestimmt ist, betrifft
+  Konfigurationsbeispielen, auf die auch der testdriver abgestimmt ist, betrifft
   dies insb. die Pfade unter `/pep`. Diese werden zum Fachdienst durch das PEP
   Modul geroutet; bei der Weiterleitung wird dort der Pfad `/pep` abgeschnitten.
 - der PEP http-proxy dann die Pfad-Umsetzung für die Well-Known-Datei des Auth-Servers vornimmt.
@@ -85,7 +86,7 @@ Hierbei ist zu beachten, dass der Ingress
 Ein Aufruf durch den Test erfolgt dann wie folgt (anhand des VSDM als Beispiel):
 
 1. Client ruft `https://<testdriver-host>/proxy/vsdservice....`. Dadurch wird der Testdriver,
-  angesprochen. Dieser ruft dann in dieser Reihenfolge (unter der Annahme dass kein Access Token
+  angesprochen. Dieser ruft dann in dieser Reihenfolge (unter der Annahme, dass kein Access Token
   vorhanden ist) die folgenden URLs auf, wobei der `pep-host`aus der Konfiguration `FACHDIENST_URL` stammt:
 2. Testdriver ruft `https://<pep-host>/.well-known/oauth-protected-resource` zum Lesen der oauth-protected-resource Well-Known auf.
   Diese Datei enthält die URL des Authorization Servers (des PDP). Daraus wird der `pdp-host` genommen, der

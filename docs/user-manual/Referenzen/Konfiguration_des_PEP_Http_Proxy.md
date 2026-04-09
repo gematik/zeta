@@ -164,6 +164,14 @@ Verbindung zum PDP herstellt.
     * Pflichtfeld: Nein
     * Context: `server`
     * Standardwert: `60`
+* `pep_no_travel`
+    * Typ: `on` | `off`
+    * Beschreibung: Schaltet die No-Travel-Prüfung ein oder aus.
+      Wenn die Prüfung eingeschaltet ist, müssen die IP-Adresse im
+      Access-Token und die Client-IP des Aufrufers übereinstimmen.
+    * Pflichtfeld: Nein
+    * Context: `server`
+    * Standardwert: `on`
 
 ### Konfigurationsparameter (ASL)
 

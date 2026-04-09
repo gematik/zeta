@@ -4,7 +4,9 @@ Der Telemetrie-Daten Service kann Monitoring-Daten der ZETA Guard-Komponenten an
 (w.z. B. Prometheus) an ZETA-Guard anschließen. Für jedes Observability-Backend
 muss ein neuer OpenTelemetry-Exporter im Telemetry-Gateway konfiguriert werden.
 Verbindungen zwischen dem Telemetry-Gateway und ZETA-Guard-externen Diensten
-müssen über mTLS abgesichert werden.
+müssen über mTLS abgesichert werden. Wenn Ihr Cluster kein Service-Mesh für mTLS
+verwendet, müssen ihr Receiver und der Exporter im Telemetry-Gateway für mTLS
+konfiguriert werden.
 
 Das Telemetry-Gateway ist ein OpenTelemetry-Collector, und Sie können
 die [offizielle Dokumentation des Collectors](https://opentelemetry.io/docs/collector/configuration/)
@@ -56,8 +58,9 @@ telemetry-gateway:
             otlp_grpc/an-anbieter:
                 endpoint: otelcol2:4317 # Zieladresse muss angepasst werden
                 tls:
-                    cert_file: "/etc/tls/server.crt"
-                    key_file: "/etc/tls/server.key"
+                    ca_file: "/etc/tls/ca.pem"
+                    cert_file: "/etc/tls/client-cert.pem"
+                    key_file: "/etc/tls/client-key.pem"
         service:
             pipelines:
                 logs:
@@ -79,24 +82,21 @@ telemetry-gateway:
     extraVolumes:
         -   name: tls
             secret:
-                secretName: zeta-guard-tls  # dieses Secret müssen Sie anlegen
+                secretName: telemetry-gateway-mtls  # dieses Secret müssen Sie anlegen
 ```
 
 Dieses Beispiel erwartet einen einzigen Zielpunkt für Logs, Metriken und Traces,
 der als Verteiler an die eigentlichen Backends (z.B. Prometheus, OpenSearch und
-Jaeger) dient. Wenn Ihr Cluster kein Service-Mesh für mTLS verwendet, müssen ihr
-Receiver und der Exporter im Telemetry-Gateway für mTLS konfiguriert werden.
-Ohne
-Service-Mesh muss TLS im Exporter und Receiver deaktiviert sein. Das Beispiel
-verwendet
+Jaeger) dient. Das Beispiel verwendet
 einen [OTLP gRPC Exporter](https://github.com/open-telemetry/opentelemetry-collector/blob/main/exporter/otlpexporter/README.md)
-mit TLS-Konfiguration, und zeigt keine vorkonfigurierten Exporter, Pipelines
-usw. aus dem "zeta-guard"-Chart
+mit [mTLS-Konfiguration](https://opentelemetry.io/docs/collector/configuration/#mtls-configuration-mutual-tls),
+und zeigt keine vorkonfigurierten Exporter, Pipelines usw. aus dem
+"zeta-guard"-Chart.
 
 Die Beispielkonfiguration definiert einen neuen Exporter (
 `otlp_grpc/an-anbieter`) und fügt ihn in die bestehenden Pipelines des
 Telemetry-Gateways (`logs`, `metrics`und `traces`) ein. Achten Sie darauf, außer
 dem neuen Exporter auch alle Exporter aus dem `zeta-guard`-Chart zu nennen, um
-keinen Exporter versehentlich zu deaktiviren. Das Secret `zeta-guard-tls` ist
-ebenfalls nicht Teil des `zeta-guard`-Helm-Charts,
+keinen Exporter versehentlich zu deaktiviren. Das Secret
+`telemetry-gateway-mtls` ist ebenfalls nicht Teil des `zeta-guard`-Helm-Charts,
 und muss vom Anbieter erzeugt und verwaltet werden.
