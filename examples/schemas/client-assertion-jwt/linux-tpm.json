@@ -1,34 +1,46 @@
 {
-  "iss": "cid-lin-tpm-abcde",
-  "sub": "cid-lin-tpm-abcde",
-  "aud": [
-    "https://auth-server.zeta.gematik.de/token"
-  ],
-  "exp": 1678888310,
-  "jti": "unique-jwt-id-lin-tpm-789",
-  "client_statement": {
+  "header": {
+    "typ": "jwt",
+    "alg": "ES256",
+    "jwk": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "dummy-x-coordinate",
+      "y": "dummy-y-coordinate"
+    }
+  },
+  "payload": {
+    "iss": "cid-lin-tpm-abcde",
     "sub": "cid-lin-tpm-abcde",
-    "platform": "linux",
-    "posture_type": "tpm",
-    "posture": {
-      "platform_product_id": {
-        "platform": "linux",
-        "packaging_type": "snap",
-        "application_id": "org.gematik.desktop-suite"
+    "aud": [
+      "https://auth-server.zeta.gematik.de/token"
+    ],
+    "exp": 1678888310,
+    "jti": "unique-jwt-id-lin-tpm-789",
+    "client_statement": {
+      "sub": "cid-lin-tpm-abcde",
+      "platform": "linux",
+      "posture_type": "tpm",
+      "posture": {
+        "platform_product_id": {
+          "platform": "linux",
+          "packaging_type": "snap",
+          "application_id": "org.gematik.desktop-suite"
+        },
+        "product_id": "gematik-desktop-suite-linux-v3",
+        "product_version": "3.5.0",
+        "os": "Ubuntu",
+        "os_version": "22.04",
+        "arch": "x86_64",
+        "tpm_attestation_key": "base64-encoded-tpm-attestation-key...",
+        "tpm_quote": "base64-encoded-tpm-quote.l...",
+        "tpm_event_log": "base64-encoded-tpm-event-log...",
+        "tpm_ek_certificate_chain": [
+          "base64-encoded-ek-cert-1...",
+          "base64-encoded-ek-cert-2..."
+        ]
       },
-      "product_id": "gematik-desktop-suite-linux-v3",
-      "product_version": "3.5.0",
-      "os": "Ubuntu",
-      "os_version": "22.04",
-      "arch": "x86_64",
-      "tpm_attestation_key": "base64-encoded-tpm-attestation-key...",
-      "tpm_quote": "base64-encoded-tpm-quote.l...",
-      "tpm_event_log": "base64-encoded-tpm-event-log...",
-      "tpm_ek_certificate_chain": [
-        "base64-encoded-ek-cert-1...",
-        "base64-encoded-ek-cert-2..."
-      ]
-    },
-    "attestation_timestamp": 1678888010
+      "attestation_timestamp": 1678888010
+    }
   }
 }

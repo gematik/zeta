@@ -1,26 +1,40 @@
 {
-  "iss": "cid-win-sw-pqrst",
-  "sub": "cid-win-sw-pqrst",
-  "aud": "https://auth-server.zeta.gematik.de/token",
-  "exp": 1678890310,
-  "jti": "unique-jwt-id-win-sw-101",
-  "client_statement": {
+  "header": {
+    "typ": "jwt",
+    "alg": "ES256",
+    "jwk": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "dummy-x-coordinate",
+      "y": "dummy-y-coordinate"
+    }
+  },
+  "payload": {
+    "iss": "cid-win-sw-pqrst",
     "sub": "cid-win-sw-pqrst",
-    "platform": "windows",
-    "posture_type": "software",
-    "posture": {
-      "platform_product_id": {
-        "platform": "windows",
-        "store_id": "9PBLGGH4R0C9"
+    "aud": [
+      "https://auth-server.zeta.gematik.de/token"
+    ],
+    "exp": 1678890310,
+    "jti": "unique-jwt-id-win-sw-101",
+    "client_statement": {
+      "sub": "cid-win-sw-pqrst",
+      "platform": "windows",
+      "posture_type": "software",
+      "posture": {
+        "platform_product_id": {
+          "platform": "windows",
+          "store_id": "9PBLGGH4R0C9"
+        },
+        "product_id": "gematik-light-client-win-v1",
+        "product_version": "1.1.0",
+        "os": "Windows 11 Home",
+        "os_version": "10.0.22000",
+        "arch": "amd64",
+        "public_key": "base64-encoded-self-signed-public-key...",
+        "attestation_challenge": "base64-encoded-signed-nonce-from-as..."
       },
-      "product_id": "gematik-light-client-win-v1",
-      "product_version": "1.1.0",
-      "os": "Windows 11 Home",
-      "os_version": "10.0.22000",
-      "arch": "amd64",
-      "public_key": "base64-encoded-self-signed-public-key...",
-      "attestation_challenge": "base64-encoded-signed-nonce-from-as..."
-    },
-    "attestation_timestamp": 1678890010
+      "attestation_timestamp": 1678890010
+    }
   }
 }
