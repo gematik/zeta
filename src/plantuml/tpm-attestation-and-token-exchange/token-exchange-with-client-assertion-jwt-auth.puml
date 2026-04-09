@@ -41,27 +41,14 @@ alt Initial SM(C)-B Token Exchangewith Attestation
   note right: Session-based Key Pair for DPoP binding.
 
   Client -> Client: Calculate attestation_challenge
-  note right: The attestation_challenge is a cryptographic hash\nof the PuK.Client.Sig and a nonce.\nIt is used to bind the attestation to the client instance.\nattestation_challenge = HASH(JWK Thumbprint ofPuK.Client.Sig + nonce)
+  note right: The attestation_challenge is a cryptographic hash of the PuK.Client.Sig and a nonce.\nIt is used to bind the attestation to the client instance.\nattestation_challenge = HASH(JWK Thumbprint ofPuK.Client.Sig + nonce)
   
   ' === START: ATTESTATION SECTION ===
   alt ZETA Attestation Service available
-    Client -> ZAS ++ : Get Attestation\nwith `attestation_challenge`
-    alt ZETA TPM Service has no TPM Attestation Key
-      note right: The Primärsystem (PS) and the ZETA Attestation Service (ZTA) are\nin the same trust domain. At the time of client installation, the ZTA\ncomputes a cryptographic hash of the PS software and extends this\nhash into a specific PCR (22 or 23) using TPM2_PCR_Extend. The\nZTA reads and stores the resulting PCR value as a reference\nmeasurement or baseline. At every start of the PS, the ZTA measures\nthe PS software and extends the resulting hash into the same PCR\n(22 or 23) using TPM2_PCR_Extend.
-      ZAS -> TPM ++ : Generate Attestation Key Pair (AK)\nand Get AK Handle
-      TPM --> ZAS: Return Attestation Public Key\nand AK Handle
-      ZAS -> TPM: Get Certificate Chain
-      TPM --> ZAS: Return Certificate Chain
-      ZAS -> ZAS: Store AK Handle, AK Public Key\nand Certificate Chain
-    end alt
-
-    ZAS -> ZAS: Select AK Handle
-    ZAS -> TPM: Get TPM Quote for PCRs\n(7, 22 or 23)\nand `attestation_challenge`\n(as qualifyingData),\nsigned with AK
-    note left: Binding: `attestation_challenge`.\nDas TPM signiert PCRs + `attestation_challenge`.
-    note right: PCR 7: Secure Boot State / Policy, Digest\nPCR 22 or 23 (if available) App Data, Digest
-    TPM --> ZAS --: Return TPM Quote
-    ZAS -> ZAS: Get TCG Event Log (from OS/Firmware)
-    note right: Quote contains:\n- `attestation_challenge` (as qualifyingData)\n- Attested Data (PCR Select, PCR Digest),\n- Signature
+    Client -> ZAS ++ : Get Attestation with `attestation_challenge`
+    note right of Client #red
+      Der TPM Attestation Flow wird aktuell überarbeitet und in einer Folgeversion nachgeliefert
+    end note
     ZAS --> Client --: Return Attestation\n(Quote, EventLog, CertChain)
     Client -> Client: Create client_statement\nwith posture-tpm
     Client -> Client : Create Client Assertion JWT (with TPM Attestation, sig by Client_Instance_Private_Key)
@@ -84,7 +71,7 @@ alt Initial SM(C)-B Token Exchangewith Attestation
   ' === END: SM(C)-B ID Token Creation ===
 
   Client -> AuthS ++ : POST /token (RFC 8693) DPoP: <signed_dpop_jwt>
-  AuthS -> AuthS : Validate Request (Client Assertion,\nAttestation, DPoP Proof,\nSubject Token and Key bindings)
+  AuthS -> AuthS : Validate Request (Client Assertion, Attestation,\nDPoP Proof, Subject Token and Key bindings)
 
 else Refresh Token use (without Attestation)
   Client -> Client : Create Client Assertion JWT without Attestation
@@ -105,7 +92,7 @@ alt Validations Successful
   PE --> AuthS --: 200 OK
   alt Policy Decision allowed
     AuthS -> AuthS : Generate AS Access Token (AT)\nand Refresh Token (RT)
-    AuthS -> PDPDB ++ : Update Client Data\nUpdate Session\nUpdate User Data
+    AuthS -> PDPDB ++ : Update Client, Session and User Data
     PDPDB --> AuthS --: updated
     AuthS --> Client: 200 OK, new tokens
   else Policy Decision denied
