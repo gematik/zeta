@@ -9,9 +9,9 @@ properties:
     properties:
       typ:
         type: string
-        description: Type of the JWT, which MUST be 'jwt'.
+        description: Type of the JWT, which MUST be 'JWT'.
         enum:
-          - jwt
+          - JWT
       alg:
         type: string
         description: Algorithm used to sign the JWT, which MUST be 'ES256'.
@@ -39,7 +39,7 @@ properties:
             type: string
             format: byte
             description: Y coordinate of the EC public key (Base64URL).
-        required: 
+        required:
           - kty
           - crv
           - x
@@ -62,7 +62,7 @@ properties:
         items:
           type: string
           description: Audience for the JWT. It MUST contain the
-                       Authorization Server's token endpoint URL.
+            Authorization Server's token endpoint URL.
         minItems: 1
       exp:
         type: integer
@@ -81,4 +81,3 @@ properties:
       - aud
       - exp
       - jti
-
