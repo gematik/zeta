@@ -11,7 +11,7 @@ properties:
     properties:
       typ:
         type: string
-        description: Type of the JWT. Must be "at+jwt" or "jwt".
+        description: Type of the JWT. Must be "at+jwt" or "JWT".
         enum:
           - at+jwt
           - JWT
