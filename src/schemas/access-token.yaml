@@ -14,7 +14,7 @@ properties:
         description: Type of the JWT. Must be "at+jwt" or "jwt".
         enum:
           - at+jwt
-          - jwt
+          - JWT
       alg:
         type: string
         description: Asymmetric algorithm used to sign the JWT.
@@ -81,7 +81,7 @@ properties:
         type: integer
         description: Issued at time of the token as a Unix timestamp.
       jti:
-        type: stringextended
+        type: string
         description: The JWT ID.
       scope:
         type: string
