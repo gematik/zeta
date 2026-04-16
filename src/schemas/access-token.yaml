@@ -95,6 +95,9 @@ properties:
             description: SHA-256 hash of the public key used in the DPoP proof.
         required:
           - jkt
+      sid:
+        type: string
+        description: The session ID of the client.
     required:
       - iss
       - exp
@@ -108,3 +111,4 @@ properties:
       - iat
       - jti
       - cnf
+      - sid
