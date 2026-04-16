@@ -10,12 +10,13 @@ participant "AuthS\n(Verifier)" as AuthS
 participant "OPA\n(Endorser)" as OPA
 
 == 1: Installation ==
+Client -> Client: Generiere CI_KeyPair (PuK.Client.Sig/PrK.Client.Sig)
 alt Hardware Attestation (TPM / SE)
     ZAS --> ZAS: Installation (als Root/Admin)
     Client --> Client: Installation (User Space)
     alt Windows / Linux (TPM)
         ZAS --> ZAS: Messung des PS & Vergleich
-        ZAS -> TPM: TPM2_CreatePrimary() → SRK
+        ZAS -> TPM: TPM2_CreatePrimary() → Storage Root Key (SRK)
         ZAS -> TPM: TPM2_Create(SRK, restricted=sign, fixedTPM=true)
         TPM --> ZAS: PuK.AK.Sig, PrK.AK.Sig (blob)
         ZAS -> TPM: TPM2_Load(SRK, PrK.AK.Sig, PuK.AK.Sig) → Handle_PrK.AK.Sig
@@ -42,7 +43,6 @@ else Software Attestation (Fallback)
 end
 
 == 3: Bindungs-Vorbereitung ==
-Client -> Client: Generiere CI_KeyPair (PuK.Client.Sig/PrK.Client.Sig)
 alt Hardware Attestation (TPM / SE)
     Client -[#purple]> ZAS: dataToSign = Hash_PuK.Client.Sig
     alt Windows / Linux (TPM)
