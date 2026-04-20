@@ -1,0 +1,28 @@
+@startuml "client-installation"
+skinparam sequenceMessageAlign center
+title Client Installation
+
+participant "TPM / SE\n(Hardware)" as TPM
+participant "ZAS\n(Attester)" as ZAS
+participant "PS und ZETA\nClient" as Client
+
+Client -> Client: Generiere CI_KeyPair (PuK.Client.Sig/PrK.Client.Sig)
+alt Hardware Attestation (TPM / SE)
+    ZAS --> ZAS: Installation (als Root/Admin)
+    Client --> Client: Installation (User Space)
+    alt Windows / Linux (TPM)
+        ZAS --> ZAS: Messung des PS & Vergleich
+        ZAS -> TPM: TPM2_CreatePrimary() → Storage Root Key (SRK)
+        ZAS -> TPM: TPM2_Create(SRK, restricted=sign, fixedTPM=true)
+        TPM --> ZAS: PuK.AK.Sig, PrK.AK.Sig (blob)
+        ZAS -> TPM: TPM2_Load(SRK, PrK.AK.Sig, PuK.AK.Sig) → Handle_PrK.AK.Sig
+        ZAS -> TPM: PCR_Extend(23, Messwerte)
+    else macOS (Secure Enclave)
+        ZAS -> TPM: SecKeyCreateRandomKey\n(kSecAttrTokenIDSecureEnclave)
+        TPM --> ZAS: SE_Handle_PrK.AK.Sig
+    end
+else Software Attestation (Fallback)
+    Client -> Client: Installation (ohne ZAS)
+end
+
+@enduml

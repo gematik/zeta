@@ -1,0 +1,11 @@
+# Federation Master entity statements der TI
+ti_federation_master: [
+    {
+        environment: production,
+        entity_statement_uri: "https://app.federationmaster.de/.well-known/openid-federation"
+    },
+    {
+        environment: test,
+        entity_statement_uri: "https://app-test.federationmaster.de/.well-known/openid-federation"
+    }
+]

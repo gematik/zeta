@@ -1,0 +1,30 @@
+@startuml "key-preparation"
+skinparam sequenceMessageAlign center
+title Key Preparation
+
+participant "TPM / SE\n(Hardware)" as TPM
+participant "ZAS\n(Attester)" as ZAS
+participant "PS und ZETA\nClient" as Client
+
+alt Hardware Attestation (TPM / SE)
+    Client -> ZAS: dataToSign = Hash_PuK.Client.Sig
+    alt Windows / Linux (TPM)
+        ZAS -> TPM: TPM2_Sign(Handle_PrK.AK.Sig, dataToSign)
+        TPM --> ZAS: signed_Hash_PuK.Client.Sig
+        ZAS --> Client: PuK.AK.Sig, signed_Hash_PuK.Client.Sig
+        Client -> ZAS: Request PuK.EK.Sig, C.EK.Sig
+        ZAS -> TPM: TPM2_ReadPublic(EndorsementKey)
+        TPM --> ZAS: PuK.EK.Sig
+        ZAS -> TPM: TPM2_NV_Read(EndorsementKey)
+        TPM --> ZAS: C.EK.Sig
+        ZAS --> Client: PuK.EK.Sig, C.EK.Sig
+    else macOS (Secure Enclave)
+        ZAS -> TPM: SE_Sign(Handle_PrK.AK.Sig, dataToSign)
+        TPM --> ZAS: signed_Hash_PuK.Client.Sig
+        ZAS --> Client: PuK.AK.Sig, signed_Hash_PuK.Client.Sig
+    end
+else Software Attestation (Fallback)
+    note right of Client: Keine Hardware-Bindung.\nIdentität besteht nur aus CI_KeyPair.
+end
+
+@enduml

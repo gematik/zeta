@@ -1,0 +1,41 @@
+@startuml "dcr-with-key-binding"
+skinparam sequenceMessageAlign center
+title DCR with Key Binding
+
+participant "TPM / SE\n(Hardware)" as TPM
+participant "ZAS\n(Attester)" as ZAS
+participant "PS und ZETA\nClient" as Client
+participant "AuthS\n(Verifier)" as AuthS
+
+alt Hardware Attestation: Windows / Linux (TPM)
+    Client -> AuthS: POST /register\n{PuK.EK.Sig, C.EK.Sig, PuK.AK.Sig, PuK.Client.Sig, signed_Hash_PuK.Client.Sig}
+    AuthS -> AuthS: Validiere C.EK.Sig-Chain & signed_Hash_PuK.Client.Sig
+    AuthS -> AuthS: CredentialBlob = MakeCredential(...)
+    AuthS -> Client: 202 Accepted {CredentialBlob}
+
+    Client -> ZAS: Activate(CredentialBlob)
+    ZAS -> TPM: TPM2_ActivateCredential(CredentialBlob)
+    TPM --> ZAS: Secret
+    ZAS --> Client: Secret
+
+    Client -> AuthS: POST /register/verify {Secret}
+    AuthS -> AuthS: Secret korrekt? → PuK.Client.Sig hardware-gebunden ✓
+    AuthS --> Client: 201 Created {client_id}
+
+else Hardware Attestation: macOS (Secure Enclave)
+    Client -> ZAS: Request Attestation Object
+    ZAS -> TPM: Request Attestation (Apple Server)
+    TPM --> ZAS: Apple_Attestation_Object
+    ZAS --> Client: Apple_Attestation_Object
+    
+    Client -> AuthS: POST /register\n{PuK.AK.Sig, Apple_Attestation_Object, PuK.Client.Sig, signed_Hash_PuK.Client.Sig}
+    AuthS -> AuthS: Validiere Apple Root CA & signed_Hash_PuK.Client.Sig
+    AuthS --> Client: 201 Created {client_id}
+
+else Software Attestation (Fallback)
+    Client -> AuthS: POST /register\n{PuK.Client.Sig"}
+    AuthS -> AuthS: Registriere Client-Instanz ohne HW-Bindung
+    AuthS --> Client: 201 Created {client_id}
+end
+
+@enduml

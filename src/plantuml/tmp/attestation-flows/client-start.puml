@@ -1,0 +1,21 @@
+@startuml "client-start"
+skinparam sequenceMessageAlign center
+title Client Start
+
+participant "TPM / SE\n(Hardware)" as TPM
+participant "ZAS\n(Attester)" as ZAS
+participant "PS und ZETA\nClient" as Client
+
+alt Hardware Attestation (TPM / SE)
+    Client --> Client: Start
+    alt Windows / Linux (TPM)
+        ZAS --> ZAS: Messung des PS
+        ZAS -> TPM: PCR_Extend(23, Messwerte)
+    else macOS (Secure Enclave)
+        ZAS --> ZAS: Ermittle aktuelle Posture\n(SIP-Status, Gatekeeper,\nOS-Version, Secure Boot Policy)
+    end
+else Software Attestation (Fallback)
+    Client -> Client: Start & lokale Datensammlung
+end
+
+@enduml
