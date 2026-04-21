@@ -18,16 +18,16 @@ Client -> Client: Generiere subject_token (SMC-B signiert)
 alt Hardware Attestation (TPM / SE)
     Client -> ZAS: GetEvidence(Nonce)
     alt Windows / Linux (TPM)
-        ZAS -> TPM: TPM2_Quote(PCR=[7,23], Nonce, AK)
-        TPM --> ZAS: tpm_quote (signiert mit AK)
+        ZAS -> TPM: TPM2_Quote(PCR=[7,23], Nonce, Handle_PrK.AK.Sig)
+        TPM --> ZAS: tpm_quote (signiert mit PrK.AK.Sig)
         ZAS -> TPM: TPM2_GetEventLog()
         TPM --> ZAS: tpm_event_log
         ZAS --> Client: Evidence {tpm_quote, tpm_event_log}
     else macOS (Secure Enclave)
-        ZAS -> ZAS: Ermittle aktuelle Posture (SIP, SSV, etc.)
-        ZAS -> TPM: SE_Sign(Handle_PrK.AK.Sig, Hash(Nonce + Posture))
-        TPM --> ZAS: se_assertion
-        ZAS --> Client: Evidence {se_assertion, posture}
+        ZAS -> ZAS: Ermittle Posture\n(SIP, Gatekeeper, OS-Version, Secure Boot)
+        ZAS -> TPM: DCAppAttest.generateAssertion(\n  Handle_PrK.AK.Sig,\n  Hash(Nonce + Posture)\n)
+        TPM --> ZAS: dc_assertion\n(CBOR: Signatur + Receipt + counter)
+        ZAS --> Client: Evidence {dc_assertion, posture, counter}
     end
 else Software Attestation (Fallback)
     Client -> Client: Generiere client-statement\n(Selbstauskunft: OS, PS-Version)
@@ -42,12 +42,13 @@ group AuthS (Verifier & Policy Check)
     AuthS -[#purple]> AuthS: Extrahiere Nonce aus subject_token
     
     alt Hardware Attestation (TPM / SE)
-        AuthS -> AuthS: Verifiziere Hardware-Signatur (Quote/SE)\ngegen extrahierte Nonce (Replay-Schutz)
-        
         alt Windows / Linux (TPM)
+            AuthS -> AuthS: Verifiziere Hardware-Signatur (Quote)\ngegen extrahierte Nonce
             AuthS -> AuthS: PCR-Replay via Event Log
             AuthS -> OPA: Check PCR 7 & PCR 23 gegen Referenzwerte
         else macOS (Secure Enclave)
+            AuthS -> AuthS: Verifiziere dc_assertion mit PuK.AK.Sig (aus DCR)\ngegen extrahierte Nonce
+            AuthS -> AuthS: Prüfe counter > letzter counter (Replay-Schutz)
             AuthS -> OPA: Check macOS Posture gegen Referenzwerte
         end
         
