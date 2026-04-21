@@ -1,28 +1,43 @@
 @startuml "client-installation"
 skinparam sequenceMessageAlign center
-title Client Installation
+title Client Installation & Baseline-Etablierung
 
 participant "TPM / SE\n(Hardware)" as TPM
 participant "ZAS\n(Attester)" as ZAS
 participant "PS und ZETA\nClient" as Client
 
-Client -> Client: Generiere CI_KeyPair (PuK.Client.Sig/PrK.Client.Sig)
 alt Hardware Attestation (TPM / SE)
     ZAS --> ZAS: Installation (als Root/Admin)
     Client --> Client: Installation (User Space)
+    group Vertrauensbeziehung zwischen ZAS und Client wird aufgebaut
+        ZAS -> Client
+        Client --> ZAS
+    end
+
     alt Windows / Linux (TPM)
-        ZAS --> ZAS: Messung des PS & Vergleich
+        Client -> TPM: Generiere CI_KeyPair via OS-Provider (z.B. MS CNG)
+        TPM --> Client: PuK.Client.Sig, Handle_PrK.Client.Sig
+        
+        ZAS --> ZAS: Messung des PS & Vergleich mit Hersteller-Wert
         ZAS -> TPM: TPM2_CreatePrimary() → Storage Root Key (SRK)
         ZAS -> TPM: TPM2_Create(SRK, restricted=sign, fixedTPM=true)
         TPM --> ZAS: PuK.AK.Sig, PrK.AK.Sig (blob)
         ZAS -> TPM: TPM2_Load(SRK, PrK.AK.Sig, PuK.AK.Sig) → Handle_PrK.AK.Sig
-        ZAS -> TPM: PCR_Extend(23, Messwerte)
+        ZAS -> TPM: TPM2_PCR_Extend(23, Messwerte)
+        
     else macOS (Secure Enclave)
-        ZAS -> TPM: SecKeyCreateRandomKey\n(kSecAttrTokenIDSecureEnclave)
-        TPM --> ZAS: SE_Handle_PrK.AK.Sig
+        Client -> TPM: SecKeyCreateRandomKey (für CI_KeyPair in SE)
+        TPM --> Client: PuK.Client.Sig, Handle_PrK.Client.Sig
+        
+        ZAS -> TPM: SecKeyCreateRandomKey (für Attestation Key in SE)
+        TPM --> ZAS: PuK.AK.Sig, Handle_PrK.AK.Sig
     end
+
 else Software Attestation (Fallback)
-    Client -> Client: Installation (ohne ZAS)
+    Client --> Client: Installation (User Space)
+    Client -> Client: Generiere CI_KeyPair lokal im RAM/Disk
+    Client --> Client: Lokale Messung des PS (Dateihashes ermitteln)
+    Client -> Client: Speichere Baseline-Hash lokal & sicher ab
 end
 
 @enduml
