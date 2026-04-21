@@ -12,7 +12,6 @@ participant "OPA\n(Endorser)" as OPA
 Client -> AuthS: GET /nonce
 AuthS --> Client: Nonce
 
-note over Client: Client lässt Subject Token von SMC-B\nsignieren (inkl. Nonce im Payload)
 Client -> Client: Generiere subject_token (SMC-B signiert)
 
 alt Hardware Attestation (TPM / SE)
@@ -31,7 +30,6 @@ alt Hardware Attestation (TPM / SE)
     end
 else Software Attestation (Fallback)
     Client -> Client: Generiere client-statement\n(Selbstauskunft: OS, PS-Version)
-    note right of Client: client-statement wird direkt ins\nClient Assertion JWT eingebettet
 end
 
 Client -> AuthS: POST /token\n{client_assertion (JWT, PrK.Client.Sig signiert),\nsubject_token (SMC-B signiert, inkl. Nonce),\n[Evidence]}
