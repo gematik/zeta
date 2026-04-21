@@ -1,0 +1,10 @@
+b5398c803dc0863d76aea71c55b926762033e917c3d37d55a7466cb28d61d826  ./TrustedTpm.cab
+d9d58360fb5521987f6d065d3b689aa58dfda3fb8718f7d2d53f78275f12a9fb  ./federation-master.yaml
+4dde35ca287fe6dd2e0fb6c4671b5a5271ae1652872e544d6cf3d13beeabcf9b  ./.revision
+f8d87b35ffb9f59cec88afb687cf74663af1e75fbfe9648257761eb75420f66e  ./ECC-RSA_TSL-test.xml
+3c679a7120addab5d0da49839f1d7648b875e6a5590ca349814df54f2115cf3a  ./roots.json
+c778d09ac341f7fd9f8f3b19e2b815af6aed4ad4490e1e92c05cb355212a5013  ./apple-root-ca/apple-root.pem
+bc5f431e117e41f36f8f8517247176eadf0853f50c7a39a9d81656e857e9330d  ./.manifest
+2a6c8f668b4a60d1c5ee8ad54b691cffa11794aa406bd77606070ff28a8bcd38  ./policy-engine-bundle-keys/ca/GEM.RCA7-TEST-ONLY.pem
+ca6491886f85d55039ff727008e9bfc9a92fa43742038ad45dc57d7286cd8662  ./policy-engine-bundle-keys/ca/GEM.KOMP-CA61-TEST-ONLY.pem
+974671ded833664e1a58519612a103a53021b33062e9964ac07bc824aeeef0ca  ./policy-engine-bundle-keys/signers/zeta-policy-freigeber-komp61.pem

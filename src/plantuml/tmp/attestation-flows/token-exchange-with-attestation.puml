@@ -1,0 +1,67 @@
+@startuml "token-exchange-with-attestation"
+skinparam sequenceMessageAlign center
+title Token Exchange with Attestation
+
+participant "TPM / SE\n(Hardware)" as TPM
+participant "ZAS\n(Attester)" as ZAS
+participant "PS und ZETA\nClient" as Client
+participant "AuthS\n(Verifier)" as AuthS
+participant "OPA\n(Endorser)" as OPA
+
+== 5: RATS Ablauf (Evidence & Token Exchange) ==
+Client -> AuthS: GET /nonce
+AuthS --> Client: Nonce
+
+note over Client: Client lässt Subject Token von SMC-B\nsignieren (inkl. Nonce im Payload)
+Client -> Client: Generiere subject_token (SMC-B signiert)
+
+alt Hardware Attestation (TPM / SE)
+    Client -> ZAS: GetEvidence(Nonce)
+    alt Windows / Linux (TPM)
+        ZAS -> TPM: TPM2_Quote(PCR=[7,23], Nonce, AK)
+        TPM --> ZAS: tpm_quote (signiert mit AK)
+        ZAS -> TPM: TPM2_GetEventLog()
+        TPM --> ZAS: tpm_event_log
+        ZAS --> Client: Evidence {tpm_quote, tpm_event_log}
+    else macOS (Secure Enclave)
+        ZAS -> ZAS: Ermittle aktuelle Posture (SIP, SSV, etc.)
+        ZAS -> TPM: SE_Sign(Handle_PrK.AK.Sig, Hash(Nonce + Posture))
+        TPM --> ZAS: se_assertion
+        ZAS --> Client: Evidence {se_assertion, posture}
+    end
+else Software Attestation (Fallback)
+    Client -> Client: Generiere client-statement\n(Selbstauskunft: OS, PS-Version)
+    note right of Client: client-statement wird direkt ins\nClient Assertion JWT eingebettet
+end
+
+Client -> AuthS: POST /token\n{client_assertion (JWT, PrK.Client.Sig signiert),\nsubject_token (SMC-B signiert, inkl. Nonce),\n[Evidence]}
+
+group AuthS (Verifier & Policy Check)
+    AuthS -> AuthS: Verifiziere client_assertion mit PuK.Client.Sig (aus DCR)
+    AuthS -> AuthS: Verifiziere subject_token (SMC-B Zertifikat TI-PKI)
+    AuthS -[#purple]> AuthS: Extrahiere Nonce aus subject_token
+    
+    alt Hardware Attestation (TPM / SE)
+        AuthS -> AuthS: Verifiziere Hardware-Signatur (Quote/SE)\ngegen extrahierte Nonce (Replay-Schutz)
+        
+        alt Windows / Linux (TPM)
+            AuthS -> AuthS: PCR-Replay via Event Log
+            AuthS -> OPA: Check PCR 7 & PCR 23 gegen Referenzwerte
+        else macOS (Secure Enclave)
+            AuthS -> OPA: Check macOS Posture gegen Referenzwerte
+        end
+        
+    else Software Attestation (Fallback)
+        AuthS -> AuthS: Extrahiere client-statement aus JWT
+        AuthS -> OPA: Check Selbstauskunft (Software Policy)
+    end
+    
+    OPA --> AuthS: Attestation Result (Allow/Deny)
+end
+
+alt Attestation erfolgreich
+    AuthS --> Client: 200 OK\n{Access Token, Refresh Token,\n[ZETA Guard Attestation Token]}
+else Attestation fehlerhaft
+    AuthS --> Client: 403 Forbidden
+end
+@enduml

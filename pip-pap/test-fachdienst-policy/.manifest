@@ -1,9 +1,15 @@
 {
     "roots": [
-        "policies",
         "audiences",
+        "http-methods",
+        "ip-blocklist",
+        "ip-blocklist-countries",
+        "ip-blocklist-tor",
+        "ip-blocklist-vpn",
+        "policies",
         "products",
         "professions",
-        "token"
+        "token",
+        "user-blocklist"
     ]
 }
