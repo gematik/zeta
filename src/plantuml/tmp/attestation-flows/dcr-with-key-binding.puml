@@ -25,13 +25,13 @@ alt Kein ZETA Guard Attestation Token
 
     else Hardware Attestation: macOS (Secure Enclave)
         Client -> AuthS: POST /register\n{attestation_type="macos", PuK.AK.Sig, Apple_Attestation_Object,\nPuK.Client.Sig, signed_Hash_PuK.Client.Sig}
-        note right of AuthS: AuthS verifiziert Apple Root CA und stellt sicher,\ndass PuK.AK.Sig identisch mit x5c[0] im Objekt ist.
         AuthS -> AuthS: Validiere Apple_Attestation_Object & signed_Hash_PuK.Client.Sig
+        note right of AuthS: AuthS verifiziert Apple Root CA und stellt sicher,\ndass PuK.AK.Sig identisch mit x5c[0] im Objekt ist.
         AuthS --> Client: 201 Created {client_id}
 
-    else Software Attestation (Fallback)
-        Client -> AuthS: POST /register\n{attestation_type="software", PuK.Client.Sig}
-        AuthS -> AuthS: Registriere Client-Instanz ohne HW-Bindung
+    else Software Attestation (Legacy OIDC DCR)
+        Client -> AuthS: POST /register\n{\n  "client_name": "myClient",\n  "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"],\n  "jwks": { "keys": [ PuK.Client.Sig ] },\n  "token_endpoint_auth_method": "private_key_jwt"\n}
+        AuthS -> AuthS: Store Client Placeholder\n(state: pending_attestation)
         AuthS --> Client: 201 Created {client_id}
     end
 
