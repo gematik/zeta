@@ -15,7 +15,7 @@ alt Hardware Attestation (TPM / SE)
     end
 
     alt Windows / Linux (TPM)
-        Client -> TPM: Generiere CI_KeyPair via OS-Provider (z.B. MS CNG)
+        Client -> TPM: Generiere PrK.Client.Sig, PuK.Client.Sig via OS-Provider (z.B. MS CNG)
         TPM --> Client: PuK.Client.Sig, Handle_PrK.Client.Sig
         
         ZAS --> ZAS: Messung des PS & Vergleich mit Hersteller-Wert
@@ -26,7 +26,7 @@ alt Hardware Attestation (TPM / SE)
         ZAS -> TPM: TPM2_PCR_Extend(23, Messwerte)
         
     else macOS (Secure Enclave)
-        Client -> TPM: SecKeyCreateRandomKey (für CI_KeyPair in SE)
+        Client -> TPM: SecKeyCreateRandomKey (für PrK.Client.Sig, PuK.Client.Sig in SE)
         TPM --> Client: PuK.Client.Sig, Handle_PrK.Client.Sig
         
         ZAS -> TPM: SecKeyCreateRandomKey (für Attestation Key in SE)
@@ -35,7 +35,7 @@ alt Hardware Attestation (TPM / SE)
 
 else Software Attestation (Fallback)
     Client --> Client: Installation (User Space)
-    Client -> Client: Generiere CI_KeyPair lokal im RAM/Disk
+    Client -> Client: Generiere PrK.Client.Sig, PuK.Client.Sig lokal im RAM/Disk
     Client --> Client: Lokale Messung des PS (Dateihashes ermitteln)
     Client -> Client: Speichere Baseline-Hash lokal & sicher ab
 end
