@@ -1,5 +1,8 @@
 package policies.zeta.authz
 
+import future.keywords.if
+import future.keywords.in
+
 # Regel 1: Definiert 'decision' für den FEHLERFALL.
 decision := response if {
 	failures := reasons
@@ -105,23 +108,23 @@ http_method_is_allowed if {
 # --- IP-SPERRLISTEN-HILFSFUNKTIONEN ---
 
 # Trifft für einen einzelnen Eintrag (IP oder CIDR) zu.
-_ip_matches_entry(entry) if entry == input.authorization_request.ip_address
-_ip_matches_entry(entry) if net.cidr_contains(entry, input.authorization_request.ip_address)
+ip_matches_entry(entry) if entry == input.authorization_request.ip_address
+ip_matches_entry(entry) if net.cidr_contains(entry, input.authorization_request.ip_address)
 
 # Trifft zu wenn mindestens ein Eintrag der übergebenen Liste passt.
-_any_ip_matches(blocklist) if {
+any_ip_matches(blocklist) if {
 	some entry in blocklist
-	_ip_matches_entry(entry)
+	ip_matches_entry(entry)
 }
 
 # TOR-Exitknoten-Sperrliste
-ip_is_tor_exit_node if _any_ip_matches(data.ip_blocklist_tor.blocked_ips)
+ip_is_tor_exit_node if any_ip_matches(data.ip_blocklist_tor.blocked_ips)
 
 # VPN-Endpunkt-Sperrliste
-ip_is_vpn_endpoint if _any_ip_matches(data.ip_blocklist_vpn.blocked_ips)
+ip_is_vpn_endpoint if any_ip_matches(data.ip_blocklist_vpn.blocked_ips)
 
 # Generische IP/Range-Sperrliste
-ip_is_in_blocked_range if _any_ip_matches(data.ip_blocklist.blocked_ips)
+ip_is_in_blocked_range if any_ip_matches(data.ip_blocklist.blocked_ips)
 
 # Länder-Sperrliste (country_code wird von AuthS per GeoIP befüllt)
 country_is_blocked if {

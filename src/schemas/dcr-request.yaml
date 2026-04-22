@@ -1,0 +1,100 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: RegistrationRequest
+description: Payload Schema für den DCR POST /register Body
+type: object
+
+oneOf:
+
+  # -----------------------------------------------------------------
+  # 1. TPM Hardware Attestation
+  # -----------------------------------------------------------------
+  - title: TPM Attestation
+    required:
+      - attestation_type
+      - PuK.Client.Sig
+      - PuK.TPM.EK
+      - C.TPM.EK
+      - C.Client.Att
+      - signed_Hash_PuK.Client.Sig
+    properties:
+      attestation_type:
+        type: string
+        const: tpm
+      PuK.Client.Sig: { $ref: "#/definitions/JWK" }
+      PuK.TPM.EK: { $ref: "#/definitions/JWK" }
+      C.TPM.EK: { type: string }
+      C.Client.Att: { type: string }
+      signed_Hash_PuK.Client.Sig: { type: string }
+
+  # -----------------------------------------------------------------
+  # 2. macOS Hardware Attestation
+  # -----------------------------------------------------------------
+  - title: macOS Attestation
+    required:
+      - attestation_type
+      - PuK.Client.Sig
+      - C.Client.Att
+      - Apple_Attestation_Object
+      - signed_Hash_PuK.Client.Sig
+    properties:
+      attestation_type:
+        type: string
+        const: macos
+      PuK.Client.Sig: { $ref: "#/definitions/JWK" }
+      C.Client.Att: { type: string }
+      Apple_Attestation_Object: { type: string }
+      signed_Hash_PuK.Client.Sig: { type: string }
+
+  # -----------------------------------------------------------------
+  # 3. Fast-Path (ZETA Guard Attestation Token)
+  # -----------------------------------------------------------------
+  - title: Fast-Path Attestation
+    required:
+      - attestation_type
+      - PuK.Client.Sig
+      - zeta_guard_attestation_token
+      - signed_Hash_PuK.Client.Sig
+    properties:
+      attestation_type:
+        type: string
+        const: fast_path
+      PuK.Client.Sig: { $ref: "#/definitions/JWK" }
+      zeta_guard_attestation_token: { type: string }
+      signed_Hash_PuK.Client.Sig: { type: string }
+
+  # -----------------------------------------------------------------
+  # 4. Legacy / Software Attestation
+  # -----------------------------------------------------------------
+  - title: Legacy / Software Attestation
+    required:
+      - client_name
+      - jwks
+      - token_endpoint_auth_method
+    properties:
+      attestation_type:
+        type: string
+        enum: [ software ]
+      client_name: { type: string }
+      token_endpoint_auth_method: { type: string }
+      grant_types:
+        type: array
+        items: { type: string }
+      jwks:
+        type: object
+        properties:
+          keys:
+            type: array
+            items: { $ref: "#/definitions/JWK" }
+        required: [ keys ]
+
+definitions:
+  JWK:
+    type: object
+    properties:
+      kty: { type: string }
+      crv: { type: string }
+      x: { type: string }
+      y: { type: string }
+      n: { type: string }
+      e: { type: string }
+    required: [ kty ]

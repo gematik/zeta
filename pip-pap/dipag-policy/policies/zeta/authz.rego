@@ -1,5 +1,8 @@
 package policies.zeta.authz
 
+import future.keywords.if
+import future.keywords.in
+
 # Regel 1: Definiert 'decision' für den FEHLERFALL.
 decision := response if {
 	failures := reasons
@@ -45,11 +48,11 @@ reasons[msg] if {
 
 # --- HELPER-REGELN ---
 
-user_profession_is_allowed if {
-	# KORRIGIERTER PFAD
-	some i
-	input.user_info.professionOID == data.professions.allowed_professions[i]
-}
+#user_profession_is_allowed if {
+#	# KORRIGIERTER PFAD
+#	some i
+#	input.user_info.professionOID == data.professions.allowed_professions[i]
+#}
 
 #client_product_is_allowed if {
 #	posture := input.client_assertion.posture
