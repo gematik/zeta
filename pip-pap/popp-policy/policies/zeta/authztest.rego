@@ -1,5 +1,8 @@
 package policies.zeta.authztest
 
+import future.keywords.if
+import future.keywords.in
+
 import data.policies.zeta.authz
 
 # Mock Data

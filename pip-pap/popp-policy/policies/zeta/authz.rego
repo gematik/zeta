@@ -1,5 +1,8 @@
 package policies.zeta.authz
 
+import future.keywords.if
+import future.keywords.in
+
 # Regel 1: Definiert 'decision' für den FEHLERFALL.
 decision := response if {
 	failures := reasons
