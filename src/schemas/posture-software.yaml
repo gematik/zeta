@@ -29,7 +29,13 @@ properties:
     description: The public self signed signing key (PEM or base64 DER encoded)
   attestation_challenge:
     type: string
-    description: The attestation challenge of the client instance, used to verify the public client instance key and the nonce from AS
+    description: The attestation challenge of the client instance, used to verify
+      the public client instance key and the nonce from AuthS Calculated by
+      HASH(JWK Thumbprint of PuK.Client.Sig + Nonce). Deprecated, use nonce
+      instead
+  nonce:
+    type: string
+    description: The nonce from AuthS
 required:
   - product_id
   - product_version

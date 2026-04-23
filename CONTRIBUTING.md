@@ -1,7 +1,7 @@
 # Contributing to ZETA
 
 Vielen Dank für dein Interesse, zum **Zero Trust Access (ZETA)**-Projekt beizutragen!
-Dieses Dokument beschreibt, wie du Issues melden, Änderungen vorschlagen und Pull Requests einreichen kannst.
+Dieses Dokument beschreibt, wie du Änderungen vorschlagen und Pull Requests einreichen kannst.
 
 ---
 
@@ -9,12 +9,12 @@ Dieses Dokument beschreibt, wie du Issues melden, Änderungen vorschlagen und Pu
 
 - [Inhaltsverzeichnis](#inhaltsverzeichnis)
 - [Verhaltenskodex](#verhaltenskodex)
-- [Jira-Pflicht für Issues und Pull Requests](#jira-pflicht-für-issues-und-pull-requests)
+- [Fehler melden und Feature-Anfragen](#fehler-melden-und-feature-anfragen)
+- [Jira-Pflicht für Pull Requests](#jira-pflicht-für-pull-requests)
   - [Warum?](#warum)
   - [So geht's](#so-gehts)
   - [Namenskonvention](#namenskonvention)
   - [Beispiel](#beispiel)
-- [Issues melden](#issues-melden)
 - [Pull Requests einreichen](#pull-requests-einreichen)
   - [PR-Checkliste](#pr-checkliste)
 - [Branch-Konventionen](#branch-konventionen)
@@ -32,25 +32,32 @@ Bitte halte dich an die gängigen Open-Source-Etikette-Standards.
 
 ---
 
-## Jira-Pflicht für Issues und Pull Requests
+## Fehler melden und Feature-Anfragen
 
-> **⚠️ Pflichtanforderung:** Für jedes GitHub Issue und jeden Pull Request **muss** ein zugehöriges Jira-Ticket im Projekt **ANFTI2** existieren.
+GitHub Issues sind in diesem Repository **deaktiviert**. Fehler, Verbesserungsvorschläge und Feature-Anfragen werden ausschließlich über das Jira-Projekt **ANFTI2** verwaltet.
+
+👉 Bitte erstelle dein Ticket direkt unter: [`https://service.gematik.de/servicedesk/customer/portal/37/group/66`](https://service.gematik.de/servicedesk/customer/portal/37/group/66)
+
+---
+
+## Jira-Pflicht für Pull Requests
+
+> **⚠️ Pflichtanforderung:** Für jeden Pull Request **muss** ein zugehöriges Jira-Ticket im Projekt **ANFTI2** existieren.
 
 ### Warum?
 
-Die interne Nachverfolgung, Planung und Priorisierung aller Arbeiten am ZETA-Projekt erfolgt über das Jira-Projekt **ANFTI2**. GitHub Issues und PRs ohne Jira-Referenz können nicht in den regulären Review- und Merge-Prozess aufgenommen werden.
+Die interne Nachverfolgung, Planung und Priorisierung aller Arbeiten am ZETA-Projekt erfolgt ausschließlich über das Jira-Projekt **ANFTI2**. PRs ohne Jira-Referenz können nicht in den regulären Review- und Merge-Prozess aufgenommen werden.
 
 ### So geht's
 
 1. **Erstelle zuerst ein Jira-Ticket** im Projekt `ANFTI2` (falls noch keines existiert).
 2. **Notiere die Ticket-ID** (z. B. `ANFTI2-123`).
-3. **Füge die Ticket-Referenz** in deinem GitHub Issue bzw. PR ein – sowohl im Titel als auch in der Beschreibung.
+3. **Füge die Ticket-Referenz** in deinem Pull Request ein – sowohl im Titel als auch in der Beschreibung.
 
 ### Namenskonvention
 
 | Artefakt           | Format                                         |
 | ------------------ | ---------------------------------------------- |
-| GitHub Issue Titel | `[ANFTI2-123] Kurze Beschreibung des Problems` |
 | Pull Request Titel | `[ANFTI2-123] Kurze Beschreibung der Änderung` |
 | Branch-Name        | `feature/ANFTI2-123-kurze-beschreibung`        |
 
@@ -65,27 +72,9 @@ Beschreibung:
   ...
 ```
 
-Issues oder PRs **ohne gültige ANFTI2-Ticket-Referenz** werden kommentiert und bis zur Nachlieferung der Referenz nicht weiterbearbeitet.
+PRs **ohne gültige ANFTI2-Ticket-Referenz** werden kommentiert und bis zur Nachlieferung der Referenz nicht weiterbearbeitet.
 
----
 
-## Issues melden
-
-Bevor du ein neues Issue öffnest:
-
-- Durchsuche die [offenen Issues](https://github.com/gematik/zeta/issues), ob das Problem bereits gemeldet wurde.
-- Stelle sicher, dass ein **ANFTI2-Jira-Ticket** für dein Anliegen vorhanden ist (siehe [Jira-Pflicht](#jira-pflicht-für-issues-und-pull-requests)).
-
-Ein gutes Issue enthält:
-
-- **Titel:** `[ANFTI2-XXX] Prägnante Beschreibung`
-- **Jira-Link** in der Beschreibung
-- Eine klare Schilderung des Problems oder Feature-Wunsches
-- Schritte zur Reproduktion (bei Bugs)
-- Erwartetes vs. tatsächliches Verhalten
-- Relevante Umgebungsinformationen (Kubernetes-Version, Cloud-Provider, Konfiguration usw.)
-
----
 
 ## Pull Requests einreichen
 
@@ -172,7 +161,7 @@ Folge stattdessen dem Responsible-Disclosure-Prozess unter:
 
 👉 <https://www.gematik.de/datensicherheit#c1227>
 
-Nicht-kritische Bugs und Schwachstellen können als normales Issue gemeldet werden (mit ANFTI2-Jira-Referenz).
+Nicht-kritische Bugs und Schwachstellen bitte direkt als Jira-Ticket im Projekt **ANFTI2** erfassen.
 
 ---
 
@@ -184,5 +173,5 @@ die für dieses Repository gilt.
 
 ---
 
-*Dieses Dokument gilt für das Repository [gematik/zeta](https://github.com/gematik/zeta).*
-*Bei Fragen wende dich an das ZETA-Team oder eröffne ein Issue.*
+*Dieses Dokument gilt für das Repository [gematik/zeta](https://github.com/gematik/zeta) und alle zugehörigen ZETA-Repositories.*
+*Bei Fragen wende dich an das ZETA-Team oder erstelle ein Ticket im Jira-Projekt [ANFTI2](https://service.gematik.de/servicedesk/customer/portal/37/group/66).*
