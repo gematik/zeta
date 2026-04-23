@@ -2,65 +2,54 @@
 skinparam sequenceMessageAlign center
 title Token Exchange with Attestation
 
-participant "TPM / SE\n(Hardware)" as TPM
-participant "ZAS\n(Attester)" as ZAS
 participant "PS und ZETA\nClient" as Client
 participant "AuthS\n(Verifier)" as AuthS
 participant "OPA\n(Endorser)" as OPA
 
-== 5: RATS Ablauf (Evidence & Token Exchange) ==
 Client -> AuthS: GET /nonce
 AuthS --> Client: Nonce
 
-Client -> Client: Generiere subject_token (SMC-B signiert)
+alt Initial Token Exchange
+    Client -> Client : Create DPoP Key Pair (PrK.DPoP.Sig, PuK.DPoP.Sig)
+    note right: Session-based Key Pair for DPoP binding.
 
-alt Hardware Attestation (TPM / SE)
-    Client -> ZAS: GetEvidence(Nonce)
-    alt Windows / Linux (TPM)
-        ZAS -> TPM: TPM2_Quote(PCR=[7,23], Nonce, Handle_PrK.AK.Sig)
-        TPM --> ZAS: tpm_quote (signiert mit PrK.AK.Sig)
-        ZAS -> TPM: TPM2_GetEventLog()
-        TPM --> ZAS: tpm_event_log
-        ZAS --> Client: Evidence {tpm_quote, tpm_event_log}
-    else macOS (Secure Enclave)
-        ZAS -> ZAS: Ermittle Posture\n(SIP, Gatekeeper, OS-Version, Secure Boot)
-        ZAS -> TPM: DCAppAttest.generateAssertion(\n  Handle_PrK.AK.Sig,\n  Hash(Nonce + Posture)\n)
-        TPM --> ZAS: dc_assertion\n(CBOR: Signatur + Receipt + counter)
-        ZAS --> Client: Evidence {dc_assertion, posture, counter}
-    end
-else Software Attestation (Fallback)
-    Client -> Client: Generiere client-statement\n(Selbstauskunft: OS, PS-Version)
-end
+    Client -> Client : Create DPoP Proof (with Nonce from AuthS)
+    Client -> AuthS: POST /token\n{client_assertion (JWT, PrK.Client.Sig signiert),\nsubject_token (SMC-B signiert, inkl. Nonce),\n[Evidence]}
 
-Client -> AuthS: POST /token\n{client_assertion (JWT, PrK.Client.Sig signiert),\nsubject_token (SMC-B signiert, inkl. Nonce),\n[Evidence]}
-
-group AuthS (Verifier & Policy Check)
-    AuthS -> AuthS: Verifiziere client_assertion mit PuK.Client.Sig (aus DCR)
-    AuthS -> AuthS: Verifiziere subject_token (SMC-B Zertifikat TI-PKI)
-    AuthS -[#purple]> AuthS: Extrahiere Nonce aus subject_token
-    
-    alt Hardware Attestation (TPM / SE)
-        alt Windows / Linux (TPM)
-            AuthS -> AuthS: Verifiziere Hardware-Signatur (Quote)\ngegen extrahierte Nonce
-            AuthS -> AuthS: PCR-Replay via Event Log
-            AuthS -> OPA: Check PCR 7 & PCR 23 gegen Referenzwerte
-        else macOS (Secure Enclave)
-            AuthS -> AuthS: Verifiziere dc_assertion mit PuK.AK.Sig (aus DCR)\ngegen extrahierte Nonce
-            AuthS -> AuthS: Prüfe counter > letzter counter (Replay-Schutz)
-            AuthS -> OPA: Check macOS Posture gegen Referenzwerte
+    group AuthS (Verifier & Policy Check)
+        AuthS -> AuthS: Verifiziere client_assertion mit PuK.Client.Sig (aus DCR)
+        AuthS -> AuthS: Verifiziere subject_token (SMC-B Zertifikat TI-PKI)
+        AuthS -> AuthS: Extrahiere Nonce aus subject_token
+        
+        alt Hardware Attestation (TPM / SE)
+            alt Windows / Linux (TPM)
+                AuthS -> AuthS: Verifiziere Hardware-Signatur (Quote)\ngegen extrahierte Nonce
+                AuthS -> AuthS: PCR-Replay via Event Log
+                AuthS -> OPA: Check PCR 7 & PCR 23 gegen Referenzwerte
+            else macOS (Secure Enclave)
+                AuthS -> AuthS: Prüfe counter > letzter counter (Replay-Schutz)
+                AuthS -> OPA: Check macOS Posture gegen Referenzwerte
+            end
+            
+        else Software Attestation (Fallback)
+            AuthS -> AuthS: Extrahiere client-statement aus JWT
+            AuthS -> OPA: Check Selbstauskunft (Software Policy)
         end
         
-    else Software Attestation (Fallback)
-        AuthS -> AuthS: Extrahiere client-statement aus JWT
-        AuthS -> OPA: Check Selbstauskunft (Software Policy)
+        OPA --> AuthS: Attestation Result (Allow/Deny)
     end
-    
-    OPA --> AuthS: Attestation Result (Allow/Deny)
-end
 
-alt Attestation erfolgreich
-    AuthS --> Client: 200 OK\n{Access Token, Refresh Token,\n[ZETA Guard Attestation Token]}
-else Attestation fehlerhaft
-    AuthS --> Client: 403 Forbidden
+    alt Token Exchange erfolgreich
+        AuthS --> Client: 200 OK\n{Access Token, Refresh Token,\nZETA Guard Attestation Token}
+    else Token Exchange fehlerhaft
+        AuthS --> Client: 403 Forbidden
+    end
+
+else Refresh Token use (without Attestation)
+    Client -> Client : Create Client Assertion JWT without Attestation
+    Client -> AuthS: POST /token\n{client_assertion (JWT, PrK.Client.Sig signiert),\nrefresh_token,\ndpop_proof (JWT, DPoP Key Pair signiert)}
+    AuthS -> AuthS : Validate Request (Client Assertion,\nDPoP Proof, Refresh Token)
+    AuthS -> AuthS: Invalidate Refresh token
+    AuthS --> Client: 200 OK, new tokens
 end
 @enduml
