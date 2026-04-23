@@ -15,7 +15,7 @@ alt Initial Token Exchange
     note right: Session-based Key Pair for DPoP binding.
 
     Client -> Client : Create DPoP Proof (with Nonce from AuthS)
-    Client -> AuthS++: POST /token\n{client_assertion (JWT, PrK.Client.Sig signiert),\nsubject_token (SMC-B signiert, inkl. Nonce),\n[Evidence]}
+    Client -> AuthS++: POST /token dpop: dpop_proof\n{client_assertion (JWT, PrK.Client.Sig signiert),\nsubject_token (SMC-B signiert, inkl. Nonce),\n[Evidence]}
 
     group AuthS (Verifier & Policy Check)
         AuthS -> AuthS: Verifiziere client_assertion mit PuK.Client.Sig (aus DCR)
@@ -49,7 +49,7 @@ alt Initial Token Exchange
 else Refresh Token use (without Attestation)
     Client -> Client : Create DPoP Proof (without Nonce)
     Client -> Client : Create Client Assertion JWT (without Attestation)
-    Client -> AuthS++: POST /token\n{client_assertion (JWT, PrK.Client.Sig signiert),\nrefresh_token,\ndpop_proof (JWT, DPoP Key Pair signiert)}
+    Client -> AuthS++: POST /token dpop: dpop_proof\n{client_assertion (JWT, PrK.Client.Sig signiert),\nrefresh_token}
     AuthS -> AuthS : Validate Request (Client Assertion,\nDPoP Proof, Refresh Token)
     AuthS -> AuthS: Invalidate Refresh token
     AuthS -> OPA++: Check Selbstauskunft (Software Policy)
