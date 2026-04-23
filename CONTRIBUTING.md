@@ -36,7 +36,7 @@ Bitte halte dich an die gängigen Open-Source-Etikette-Standards.
 
 GitHub Issues sind in diesem Repository **deaktiviert**. Fehler, Verbesserungsvorschläge und Feature-Anfragen werden ausschließlich über das Jira-Projekt **ANFTI2** verwaltet.
 
-👉 Bitte erstelle dein Ticket direkt unter: [`https://service.gematik.de/servicedesk/customer/portal/37/group/66`](https://service.gematik.de/servicedesk/customer/portal/37/group/66)
+👉 Bitte erstelle dein Ticket direkt unter: [ANFTI2](https://service.gematik.de/servicedesk/customer/portal/37/group/66)
 
 ---
 
@@ -50,7 +50,7 @@ Die interne Nachverfolgung, Planung und Priorisierung aller Arbeiten am ZETA-Pro
 
 ### So geht's
 
-1. **Erstelle zuerst ein Jira-Ticket** im Projekt `ANFTI2` (falls noch keines existiert).
+1. **Erstelle zuerst ein Jira-Ticket** im Projekt [ANFTI2](https://service.gematik.de/servicedesk/customer/portal/37/group/66) (falls noch keines existiert).
 2. **Notiere die Ticket-ID** (z. B. `ANFTI2-123`).
 3. **Füge die Ticket-Referenz** in deinem Pull Request ein – sowohl im Titel als auch in der Beschreibung.
 
@@ -156,8 +156,7 @@ docs: ANFTI2-789 update deployment guide for GKE
 
 ## Sicherheitslücken melden
 
-Für **kritische Sicherheitslücken** bitte **kein** öffentliches GitHub Issue öffnen.
-Folge stattdessen dem Responsible-Disclosure-Prozess unter:
+Für **kritische Sicherheitslücken** folge bitte dem Responsible-Disclosure-Prozess unter:
 
 👉 <https://www.gematik.de/datensicherheit#c1227>
 
