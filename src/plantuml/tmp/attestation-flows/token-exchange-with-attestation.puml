@@ -46,7 +46,8 @@ alt Initial Token Exchange
     end
 
 else Refresh Token use (without Attestation)
-    Client -> Client : Create Client Assertion JWT without Attestation
+    Client -> Client : Create DPoP Proof (without Nonce)
+    Client -> Client : Create Client Assertion JWT (without Attestation)
     Client -> AuthS: POST /token\n{client_assertion (JWT, PrK.Client.Sig signiert),\nrefresh_token,\ndpop_proof (JWT, DPoP Key Pair signiert)}
     AuthS -> AuthS : Validate Request (Client Assertion,\nDPoP Proof, Refresh Token)
     AuthS -> AuthS: Invalidate Refresh token

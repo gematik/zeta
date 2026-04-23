@@ -1,7 +1,8 @@
 # Schema for the Client Assertion JWT
 $schema: "http://json-schema.org/draft-07/schema#"
 title: Client Assertion JWT
-description: Schema for the payload of a Client Assertion JWT used in ZETA, as defined in RFC 7523, with custom claims for client attestation.
+description: Schema for the payload of a Client Assertion JWT used in ZETA, as
+  defined in RFC 7523, with custom claims for client attestation.
 type: object
 properties:
   header:
@@ -20,16 +21,16 @@ properties:
       jwk:
         type: object
         description: >
-          Public key of the client in JWK format.  
-          Used instead of x5c because no X.509 certificate is present.
+          Public key of the client in JWK format.   Used instead of x5c because
+          no X.509 certificate is present.
         properties:
           kty:
             type: string
-            enum: ["EC"]
+            enum: [ "EC" ]
             description: Key type (elliptic curve).
           crv:
             type: string
-            enum: ["P-256"]
+            enum: [ "P-256" ]
             description: Elliptic curve used for ES256.
           x:
             type: string
@@ -56,13 +57,14 @@ properties:
         description: Issuer of the JWT, which MUST be the client_id of the client.
       sub:
         type: string
-        description: Subject of the JWT, which MUST be the OAuth 2.0 client_id of the client.
+        description: Subject of the JWT, which MUST be the OAuth 2.0 client_id of the
+          client.
       aud:
         type: array
         items:
           type: string
-          description: Audience for the JWT. It MUST contain the
-            Authorization Server's token endpoint URL.
+          description: Audience for the JWT. It MUST contain the Authorization Server's
+            token endpoint URL.
         minItems: 1
       exp:
         type: integer
@@ -72,7 +74,8 @@ properties:
         description: JWT ID, a unique identifier for the token.
 
       client_statement:
-        description: A client statement object, as defined in client-statement.yaml. This property is optional and only present during an attestation flow.
+        description: A client statement object, as defined in client-statement.yaml.
+          This property is optional and only present during an attestation flow.
         $ref: "client-statement.yaml"
 
     required:
