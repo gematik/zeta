@@ -1,5 +1,5 @@
 @startuml "client-installation"
-skinparam sequenceMessageAlign center
+skinparam sequenceMessageAlign left
 title Client Installation & Baseline-Etablierung
 
 participant "TPM / SE\n(Hardware)" as TPM
@@ -9,6 +9,7 @@ participant "PS und ZETA\nClient" as Client
 alt Hardware Attestation (TPM / SE)
     ZAS++
     ZAS --> ZAS: Installation (als Root/Admin)
+    Client++
     Client --> Client: Installation (User Space)
     group Vertrauensbeziehung zwischen ZAS und Client wird aufgebaut
         ZAS -> Client
@@ -16,25 +17,23 @@ alt Hardware Attestation (TPM / SE)
     end
 
     alt Windows / Linux (TPM)
-        Client -> TPM++: Generiere PrK.Client.Sig, PuK.Client.Sig via OS-Provider (z.B. MS CNG)
+        Client -> TPM++: Generiere PrK.Client.Sig, PuK.Client.Sig\nvia OS-Provider (z.B. MS CNG)
         TPM --> Client: PuK.Client.Sig, Handle_PrK.Client.Sig
-        
         ZAS --> ZAS: Messung des PS & Vergleich mit Hersteller-Wert
         ZAS -> TPM: TPM2_CreatePrimary() → Storage Root Key (SRK)
         ZAS -> TPM: TPM2_Create(SRK, restricted=sign, fixedTPM=true)
         TPM --> ZAS: PuK.AK.Sig, PrK.AK.Sig (blob)
-        ZAS -> TPM: TPM2_Load(SRK, PrK.AK.Sig, PuK.AK.Sig) → Handle_PrK.AK.Sig
+        ZAS -> TPM: TPM2_Load(SRK, PrK.AK.Sig, PuK.AK.Sig)
+        TPM --> ZAS: Handle_PrK.AK.Sig
         ZAS -> TPM: TPM2_PCR_Extend(23, Messwerte)
-        note right: PCR_23 Könnte belegt; muss vorher geprüft werden 
-
+        note right: PCR_23 Könnte belegt sein; muss vorher geprüft werden 
+        TPM--
     else macOS (Secure Enclave)
-        Client -> TPM: SecKeyCreateRandomKey (für PrK.Client.Sig, PuK.Client.Sig in SE)
+        Client -> TPM++: SecKeyCreateRandomKey (für PrK.Client.Sig, PuK.Client.Sig in SE)
         TPM --> Client: PuK.Client.Sig, Handle_PrK.Client.Sig
-        
         ZAS -> TPM: SecKeyCreateRandomKey (für Attestation Key in SE)
         TPM --> ZAS--: PuK.AK.Sig, Handle_PrK.AK.Sig
     end
-    ZAS--
 
 else Software Attestation (Fallback)
     Client --> Client: Installation (User Space)
