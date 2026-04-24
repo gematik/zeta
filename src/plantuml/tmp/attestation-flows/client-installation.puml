@@ -1,10 +1,30 @@
 @startuml "client-installation"
+autonumber "(00)"
+skinparam defaultFontSize 10
+skinparam defaultFontName Helvetica
+skinparam DefaultMonospacedFontName Courier
+skinparam lengthAdjust none
+skinparam sequenceReferenceBackgroundColor White
+skinparam SequenceReferenceFontSize 12
 skinparam sequenceMessageAlign left
+
 title Client Installation & Baseline-Etablierung
 
-participant "TPM / SE\n(Hardware)" as TPM
-participant "ZAS\n(Attester)" as ZAS
-participant "PS und ZETA\nClient" as Client
+!pragma teoz true
+
+box "LEI" #GhostWhite
+  box "Primärsystem" #Lavender
+    participant "TPM / SE\n(Hardware)" as TPM
+    box "ZAS Attester" #SandyBrown
+        participant "ZAS\n(Attester)" as ZAS
+    end box
+    box "ZETA Client" #SandyBrown
+        participant "PS und ZETA\nClient" as Client
+    end box    
+  end box
+end box
+
+
 
 alt Hardware Attestation (TPM / SE)
     ZAS++
