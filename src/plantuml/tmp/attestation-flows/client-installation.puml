@@ -7,6 +7,7 @@ participant "ZAS\n(Attester)" as ZAS
 participant "PS und ZETA\nClient" as Client
 
 alt Hardware Attestation (TPM / SE)
+    ZAS++
     ZAS --> ZAS: Installation (als Root/Admin)
     Client --> Client: Installation (User Space)
     group Vertrauensbeziehung zwischen ZAS und Client wird aufgebaut
@@ -15,7 +16,7 @@ alt Hardware Attestation (TPM / SE)
     end
 
     alt Windows / Linux (TPM)
-        Client -> TPM: Generiere PrK.Client.Sig, PuK.Client.Sig via OS-Provider (z.B. MS CNG)
+        Client -> TPM++: Generiere PrK.Client.Sig, PuK.Client.Sig via OS-Provider (z.B. MS CNG)
         TPM --> Client: PuK.Client.Sig, Handle_PrK.Client.Sig
         
         ZAS --> ZAS: Messung des PS & Vergleich mit Hersteller-Wert
@@ -24,14 +25,16 @@ alt Hardware Attestation (TPM / SE)
         TPM --> ZAS: PuK.AK.Sig, PrK.AK.Sig (blob)
         ZAS -> TPM: TPM2_Load(SRK, PrK.AK.Sig, PuK.AK.Sig) → Handle_PrK.AK.Sig
         ZAS -> TPM: TPM2_PCR_Extend(23, Messwerte)
-        
+        note right: PCR_23 Könnte belegt; muss vorher geprüft werden 
+
     else macOS (Secure Enclave)
         Client -> TPM: SecKeyCreateRandomKey (für PrK.Client.Sig, PuK.Client.Sig in SE)
         TPM --> Client: PuK.Client.Sig, Handle_PrK.Client.Sig
         
         ZAS -> TPM: SecKeyCreateRandomKey (für Attestation Key in SE)
-        TPM --> ZAS: PuK.AK.Sig, Handle_PrK.AK.Sig
+        TPM --> ZAS--: PuK.AK.Sig, Handle_PrK.AK.Sig
     end
+    ZAS--
 
 else Software Attestation (Fallback)
     Client --> Client: Installation (User Space)
