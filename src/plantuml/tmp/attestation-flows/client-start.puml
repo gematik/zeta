@@ -21,7 +21,6 @@ alt Hardware Attestation (TPM / SE)
 else Software Attestation (Fallback)
     Client -> Client: Start (User Space)
     Client --> Client: Lokale Datensammlung (PS-Messung)
-    Client -> Client: Abgleich mit lokaler TOFU-Baseline\n(aus der Installation)
 end
 
 @enduml

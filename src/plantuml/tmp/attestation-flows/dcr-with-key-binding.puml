@@ -11,7 +11,7 @@ alt Kein ZETA Guard Attestation Token
     alt Hardware Attestation: Windows / Linux (TPM)
         Client -> AuthS: POST /register\n{attestation_type="tpm", PuK.EK.Enc, C.EK.Enc,\nPuK.AK.Sig, PuK.Client.Sig, signed_Hash_PuK.Client.Sig}
         AuthS -> AuthS: Validiere C.EK.Enc-Chain & signed_Hash_PuK.Client.Sig
-        AuthS -> AuthS: CredentialBlob = MakeCredential(...)
+        AuthS -> AuthS: CredentialBlob = MakeCredential(...);\n(TPM 2.0 Commands, Section 12.5)
         AuthS --> Client: 202 Accepted {CredentialBlob}
 
         Client -> ZAS: Activate(CredentialBlob)

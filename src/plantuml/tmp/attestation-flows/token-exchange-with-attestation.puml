@@ -2,13 +2,20 @@
 skinparam sequenceMessageAlign center
 title Token Exchange with Attestation
 
+participant Konnektor as "Konnektor or\nTI-Gateway"
+participant SMB as "SM(C)-B"
 participant "PS und ZETA\nClient" as Client
 participant "AuthS\n(Verifier)" as AuthS
 participant "OPA\n(Endorser)" as OPA
 
 Client++
-Client -> AuthS++: GET /nonce
-AuthS --> Client--: Nonce
+
+Client -> Client: Generiere subject_token
+Client -> Konnektor ++ : externalAuthenticate (subject_token)
+Konnektor -> SMB ++ : sign (subject_token)
+SMB --> Konnektor -- : signature
+Konnektor --> Client -- : signature
+Client -> Client : Add signature to subject_token
 
 alt Initial Token Exchange
     Client -> Client : Create DPoP Key Pair (PrK.DPoP.Sig, PuK.DPoP.Sig)
@@ -41,7 +48,8 @@ alt Initial Token Exchange
     end
 
     alt Token Exchange erfolgreich
-        AuthS --> Client: 200 OK\n{Access Token, Refresh Token,\nZETA Guard Attestation Token}
+        AuthS -> AuthS: Create Token (Access Token, Refresh Token und\nZETA Guard Attestation Token (zg_att_token))
+        AuthS --> Client: 200 OK\n{Access Token, Refresh Token,\nzg_att_token}
     else Token Exchange fehlerhaft
         AuthS --> Client--: 403 Forbidden
     end
@@ -55,6 +63,7 @@ else Refresh Token use (without Attestation)
     AuthS -> OPA++: Check Selbstauskunft (Software Policy)
     OPA --> AuthS--: Attestation Result (Allow/Deny)
     alt Token Exchange erfolgreich
+        AuthS -> AuthS: Create Token (Access Token, Refresh Token)
         AuthS --> Client: 200 OK\n{Access Token, Refresh Token}
     else Token Exchange fehlerhaft
         AuthS --> Client--: 403 Forbidden

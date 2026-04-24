@@ -5,20 +5,11 @@ title Obtain Attestation Evidence
 participant "TPM / SE\n(Hardware)" as TPM
 participant "ZAS\n(Attester)" as ZAS
 participant "PS und ZETA\nClient" as Client
-participant Konnektor as "Konnektor or\nTI-Gateway"
-participant SMB as "SM(C)-B"
 participant "AuthS\n(Verifier)" as AuthS
 
 Client++
 Client -> AuthS ++ : GET /nonce
 AuthS --> Client -- : Nonce
-
-Client -> Client: Generiere subject_token
-Client -> Konnektor ++ : externalAuthenticate (subject_token)
-Konnektor -> SMB ++ : sign (subject_token)
-SMB --> Konnektor -- : signature
-Konnektor --> Client -- : signature
-Client -> Client : Add signature to subject_token
 
 alt Hardware Attestation (TPM / SE)
     Client -> ZAS++ : GetEvidence(Nonce)
