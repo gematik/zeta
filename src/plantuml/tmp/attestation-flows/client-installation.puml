@@ -13,9 +13,9 @@ title Client Installation & Baseline-Etablierung
 !pragma teoz true
 
 box "LEI" #GhostWhite
+  participant "TPM / SE\n(Hardware)" as TPM
   box "Primärsystem" #Lavender
-    participant "TPM / SE\n(Hardware)" as TPM
-    box "ZAS Attester" #SandyBrown
+        box "ZAS Attester" #SandyBrown
         participant "ZAS\n(Attester)" as ZAS
     end box
     box "ZETA Client" #SandyBrown
@@ -24,10 +24,9 @@ box "LEI" #GhostWhite
   end box
 end box
 
-
-
 alt Hardware Attestation (TPM / SE)
-    ZAS++
+
+    ZAS++    
     ZAS --> ZAS: Installation (als Root/Admin)
     Client++
     Client --> Client: Installation (User Space)

@@ -1,26 +1,44 @@
 @startuml "client-start"
-skinparam sequenceMessageAlign center
+autonumber "(00)"
+skinparam defaultFontSize 10
+skinparam defaultFontName Helvetica
+skinparam DefaultMonospacedFontName Courier
+skinparam lengthAdjust none
+skinparam sequenceReferenceBackgroundColor White
+skinparam SequenceReferenceFontSize 12
+skinparam sequenceMessageAlign left
+
 title Client Start & Initialisierung
 
-participant "TPM / SE\n(Hardware)" as TPM
-participant "ZAS\n(Attester)" as ZAS
-participant "PS und ZETA\nClient" as Client
+!pragma teoz true
+
+box "LEI" #GhostWhite
+  participant "TPM / SE\n(Hardware)" as TPM
+  box "Primärsystem" #Lavender
+        box "ZAS Attester" #SandyBrown
+        participant "ZAS\n(Attester)" as ZAS
+    end box
+    box "ZETA Client" #SandyBrown
+        participant "PS und ZETA\nClient" as Client
+    end box    
+  end box
+end box
 
 alt Hardware Attestation (TPM / SE)
-    ZAS -> ZAS: Startet als Hintergrunddienst (Root/Admin)
+    ZAS -> ZAS: Startet als\n Hintergrunddienst\n (Root/Admin)
     
     alt Windows / Linux (TPM)
         ZAS --> ZAS: Messung des PS
         ZAS -> TPM: TPM2_PCR_Extend(23, Messwerte)
     else macOS (Secure Enclave)
-        ZAS --> ZAS: Initiale Ermittlung der Posture\n(SIP-Status, Gatekeeper,\nOS-Version, Secure Boot Policy)
+        ZAS --> ZAS: Initiale Ermittlung\n der Posture (SIP-Status,\n Gatekeeper, OS-Version,\n Secure Boot Policy)
     end
     
-    Client --> Client: Start (User Space)
+    Client --> Client: Start \n (User Space)
 
 else Software Attestation (Fallback)
-    Client -> Client: Start (User Space)
-    Client --> Client: Lokale Datensammlung (PS-Messung)
+    Client -> Client: Start \n (User Space)
+    Client --> Client: Lokale \n Datensammlung \n (PS-Messung)
 end
 
 @enduml
