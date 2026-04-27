@@ -1,4 +1,4 @@
-@startuml "token-exchange-with-attestation"
+@startuml "token-exchange-with-refresh-token"
 autonumber "(00)"
 skinparam defaultFontSize 10
 skinparam defaultFontName Helvetica
@@ -8,7 +8,7 @@ skinparam sequenceReferenceBackgroundColor White
 skinparam SequenceReferenceFontSize 12
 skinparam sequenceMessageAlign left
 
-title Token Exchange with Attestation
+title Token Exchange with Refresh Token
 
 !pragma teoz true
 
@@ -33,6 +33,7 @@ Client -> Client : Create DPoP Proof (without Nonce)
 Client -> Client : Create Client Assertion JWT (without Attestation)
 Client -> AuthS++: POST /token dpop: dpop_proof\n{client_assertion (JWT, PrK.Client.Sig signiert),\nrefresh_token}
 AuthS -> AuthS : Validate Request (Client Assertion,\nDPoP Proof, Refresh Token)
+AuthS -> AuthS : Prüfe Sperrstatus (OCSP/CRL) der SM(C)-B
 AuthS -> AuthS: Invalidate Refresh token
 alt Validation successful
   AuthS -> AuthS: Policy Engine Input erstellen

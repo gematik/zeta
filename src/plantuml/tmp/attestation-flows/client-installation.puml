@@ -50,8 +50,8 @@ alt Hardware Attestation (TPM / SE)
     else macOS (Secure Enclave)
         Client -> TPM++: SecKeyCreateRandomKey (für PrK.Client.Sig, PuK.Client.Sig in SE)
         TPM --> Client: PuK.Client.Sig, Handle_PrK.Client.Sig
-        ZAS -> TPM: SecKeyCreateRandomKey (für Attestation Key in SE)
-        TPM --> ZAS--: PuK.AK.Sig, Handle_PrK.AK.Sig
+        ZAS -> TPM: DCAppAttestService.shared.generateKey()
+        TPM --> ZAS--: keyId (Referenz für PrK.AK.Sig)
     end
 
 else Software Attestation (Fallback)
