@@ -1,72 +1,72 @@
 @startuml "token-exchange-with-attestation"
-skinparam sequenceMessageAlign center
+autonumber "(00)"
+skinparam defaultFontSize 10
+skinparam defaultFontName Helvetica
+skinparam DefaultMonospacedFontName Courier
+skinparam lengthAdjust none
+skinparam sequenceReferenceBackgroundColor White
+skinparam SequenceReferenceFontSize 12
+skinparam sequenceMessageAlign left
+
 title Token Exchange with Attestation
 
-participant Konnektor as "Konnektor or\nTI-Gateway"
-participant SMB as "SM(C)-B"
-participant "PS und ZETA\nClient" as Client
-participant "AuthS\n(Verifier)" as AuthS
-participant "OPA\n(Endorser)" as OPA
+!pragma teoz true
+
+box "LEI" #GhostWhite
+  participant Konnektor as "Konnektor or\nTI-Gateway"
+  participant SMB as "SM(C)-B"
+  box "Primärsystem" #Lavender
+    box "ZETA Client" #SandyBrown
+        participant Client as "ZETA Client"
+    end box    
+  end box
+end box
+
+box "Anbieter TI 2.0 Dienst" #TECHNOLOGY
+  box "ZETA Guard" #SandyBrown
+    participant AuthS as "PDP\nAuthorization Server" 
+    participant OPA as "PDP\nPolicy Engine"
+  end box
+end box
 
 Client++
-
 Client -> Client: Generiere subject_token
-Client -> Konnektor ++ : externalAuthenticate (subject_token)
-Konnektor -> SMB ++ : sign (subject_token)
-SMB --> Konnektor -- : signature
-Konnektor --> Client -- : signature
-Client -> Client : Add signature to subject_token
 
-alt Initial Token Exchange
-    Client -> Client : Create DPoP Key Pair (PrK.DPoP.Sig, PuK.DPoP.Sig)
-    note right: Session-based Key Pair for DPoP binding.
-
-    Client -> Client : Create DPoP Proof (with Nonce from AuthS)
-    Client -> AuthS++: POST /token dpop: dpop_proof\n{client_assertion (JWT, PrK.Client.Sig signiert),\nsubject_token (SMC-B signiert, inkl. Nonce),\n[Evidence]}
-
-    group AuthS (Verifier & Policy Check)
-        AuthS -> AuthS: Verifiziere client_assertion mit PuK.Client.Sig (aus DCR)
-        AuthS -> AuthS: Verifiziere subject_token (SMC-B Zertifikat TI-PKI)
-        AuthS -> AuthS: Extrahiere Nonce aus subject_token
-        
-        alt Hardware Attestation (TPM / SE)
-            alt Windows / Linux (TPM)
-                AuthS -> AuthS: Verifiziere Hardware-Signatur (Quote)\ngegen extrahierte Nonce
-                AuthS -> AuthS: PCR-Replay via Event Log
-                AuthS -> OPA++: Check PCR 7 & PCR 23 gegen Referenzwerte
-            else macOS (Secure Enclave)
-                AuthS -> AuthS: Prüfe counter > letzter counter (Replay-Schutz)
-                AuthS -> OPA: Check macOS Posture gegen Referenzwerte
-            end
-            
-        else Software Attestation (Fallback)
-            AuthS -> AuthS: Extrahiere client-statement aus JWT
-            AuthS -> OPA: Check Selbstauskunft (Software Policy)
-        end
-        
-        OPA --> AuthS--: Attestation Result (Allow/Deny)
-    end
-
-    alt Token Exchange erfolgreich
-        AuthS -> AuthS: Create Token (Access Token, Refresh Token und\nZETA Guard Attestation Token (zg_att_token))
-        AuthS --> Client: 200 OK\n{Access Token, Refresh Token,\nzg_att_token}
-    else Token Exchange fehlerhaft
-        AuthS --> Client--: 403 Forbidden
-    end
-
-else Refresh Token use (without Attestation)
-    Client -> Client : Create DPoP Proof (without Nonce)
-    Client -> Client : Create Client Assertion JWT (without Attestation)
-    Client -> AuthS++: POST /token dpop: dpop_proof\n{client_assertion (JWT, PrK.Client.Sig signiert),\nrefresh_token}
-    AuthS -> AuthS : Validate Request (Client Assertion,\nDPoP Proof, Refresh Token)
-    AuthS -> AuthS: Invalidate Refresh token
-    AuthS -> OPA++: Check Selbstauskunft (Software Policy)
-    OPA --> AuthS--: Attestation Result (Allow/Deny)
-    alt Token Exchange erfolgreich
-        AuthS -> AuthS: Create Token (Access Token, Refresh Token)
-        AuthS --> Client: 200 OK\n{Access Token, Refresh Token}
-    else Token Exchange fehlerhaft
-        AuthS --> Client--: 403 Forbidden
-    end
+group Sign Subject Token with SM(C)-B
+    Client -> Konnektor ++
+    Konnektor --> Client -- : 
 end
+
+Client -> Client : Create DPoP Key Pair (PrK.DPoP.Sig, PuK.DPoP.Sig)
+note right: Session-based Key Pair for DPoP binding.
+
+Client -> Client : Create DPoP Proof (with Nonce from AuthS)
+Client -> AuthS++: POST /token dpop: dpop_proof\n{client_assertion (JWT, PrK.Client.Sig signiert),\nsubject_token (SMC-B signiert, inkl. Nonce),\n[Evidence]}
+
+AuthS -> AuthS: Validate Request (Client Assertion, DPoP Proof,\nSubject Token, Nonce and Key bindings from DCR)        
+alt TPM Attestation (Windows / Linux)
+    AuthS -> AuthS: Verifiziere Hardware-Signatur (Quote) gegen extrahierte Nonce\nPCR-Replay via Event Log
+else macOS Attestation (Secure Enclave)
+    AuthS -> AuthS: Prüfe Signaturen und counter (Replay-Schutz)
+end
+alt Validation successful
+    AuthS -> AuthS: Policy Engine Input erstellen
+    AuthS -> OPA++: POST /v1/data/authz {Policy Engine Input}
+    OPA --> AuthS--: Policy Decision
+
+    alt Policy Decision allow
+        AuthS -> AuthS: Create Token (Access Token, Refresh Token)
+        alt Hardware Attestation  (TPM / SE)
+            AuthS -> AuthS: Create ZETA Guard Attestation Token (zg_att_token)
+            AuthS --> Client: 200 OK {Access Token, Refresh Token, zg_att_token}
+        else Software Attestation (Fallback)
+            AuthS --> Client: 200 OK {Access Token, Refresh Token}
+        end
+    else Policy Decision deny
+        AuthS --> Client--: 403 Forbidden
+    end
+else Validation fehlerhaft
+    AuthS --> Client--: 403 Forbidden
+end
+
 @enduml

@@ -1,20 +1,45 @@
 @startuml "obtain-attestation-evidence"
-skinparam sequenceMessageAlign center
+autonumber "(00)"
+skinparam defaultFontSize 10
+skinparam defaultFontName Helvetica
+skinparam DefaultMonospacedFontName Courier
+skinparam lengthAdjust none
+skinparam sequenceReferenceBackgroundColor White
+skinparam SequenceReferenceFontSize 12
+skinparam sequenceMessageAlign left
+
 title Obtain Attestation Evidence
 
-participant "TPM / SE\n(Hardware)" as TPM
-participant "ZAS\n(Attester)" as ZAS
-participant "PS und ZETA\nClient" as Client
-participant "AuthS\n(Verifier)" as AuthS
+!pragma teoz true
+
+box "LEI" #GhostWhite
+  participant "TPM / SE" as TPM
+  box "Primärsystem" #Lavender
+    box "ZETA Attestation Service" #SandyBrown
+      participant ZAS as "ZAS"
+    end box
+    box "ZETA Client" #SandyBrown
+        participant Client as "ZETA Client"
+    end box    
+  end box
+end box
+
+box "Anbieter TI 2.0 Dienst" #TECHNOLOGY
+  box "ZETA Guard" #SandyBrown
+    participant AuthS as "PDP\nAuthorization Server" 
+  end box
+end box
+
 
 Client++
+ZAS++
 Client -> AuthS ++ : GET /nonce
 AuthS --> Client -- : Nonce
 
 alt Hardware Attestation (TPM / SE)
-    Client -> ZAS++ : GetEvidence(Nonce)
+    Client -> ZAS : GetEvidence(Nonce)
     alt Windows / Linux (TPM)
-        ZAS -> TPM++ : TPM2_Quote(PCR=[7,23], Nonce, Handle_PrK.AK.Sig)
+        ZAS -> TPM++ : TPM2_Quote(PCR=[7,23],\nNonce, Handle_PrK.AK.Sig)
         TPM --> ZAS -- : tpm_quote (signiert mit PrK.AK.Sig)
         ZAS -> TPM++ : TPM2_GetEventLog()
         TPM --> ZAS -- : tpm_event_log
@@ -23,10 +48,10 @@ alt Hardware Attestation (TPM / SE)
         ZAS -> ZAS: Ermittle Posture\n(SIP, Gatekeeper, OS-Version, Secure Boot)
         ZAS -> TPM++ : DCAppAttest.generateAssertion(\n  Handle_PrK.AK.Sig,\n  Hash(Nonce + Posture)\n)
         TPM --> ZAS-- : dc_assertion\n(CBOR: Signatur + Receipt + counter)
-        ZAS --> Client-- : Evidence {dc_assertion, posture, counter}
+        ZAS --> Client : Evidence {dc_assertion, posture, counter}
     end
 else Software Attestation (Fallback)
-    Client -> Client: Generiere client-statement\n(Selbstauskunft: OS, PS-Version)
+    Client -> Client: Generiere client-statement\n(OS und PS Daten)
 end
 
 @enduml

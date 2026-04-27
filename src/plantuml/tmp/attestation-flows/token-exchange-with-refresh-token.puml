@@ -1,0 +1,50 @@
+@startuml "token-exchange-with-attestation"
+autonumber "(00)"
+skinparam defaultFontSize 10
+skinparam defaultFontName Helvetica
+skinparam DefaultMonospacedFontName Courier
+skinparam lengthAdjust none
+skinparam sequenceReferenceBackgroundColor White
+skinparam SequenceReferenceFontSize 12
+skinparam sequenceMessageAlign left
+
+title Token Exchange with Attestation
+
+!pragma teoz true
+
+box "LEI" #GhostWhite
+  box "Primärsystem" #Lavender
+    box "ZETA Client" #SandyBrown
+        participant Client as "ZETA Client"
+    end box    
+  end box
+end box
+
+box "Anbieter TI 2.0 Dienst" #TECHNOLOGY
+  box "ZETA Guard" #SandyBrown
+    participant AuthS as "PDP\nAuthorization Server" 
+    participant OPA as "PDP\nPolicy Engine"
+  end box
+end box
+
+Client++
+
+Client -> Client : Create DPoP Proof (without Nonce)
+Client -> Client : Create Client Assertion JWT (without Attestation)
+Client -> AuthS++: POST /token dpop: dpop_proof\n{client_assertion (JWT, PrK.Client.Sig signiert),\nrefresh_token}
+AuthS -> AuthS : Validate Request (Client Assertion,\nDPoP Proof, Refresh Token)
+AuthS -> AuthS: Invalidate Refresh token
+alt Validation successful
+  AuthS -> AuthS: Policy Engine Input erstellen
+  AuthS -> OPA++: POST /v1/data/authz {Policy Engine Input}
+  OPA --> AuthS--: Policy Decision
+  alt Policy Decision allow
+    AuthS --> Client: 200 OK\n{Access Token, Refresh Token}
+  else Policy Decision deny
+    AuthS --> Client--: 403 Forbidden
+  end alt
+else Validation fehlerhaft
+  AuthS --> Client: 403 Forbidden
+end alt
+
+@enduml

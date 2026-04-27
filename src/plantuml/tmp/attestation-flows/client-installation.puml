@@ -13,13 +13,13 @@ title Client Installation & Baseline-Etablierung
 !pragma teoz true
 
 box "LEI" #GhostWhite
-  participant "TPM / SE\n(Hardware)" as TPM
+  participant "TPM / SE" as TPM
   box "Primärsystem" #Lavender
-        box "ZAS Attester" #SandyBrown
-        participant "ZAS\n(Attester)" as ZAS
+    box "ZETA Attestation Service" #SandyBrown
+      participant ZAS as "ZAS"
     end box
     box "ZETA Client" #SandyBrown
-        participant "PS und ZETA\nClient" as Client
+        participant Client as "ZETA Client"
     end box    
   end box
 end box
@@ -27,7 +27,7 @@ end box
 alt Hardware Attestation (TPM / SE)
 
     ZAS++    
-    ZAS --> ZAS: Installation (als Root/Admin)
+    ZAS --> ZAS: Installation (Root/Admin rights)
     Client++
     Client --> Client: Installation (User Space)
     group Vertrauensbeziehung zwischen ZAS und Client wird aufgebaut
@@ -56,9 +56,9 @@ alt Hardware Attestation (TPM / SE)
 
 else Software Attestation (Fallback)
     Client --> Client: Installation (User Space)
-    Client -> Client: Generiere PrK.Client.Sig, PuK.Client.Sig lokal im RAM/Disk
-    Client --> Client: Lokale Messung des PS (Dateihashes ermitteln)
-    Client -> Client: Speichere Baseline-Hash lokal & sicher ab
+    Client -> Client: Generiere PrK.Client.Sig,\nPuK.Client.Sig
+    ' Client --> Client: Lokale Messung des PS (Dateihashes ermitteln)
+    ' Client -> Client: Speichere Baseline-Hash lokal & sicher ab
 end
 
 @enduml

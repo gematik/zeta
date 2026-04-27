@@ -13,19 +13,20 @@ title Client Start & Initialisierung
 !pragma teoz true
 
 box "LEI" #GhostWhite
-  participant "TPM / SE\n(Hardware)" as TPM
+  participant "TPM / SE" as TPM
   box "Primärsystem" #Lavender
-        box "ZAS Attester" #SandyBrown
-        participant "ZAS\n(Attester)" as ZAS
+    box "ZETA Attestation Service" #SandyBrown
+      participant ZAS as "ZAS"
     end box
     box "ZETA Client" #SandyBrown
-        participant "PS und ZETA\nClient" as Client
+        participant Client as "ZETA Client"
     end box    
   end box
 end box
 
 alt Hardware Attestation (TPM / SE)
-    ZAS -> ZAS: Startet als\n Hintergrunddienst\n (Root/Admin)
+    ZAS++
+    ZAS -> ZAS: Startet als Hintergrunddienst\n (Root/Admin)
     
     alt Windows / Linux (TPM)
         ZAS --> ZAS: Messung des PS
@@ -33,12 +34,8 @@ alt Hardware Attestation (TPM / SE)
     else macOS (Secure Enclave)
         ZAS --> ZAS: Initiale Ermittlung\n der Posture (SIP-Status,\n Gatekeeper, OS-Version,\n Secure Boot Policy)
     end
-    
-    Client --> Client: Start \n (User Space)
-
-else Software Attestation (Fallback)
-    Client -> Client: Start \n (User Space)
-    Client --> Client: Lokale \n Datensammlung \n (PS-Messung)
 end
+Client++
+Client -> Client: Start \n (User Space)
 
 @enduml
