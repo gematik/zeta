@@ -15,12 +15,8 @@ title Obtain Attestation Evidence
 box "LEI" #GhostWhite
   participant "TPM / SE" as TPM
   box "Primärsystem" #Lavender
-    box "ZETA Attestation Service" #SandyBrown
-      participant ZAS as "ZAS"
-    end box
-    box "ZETA Client" #SandyBrown
-        participant Client as "ZETA Client"
-    end box    
+      participant ZAS as "ZAS" #SandyBrown
+      participant Client as "ZETA Client" #SandyBrown
   end box
 end box
 

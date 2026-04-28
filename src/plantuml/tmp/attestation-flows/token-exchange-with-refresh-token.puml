@@ -14,9 +14,7 @@ title Token Exchange with Refresh Token
 
 box "LEI" #GhostWhite
   box "Primärsystem" #Lavender
-    box "ZETA Client" #SandyBrown
-        participant Client as "ZETA Client"
-    end box    
+    participant Client as "ZETA Client" #SandyBrown
   end box
 end box
 
