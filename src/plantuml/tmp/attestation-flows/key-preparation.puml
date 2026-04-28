@@ -7,16 +7,43 @@ skinparam lengthAdjust none
 skinparam sequenceReferenceBackgroundColor White
 skinparam SequenceReferenceFontSize 12
 skinparam sequenceMessageAlign left
+hide stereotype
+
+' Box colors
+!define ZETA_GUARD_COLOR #FFF3E5
+!define LEI_COLOR #GhostWhite
+!define LEI_COMPONENT_COLOR #E4E4F4
+!define PRIMAERSYSTEM_COLOR #Lavender
+!define PROVIDER_COLOR #EDFDEC
+
+' Participant colors
+<style>
+sequenceDiagram {
+  .zeta {
+    BackgroundColor #FFE6CC
+    LineColor #D79B00
+  }
+}
+</style>
+
+<style>
+sequenceDiagram {
+  .provider {
+    BackgroundColor #D5E8D4
+    LineColor #82B366
+  }
+}
+</style>
 
 title Key Preparation
 
 !pragma teoz true
 
-box "LEI" #GhostWhite
-  participant "TPM / SE" as TPM
-  box "Primärsystem" #Lavender
-      participant ZAS as "ZAS" #SandyBrown
-      participant Client as "ZETA Client" #SandyBrown
+box "LEI" LEI_COLOR
+  participant "TPM / SE" as TPM LEI_COMPONENT_COLOR
+  box "Primärsystem" PRIMAERSYSTEM_COLOR
+    participant ZAS as "ZAS" <<zeta>>
+    participant Client as "ZETA Client" <<zeta>>
   end box
 end box
 
