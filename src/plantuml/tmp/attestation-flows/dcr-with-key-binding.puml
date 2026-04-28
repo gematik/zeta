@@ -19,18 +19,19 @@ hide stereotype
 ' Participant colors
 <style>
 sequenceDiagram {
-  .zeta {
-    BackgroundColor #FFE6CC
-    LineColor #D79B00
+  participant {
+    .zeta {
+      BackgroundColor #FFE6CC
+      LineColor #D79B00
+    }
+    .provider {
+      BackgroundColor #D5E8D4
+      LineColor #82B366
+    }
   }
-}
-</style>
-
-<style>
-sequenceDiagram {
-  .provider {
-    BackgroundColor #D5E8D4
-    LineColor #82B366
+  lifeline {
+    BackgroundColor White
+    LineColor Black
   }
 }
 </style>
