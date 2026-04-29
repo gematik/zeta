@@ -58,39 +58,41 @@ box "TI 2.0 Dienst Anbieter B" PROVIDER_COLOR
     participant "Resource Server" as ResourceServer <<provider>>
 end box
 
-ref over AuthS, gem: **Registrierung beim Federation Master (Workload Identity Pool)**
+ref over AuthS, gem: **Registrierung der Issuer URI oder des Signing Keys des Anbieters (Workload Identity Pool)**
 
 ref over gem, OPA: **Verteilung der Zugriffsberechtigten Workloads an die Policy Engine**
 
-par Regelmäßiger Token Exchange (ID Token gegen Access Token)
+par Regelmäßiger Token Exchange (Subject Token gegen Access Token)
   etcd++
   cronjobClient++
-  cronjobClient -> AuthS++: Fordert ID-Token an
-  AuthS --> cronjobClient--: ID-Token
+  cronjobClient -> AuthS++: Fordert Subject Token an
+  AuthS --> cronjobClient--: Subject Token
 
-  cronjobClient -> ZetaSTS++: Fordert Access-Token an\n(Token Exchange mit ID-Token)
-  ZetaSTS -> AuthS++:  GET /.well-known/openid-configuration
+  cronjobClient -> ZetaSTS++: Fordert Access-Token an\n(Token Exchange mit Subject Token)
+  ZetaSTS -> AuthS++:  GET /.well-known/openid-configuration
   AuthS --> ZetaSTS--: OpenID Provider Metadaten
   ZetaSTS -> AuthS++:  GET /openid/v1/jwks
   AuthS --> ZetaSTS--: JWKS
-  ZetaSTS -> ZetaSTS: Validiert ID-Token\n(Signatur, Ablauf, etc.)
-  alt Erfolgreiche Validierung
-    ZetaSTS -> OPA++: Entscheidungsanfrage (issuer uri, etc.)
-    OPA --> ZetaSTS--: Ergebnis
-  else Fehlgeschlagene Validierung
-    ZetaSTS --> cronjobClient: Fehler 403 Forbidden
-  end
-  alt Erfolgreiche Autorisierung
-      ZetaSTS --> cronjobClient: Access-Token
+  ZetaSTS -> ZetaSTS: Validiert Subject Token (Signaturprüfung)
+
+  alt Validation successful
+    ZetaSTS -> ZetaSTS: Policy Engine Input erstellen
+    ZetaSTS -> OPA++: POST /v1/data/authz {Policy Engine Input}
+    OPA --> ZetaSTS--: Policy Decision
+    alt Policy Decision allow
+      ZetaSTS --> cronjobClient: 200 OK\n{Access Token}
       cronjobClient -> etcd: Speichert Access-Token als Secret
-  else Fehlgeschlagene Autorisierung
-      ZetaSTS --> cronjobClient--: Fehler 403 Forbidden
-  end
+    else Policy Decision deny
+      ZetaSTS --> cronjobClient--: 403 Forbidden
+    end alt
+  else Validation fehlerhaft
+    ZetaSTS --> cronjobClient--: 403 Forbidden
+  end alt
   cronjobClient--
 end
 par Ressourcenzugriff mit Access Token
   workloadClient++
-  workloadClient -> etcd: Liest Secret mit\nAccess-Token aus
+  workloadClient -> etcd: Liest Access-Token\nSecret aus
   workloadClient -> HP++: Anfrage mit Access-Token
   HP -> HP: Validiert Access-Token
    alt Erfolgreiche Validierung
