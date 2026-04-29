@@ -1,0 +1,65 @@
+@startuml "client-start"
+autonumber "(00)"
+skinparam defaultFontSize 10
+skinparam defaultFontName Helvetica
+skinparam DefaultMonospacedFontName Courier
+skinparam lengthAdjust none
+skinparam sequenceReferenceBackgroundColor White
+skinparam SequenceReferenceFontSize 12
+skinparam sequenceMessageAlign left
+hide stereotype
+
+' Box colors
+!define ZETA_GUARD_COLOR #FFF3E5
+!define LEI_COLOR #GhostWhite
+!define LEI_COMPONENT_COLOR #E4E4F4
+!define PRIMAERSYSTEM_COLOR #Lavender
+!define PROVIDER_COLOR #EDFDEC
+
+' Participant colors
+<style>
+sequenceDiagram {
+  participant {
+    .zeta {
+      BackgroundColor #FFE6CC
+      LineColor #D79B00
+    }
+    .provider {
+      BackgroundColor #D5E8D4
+      LineColor #82B366
+    }
+  }
+  lifeline {
+    BackgroundColor White
+    LineColor Black
+  }
+}
+</style>
+
+' title Client Start & Initialisierung
+
+!pragma teoz true
+
+box "LEI" LEI_COLOR
+  participant "TPM / SE" as TPM LEI_COMPONENT_COLOR
+  box "Primärsystem" PRIMAERSYSTEM_COLOR
+    participant ZAS as "ZAS" <<zeta>>
+    participant Client as "ZETA Client" <<zeta>>
+  end box
+end box
+
+alt Hardware Attestation (TPM / SE)
+    ZAS++
+    ZAS -> ZAS: Startet als Hintergrunddienst\n (Root/Admin)
+    
+    alt Windows / Linux (TPM)
+        ZAS --> ZAS: Messung des PS
+        ZAS -> TPM: TPM2_PCR_Extend(23, Messwerte)
+    else macOS (Secure Enclave)
+        ZAS --> ZAS: Initiale Ermittlung\n der Posture (SIP-Status,\n Gatekeeper, OS-Version,\n Secure Boot Policy)
+    end
+end
+Client++
+Client -> Client: Start \n (User Space)
+
+@enduml
