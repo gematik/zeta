@@ -1,0 +1,77 @@
+@startuml "token-exchange-with-refresh-token"
+autonumber "(00)"
+skinparam defaultFontSize 10
+skinparam defaultFontName Helvetica
+skinparam DefaultMonospacedFontName Courier
+skinparam lengthAdjust none
+skinparam sequenceReferenceBackgroundColor White
+skinparam SequenceReferenceFontSize 12
+skinparam sequenceMessageAlign left
+hide stereotype
+
+' Box colors
+!define ZETA_GUARD_COLOR #FFF3E5
+!define LEI_COLOR #GhostWhite
+!define LEI_COMPONENT_COLOR #E4E4F4
+!define PRIMAERSYSTEM_COLOR #Lavender
+!define PROVIDER_COLOR #EDFDEC
+
+' Participant colors
+<style>
+sequenceDiagram {
+  participant {
+    .zeta {
+      BackgroundColor #FFE6CC
+      LineColor #D79B00
+    }
+    .provider {
+      BackgroundColor #D5E8D4
+      LineColor #82B366
+    }
+  }
+  lifeline {
+    BackgroundColor White
+    LineColor Black
+  }
+}
+</style>
+
+' title Token Exchange with Refresh Token
+
+!pragma teoz true
+
+box "LEI" LEI_COLOR
+  box "Primärsystem" PRIMAERSYSTEM_COLOR
+    participant Client as "ZETA Client" <<zeta>>
+  end box
+end box
+
+box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
+  box "ZETA Guard" ZETA_GUARD_COLOR
+    participant AuthS as "PDP\nAuthorization Server" <<zeta>>
+    participant OPA as "PDP\nPolicy Engine" <<zeta>>
+  end box
+end box
+
+Client++
+
+Client -> Client : Create DPoP Proof (without Nonce)
+Client -> Client : Create Client Assertion JWT (without Attestation)
+Client -> AuthS++: POST /token dpop: dpop_proof\n{client_assertion (JWT, PrK.Client.Sig signiert),\nrefresh_token}
+AuthS -> AuthS : Validate Request (Client Assertion,\nDPoP Proof, Refresh Token)
+AuthS -> AuthS : Prüfe Sperrstatus (OCSP/CRL) der SM(C)-B
+AuthS -> AuthS: Invalidate Refresh token
+alt Validation successful
+  AuthS -> AuthS: Policy Engine Input erstellen
+  AuthS -> OPA++: POST /v1/data/authz {Policy Engine Input}
+  OPA --> AuthS--: Policy Decision
+  alt Policy Decision allow
+    AuthS --> Client: 200 OK\n{Access Token, Refresh Token}
+  else Policy Decision deny
+    AuthS --> Client--: 403 Forbidden
+  end alt
+else Validation fehlerhaft
+  AuthS --> Client: 403 Forbidden
+end alt
+
+@enduml

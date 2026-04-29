@@ -1,0 +1,91 @@
+@startuml "dcr-with-key-binding"
+autonumber "(00)"
+skinparam defaultFontSize 10
+skinparam defaultFontName Helvetica
+skinparam DefaultMonospacedFontName Courier
+skinparam lengthAdjust none
+skinparam sequenceReferenceBackgroundColor White
+skinparam SequenceReferenceFontSize 12
+skinparam sequenceMessageAlign left
+hide stereotype
+
+' Box colors
+!define ZETA_GUARD_COLOR #FFF3E5
+!define LEI_COLOR #GhostWhite
+!define LEI_COMPONENT_COLOR #E4E4F4
+!define PRIMAERSYSTEM_COLOR #Lavender
+!define PROVIDER_COLOR #EDFDEC
+
+' Participant colors
+<style>
+sequenceDiagram {
+  participant {
+    .zeta {
+      BackgroundColor #FFE6CC
+      LineColor #D79B00
+    }
+    .provider {
+      BackgroundColor #D5E8D4
+      LineColor #82B366
+    }
+  }
+  lifeline {
+    BackgroundColor White
+    LineColor Black
+  }
+}
+</style>
+
+' title DCR with Key Binding
+
+!pragma teoz true
+
+box "LEI" #GhostWhite
+  participant "TPM / SE" as TPM LEI_COMPONENT_COLOR
+  box "Primärsystem" PRIMAERSYSTEM_COLOR
+    participant ZAS as "ZAS" <<zeta>>
+    participant Client as "ZETA Client" <<zeta>>
+  end box
+end box
+
+box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
+  box "ZETA Guard" ZETA_GUARD_COLOR
+    participant AuthS as "PDP\nAuthorization Server" <<zeta>>
+  end box
+end box
+
+alt Kein ZETA Guard Attestation Token
+    alt Hardware Attestation: Windows / Linux (TPM)
+        Client++
+        Client -> AuthS++: POST /register\n{attestation_type="tpm", PuK.EK.Enc, C.EK.Enc,\nPuK.AK.Sig, PuK.Client.Sig, signed_Hash_PuK.Client.Sig}
+        AuthS -> AuthS: Validiere C.EK.Enc-Chain & signed_Hash_PuK.Client.Sig
+        AuthS -> AuthS: CredentialBlob = MakeCredential(...);\n(TPM 2.0 Commands, Section 12.5)
+        AuthS --> Client: 202 Accepted {CredentialBlob}
+
+        Client -> ZAS++: Activate(CredentialBlob)
+        ZAS -> TPM++: TPM2_ActivateCredential(CredentialBlob)
+        TPM --> ZAS--: Secret
+        ZAS --> Client--: Secret
+
+        Client -> AuthS: POST /register/verify {Secret}
+        AuthS -> AuthS: Secret korrekt? → PuK.Client.Sig hardware-gebunden ✓
+
+    else Hardware Attestation: macOS (Secure Enclave)
+        Client -> AuthS: POST /register\n{attestation_type="macos", PuK.AK.Sig, Apple_Attestation_Object,\nPuK.Client.Sig, signed_Hash_PuK.Client.Sig}
+        AuthS -> AuthS: Validiere Apple_Attestation_Object & signed_Hash_PuK.Client.Sig
+        note right of AuthS: AuthS verifiziert Apple Root CA und stellt sicher,\ndass PuK.AK.Sig identisch mit x5c[0] im Objekt ist.
+
+    else Software Attestation (Legacy OIDC DCR)
+        Client -> AuthS: POST /register\n{\n  "client_name": "myClient",\n  "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"],\n  "jwks": { "keys": [ PuK.Client.Sig ] },\n  "token_endpoint_auth_method": "private_key_jwt"\n}
+        AuthS -> AuthS: Store Client Placeholder\n(state: pending_attestation)
+    end
+
+else ZETA Guard Attestation Token vorhanden (Fast-Path)
+    Client -> AuthS: POST /register\n{attestation_type="fast_path", ZETA Guard Attestation Token,\nPuK.Client.Sig, signed_Hash_PuK.Client.Sig}
+    AuthS -> AuthS: Prüfe Token-Signatur & Vertrauensstellung
+    AuthS -> AuthS: Prüfe signed_Hash_PuK.Client.Sig mit dem\nPuK.AK.Sig aus dem Token
+end
+
+AuthS --> Client--: 201 Created {client_id}
+
+@enduml

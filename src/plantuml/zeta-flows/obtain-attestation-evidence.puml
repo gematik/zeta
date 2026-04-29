@@ -1,0 +1,82 @@
+@startuml "obtain-attestation-evidence"
+autonumber "(00)"
+skinparam defaultFontSize 10
+skinparam defaultFontName Helvetica
+skinparam DefaultMonospacedFontName Courier
+skinparam lengthAdjust none
+skinparam sequenceReferenceBackgroundColor White
+skinparam SequenceReferenceFontSize 12
+skinparam sequenceMessageAlign left
+hide stereotype
+
+' Box colors
+!define ZETA_GUARD_COLOR #FFF3E5
+!define LEI_COLOR #GhostWhite
+!define LEI_COMPONENT_COLOR #E4E4F4
+!define PRIMAERSYSTEM_COLOR #Lavender
+!define PROVIDER_COLOR #EDFDEC
+
+' Participant colors
+<style>
+sequenceDiagram {
+  participant {
+    .zeta {
+      BackgroundColor #FFE6CC
+      LineColor #D79B00
+    }
+    .provider {
+      BackgroundColor #D5E8D4
+      LineColor #82B366
+    }
+  }
+  lifeline {
+    BackgroundColor White
+    LineColor Black
+  }
+}
+</style>
+
+
+' title Obtain Attestation Evidence
+
+!pragma teoz true
+
+box "LEI" LEI_COLOR
+  participant "TPM / SE" as TPM LEI_COMPONENT_COLOR
+  box "Primärsystem" PRIMAERSYSTEM_COLOR
+    participant ZAS as "ZAS" <<zeta>>
+    participant Client as "ZETA Client" <<zeta>>
+  end box
+end box
+
+box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
+  box "ZETA Guard" ZETA_GUARD_COLOR
+    participant AuthS as "PDP\nAuthorization Server" <<zeta>>
+  end box
+end box
+
+
+Client++
+ZAS++
+Client -> AuthS ++ : GET /nonce
+AuthS --> Client -- : Nonce
+
+alt Hardware Attestation (TPM / SE)
+    Client -> ZAS : GetEvidence(Nonce)
+    alt Windows / Linux (TPM)
+        ZAS -> TPM++ : TPM2_Quote(PCR=[7,23],\nNonce, Handle_PrK.AK.Sig)
+        TPM --> ZAS -- : tpm_quote (signiert mit PrK.AK.Sig)
+        ZAS -> TPM++ : TPM2_GetEventLog()
+        TPM --> ZAS -- : tpm_event_log
+        ZAS --> Client : Evidence {tpm_quote, tpm_event_log}
+    else macOS (Secure Enclave)
+        ZAS -> ZAS: Ermittle Posture\n(SIP, Gatekeeper, OS-Version, Secure Boot)
+        ZAS -> TPM++ : DCAppAttest.generateAssertion(\n  Handle_PrK.AK.Sig,\n  Hash(Nonce + Posture)\n)
+        TPM --> ZAS-- : dc_assertion\n(CBOR: Signatur + Receipt + counter)
+        ZAS --> Client : Evidence {dc_assertion, posture, counter}
+    end
+else Software Attestation (Fallback)
+    Client -> Client: Generiere client-statement\n(OS und PS Daten)
+end
+
+@enduml

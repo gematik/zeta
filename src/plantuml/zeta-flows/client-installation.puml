@@ -1,0 +1,88 @@
+@startuml "client-installation"
+autonumber "(00)"
+skinparam defaultFontSize 10
+skinparam defaultFontName Helvetica
+skinparam DefaultMonospacedFontName Courier
+skinparam lengthAdjust none
+skinparam sequenceReferenceBackgroundColor White
+skinparam SequenceReferenceFontSize 12
+skinparam sequenceMessageAlign left
+hide stereotype
+
+' Box colors
+!define ZETA_GUARD_COLOR #FFF3E5
+!define LEI_COLOR #GhostWhite
+!define LEI_COMPONENT_COLOR #E4E4F4
+!define PRIMAERSYSTEM_COLOR #Lavender
+!define PROVIDER_COLOR #EDFDEC
+
+' Participant colors
+<style>
+sequenceDiagram {
+  participant {
+    .zeta {
+      BackgroundColor #FFE6CC
+      LineColor #D79B00
+    }
+    .provider {
+      BackgroundColor #D5E8D4
+      LineColor #82B366
+    }
+  }
+  lifeline {
+    BackgroundColor White
+    LineColor Black
+  }
+}
+</style>
+
+' title Client Installation & Baseline-Etablierung
+
+!pragma teoz true
+
+box "LEI" LEI_COLOR
+  participant "TPM / SE" as TPM LEI_COMPONENT_COLOR
+  box "Primärsystem" PRIMAERSYSTEM_COLOR
+      participant ZAS as "ZAS" <<zeta>>
+      participant Client as "ZETA Client" <<zeta>>
+ end box
+end box
+
+alt Hardware Attestation (TPM / SE)
+
+    ZAS++    
+    ZAS --> ZAS: Installation (Root/Admin rights)
+    Client++
+    Client --> Client: Installation (User Space)
+    group Vertrauensbeziehung zwischen ZAS und Client wird aufgebaut
+        ZAS -> Client
+        Client --> ZAS
+    end
+
+    alt Windows / Linux (TPM)
+        Client -> TPM++: Generiere PrK.Client.Sig, PuK.Client.Sig\nvia OS-Provider (z.B. MS CNG)
+        TPM --> Client: PuK.Client.Sig, Handle_PrK.Client.Sig
+        ZAS --> ZAS: Messung des PS & Vergleich mit Hersteller-Wert
+        ZAS -> TPM: TPM2_CreatePrimary() → Storage Root Key (SRK)
+        ZAS -> TPM: TPM2_Create(SRK, restricted=sign, fixedTPM=true)
+        TPM --> ZAS: PuK.AK.Sig, PrK.AK.Sig (blob)
+        ZAS -> TPM: TPM2_Load(SRK, PrK.AK.Sig, PuK.AK.Sig)
+        TPM --> ZAS: Handle_PrK.AK.Sig
+        ZAS -> TPM: TPM2_PCR_Extend(23, Messwerte)
+        note right: PCR_23 Könnte belegt sein; muss vorher geprüft werden 
+        TPM--
+    else macOS (Secure Enclave)
+        Client -> TPM++: SecKeyCreateRandomKey (für PrK.Client.Sig, PuK.Client.Sig in SE)
+        TPM --> Client: PuK.Client.Sig, Handle_PrK.Client.Sig
+        ZAS -> TPM: DCAppAttestService.shared.generateKey()
+        TPM --> ZAS--: keyId (Referenz für PrK.AK.Sig)
+    end
+
+else Software Attestation (Fallback)
+    Client --> Client: Installation (User Space)
+    Client -> Client: Generiere PrK.Client.Sig,\nPuK.Client.Sig
+    ' Client --> Client: Lokale Messung des PS (Dateihashes ermitteln)
+    ' Client -> Client: Speichere Baseline-Hash lokal & sicher ab
+end
+
+@enduml
