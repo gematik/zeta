@@ -1,4 +1,4 @@
-@startuml "key-preparation"
+@startuml "obtain-attestation-evidence"
 autonumber "(00)"
 skinparam defaultFontSize 10
 skinparam defaultFontName Helvetica
@@ -36,7 +36,8 @@ sequenceDiagram {
 }
 </style>
 
-title Key Preparation
+
+' title Obtain Attestation Evidence
 
 !pragma teoz true
 
@@ -48,31 +49,34 @@ box "LEI" LEI_COLOR
   end box
 end box
 
-participant "Apple\nServices" as Apple
+box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
+  box "ZETA Guard" ZETA_GUARD_COLOR
+    participant AuthS as "PDP\nAuthorization Server" <<zeta>>
+  end box
+end box
+
+
+Client++
+ZAS++
+Client -> AuthS ++ : GET /nonce
+AuthS --> Client -- : Nonce
 
 alt Hardware Attestation (TPM / SE)
-    Client++
-    ZAS++
-    Client -> ZAS: dataToSign = Hash_PuK.Client.Sig
+    Client -> ZAS : GetEvidence(Nonce)
     alt Windows / Linux (TPM)
-        ZAS -> TPM++: TPM2_Sign(Handle_PrK.AK.Sig, dataToSign)
-        TPM --> ZAS: signed_Hash_PuK.Client.Sig
-        ZAS --> Client: PuK.AK.Sig, signed_Hash_PuK.Client.Sig
-        Client -> ZAS: Request PuK.EK.Enc, C.EK.Enc
-        ZAS -> TPM: TPM2_ReadPublic(EndorsementKey)
-        TPM --> ZAS: PuK.EK.Enc
-        ZAS -> TPM: TPM2_NV_Read(EndorsementKey)
-        TPM --> ZAS--: C.EK.Enc
-        ZAS --> Client: PuK.EK.Enc, C.EK.Enc
+        ZAS -> TPM++ : TPM2_Quote(PCR=[7,23],\nNonce, Handle_PrK.AK.Sig)
+        TPM --> ZAS -- : tpm_quote (signiert mit PrK.AK.Sig)
+        ZAS -> TPM++ : TPM2_GetEventLog()
+        TPM --> ZAS -- : tpm_event_log
+        ZAS --> Client : Evidence {tpm_quote, tpm_event_log}
     else macOS (Secure Enclave)
-        ZAS -> TPM++: SE_Sign(Handle_PrK.AK.Sig, dataToSign)
-        TPM --> ZAS--: signed_Hash_PuK.Client.Sig
-        ZAS -> Apple++: DCAppAttest.attest(Handle_PrK.AK.Sig, Hash_PuK.Client.Sig)
-        Apple --> ZAS--: Apple_Attestation_Object\n(inkl. x5c-Zertifikatskette)
-        ZAS --> Client: PuK.AK.Sig, signed_Hash_PuK.Client.Sig,\nApple_Attestation_Object
+        ZAS -> ZAS: Ermittle Posture\n(SIP, Gatekeeper, OS-Version, Secure Boot)
+        ZAS -> TPM++ : DCAppAttest.generateAssertion(\n  Handle_PrK.AK.Sig,\n  Hash(Nonce + Posture)\n)
+        TPM --> ZAS-- : dc_assertion\n(CBOR: Signatur + Receipt + counter)
+        ZAS --> Client : Evidence {dc_assertion, posture, counter}
     end
 else Software Attestation (Fallback)
-    note left of Client: Keine Hardware-Bindung.\nIdentität besteht nur aus PrK.Client.Sig, PuK.Client.Sig.
+    Client -> Client: Generiere client-statement\n(OS und PS Daten)
 end
 
 @enduml

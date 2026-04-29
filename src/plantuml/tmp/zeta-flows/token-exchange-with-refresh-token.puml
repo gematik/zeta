@@ -36,7 +36,7 @@ sequenceDiagram {
 }
 </style>
 
-title Token Exchange with Refresh Token
+' title Token Exchange with Refresh Token
 
 !pragma teoz true
 

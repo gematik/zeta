@@ -1,0 +1,61 @@
+@startuml "obtain-attestation-evidence"
+autonumber "(00)"
+skinparam defaultFontSize 10
+skinparam defaultFontName Helvetica
+skinparam DefaultMonospacedFontName Courier
+skinparam lengthAdjust none
+skinparam sequenceReferenceBackgroundColor White
+skinparam SequenceReferenceFontSize 12
+skinparam sequenceMessageAlign left
+hide stereotype
+
+' Box colors
+!define ZETA_GUARD_COLOR #FFF3E5
+!define LEI_COLOR #GhostWhite
+!define LEI_COMPONENT_COLOR #E4E4F4
+!define PRIMAERSYSTEM_COLOR #Lavender
+!define PROVIDER_COLOR #EDFDEC
+
+' Participant colors
+<style>
+sequenceDiagram {
+  participant {
+    .zeta {
+      BackgroundColor #FFE6CC
+      LineColor #D79B00
+    }
+    .provider {
+      BackgroundColor #D5E8D4
+      LineColor #82B366
+    }
+  }
+  lifeline {
+    BackgroundColor White
+    LineColor Black
+  }
+}
+</style>
+
+!pragma teoz true
+
+box "LEI" LEI_COLOR
+  box "Primärsystem" PRIMAERSYSTEM_COLOR
+      participant Client as "ZETA\nClient" <<zeta>>
+  end box
+end box
+
+box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
+  box "ZETA Guard" ZETA_GUARD_COLOR
+    participant HP as "PEP\nHTTP Proxy" <<zeta>>
+    participant AuthS as "PDP\nAuthorization Server" <<zeta>> 
+  end box
+end box
+
+Client++
+Client -> HP ++ : GET /.well-known/oauth-protected-resource Host: RS-FQDN
+HP --> Client--: Client: 200 OK; JSON body with Well-Known JSON Document  (RFC9728)
+Client -> AuthS ++ : GET /.well-known/oauth-authorization-server\nHost:  AuthS Issuer from OAuth Protected Resource Metadata
+AuthS --> Client -- : 200 OK; JSON body with Well-Known JSON Document   (RFC8414)
+Client -> Client: Update Configuration
+
+@enduml
