@@ -109,41 +109,39 @@ new_container=$(buildah from scratch)
 echo "Temporärer Container erstellt: $new_container"
 
 buildah copy "$new_container" "$STAGING_DIR/." .
-echo "Daten und Metadaten in den Container kopiert."
-
 buildah config --author "$IMAGE_AUTHOR" --label git_revision="$git_revision" "$new_container"
-echo "Image-Metadaten gesetzt."
 
-IMAGE_ID_WITH_PREFIX=$(buildah commit "$new_container" "$FULL_REPO")
-IMAGE_DIGEST="${IMAGE_ID_WITH_PREFIX#sha256:}" # Entfernt das "sha256:" Präfix
-echo "Image committed. Digest: $IMAGE_DIGEST"
-
+# Wir speichern den Namen lokal, brauchen den Digest hier aber noch nicht zwingend
+IMAGE_LOCAL_NAME="localhost/zg-temp-image:latest"
+buildah commit "$new_container" "$IMAGE_LOCAL_NAME"
 buildah rm "$new_container"
-echo "Temporärer Container gelöscht."
-
 
 echo -e "${BLUE}--- 4. Buildah Push ---${NC}"
-buildah push "$IMAGE_ID_WITH_PREFIX" "docker://${FULL_REPO}"
+# eine temporäre Datei, um den ECHTEN Manifest-Digest zu erhalten
+DIGEST_FILE=$(mktemp)
+buildah push --digestfile "$DIGEST_FILE" "$IMAGE_LOCAL_NAME" "docker://${FULL_REPO}"
 
+# Jetzt holen wir den Manifest-Digest (das ist der, den GCP auch anzeigt)
+IMAGE_DIGEST=$(cat "$DIGEST_FILE")
+rm "$DIGEST_FILE"
 
-# Schritt 5 - Image Signieren
+echo -e "${GREEN}Image erfolgreich gepusht. Manifest-Digest: $IMAGE_DIGEST${NC}"
+
+# Schritt 5 - Image Signieren (Hier nutzt du nun den korrekten Manifest-Digest)
 echo -e "${BLUE}--- 5. Image mit Cosign signieren ---${NC}"
-# Für die Automatisierung wird das Passwort des Schlüssels über eine Umgebungsvariable übergeben.
-# ACHTUNG: Stellen Sie sicher, dass diese Variable sicher gehandhabt wird!
-if [ -z "$COSIGN_PASSWORD" ]; then
-    echo "Das Passwort für den Signaturschlüssel wird interaktiv abgefragt..."
-else
-    echo "Verwende Passwort für den Signaturschlüssel aus der Umgebungsvariable COSIGN_PASSWORD."
-fi
 
-# Wir signieren den genauen Digest, den wir gerade gepusht haben
-cosign sign --key "$COSIGN_KEY_FILE" --cert "$SIGNING_CERT" --cert-chain "$CERT_CHAIN" --tlog-upload=false "${FULL_REPO}@sha256:${IMAGE_DIGEST}"
+# IMAGE_DIGEST enthält bereits das "sha256:..." Präfix durch die digestfile
+cosign sign --key "$COSIGN_KEY_FILE" \
+    --cert "$SIGNING_CERT" \
+    --cert-chain "$CERT_CHAIN" \
+    --tlog-upload=false \
+    "${FULL_REPO}@${IMAGE_DIGEST}"
 
 if [ $? -eq 0 ]; then
     echo "----------------------------------------------------"
     echo -e "${GREEN}Erfolg! Image gebaut, gepusht und signiert.${NC}"
     echo -e "Registry-Pfad: ${GREEN}$FULL_REPO${NC}"
-    echo -e "Image Digest:  ${GREEN}sha256:$IMAGE_DIGEST${NC}"
+    echo -e "Image Digest:  ${GREEN}$IMAGE_DIGEST${NC}"
     echo "----------------------------------------------------"
     echo -e "${BLUE}So kannst du das Image inspizieren:${NC}"
     echo ""
@@ -160,7 +158,7 @@ if [ $? -eq 0 ]; then
     echo -e "    --certificate-oidc-issuer-regexp \".*\" \\"
     echo -e "    --insecure-ignore-tlog \\"
     echo -e "    --insecure-ignore-sct \\"
-    echo -e "    ${FULL_REPO}@sha256:${IMAGE_DIGEST}${NC}"
+    echo -e "    ${FULL_REPO}@${IMAGE_DIGEST}${NC}"
     echo "----------------------------------------------------"
 else
     echo -e "${RED}Fehler beim Signieren des Images mit Cosign.${NC}"
