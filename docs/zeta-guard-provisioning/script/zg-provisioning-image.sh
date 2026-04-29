@@ -35,7 +35,7 @@ usage() {
     echo "                       Wird dies weggelassen, wird das aktuelle Verzeichnis ( . ) verwendet."
     echo ""
     echo "Beispiel:"
-    echo "  $0 gematik-pt-zeta-test/zeta-provisioning/zeta-guard-provisioning:test-latest"
+    echo "  $0 gematik-pt-zeta-test/zeta-provisioning/zeta-guard-provisioning:latest"
     echo ""
     exit 1
 }
@@ -70,7 +70,7 @@ if [ ! -f "$COSIGN_KEY_FILE" ] || [ ! -f "$COSIGN_PUB_FILE" ]; then
     # Wir fragen das Passwort interaktiv ab. Für CI/CD `export COSIGN_PASSWORD=...` verwenden.
     COSIGN_PASSWORD=""
     cosign import-key-pair --key "$SOURCE_PEM_KEY"
-    
+
     # Umbenennen/Verschieben der erstellten Dateien an die konfigurierten Orte
     mv import-cosign.key "$COSIGN_KEY_FILE"
     mv import-cosign.pub "$COSIGN_PUB_FILE"
@@ -103,11 +103,8 @@ echo "Git Revision: $git_revision"
 echo "Erstelle .manifest Datei..."
 (cd "$STAGING_DIR" && find . -type f -print0 | xargs -0 sha256sum) > "$STAGING_DIR/.manifest"
 
-
 echo -e "${BLUE}--- 3. Buildah Image-Bau (from scratch) ---${NC}"
 new_container=$(buildah from scratch)
-echo "Temporärer Container erstellt: $new_container"
-
 buildah copy "$new_container" "$STAGING_DIR/." .
 buildah config --author "$IMAGE_AUTHOR" --label git_revision="$git_revision" "$new_container"
 
