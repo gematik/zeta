@@ -1,13 +1,13 @@
 <mxfile host="65bd71144e" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36">
     <diagram name="Seite-1" id="rmcg_aQgjtSpjyozXI4n">
-        <mxGraphModel dx="882" dy="756" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+        <mxGraphModel dx="1143" dy="756" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
                 <mxCell id="VlHYgpy21l1go6Lui4qg-1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#edfdec;strokeColor=#82b366;align=center;verticalAlign=top;" value="TK RZ" vertex="1">
                     <mxGeometry height="610" width="780" x="360" y="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="64" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;verticalAlign=top;" value="&lt;div&gt;Proxy&lt;/div&gt;" vertex="1">
+                <mxCell id="64" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;verticalAlign=top;" value="&lt;div&gt;Proxy&lt;/div&gt;&lt;div&gt;(reicht die Auth durch)&lt;/div&gt;" vertex="1">
                     <mxGeometry height="80" width="120" x="440" y="520" as="geometry"/>
                 </mxCell>
                 <mxCell id="VlHYgpy21l1go6Lui4qg-2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=top;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;" value="ZETA Guard&amp;nbsp;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(51, 51, 51), rgb(193, 193, 193));&quot;&gt;(Openshift Cluster)&lt;/span&gt;" vertex="1">
@@ -35,7 +35,7 @@
                     <mxGeometry height="610" width="240" x="40" y="40" as="geometry"/>
                 </mxCell>
                 <mxCell id="20" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;verticalAlign=top;" value="ZETA Artifact Registry&lt;div&gt;(GCP Artifact Registry)&lt;/div&gt;" vertex="1">
-                    <mxGeometry height="540" width="220" x="50" y="80" as="geometry"/>
+                    <mxGeometry height="560" width="220" x="50" y="80" as="geometry"/>
                 </mxCell>
                 <mxCell id="1eVjVkS0zDVgQbxKxKAf-6" parent="1" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=middle;fillColor=#ffe6cc;strokeColor=#d79b00;" value="PDP AuthS&lt;div&gt;(Keycloak)&lt;/div&gt;" vertex="1">
                     <mxGeometry height="40" width="160" x="920" y="410" as="geometry"/>
