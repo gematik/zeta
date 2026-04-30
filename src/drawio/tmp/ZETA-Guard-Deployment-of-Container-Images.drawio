@@ -1,11 +1,14 @@
 <mxfile host="65bd71144e" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36">
     <diagram name="Seite-1" id="rmcg_aQgjtSpjyozXI4n">
-        <mxGraphModel dx="1143" dy="756" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+        <mxGraphModel dx="882" dy="756" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
                 <mxCell id="VlHYgpy21l1go6Lui4qg-1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#edfdec;strokeColor=#82b366;align=center;verticalAlign=top;" value="TK RZ" vertex="1">
                     <mxGeometry height="610" width="780" x="360" y="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="64" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;verticalAlign=top;" value="&lt;div&gt;Proxy&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="80" width="120" x="440" y="520" as="geometry"/>
                 </mxCell>
                 <mxCell id="VlHYgpy21l1go6Lui4qg-2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;align=center;verticalAlign=top;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;" value="ZETA Guard&amp;nbsp;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(51, 51, 51), rgb(193, 193, 193));&quot;&gt;(Openshift Cluster)&lt;/span&gt;" vertex="1">
                     <mxGeometry height="560" width="500" x="620" y="80" as="geometry"/>
@@ -92,27 +95,37 @@
                 <mxCell id="3" parent="1" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=middle;fillColor=#ffe6cc;strokeColor=#d79b00;dashed=1;" value="&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;initContainer für Keycloak&lt;/span&gt;&lt;/div&gt;" vertex="1">
                     <mxGeometry height="40" width="160" x="920" y="370" as="geometry"/>
                 </mxCell>
-                <mxCell id="25" edge="1" parent="1" source="5" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#FF0000;" target="8">
-                    <mxGeometry relative="1" as="geometry"/>
+                <mxCell id="25" edge="1" parent="1" source="5" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#FF0000;" target="64">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="650" y="530"/>
+                            <mxPoint x="650" y="560"/>
+                        </Array>
+                    </mxGeometry>
                 </mxCell>
                 <mxCell id="53" connectable="0" parent="25" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Image (Abfrage jede Minute)" vertex="1">
                     <mxGeometry relative="1" x="0.7843" y="-1" as="geometry">
-                        <mxPoint x="118" y="1" as="offset"/>
+                        <mxPoint x="163" y="-19" as="offset"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="5" parent="1" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=middle;fillColor=#ffe6cc;strokeColor=#d79b00;" value="PDP Policy Engine&lt;div&gt;(&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;OPA&lt;/span&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;)&lt;/span&gt;&lt;/div&gt;" vertex="1">
                     <mxGeometry height="40" width="160" x="920" y="510" as="geometry"/>
                 </mxCell>
-                <mxCell id="26" edge="1" parent="1" source="6" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#FF0000;" target="9">
-                    <mxGeometry relative="1" as="geometry"/>
+                <mxCell id="26" edge="1" parent="1" source="6" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#FF0000;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="64">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="650" y="590"/>
+                            <mxPoint x="650" y="560"/>
+                        </Array>
+                    </mxGeometry>
                 </mxCell>
-                <mxCell id="54" connectable="0" parent="26" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Image (Abfrage jede Minute, evtl. zu oft)" vertex="1">
+                <mxCell id="54" connectable="0" parent="26" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Image (Abfrage jede Minute,&lt;div&gt;evtl. zu oft)&lt;/div&gt;" vertex="1">
                     <mxGeometry relative="1" x="0.7869" as="geometry">
-                        <mxPoint x="148" as="offset"/>
+                        <mxPoint x="163" y="50" as="offset"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="6" parent="1" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=middle;fillColor=#ffe6cc;strokeColor=#d79b00;" value="PDP Policy Engine&lt;div&gt;(&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;OPA; Simulation&lt;/span&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;)&lt;/span&gt;&lt;/div&gt;" vertex="1">
-                    <mxGeometry height="40" width="160" x="920" y="560" as="geometry"/>
+                    <mxGeometry height="40" width="160" x="920" y="570" as="geometry"/>
                 </mxCell>
                 <mxCell id="7" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="&lt;div&gt;Repository: zeta-dcr&lt;/div&gt;&lt;div&gt;(keine Auth)&lt;/div&gt;" vertex="1">
                     <mxGeometry height="40" width="180" x="70" y="280" as="geometry"/>
@@ -121,7 +134,7 @@
                     <mxGeometry height="40" width="180" x="70" y="510" as="geometry"/>
                 </mxCell>
                 <mxCell id="9" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="&lt;div&gt;Repository: zeta-policies-sim&lt;/div&gt;&lt;div&gt;(Auth mit WIF)&lt;/div&gt;" vertex="1">
-                    <mxGeometry height="40" width="180" x="70" y="560" as="geometry"/>
+                    <mxGeometry height="40" width="180" x="70" y="570" as="geometry"/>
                 </mxCell>
                 <mxCell id="12" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;div&gt;Repository: zeta-provisioning&lt;/div&gt;&lt;div&gt;(keine Auth)&lt;/div&gt;" vertex="1">
                     <mxGeometry height="40" width="180" x="70" y="120" as="geometry"/>
@@ -211,6 +224,12 @@
                     <mxGeometry relative="1" x="-0.0426" y="1" as="geometry">
                         <mxPoint x="1" y="-9" as="offset"/>
                     </mxGeometry>
+                </mxCell>
+                <mxCell id="65" edge="1" parent="1" source="64" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#FF0000;" target="8">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="66" edge="1" parent="1" source="64" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#FF0000;" target="9">
+                    <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>
