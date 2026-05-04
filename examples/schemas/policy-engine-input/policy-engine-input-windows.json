@@ -2,8 +2,8 @@
   "version": "1.0",
   "client_registration_data": {
     "client_id": "cid-win-tpm-abcde",
-    "product_id": "gematik-desktop-suite-win-v3",
-    "product_version": "3.5.0",
+    "product_id": "gematik-light-client-win-v1",
+    "product_version": "1.0.0",
     "platform": "windows",
     "posture_type": "tpm",
     "registration_timestamp": 1678888000,
@@ -25,23 +25,24 @@
   },
   "user_info": {
     "identifier": "Y555666777",
-    "professionOID": "1.2.276.0.76.4.49"
+    "professionOID": "1.2.276.0.76.4.50"
   },
   "delegation_context": null,
   "authorization_request": {
     "scopes": [
-      "openid",
-      "urn:telematik:epas"
+      "test_scope_read"
     ],
     "audience": [
-      "https://epa-resource.de/api/v1"
+      "https://example.com/testresource"
     ],
     "country_code": "DE",
     "http_method": "GET",
     "ip_address": "192.0.2.88",
     "previous_ip_address": "192.0.2.88",
     "grant_type": "authorization_code",
-    "amr": ["smartcard"],
+    "amr": [
+      "smartcard"
+    ],
     "acr": "loa3"
   }
 }
