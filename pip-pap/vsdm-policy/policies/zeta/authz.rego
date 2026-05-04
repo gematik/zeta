@@ -31,20 +31,20 @@ reasons[msg] if {
 	msg := "User profession is not allowed"
 }
 
-reasons[msg] if {
-	not client_product_is_allowed
-	msg := "Client product or version is not allowed"
-}
+#reasons[msg] if {
+#	not client_product_is_allowed
+#	msg := "Client product or version is not allowed"
+#}
 
 reasons[msg] if {
 	not scopes_are_allowed
 	msg := "One or more requested scopes are not allowed"
 }
 
-reasons[msg] if {
-	not audience_is_allowed
-	msg := "One or more requested audiences are not allowed"
-}
+#reasons[msg] if {
+#	not audience_is_allowed
+#	msg := "One or more requested audiences are not allowed"
+#}
 
 reasons[msg] if {
 	not http_method_is_allowed
@@ -79,11 +79,9 @@ user_profession_is_allowed if {
 }
 
 client_product_is_allowed if {
-	posture := input.client_assertion.posture
-
-	allowed_versions := data.products.allowed_products[posture.product_id]
+	allowed_versions := data.products.allowed_products[input.client_registration_data.product_id]
 	some i
-	posture.product_version == allowed_versions[i]
+	input.client_registration_data.product_version == allowed_versions[i]
 }
 
 scopes_are_allowed if {
