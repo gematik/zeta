@@ -7,12 +7,12 @@
     "platform": "linux",
     "posture_type": "tpm",
     "registration_timestamp": 1678889000,
+    "attestation_timestamp": 1678889010,
     "device_info": {
       "os": "Ubuntu 22.04.1 LTS",
       "os_version": "5.15.0-67-generic"
     },
     "attestation_result": {
-      "platform": "tpm",
       "tpm": {
         "arch": "x86_64",
         "pcrs": {
@@ -22,32 +22,6 @@
         "quote_verified": true
       }
     }
-  },
-  "client_assertion": {
-    "sub": "cid-linux-tpm-fghij",
-    "platform": "linux",
-    "posture_type": "tpm",
-    "posture": {
-      "platform_product_id": {
-        "platform": "linux",
-        "packaging_type": "deb",
-        "application_id": "de.gematik.konnektor"
-      },
-      "product_id": "gematik-konnektor-linux-v5",
-      "product_version": "5.1.0",
-      "os": "Ubuntu 22.04.1 LTS",
-      "os_version": "5.15.0-67-generic",
-      "arch": "x86_64",
-      "tpm_attestation_key": "base64-encoded-tpm-attestation-key-pem...",
-      "tpm_quote": "base64-encoded-tpm-quote...",
-      "tpm_event_log": "base64-encoded-tpm-event-log...",
-      "tpm_ek_certificate_chain": [
-        "-----BEGIN CERTIFICATE-----\nMIIC...(EK Leaf Cert)...\n-----END CERTIFICATE-----",
-        "-----BEGIN CERTIFICATE-----\nMIIC...(EK Intermediate CA)...\n-----END CERTIFICATE-----",
-        "-----BEGIN CERTIFICATE-----\nMIIC...(TPM Manufacturer Root CA)...\n-----END CERTIFICATE-----"
-      ]
-    },
-    "attestation_timestamp": 1678889010
   },
   "user_info": {
     "identifier": "Z888999000",
@@ -62,6 +36,8 @@
     "audience": [
       "https://fachdienst-resource.de/api/v3"
     ],
+    "country_code": "DE",
+    "http_method": "GET",
     "ip_address": "198.51.100.5",
     "previous_ip_address": "198.51.100.5",
     "grant_type": "authorization_code",

@@ -7,13 +7,13 @@
     "platform": "apple",
     "posture_type": "apple",
     "registration_timestamp": 1678887000,
+    "attestation_timestamp": 1678887025,
     "device_info": {
       "os": "iOS",
       "os_version": "17.4.1",
       "device_model": "iPhone15,2"
     },
     "attestation_result": {
-      "platform": "apple",
       "apple": {
         "system_name": "iOS",
         "system_version": "17.4.1",
@@ -23,30 +23,6 @@
         "assertion_verified": true
       }
     }
-  },
-  "client_assertion": {
-    "sub": "cid-ios-67890",
-    "platform": "apple",
-    "posture_type": "apple",
-    "posture": {
-      "platform_product_id": {
-        "platform_type": "ios",
-        "app_bundle_ids": ["de.gematik.exampleapp"]
-      },
-      "product_id": "gematik-example-app-ios-v2",
-      "product_version": "2.0.1",
-      "system_version": "17.4.1",
-      "system_name": "iOS",
-      "device_model": "iPhone15,2",
-      "key_id": "base64-encoded-key-id...",
-      "signature": "base64-encoded-assertion-signature...",
-      "assertionAuthenticatorData": {
-        "rpidHash": "sha256-hash-of-app-id",
-        "counter": 42
-      },
-      "client_data_json": "{\"challenge\":\"server-provided-nonce\",\"hash\":\"sha256-of-request\"}"
-    },
-    "attestation_timestamp": 1678887025
   },
   "user_info": {
     "identifier": "X987654321",
@@ -61,9 +37,11 @@
     "audience": [
       "https://epa-resource.de/api/v2"
     ],
+    "country_code": "DE",
+    "http_method": "POST",
     "ip_address": "203.0.113.100",
     "previous_ip_address": "203.0.113.100",
-    "grant_type": "authorization_code",
+    "grant_type": "refresh_token",
     "amr": ["biometric"],
     "acr": "loa2"
   }
