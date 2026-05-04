@@ -7,12 +7,12 @@
     "platform": "windows",
     "posture_type": "tpm",
     "registration_timestamp": 1678888000,
+    "attestation_timestamp": 1678888010,
     "device_info": {
       "os": "Windows 11 Pro",
       "os_version": "10.0.22621"
     },
     "attestation_result": {
-      "platform": "tpm",
       "tpm": {
         "arch": "x86_64",
         "pcrs": {
@@ -22,32 +22,6 @@
         "quote_verified": true
       }
     }
-  },
-  "client_assertion": {
-    "sub": "cid-win-tpm-abcde",
-    "platform": "windows",
-    "posture_type": "tpm",
-    "posture": {
-      "platform_product_id": {
-        "platform": "windows",
-        "store_id": "9NG1H51PF6HT",
-        "package_family_name": "GematikDesktopSuite_123456789"
-      },
-      "product_id": "gematik-desktop-suite-win-v3",
-      "product_version": "3.5.0",
-      "os": "Windows 11 Pro",
-      "os_version": "10.0.22621",
-      "arch": "x86_64",
-      "tpm_attestation_key": "base64-encoded-tpm-attestation-key-pem...",
-      "tpm_quote": "base64-encoded-tpm-quote...",
-      "tpm_event_log": "base64-encoded-tpm-event-log...",
-      "tpm_ek_certificate_chain": [
-        "-----BEGIN CERTIFICATE-----\nMIIC...(EK Leaf Cert)...\n-----END CERTIFICATE-----",
-        "-----BEGIN CERTIFICATE-----\nMIIC...(EK Intermediate CA)...\n-----END CERTIFICATE-----",
-        "-----BEGIN CERTIFICATE-----\nMIIC...(TPM Manufacturer Root CA)...\n-----END CERTIFICATE-----"
-      ]
-    },
-    "attestation_timestamp": 1678888010
   },
   "user_info": {
     "identifier": "Y555666777",
@@ -62,6 +36,8 @@
     "audience": [
       "https://epa-resource.de/api/v1"
     ],
+    "country_code": "DE",
+    "http_method": "GET",
     "ip_address": "192.0.2.88",
     "previous_ip_address": "192.0.2.88",
     "grant_type": "authorization_code",

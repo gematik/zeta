@@ -7,13 +7,13 @@
     "platform": "android",
     "posture_type": "android",
     "registration_timestamp": 1678886400,
+    "attestation_timestamp": 1678886410,
     "device_info": {
       "os": "Android",
       "os_version": "14",
       "device_model": "Pixel 8"
     },
     "attestation_result": {
-      "platform": "android",
       "android": {
         "manufacturer": "Google",
         "model": "Pixel 8",
@@ -25,38 +25,6 @@
         "key_attestation_verified": true
       }
     }
-  },
-  "client_assertion": {
-    "sub": "cid-android-12345",
-    "platform": "android",
-    "posture_type": "android",
-    "posture": {
-      "platform_product_id": {
-        "namespace": "android_app",
-        "package_name": "de.gematik.exampleapp",
-        "sha256_cert_fingerprints": [
-          "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99"
-        ]
-      },
-      "product_id": "gematik-example-app-android-v1",
-      "product_version": "1.2.3",
-      "build": {
-        "version": {
-          "sdk_int": 34,
-          "security_patch": "2024-03-05"
-        },
-        "manufacturer": "Google",
-        "product": "shiba",
-        "model": "Pixel 8",
-        "board": "shiba"
-      },
-      "key_attestation_certificate_chain": [
-        "-----BEGIN CERTIFICATE-----\nMIIC...(App Key Cert)...\n-----END CERTIFICATE-----",
-        "-----BEGIN CERTIFICATE-----\nMIIC...(Hardware Key Cert)...\n-----END CERTIFICATE-----"
-      ],
-      "play_integrity_token": "base64-encoded-play-integrity-token..."
-    },
-    "attestation_timestamp": 1678886410
   },
   "user_info": {
     "identifier": "X123456789",
@@ -82,6 +50,8 @@
     "audience": [
       "https://example-resource.de/api/v1"
     ],
+    "country_code": "DE",
+    "http_method": "POST",
     "ip_address": "203.0.113.42",
     "previous_ip_address": "203.0.113.42",
     "grant_type": "authorization_code",

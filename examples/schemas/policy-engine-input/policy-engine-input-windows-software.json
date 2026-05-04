@@ -7,36 +7,17 @@
     "platform": "windows",
     "posture_type": "software",
     "registration_timestamp": 1678890000,
+    "attestation_timestamp": 1678890010,
     "device_info": {
       "os": "Windows 11 Home",
       "os_version": "10.0.22000"
     },
     "attestation_result": {
-      "platform": "software",
       "software": {
         "arch": "amd64",
         "binding_verified": true
       }
     }
-  },
-  "client_assertion": {
-    "sub": "cid-win-sw-pqrst",
-    "platform": "windows",
-    "posture_type": "software",
-    "posture": {
-      "platform_product_id": {
-        "platform": "windows",
-        "store_id": "9PBLGGH4R0C9"
-      },
-      "product_id": "demo_client",
-      "product_version": "0.1.0",
-      "os": "Windows 11 Home",
-      "os_version": "10.0.22000",
-      "arch": "amd64",
-      "public_key": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQY...(self-signed EC key)...\n-----END PUBLIC KEY-----",
-      "attestation_challenge": "base64-encoded-signed-nonce-from-as..."
-    },
-    "attestation_timestamp": 1678890010
   },
   "user_info": {
     "identifier": "A112233445",
@@ -50,6 +31,8 @@
     "audience": [
       "https://some-service.de/api/v1"
     ],
+    "country_code": "DE",
+    "http_method": "GET",
     "ip_address": "192.0.2.150",
     "previous_ip_address": "192.0.2.150",
     "grant_type": "authorization_code",
