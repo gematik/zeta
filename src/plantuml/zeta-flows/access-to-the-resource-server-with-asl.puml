@@ -1,0 +1,98 @@
+@startuml "tpm-attestation-and-token-exchange-overview"
+autonumber "(00)"
+skinparam defaultFontSize 10
+skinparam defaultFontName Helvetica
+skinparam DefaultMonospacedFontName Courier
+skinparam lengthAdjust none
+skinparam sequenceReferenceBackgroundColor White
+skinparam SequenceReferenceFontSize 12
+skinparam sequenceMessageAlign left
+hide stereotype
+
+' Box colors
+!define ZETA_GUARD_COLOR #FFF3E5
+!define LEI_COLOR #GhostWhite
+!define LEI_COMPONENT_COLOR #E4E4F4
+!define PRIMAERSYSTEM_COLOR #Lavender
+!define PROVIDER_COLOR #EDFDEC
+
+' Participant colors
+<style>
+sequenceDiagram {
+  participant {
+    .zeta {
+      BackgroundColor #FFE6CC
+      LineColor #D79B00
+    }
+    .provider {
+      BackgroundColor #D5E8D4
+      LineColor #82B366
+    }
+  }
+  lifeline {
+    BackgroundColor White
+    LineColor Black
+  }
+}
+</style>
+
+!pragma teoz true
+
+Actor User
+box "LEI" LEI_COLOR
+  box "Primärsystem" PRIMAERSYSTEM_COLOR
+    participant FC as "Fach-Client" <<provider>>
+    participant Client as "ZETA Client" <<zeta>>
+  end box
+end box
+
+box "Anbieter" PROVIDER_COLOR
+  box "ZETA Guard" ZETA_GUARD_COLOR
+    participant HP as "PEP\nHTTP Proxy" <<zeta>>
+  end box
+  participant RS as "Resource\nServer" <<provider>>
+end box
+
+User -> FC ++ : User wants to\naccess resource\non Resource Server
+FC -> Client ++ : GET /resource
+
+note over Client, HP: **Vorbedingung:**\nDer ZETA Client hat ein gültiges Access Token für den Zugriff auf den Resource Server.
+
+Client -> Client: Create DPoP Proof for RS
+
+alt ZETA/ASL terminates at PEP
+  Client -> HP++: ZETA/ASL Verbindungsaufbau
+  HP --> Client
+  Client -> HP: POST /ASL (outer request)\n\
+    Body (inner request): GET /resource\n\
+      Authorization: DPoP ... (Accesss token)\n\
+      DPoP: ... (DPoP token)
+  HP -> HP: Terminate ZETA/ASL
+  HP -> HP: Verify Access Token and DPoP Proof for RS
+  HP -> RS ++ : forward GET /resource
+  RS -> RS: provide resource access\nand create Response
+  RS --> HP -- : 200 OK, Response
+  HP -> HP: create ZETA/ASL encrypted Response
+else ZETA/ASL terminates at Resource Server
+  Client -> Client: Create DPoP Proof for ZETA/ASL
+  Client -> HP : ZETA/ASL Verbindungsaufbau
+  HP --> Client
+  Client -> HP: POST /ASL (outer request)\n\
+    Authorization: DPoP <Access token for ZETA/ASL>\n\
+    DPoP: <DPoP token for ZETA/ASL>\n\
+    Body (ASL encrypted inner request): GET /resource\n\
+      Authorization: DPoP <Access token for RS>\n\
+      DPoP: <DPoP token for RS>
+  HP -> HP: verify Access Token and DPoP Proof for ZETA/ASL
+  HP -> RS ++: forward POST /ASL
+  RS -> RS: Terminate ZETA/ASL
+  RS -> RS: Verify Access Token and\nDPoP Proof for RS
+  RS -> RS: provide resource access\nand create ZETA/ASL Response
+  RS --> HP -- : 200 OK, ZETA/ASL encrypted Response
+end
+HP --> Client -- : 200 OK, ZETA/ASL encrypted Response
+Client -> Client: decrypt Response
+Client --> FC -- : 200 OK, Resource
+FC --> User -- : Resource
+
+@enduml
