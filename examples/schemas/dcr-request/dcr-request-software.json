@@ -1,0 +1,19 @@
+{
+  "$comment": "DCR POST /register – Legacy / Software Attestation (oneOf variant 4)",
+  "attestation_type": "software",
+  "client_name": "Primärsystem-Beispielclient",
+  "token_endpoint_auth_method": "private_key_jwt",
+  "grant_types": [
+    "client_credentials"
+  ],
+  "jwks": {
+    "keys": [
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4",
+        "y": "4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM"
+      }
+    ]
+  }
+}

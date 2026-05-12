@@ -70,20 +70,26 @@ alt Kein ZETA Guard Attestation Token
         Client -> AuthS: POST /register/verify {Secret}
         AuthS -> AuthS: Secret korrekt? → PuK.Client.Sig hardware-gebunden ✓
 
-    else Hardware Attestation: macOS (Secure Enclave)
-        Client -> AuthS: POST /register\n{attestation_type="macos", PuK.AK.Sig, Apple_Attestation_Object,\nPuK.Client.Sig, signed_Hash_PuK.Client.Sig}
+    else Hardware Attestation: iOS / iPadOS / macOS (Apple App Attest)
+        Client -> AuthS: POST /register\n{attestation_type="apple", PuK.AK.Sig, Apple_Attestation_Object,\nPuK.Client.Sig, signed_Hash_PuK.Client.Sig}
         AuthS -> AuthS: Validiere Apple_Attestation_Object & signed_Hash_PuK.Client.Sig
-        note right of AuthS: AuthS verifiziert Apple Root CA und stellt sicher,\ndass PuK.AK.Sig identisch mit x5c[0] im Objekt ist.
+        note right of AuthS: AuthS verifiziert Apple App Attest Root CA und prüft,\ndass PuK.AK.Sig mit x5c[0] des Objekts übereinstimmt.\nFormat identisch auf iOS, iPadOS und macOS.
+
+    else Hardware Attestation: Android (Keystore / TEE / StrongBox)
+        Client -> AuthS: POST /register\n{attestation_type="android", PuK.AK.Sig,\nAndroid_Key_Attestation_Certificate_Chain,\nPuK.Client.Sig, signed_Hash_PuK.Client.Sig\n[, play_integrity_token]}
+        AuthS -> AuthS: Validiere Zertifikatskette gegen Google Root CA
+        AuthS -> AuthS: Prüfe signed_Hash_PuK.Client.Sig & (optional) Play Integrity
+        note right of AuthS: PuK.AK.Sig muss mit dem Blatt-Zertifikat\nder Certificate Chain übereinstimmen.\nSicherheitsniveau: TrustedEnvironment oder StrongBox.
 
     else Software Attestation (Legacy OIDC DCR)
         Client -> AuthS: POST /register\n{\n  "client_name": "myClient",\n  "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"],\n  "jwks": { "keys": [ PuK.Client.Sig ] },\n  "token_endpoint_auth_method": "private_key_jwt"\n}
         AuthS -> AuthS: Store Client Placeholder\n(state: pending_attestation)
     end
 
-else ZETA Guard Attestation Token vorhanden (Fast-Path)
-    Client -> AuthS: POST /register\n{attestation_type="fast_path", ZETA Guard Attestation Token,\nPuK.Client.Sig, signed_Hash_PuK.Client.Sig}
+else ZETA Attestation Token vorhanden (Fast-Path)
+    Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token",\nzeta_guard_attestation_token, PuK.Client.Sig,\nsigned_Hash_PuK.Client.Sig}
     AuthS -> AuthS: Prüfe Token-Signatur & Vertrauensstellung
-    AuthS -> AuthS: Prüfe signed_Hash_PuK.Client.Sig mit dem\nPuK.AK.Sig aus dem Token
+    AuthS -> AuthS: Extrahiere PuK.AK.Sig aus Token,\nprüfe signed_Hash_PuK.Client.Sig
 end
 
 AuthS --> Client--: 201 Created {client_id}
