@@ -1,9 +1,12 @@
 {
-  "$comment": "DCR POST /register – Fast-Path via ZETA Guard Attestation Token (oneOf variant 4). Setzt eine vorherige Hardware-Attestierung voraus. PuK.AK.Sig und verifizierte Plattform-Claims sind im JWT enthalten.",
+  "$comment": "DCR POST /register via ZETA Guard Attestation Token. Setzt eine vorherige Hardware-Attestierung voraus. PuK.AK.Sig und verifizierte Plattform-Claims sind im JWT enthalten.",
   "attestation_type": "zeta_attestation_token",
-  "client_name": "ZETA Client App (Fast-Path)",
+  "client_name": "ZETA Client App",
   "token_endpoint_auth_method": "private_key_jwt",
-  "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"],
+  "grant_types": [
+    "urn:ietf:params:oauth:grant-type:token-exchange",
+    "refresh_token"
+  ],
   "PuK.Client.Sig": {
     "kty": "EC",
     "crv": "P-256",
