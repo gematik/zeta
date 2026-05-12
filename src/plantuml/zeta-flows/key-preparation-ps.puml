@@ -53,7 +53,9 @@ alt Windows / Linux (lokaler ZAS nötig)
     
     note left of ZAS: ZAS übergibt hash_puk_client_sig als "qualifyingData"\nan TPM2_Certify zur Bindung an den Session-Kontext.
     ZAS -> TPM: TPM2_Certify(Handle_prk_ak_sig, Handle_prk_client_sig, hash_puk_client_sig)
-    TPM --> ZAS--: tpm2b_attest, tpmt_signature
+    TPM --> ZAS: tpm2b_attest, tpmt_signature
+    ZAS -> TPM: TPM2_ReadPublic(AttestationKey)
+    TPM --> ZAS--: puk_ak_sig
     
     ZAS --> Client: puk_ak_sig, tpm2b_attest, tpmt_signature
     
