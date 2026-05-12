@@ -10,11 +10,11 @@ oneOf:
   - title: TPM Attestation
     required:
       - attestation_type
-      - PuK.Client.Sig
-      - PuK.EK.Enc
-      - C.EK.Enc
-      - PuK.AK.Sig
-      - signed_Hash_PuK.Client.Sig
+      - puk_client_sig
+      - puk_ek_enc
+      - c_ek_enc
+      - puk_ak_sig
+      - signed_hash_puk_client_sig
     properties:
       attestation_type:
         type: string
@@ -29,35 +29,32 @@ oneOf:
         properties:
           keys:
             type: array
-            items: { $ref: "#/definitions/JWK" }
+            items: { $ref: "#/definitions/jwk" }
         required: [keys]
-      PuK.Client.Sig:
-        $ref: "#/definitions/JWK"
+      puk_client_sig:
+        $ref: "#/definitions/jwk"
         description: >-
-          Öffentlicher Client-Signaturschlüssel (ECDSA P-256) der Anwendung.
-          Wird vom AuthS als client_id gespeichert.
-      PuK.EK.Enc:
-        $ref: "#/definitions/JWK"
+          Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
+      puk_ek_enc:
+        $ref: "#/definitions/jwk"
         description: >-
           Öffentlicher Endorsement Key (EK) des TPM (RSA oder ECC).
           Wird zur MakeCredential-Operation verwendet.
-      C.EK.Enc:
+      c_ek_enc:
         type: string
         description: >-
-          Vom AuthS ausgestelltes CredentialBlob, Base64url-kodiert.
-          Enthält ein mit PuK.EK.Enc verschlüsseltes Secret zur
-          Verifikation der TPM-Bindung (TPM2_MakeCredential).
-      PuK.AK.Sig:
+          Zertifikat des Endorsement Key (EK) des TPM.
+      puk_ak_sig:
         type: string
         description: >-
-          Öffentlicher Attestation Key (AK) des TPM, Base64url-kodiert
-          (TPM2B_PUBLIC Struktur). Wird vom AuthS zur Verifikation der
-          TPM-Quote und von signed_Hash_PuK.Client.Sig verwendet.
-      signed_Hash_PuK.Client.Sig:
+          Öffentlicher Attestation Key (AK) des TPM (TPM2B_PUBLIC Struktur).
+          Wird vom AuthS zur Verifikation der TPM-Quote und von
+          signed_hash_puk_client_sig verwendet.
+      signed_hash_puk_client_sig:
         type: string
         description: >-
-          Signatur des SHA-256-Hashes von PuK.Client.Sig, erstellt mit
-          dem TPM Attestation Key (PuK.AK.Sig). Base64url-kodiert.
+          Signatur des SHA-256-Hashes von puk_client_sig, erstellt mit
+          dem TPM Attestation Key (puk_ak_sig). Base64url-kodiert.
 
   # -----------------------------------------------------------------
   # 2. Apple Hardware Attestation (iOS, iPadOS & macOS)
@@ -69,10 +66,10 @@ oneOf:
   - title: Apple Attestation
     required:
       - attestation_type
-      - PuK.Client.Sig
-      - PuK.AK.Sig
-      - Apple_Attestation_Object
-      - signed_Hash_PuK.Client.Sig
+      - puk_client_sig
+      - puk_ak_sig
+      - apple_attestation_object
+      - signed_hash_puk_client_sig
     description: >-
       Für iOS, iPadOS und macOS identisch. Die Apple App Attest API
       (DeviceCheck-Framework) produziert auf allen Plattformen dasselbe
@@ -91,30 +88,25 @@ oneOf:
         properties:
           keys:
             type: array
-            items: { $ref: "#/definitions/JWK" }
+            items: { $ref: "#/definitions/jwk" }
         required: [keys]
-      PuK.Client.Sig:
-        $ref: "#/definitions/JWK"
+      puk_client_sig:
+        $ref: "#/definitions/jwk"
         description: >-
-          Öffentlicher Client-Signaturschlüssel (ECDSA P-256) der Anwendung.
-          Wird vom AuthS als client_id gespeichert.
-      PuK.AK.Sig:
-        type: string
-        description: >-
-          Öffentlicher App-Attest-Schlüssel (ECDSA P-256) aus der Secure
-          Enclave des Geräts. Base64url-kodiert.
-      Apple_Attestation_Object:
+          Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
+      apple_attestation_object:
         type: string
         description: >-
           CBOR-kodiertes Attestation-Objekt der Apple App Attest API
-          (fmt: "apple-appattest"). Enthält attStmt (x5c-Zertifikatskette
-          + receipt) sowie authData (rpIdHash, counter, credentialId).
+          (fmt: "apple-appattest"). Enthält attStmt (x5c-Zertifikatskette inkl.
+          puk_ak_sig + receipt) sowie authData (rpIdHash, counter, credentialId).
           Base64-kodiert.
-      signed_Hash_PuK.Client.Sig:
+      apple_assertion_object:
         type: string
         description: >-
-          Signatur des SHA-256-Hashes von PuK.Client.Sig, erstellt mit
-          dem App-Attest-Schlüssel (PuK.AK.Sig). Base64url-kodiert.
+          CBOR-kodiertes Assertion-Objekt der Apple App Attest API 
+          (erzeugt via generateAssertion über den SHA-256-Hash von puk_client_sig). 
+          Base64-kodiert.
 
   # -----------------------------------------------------------------
   # 3. Android Hardware Attestation
@@ -127,10 +119,10 @@ oneOf:
   - title: Android Attestation
     required:
       - attestation_type
-      - PuK.Client.Sig
-      - PuK.AK.Sig
-      - Android_Key_Attestation_Certificate_Chain
-      - signed_Hash_PuK.Client.Sig
+      - puk_client_sig
+      - puk_ak_sig
+      - android_key_attestation_certificate_chain
+      - signed_hash_puk_client_sig
     properties:
       attestation_type:
         type: string
@@ -145,36 +137,28 @@ oneOf:
         properties:
           keys:
             type: array
-            items: { $ref: "#/definitions/JWK" }
+            items: { $ref: "#/definitions/jwk" }
         required: [keys]
-      PuK.Client.Sig:
-        $ref: "#/definitions/JWK"
+      puk_client_sig:
+        $ref: "#/definitions/jwk"
         description: >-
-          Öffentlicher Client-Signaturschlüssel (ECDSA P-256) der Anwendung.
-          Wird vom AuthS als client_id gespeichert.
-      PuK.AK.Sig:
-        type: string
-        description: >-
-          Öffentlicher Android-Keystore-Attestierungsschlüssel (ECDSA P-256
-          oder RSA), erzeugt im TEE oder StrongBox des Geräts.
-          Base64url-kodiert. Muss mit dem Blatt-Zertifikat der
-          Android_Key_Attestation_Certificate_Chain übereinstimmen.
-      Android_Key_Attestation_Certificate_Chain:
+          Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
+      android_key_attestation_certificate_chain:
         type: array
         description: >-
           X.509-Zertifikatskette der Android Key Attestation, beginnend
-          mit dem Blatt-Zertifikat des attestierten Schlüssels bis zur
+          mit dem Blatt-Zertifikat des attestierten Schlüssels (C.AK.Sig) bis zur
           Google Hardware Attestation Root CA. Jedes Zertifikat ist
           Base64-kodiert (DER-Format).
         items:
           type: string
           description: Base64-kodiertes DER X.509-Zertifikat.
         minItems: 3
-      signed_Hash_PuK.Client.Sig:
+      signed_hash_puk_client_sig:
         type: string
         description: >-
-          Signatur des SHA-256-Hashes von PuK.Client.Sig, erstellt mit
-          dem Android-Keystore-Schlüssel (PuK.AK.Sig). Base64url-kodiert.
+          Signatur des SHA-256-Hashes von puk_client_sig, erstellt mit
+          dem Android-Keystore-Schlüssel (puk_ak_sig). Base64url-kodiert.
       play_integrity_token:
         type: string
         description: >-
@@ -182,21 +166,20 @@ oneOf:
           Ermöglicht dem AuthS die zusätzliche App-Integritätsprüfung
           (meets_basic_integrity, meets_device_integrity).
 
-
   # -----------------------------------------------------------------
   # 4. ZETA Attestation Token (Fast-Path)
   # -----------------------------------------------------------------
   # Wird verwendet, wenn bereits ein gültiger ZETA Guard Attestation
   # Token vorliegt (aus einer früheren Hardware-Attestierung).
-  # Der AuthS prüft Token-Signatur und extrahiert PuK.AK.Sig aus dem
-  # Token, um signed_Hash_PuK.Client.Sig zu verifizieren.
+  # Der AuthS prüft Token-Signatur und extrahiert puk_ak_sig aus dem
+  # Token, um signed_hash_puk_client_sig zu verifizieren.
   # -----------------------------------------------------------------
   - title: ZETA Attestation Token
     required:
       - attestation_type
-      - PuK.Client.Sig
+      - puk_client_sig
       - zeta_guard_attestation_token
-      - signed_Hash_PuK.Client.Sig
+      - signed_hash_puk_client_sig
     properties:
       attestation_type:
         type: string
@@ -211,24 +194,23 @@ oneOf:
         properties:
           keys:
             type: array
-            items: { $ref: "#/definitions/JWK" }
+            items: { $ref: "#/definitions/jwk" }
         required: [keys]
-      PuK.Client.Sig:
-        $ref: "#/definitions/JWK"
+      puk_client_sig:
+        $ref: "#/definitions/jwk"
         description: >-
-          Öffentlicher Client-Signaturschlüssel (ECDSA P-256) der Anwendung.
-          Wird vom AuthS als client_id gespeichert.
+          Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
       zeta_guard_attestation_token:
         type: string
         description: >-
           Signiertes JWT, ausgestellt vom ZETA Guard nach erfolgreicher
-          Hardware-Attestierung. Enthält PuK.AK.Sig und verifizierte
+          Hardware-Attestierung. Enthält puk_ak_sig und verifizierte
           Plattform-Claims. Siehe zeta-attestation-token.yaml.
-      signed_Hash_PuK.Client.Sig:
+      signed_hash_puk_client_sig:
         type: string
         description: >-
-          Signatur des SHA-256-Hashes von PuK.Client.Sig, erstellt mit
-          dem im Token enthaltenen PuK.AK.Sig. Base64url-kodiert.
+          Signatur des SHA-256-Hashes von puk_client_sig, erstellt mit
+          dem im Token enthaltenen puk_ak_sig. Base64url-kodiert.
 
   # -----------------------------------------------------------------
   # 5. Legacy / Software Attestation
@@ -252,11 +234,11 @@ oneOf:
         properties:
           keys:
             type: array
-            items: { $ref: "#/definitions/JWK" }
+            items: { $ref: "#/definitions/jwk" }
         required: [keys]
 
 definitions:
-  JWK:
+  jwk:
     type: object
     properties:
       kty: { type: string }

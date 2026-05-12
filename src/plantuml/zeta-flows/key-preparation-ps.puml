@@ -1,0 +1,72 @@
+@startuml "key-preparation"
+autonumber "(00)"
+skinparam defaultFontSize 10
+skinparam defaultFontName Helvetica
+skinparam DefaultMonospacedFontName Courier
+skinparam lengthAdjust none
+skinparam sequenceReferenceBackgroundColor White
+skinparam SequenceReferenceFontSize 12
+skinparam sequenceMessageAlign left
+hide stereotype
+
+' Box colors
+!define LEI_COLOR #GhostWhite
+!define LEI_COMPONENT_COLOR #E4E4F4
+!define PRIMAERSYSTEM_COLOR #Lavender
+!define MOBILE_COLOR #E6F7FF
+
+' Participant colors
+<style>
+sequenceDiagram {
+  participant {
+    .zeta {
+      BackgroundColor #FFE6CC
+      LineColor #D79B00
+    }
+  }
+  lifeline {
+    BackgroundColor White
+    LineColor Black
+  }
+}
+</style>
+
+!pragma teoz true
+
+alt Windows / Linux (lokaler ZAS nötig)
+    box "LEI (Desktop / Server)" LEI_COLOR
+      participant "TPM" as TPM LEI_COMPONENT_COLOR
+      box "Primärsystem" PRIMAERSYSTEM_COLOR
+        participant ZAS as "ZAS (Admin)" <<zeta>>
+        participant Client as "ZETA Client (User)" <<zeta>>
+      end box
+    end box
+
+    Client++
+    ZAS++
+    
+    note left of Client: Client generiert TPM Key prk_client_sig im User Space\nund übergibt Opaque Blob an den ZAS.
+    Client -> ZAS: PCP_KEY_BLOB(prk_client_sig), hash_puk_client_sig
+    
+    ZAS -> TPM++: TPM2_Load(PCP_KEY_BLOB)
+    TPM --> ZAS: Handle_prk_client_sig
+    
+    note left of ZAS: ZAS übergibt hash_puk_client_sig als "qualifyingData"\nan TPM2_Certify zur Bindung an den Session-Kontext.
+    ZAS -> TPM: TPM2_Certify(Handle_prk_ak_sig, Handle_prk_client_sig, hash_puk_client_sig)
+    TPM --> ZAS--: tpm2b_attest, tpmt_signature
+    
+    ZAS --> Client: puk_ak_sig, tpm2b_attest, tpmt_signature
+    
+    Client -> ZAS: Request puk_ek_enc, c_ek_enc
+    ZAS -> TPM++: TPM2_ReadPublic(EndorsementKey)
+    TPM --> ZAS: puk_ek_enc
+    ZAS -> TPM: TPM2_NV_Read(EndorsementKey_Cert)
+    TPM --> ZAS--: c_ek_enc
+    ZAS --> Client--: puk_ek_enc, c_ek_enc
+    Client--
+
+else Software Attestation (Fallback)
+    note left of Client: Keine Hardware-Bindung.\nApp oder Client erstellt prk_client_sig selbst.
+end
+
+@enduml

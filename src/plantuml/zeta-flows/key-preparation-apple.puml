@@ -1,0 +1,66 @@
+@startuml "key-preparation"
+autonumber "(00)"
+skinparam defaultFontSize 10
+skinparam defaultFontName Helvetica
+skinparam DefaultMonospacedFontName Courier
+skinparam lengthAdjust none
+skinparam sequenceReferenceBackgroundColor White
+skinparam SequenceReferenceFontSize 12
+skinparam sequenceMessageAlign left
+hide stereotype
+
+' Box colors
+!define LEI_COLOR #GhostWhite
+!define LEI_COMPONENT_COLOR #E4E4F4
+!define PRIMAERSYSTEM_COLOR #Lavender
+!define MOBILE_COLOR #fefcff
+
+' Participant colors
+<style>
+sequenceDiagram {
+  participant {
+    .zeta {
+      BackgroundColor #FFE6CC
+      LineColor #D79B00
+    }
+  }
+  lifeline {
+    BackgroundColor White
+    LineColor Black
+  }
+}
+</style>
+
+!pragma teoz true
+
+participant "Apple\nServices" as Apple
+box "Apple Device (macOS, iOS, iPadOS)" MOBILE_COLOR
+  participant "Secure Enclave" as SE LEI_COMPONENT_COLOR
+  participant "OS (iOS / iPadOS)" as AppleOS LEI_COMPONENT_COLOR
+  participant "ZETA Client" as Client <<zeta>>
+end box
+
+
+alt macOS, iOS, iPadOS
+
+    Client++
+    note left of Client: App nutzt native Apple-Frameworks.
+    
+    Client -> AppleOS++: DCAppAttest.attestKey(keyId_AK, hash_puk_client_sig)
+    AppleOS -> SE++: Attestiere Schlüssel
+    SE --> AppleOS--: Hardware-Signatur
+    AppleOS -> Apple++: Verifiziere & erstelle CBOR
+    Apple --> AppleOS--: apple_attestation_object
+    AppleOS --> Client--: apple_attestation_object
+    
+    Client -> AppleOS++: DCAppAttest.generateAssertion(keyId_AK, hash_puk_client_sig)
+    AppleOS -> SE++: Signiere Hash
+    SE --> AppleOS--: ECDSA Signatur
+    AppleOS --> Client--: apple_assertion_object
+    Client--
+
+else Software Attestation (Fallback)
+    note left of Client: Keine Hardware-Bindung.\nApp oder Client erstellt prk_client_sig selbst.
+end
+
+@enduml
