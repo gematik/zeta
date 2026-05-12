@@ -41,14 +41,14 @@ sequenceDiagram {
 !pragma teoz true
 
 box "LEI" LEI_COLOR
-  participant "TPM / SE" as TPM LEI_COMPONENT_COLOR
+  participant "TPM" as TPM LEI_COMPONENT_COLOR
   box "Primärsystem" PRIMAERSYSTEM_COLOR
       participant ZAS as "ZAS" <<zeta>>
       participant Client as "ZETA Client" <<zeta>>
  end box
 end box
 
-alt Hardware Attestation (TPM / SE)
+alt Hardware Attestation (TPM)
 
     ZAS++    
     ZAS --> ZAS: Installation (Root/Admin rights)
@@ -59,30 +59,21 @@ alt Hardware Attestation (TPM / SE)
         Client --> ZAS
     end
 
-    alt Windows / Linux (TPM)
-        Client -> TPM++: Generiere PrK.Client.Sig, PuK.Client.Sig\nvia OS-Provider (z.B. MS CNG)
-        TPM --> Client: PuK.Client.Sig, Handle_PrK.Client.Sig
-        ZAS --> ZAS: Messung des PS & Vergleich mit Hersteller-Wert
-        ZAS -> TPM: TPM2_CreatePrimary() → Storage Root Key (SRK)
-        ZAS -> TPM: TPM2_Create(SRK, restricted=sign, fixedTPM=true)
-        TPM --> ZAS: PuK.AK.Sig, PrK.AK.Sig (blob)
-        ZAS -> TPM: TPM2_Load(SRK, PrK.AK.Sig, PuK.AK.Sig)
-        TPM --> ZAS: Handle_PrK.AK.Sig
-        ZAS -> TPM: TPM2_PCR_Extend(23, Messwerte)
-        note right: PCR_23 Könnte belegt sein; muss vorher geprüft werden 
-        TPM--
-    else macOS (Secure Enclave)
-        Client -> TPM++: SecKeyCreateRandomKey (für PrK.Client.Sig, PuK.Client.Sig in SE)
-        TPM --> Client: PuK.Client.Sig, Handle_PrK.Client.Sig
-        ZAS -> TPM: DCAppAttestService.shared.generateKey()
-        TPM --> ZAS--: keyId (Referenz für PrK.AK.Sig)
-    end
+    Client -> TPM++: Generiere PrK.Client.Sig, PuK.Client.Sig\nvia OS-Provider (z.B. MS CNG)
+    TPM --> Client: PuK.Client.Sig, Handle_PrK.Client.Sig
+    ZAS --> ZAS: Messung des PS & Vergleich mit Hersteller-Wert
+    ZAS -> TPM: TPM2_CreatePrimary() → Storage Root Key (SRK)
+    ZAS -> TPM: TPM2_Create(SRK, restricted=sign, fixedTPM=true)
+    TPM --> ZAS: PuK.AK.Sig, PrK.AK.Sig (blob)
+    ZAS -> TPM: TPM2_Load(SRK, PrK.AK.Sig, PuK.AK.Sig)
+    TPM --> ZAS: Handle_PrK.AK.Sig
+    ZAS -> TPM: TPM2_PCR_Extend(23, Messwerte)
+    note right: PCR_23 Könnte belegt sein; muss vorher geprüft werden 
+    TPM--
 
 else Software Attestation (Fallback)
     Client --> Client: Installation (User Space)
     Client -> Client: Generiere PrK.Client.Sig,\nPuK.Client.Sig
-    ' Client --> Client: Lokale Messung des PS (Dateihashes ermitteln)
-    ' Client -> Client: Speichere Baseline-Hash lokal & sicher ab
 end
 
 @enduml

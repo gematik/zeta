@@ -1,0 +1,79 @@
+@startuml "client-installation"
+autonumber "(00)"
+skinparam defaultFontSize 10
+skinparam defaultFontName Helvetica
+skinparam DefaultMonospacedFontName Courier
+skinparam lengthAdjust none
+skinparam sequenceReferenceBackgroundColor White
+skinparam SequenceReferenceFontSize 12
+skinparam sequenceMessageAlign left
+hide stereotype
+
+' Box colors
+!define ZETA_GUARD_COLOR #FFF3E5
+!define LEI_COLOR #GhostWhite
+!define LEI_COMPONENT_COLOR #E4E4F4
+!define PRIMAERSYSTEM_COLOR #Lavender
+!define PROVIDER_COLOR #EDFDEC
+
+' Participant colors
+<style>
+sequenceDiagram {
+  participant {
+    .zeta {
+      BackgroundColor #FFE6CC
+      LineColor #D79B00
+    }
+    .provider {
+      BackgroundColor #D5E8D4
+      LineColor #82B366
+    }
+  }
+  lifeline {
+    BackgroundColor White
+    LineColor Black
+  }
+}
+</style>
+
+' title Client Installation & Baseline-Etablierung
+
+!pragma teoz true
+
+participant "Apple\nServices" as Apple
+box "Primärsystem oder App (macOS, iOS, iPadOS)" PRIMAERSYSTEM_COLOR
+  participant "Secure Enclave" as SE LEI_COMPONENT_COLOR
+  participant "OS (iOS / iPadOS)" as AppleOS LEI_COMPONENT_COLOR
+  participant Client as "ZETA Client" <<zeta>>
+end box
+
+alt Hardware Attestation (Secure Enclave)
+    Client++
+
+
+    Client -> AppleOS++: SecKeyCreateRandomKey\n(für PrK.Client.Sig, PuK.Client.Sig in SE)
+    AppleOS -> SE++: Generiere Schlüssel (Client.Sig)
+    SE --> AppleOS--: keyId (Referenz für PrK.Client.Sig)
+    AppleOS --> Client: keyId (Referenz für PrK.Client.Sig)
+
+    Client -> AppleOS: DCAppAttestService.shared.generateKey()
+    AppleOS -> SE++: Generiere Schlüssel (AK)
+    SE --> AppleOS--: keyId (Referenz für PrK.AK.Sig)
+    AppleOS --> Client: keyId (Referenz für PrK.AK.Sig)
+
+    Client -> AppleOS: DCAppAttest.attestKey(keyId_AK, hash_puk_client_sig)
+    AppleOS -> SE++: Attestiere Schlüssel
+    SE --> AppleOS--: Hardware-Signatur
+    AppleOS -> Apple++: Verifiziere & erstelle CBOR
+    Apple --> AppleOS--: apple_attestation_object
+    AppleOS --> Client--: apple_attestation_object
+
+
+else Software Attestation (Fallback)
+    Client --> Client: Installation (User Space)
+    Client -> Client: Generiere PrK.Client.Sig,\nPuK.Client.Sig
+    ' Client --> Client: Lokale Messung des PS (Dateihashes ermitteln)
+    ' Client -> Client: Speichere Baseline-Hash lokal & sicher ab
+end
+
+@enduml

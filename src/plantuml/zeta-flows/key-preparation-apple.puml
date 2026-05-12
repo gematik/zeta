@@ -33,7 +33,6 @@ sequenceDiagram {
 
 !pragma teoz true
 
-participant "Apple\nServices" as Apple
 box "Apple Device (macOS, iOS, iPadOS)" MOBILE_COLOR
   participant "Secure Enclave" as SE LEI_COMPONENT_COLOR
   participant "OS (iOS / iPadOS)" as AppleOS LEI_COMPONENT_COLOR
@@ -45,13 +44,6 @@ alt macOS, iOS, iPadOS
 
     Client++
     note left of Client: App nutzt native Apple-Frameworks.
-    
-    Client -> AppleOS++: DCAppAttest.attestKey(keyId_AK, hash_puk_client_sig)
-    AppleOS -> SE++: Attestiere Schlüssel
-    SE --> AppleOS--: Hardware-Signatur
-    AppleOS -> Apple++: Verifiziere & erstelle CBOR
-    Apple --> AppleOS--: apple_attestation_object
-    AppleOS --> Client--: apple_attestation_object
     
     Client -> AppleOS++: DCAppAttest.generateAssertion(keyId_AK, hash_puk_client_sig)
     AppleOS -> SE++: Signiere Hash
