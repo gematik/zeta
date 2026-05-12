@@ -62,7 +62,7 @@ alt Hardware Attestation (Secure Enclave)
     AppleOS --> Client: keyId (Referenz für PrK.AK.Sig)
 
     Client -> AppleOS: DCAppAttest.attestKey(keyId_AK, hash_puk_client_sig)
-    AppleOS -> SE++: Attestiere Schlüssel
+    AppleOS -> SE++: Attestiere AK und binde hash_puk_client_sig
     SE --> AppleOS--: Hardware-Signatur
     AppleOS -> Apple++: Verifiziere & erstelle CBOR
     Apple --> AppleOS--: apple_attestation_object

@@ -41,11 +41,11 @@ sequenceDiagram {
 !pragma teoz true
 
 box "LEI" LEI_COLOR
-  participant "TPM" as TPM LEI_COMPONENT_COLOR
   box "Primärsystem" PRIMAERSYSTEM_COLOR
-      participant ZAS as "ZAS" <<zeta>>
-      participant Client as "ZETA Client" <<zeta>>
- end box
+    participant "TPM" as TPM LEI_COMPONENT_COLOR
+    participant ZAS as "ZAS" <<zeta>>
+    participant Client as "ZETA Client" <<zeta>>
+  end box
 end box
 
 alt Hardware Attestation (TPM)
