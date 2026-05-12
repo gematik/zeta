@@ -21,7 +21,6 @@ description: >
   bekannten ZETA Guard Public Keys und extrahiert PuK.AK.Sig,
   um die signed_Hash_PuK.Client.Sig im DCR-Request zu verifizieren.
 type: object
-
 properties:
   # -------------------------------------------------------------------
   # Standard JWT Claims (RFC 7519)
@@ -50,8 +49,8 @@ properties:
     type: integer
     description: >-
       Expiration Time: Unix-Timestamp des Ablaufzeitpunkts.
-      Das Token ist kurzlebig (empfohlen: max. 5 Minuten), um
-      Replay-Angriffe zu verhindern.
+      Das Token ist langlebig (empfohlen: max. 6 Monate).
+      Replay-Angriffe werden durch das jti verhindert.
     example: 1715426300
 
   jti:
@@ -78,7 +77,7 @@ properties:
     type: string
     description: >-
       Die Betriebssystemplattform des attestierten Geräts.
-    enum: [windows, linux, macos, ios, ipados, android]
+    enum: [windows, linux, apple, android]
     example: "windows"
 
   # -------------------------------------------------------------------
@@ -91,7 +90,7 @@ properties:
       (Attestation Key). Base64url-kodiert.
       - TPM:     TPM2B_PUBLIC Struktur des AK
       - Apple:   ECDSA P-256 App-Attest-Schlüssel aus Secure Enclave
-      - Android: ECDSA P-256 / RSA Android-Keystore-Schlüssel (TEE/StrongBox)
+      - Android: ECDSA P-256 Android-Keystore-Schlüssel (TEE/StrongBox)
       Der AuthS verwendet diesen Schlüssel, um signed_Hash_PuK.Client.Sig
       im Fast-Path-DCR zu verifizieren.
     example: "AToAAQALAAUAdAAAAAAQABAA..."
@@ -116,7 +115,7 @@ properties:
         additionalProperties:
           type: string
         example:
-          "7":  "3d458cfe55cc03ea1f443f1562beec8df51c75e14a9fcf9a7234a13f198e7969"
+          "7": "3d458cfe55cc03ea1f443f1562beec8df51c75e14a9fcf9a7234a13f198e7969"
           "23": "0000000000000000000000000000000000000000000000000000000000000000"
       quote_verified:
         type: boolean
