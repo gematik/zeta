@@ -8,6 +8,19 @@ Diese Anleitung erklärt kurz, wie OPA in ZETA Guard eingebunden ist, wie Sie OP
 
 Die Anleitung enthält zudem Hinweise zur Signaturprüfung der Bundles, Schema‑Validierungen, Verifikation/Tests und Troubleshooting.
 
+## Inhaltsverzeichnis
+
+- [Überblick](#überblick)
+- [Aktivieren](#aktivieren)
+- [Policy-Quellen](#policy-quellen)
+  - [1 Fest verdrahtete Policy (policyRego)](#1-fest-verdrahtete-policy-policyrego)
+  - [2 Bundle aus GitLab (SecretRef, Basic)](#2-bundle-aus-gitlab-secretref-basic)
+  - [3 Bundle aus Google Artifact Registry (workloadIdentityFederation)](#3-bundle-aus-google-artifact-registry-workloadidentityfederation)
+- [Signaturprüfung (Bundles)](#signaturprüfung-bundles)
+- [Schema-Validierungen](#schema-validierungen)
+- [Verifikation und Tests](#verifikation-und-tests)
+- [Troubleshooting](#troubleshooting)
+
 ## Überblick
 
 - OPA läuft im zeta‑guard Helm‑Chart als aktive Instanz (`opa`) und Simulations‑Instanz (`opa-simulation`) und wird beim Ausstellen von Tokens durch Authserver (PDP) konsultiert.
@@ -26,7 +39,7 @@ Die Anleitung enthält zudem Hinweise zur Signaturprüfung der Bundles, Schema�
 
 ## Policy‑Quellen
 
-### 1) Fest verdrahtete Policy (policyRego)
+### 1 Fest verdrahtete Policy (policyRego)
 
 Werte (Beispiel):
 
@@ -46,7 +59,7 @@ zeta-guard:
       }
 ```
 
-### 2) Bundle aus GitLab (SecretRef, Basic)
+### 2 Bundle aus GitLab (SecretRef, Basic)
 
 Voraussetzung: Secret im Namespace mit Basic‑Credentials (Deploy‑Token o. ä.):
 
@@ -73,7 +86,7 @@ zeta-guard:
         enabled: false
 ```
 
-### 3) Bundle aus Google Artifact Registry (workloadIdentityFederation)
+### 3 Bundle aus Google Artifact Registry (workloadIdentityFederation)
 
 workloadIdentityFederation ohne statische Token. Ein CronJob nimmt das KSA‑JWT, tauscht es beim STS und impersoniert die Ziel‑GSA. Der resultierende Access Token wird als Datei in ein Secret geschrieben; OPA liest ihn von dort.
 

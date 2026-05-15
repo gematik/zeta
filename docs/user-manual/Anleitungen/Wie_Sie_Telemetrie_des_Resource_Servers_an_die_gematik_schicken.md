@@ -58,6 +58,11 @@ nachschlagen.
 
 <!-- Future Work Link zum Build-Manifest aktualisieren, sobald eigene Collectoren veröffentlicht wurden. -->
 
+## Inhaltsverzeichnis
+
+- [Wie Sie Telemetrie an das Telemetry-Gateway senden](#wie-sie-telemetrie-an-das-telemetry-gateway-senden)
+- [Wie Sie das Telemetry-Gateway für den Export an die gematik einrichten](#wie-sie-das-telemetry-gateway-für-den-export-an-die-gematik-einrichten)
+
 ## Wie Sie Telemetrie an das Telemetry-Gateway senden
 
 Wenn Sie ZETA-Guard in einem Cluster mit einem Service-Mesh für mTLS verwenden,
@@ -120,8 +125,6 @@ erforderlichen Dateien angelegt werden.
 
 ## Wie Sie das Telemetry-Gateway für den Export an die gematik einrichten
 
-<!-- Future Work Einrichtung von WIF muss beschrieben werden -->
-
 Das Telemetry-Gateway ist mit einem Exporter – `otlp_grpc/gematik` –
 vorkonfiguriert, durch den Logs und Traces an die gematik exportiert werden. Der
 Exporter verwendet TLS statt mTLS, muss aber einen Bearer-Token an die gematik
@@ -141,13 +144,14 @@ gematik. Die Values für den ZETA-Guard-Chart sehen so aus:
 
 ```yaml
 gematik:
-    serviceAccountEmailAddress: "ToDo"
+    idTokenAudience: "AUDIENCE_ZUR_TOKENERSTELLUNG"
+    serviceAccountEmailAddress: "SERVICE_ACCOUNT_FÜR_DIE_TI_TELEMETRIEDATEN"
     workloadIdentityFederation:
-        poolId: "ToDo"
-        projectNumber: "ToDo"
-        workloadIdentityProvider: "ToDo"
+        poolId: "POOL"
+        projectNumber: "BETRIEBSUMGEBUNG"
+        workloadIdentityProvider: "PROVIDER"
 opa:
     workloadIdentityFederation:
         sts:
-            sa: "ToDo"
+            sa: "SERVICE_ACCOUNT_FÜR_DIE_PRODUKTSPEZIFISCHE_POLICY"
 ```

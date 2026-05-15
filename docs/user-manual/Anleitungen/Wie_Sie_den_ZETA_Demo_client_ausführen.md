@@ -14,7 +14,15 @@ Zielgruppe: Tester und Entwickler
 
 ---
 
-[TOC]
+## Inhaltsverzeichnis
+
+- [Überblick](#überblick)
+- [Voraussetzungen](#voraussetzungen)
+- [Vorgehen](#vorgehen)
+  - [Abhängigkeiten / Erforderliche Konfiguration](#abhängigkeiten--erforderliche-konfiguration)
+  - [Kurzanleitung](#kurzanleitung)
+  - [Anleitung in Schritten](#anleitung-in-schritten)
+- [Bedienung](#bedienung)
 
 ## Überblick
 

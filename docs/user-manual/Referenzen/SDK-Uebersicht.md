@@ -6,7 +6,12 @@ Dieses Dokument beschreibt die Inhalte des zeta-sdk repositories.
 Es enthält neben dem eigentlichen SDK, d.h. der Kernfunktionalität des ZETA-Clients, auch verschiedene Test-Clients,
 im Sinne eines Monorepos.
 
-[[_TOC_]]
+## Inhaltsverzeichnis
+
+- [Verzeichnisse](#verzeichnisse)
+  - [Fachliche Verzeichnisse](#fachliche-verzeichnisse)
+  - [Technische Verzeichnisse](#technische-verzeichnisse)
+  - [Strukture der Module](#strukture-der-module)
 
 ## Verzeichnisse
 
