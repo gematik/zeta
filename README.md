@@ -4,8 +4,8 @@
 
 Dies ist das Hauptrepository des [Zero Trust Access (ZETA)](https://gemspec.gematik.de/docs/gemSpec/gemSpec_ZETA/latest/)-Projektes. Es enthält Komponentendokumentation, Schnittstellenberschreibungen, Produkthandbuch sowie Links zu Quellcode-Repositories der ZETA-Komponenten.
 
-Die veröffentlichte Version fokussiert auf den stationären Zugang zur TI für Leistungserbringerinstitutionen (LEI).
-Beim aktuellen Stand handelt sich um einen funktional vollständigen Stand, bei dem die sicherheitstechnische Prüfung noch nicht abgeschlossen ist. In diesem Kontext fehlt ebenfalls noch eine abschließende Bewertung der Sicherheitsrisiken bei den eingesetzten Drittkomponenten für ZETA SDK und ZETA Guard. Der aktuelle Stand ist nicht für den produktiven Einsatz geeignet, und sollte zusätzlich nur in lokalen Umgebungen für Test- und Integrationszwecke eingesetzt werden.
+Die veröffentlichte Version fokussiert sich auf den stationären Zugang zur TI für Leistungserbringerinstitutionen (LEI).
+Beim aktuellen Stand handelt sich um einen finalen Stand für die Stufe 1, bei dem die sicherheitstechnische Prüfung noch nicht abgeschlossen ist. Der aktuelle Stand ist aus diesem Grund noch nicht für den produktiven Einsatz geeignet, und sollte bis zum Abschluss der Prüfung noch in lokalen Umgebungen für Test- und Integrationszwecke eingesetzt werden.
 
 Wir freuen uns über Feedback und Contributions! Bitte beachtet dabei unsere [Contributing Guidelines](./CONTRIBUTING.md).
 
