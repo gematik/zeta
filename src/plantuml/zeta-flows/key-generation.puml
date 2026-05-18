@@ -15,6 +15,7 @@ hide stereotype
 !define LEI_COMPONENT_COLOR #E4E4F4
 !define PRIMAERSYSTEM_COLOR #Lavender
 !define PROVIDER_COLOR #EDFDEC
+!define MOBILE_COLOR #fefcff
 
 ' Participant colors
 <style>

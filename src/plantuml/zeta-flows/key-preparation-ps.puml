@@ -13,7 +13,7 @@ hide stereotype
 !define LEI_COLOR #GhostWhite
 !define LEI_COMPONENT_COLOR #E4E4F4
 !define PRIMAERSYSTEM_COLOR #Lavender
-!define MOBILE_COLOR #E6F7FF
+!define MOBILE_COLOR #fefcff
 
 ' Participant colors
 <style>
@@ -33,10 +33,12 @@ sequenceDiagram {
 
 !pragma teoz true
 
-box "Primärsystem" PRIMAERSYSTEM_COLOR
+box "Device" MOBILE_COLOR
   participant "TPM" as TPM LEI_COMPONENT_COLOR
-  participant ZAS as "ZAS (Admin)" <<zeta>>
-  participant Client as "ZETA Client (User)" <<zeta>>
+  participant ZAS as "ZAS\n(runs as Service (Admin rights))" <<zeta>>
+  box "Primärsystem" PRIMAERSYSTEM_COLOR
+    participant Client as "ZETA Client (User)" <<zeta>>
+  end box
 end box
 
 alt Windows / Linux (lokaler ZAS nötig)

@@ -15,6 +15,7 @@ hide stereotype
 !define LEI_COMPONENT_COLOR #E4E4F4
 !define PRIMAERSYSTEM_COLOR #Lavender
 !define PROVIDER_COLOR #EDFDEC
+!define MOBILE_COLOR #fefcff
 
 ' Participant colors
 <style>
@@ -40,18 +41,20 @@ sequenceDiagram {
 
 !pragma teoz true
 
-participant "Apple\nServices" as Apple
-box "Primärsystem oder App (macOS, iOS, iPadOS)" PRIMAERSYSTEM_COLOR
+box "Device" MOBILE_COLOR
   participant "Secure Enclave" as SE LEI_COMPONENT_COLOR
-  participant "OS (iOS / iPadOS)" as AppleOS LEI_COMPONENT_COLOR
-  participant Client as "ZETA Client" <<zeta>>
+  participant "OS (macOS, iOS, iPadOS)" as AppleOS LEI_COMPONENT_COLOR
+  box "App" PRIMAERSYSTEM_COLOR
+    participant "ZETA Client" as Client <<zeta>>
+  end box
 end box
 
 Client++
+AppleOS++
 Client --> Client: Installation (User Space)
 
 alt Secure Enclave
-    Client -> AppleOS++: SecKeyCreateRandomKey\n(für PrK.Client.Sig, PuK.Client.Sig in SE)
+    Client -> AppleOS: SecKeyCreateRandomKey\n(für PrK.Client.Sig, PuK.Client.Sig in SE)
     AppleOS -> SE++: Generiere Schlüssel (Client.Sig)
     SE --> AppleOS--: keyId (Referenz für PrK.Client.Sig)
     AppleOS --> Client: keyId (Referenz für PrK.Client.Sig)
