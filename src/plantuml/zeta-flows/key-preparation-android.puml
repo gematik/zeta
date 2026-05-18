@@ -13,7 +13,7 @@ hide stereotype
 !define LEI_COLOR #GhostWhite
 !define LEI_COMPONENT_COLOR #E4E4F4
 !define PRIMAERSYSTEM_COLOR #Lavender
-!define MOBILE_COLOR #fefcff
+!define DEVICE_COLOR #fefcff
 
 ' Participant colors
 <style>
@@ -33,7 +33,7 @@ sequenceDiagram {
 
 !pragma teoz true
 
-    box "Device" MOBILE_COLOR
+    box "Device" DEVICE_COLOR
       participant "TEE / StrongBox" as StrongBox
       participant "Android OS" as AndroidOS
       box "App" PRIMAERSYSTEM_COLOR

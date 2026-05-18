@@ -15,6 +15,7 @@ hide stereotype
 !define LEI_COMPONENT_COLOR #E4E4F4
 !define PRIMAERSYSTEM_COLOR #Lavender
 !define PROVIDER_COLOR #EDFDEC
+!define DEVICE_COLOR #fefcff
 
 ' Participant colors
 <style>
@@ -40,9 +41,9 @@ sequenceDiagram {
 
 !pragma teoz true
 
-box "LEI" LEI_COLOR
-  participant Konnektor as "Konnektor or\nTI-Gateway" LEI_COMPONENT_COLOR
-  participant SMB as "SM(C)-B" LEI_COMPONENT_COLOR
+participant Konnektor as "Konnektor or\nTI-Gateway" LEI_COMPONENT_COLOR
+participant SMB as "SM(C)-B" LEI_COMPONENT_COLOR
+box "Device" DEVICE_COLOR
   box "Primärsystem" PRIMAERSYSTEM_COLOR
     participant Client as "ZETA Client" <<zeta>>
   end box

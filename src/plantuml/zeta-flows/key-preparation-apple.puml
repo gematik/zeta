@@ -13,7 +13,7 @@ hide stereotype
 !define LEI_COLOR #GhostWhite
 !define LEI_COMPONENT_COLOR #E4E4F4
 !define PRIMAERSYSTEM_COLOR #Lavender
-!define MOBILE_COLOR #fefcff
+!define DEVICE_COLOR #fefcff
 
 ' Participant colors
 <style>
@@ -34,7 +34,7 @@ sequenceDiagram {
 !pragma teoz true
 
 participant "Apple\nServices" as Apple
-box "Device" MOBILE_COLOR
+box "Device" DEVICE_COLOR
   participant "Secure Enclave" as SE LEI_COMPONENT_COLOR
   participant "OS (macOS, iOS, iPadOS)" as AppleOS LEI_COMPONENT_COLOR
   box "App" PRIMAERSYSTEM_COLOR

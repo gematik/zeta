@@ -15,7 +15,7 @@ hide stereotype
 !define LEI_COMPONENT_COLOR #E4E4F4
 !define PRIMAERSYSTEM_COLOR #Lavender
 !define PROVIDER_COLOR #EDFDEC
-!define MOBILE_COLOR #fefcff
+!define DEVICE_COLOR #fefcff
 
 ' Participant colors
 <style>
@@ -41,10 +41,12 @@ sequenceDiagram {
 
 !pragma teoz true
 
-box "Primärsystem" PRIMAERSYSTEM_COLOR
+box "Device" DEVICE_COLOR
   participant "TPM" as TPM LEI_COMPONENT_COLOR
   participant ZAS as "ZAS" <<zeta>>
-  participant Client as "ZETA Client" <<zeta>>
+  box "Primärsystem" PRIMAERSYSTEM_COLOR
+    participant Client as "ZETA Client" <<zeta>>
+  end box
 end box
 
 alt TPM and ZAS available
