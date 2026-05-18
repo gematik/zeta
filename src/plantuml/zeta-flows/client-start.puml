@@ -48,17 +48,14 @@ box "LEI" LEI_COLOR
   end box
 end box
 
-alt Hardware Attestation (TPM / SE)
+alt Windows / Linux (TPM)
     ZAS++
     ZAS -> ZAS: Startet als Hintergrunddienst\n (Root/Admin)
     
-    alt Windows / Linux (TPM)
-        ZAS -> ZAS: Messung des PS
-        ZAS -> TPM: TPM2_PCR_Extend(23, Messwerte)
-    else macOS (Secure Enclave)
-        ZAS -> ZAS: Initiale Ermittlung\n der Posture (SIP-Status,\n Gatekeeper, OS-Version,\n Secure Boot Policy)
-    end
+    ZAS -> ZAS: Messung des PS
+    ZAS -> TPM--: TPM2_PCR_Extend(23, Messwerte)
 end
+
 Client++
 Client -> Client: Start \n (User Space)
 

@@ -47,30 +47,15 @@ box "Primärsystem oder App (macOS, iOS, iPadOS)" PRIMAERSYSTEM_COLOR
   participant Client as "ZETA Client" <<zeta>>
 end box
 
+Client++
+Client --> Client: Installation (User Space)
+
 alt Hardware Attestation (Secure Enclave)
-    Client++
-
-
     Client -> AppleOS++: SecKeyCreateRandomKey\n(für PrK.Client.Sig, PuK.Client.Sig in SE)
     AppleOS -> SE++: Generiere Schlüssel (Client.Sig)
     SE --> AppleOS--: keyId (Referenz für PrK.Client.Sig)
     AppleOS --> Client: keyId (Referenz für PrK.Client.Sig)
-
-    Client -> AppleOS: DCAppAttestService.shared.generateKey()
-    AppleOS -> SE++: Generiere Schlüssel (AK)
-    SE --> AppleOS--: keyId (Referenz für PrK.AK.Sig)
-    AppleOS --> Client: keyId (Referenz für PrK.AK.Sig)
-
-    Client -> AppleOS: DCAppAttest.attestKey(keyId_AK, hash_puk_client_sig)
-    AppleOS -> SE++: Attestiere AK und binde hash_puk_client_sig
-    SE --> AppleOS--: Hardware-Signatur
-    AppleOS -> Apple++: Verifiziere & erstelle CBOR
-    Apple --> AppleOS--: apple_attestation_object
-    AppleOS --> Client--: apple_attestation_object
-
-
 else Software Attestation (Fallback)
-    Client --> Client: Installation (User Space)
     Client -> Client: Generiere PrK.Client.Sig,\nPuK.Client.Sig
     ' Client --> Client: Lokale Messung des PS (Dateihashes ermitteln)
     ' Client -> Client: Speichere Baseline-Hash lokal & sicher ab

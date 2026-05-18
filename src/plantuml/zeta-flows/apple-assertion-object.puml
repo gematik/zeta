@@ -33,8 +33,7 @@ sequenceDiagram {
 
 !pragma teoz true
 
-participant "Apple\nServices" as Apple
-box "Primärsystem oder App (macOS, iOS, iPadOS)" PRIMAERSYSTEM_COLOR
+box "Apple Device (macOS, iOS, iPadOS)" MOBILE_COLOR
   participant "Secure Enclave" as SE LEI_COMPONENT_COLOR
   participant "OS (iOS / iPadOS)" as AppleOS LEI_COMPONENT_COLOR
   participant "ZETA Client" as Client <<zeta>>
@@ -46,17 +45,11 @@ alt macOS, iOS, iPadOS
     Client++
     note left of Client: App nutzt native Apple-Frameworks.
     
-    Client -> AppleOS: DCAppAttestService.shared.generateKey()
-    AppleOS -> SE++: Generiere Schlüssel (AK)
-    SE --> AppleOS--: keyId (Referenz für PrK.AK.Sig)
-    AppleOS --> Client: keyId (Referenz für PrK.AK.Sig)
-
-    Client -> AppleOS: DCAppAttest.attestKey(keyId_AK, hash_puk_client_sig)
-    AppleOS -> SE++: Attestiere AK und binde hash_puk_client_sig
-    SE --> AppleOS--: Hardware-Signatur
-    AppleOS -> Apple++: Verifiziere & erstelle CBOR
-    Apple --> AppleOS--: apple_attestation_object
-    AppleOS --> Client--: apple_attestation_object
+    Client -> AppleOS++: DCAppAttest.generateAssertion(keyId_AK, hash_puk_client_sig)
+    AppleOS -> SE++: Signiere Hash
+    SE --> AppleOS--: ECDSA Signatur
+    AppleOS --> Client--: apple_assertion_object
+    Client--
 
 else Software Attestation (Fallback)
     note left of Client: Keine Hardware-Bindung.\nApp oder Client erstellt prk_client_sig selbst.
