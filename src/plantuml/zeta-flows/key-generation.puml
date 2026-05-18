@@ -40,15 +40,13 @@ sequenceDiagram {
 
 !pragma teoz true
 
-box "LEI" LEI_COLOR
-  box "Primärsystem" PRIMAERSYSTEM_COLOR
-    participant "TPM" as TPM LEI_COMPONENT_COLOR
-    participant ZAS as "ZAS" <<zeta>>
-    participant Client as "ZETA Client" <<zeta>>
-  end box
+box "Primärsystem" PRIMAERSYSTEM_COLOR
+  participant "TPM" as TPM LEI_COMPONENT_COLOR
+  participant ZAS as "ZAS" <<zeta>>
+  participant Client as "ZETA Client" <<zeta>>
 end box
 
-alt Hardware Attestation (TPM)
+alt TPM and ZAS available
 
     ZAS++    
     ZAS --> ZAS: Installation (Root/Admin rights)
@@ -71,7 +69,7 @@ alt Hardware Attestation (TPM)
     note right: PCR_23 Könnte belegt sein; muss vorher geprüft werden 
     TPM--
 
-else Software Attestation (Fallback)
+else Fallback
     Client --> Client: Installation (User Space)
     Client -> Client: Generiere PrK.Client.Sig,\nPuK.Client.Sig
 end

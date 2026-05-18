@@ -33,14 +33,13 @@ sequenceDiagram {
 
 !pragma teoz true
 
+box "Primärsystem" PRIMAERSYSTEM_COLOR
+  participant "TPM" as TPM LEI_COMPONENT_COLOR
+  participant ZAS as "ZAS (Admin)" <<zeta>>
+  participant Client as "ZETA Client (User)" <<zeta>>
+end box
+
 alt Windows / Linux (lokaler ZAS nötig)
-    box "LEI (Desktop / Server)" LEI_COLOR
-      participant "TPM" as TPM LEI_COMPONENT_COLOR
-      box "Primärsystem" PRIMAERSYSTEM_COLOR
-        participant ZAS as "ZAS (Admin)" <<zeta>>
-        participant Client as "ZETA Client (User)" <<zeta>>
-      end box
-    end box
 
     Client++
     ZAS++

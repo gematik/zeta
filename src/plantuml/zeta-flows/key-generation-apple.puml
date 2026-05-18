@@ -50,15 +50,13 @@ end box
 Client++
 Client --> Client: Installation (User Space)
 
-alt Hardware Attestation (Secure Enclave)
+alt Secure Enclave
     Client -> AppleOS++: SecKeyCreateRandomKey\n(für PrK.Client.Sig, PuK.Client.Sig in SE)
     AppleOS -> SE++: Generiere Schlüssel (Client.Sig)
     SE --> AppleOS--: keyId (Referenz für PrK.Client.Sig)
     AppleOS --> Client: keyId (Referenz für PrK.Client.Sig)
-else Software Attestation (Fallback)
+else Fallback
     Client -> Client: Generiere PrK.Client.Sig,\nPuK.Client.Sig
-    ' Client --> Client: Lokale Messung des PS (Dateihashes ermitteln)
-    ' Client -> Client: Speichere Baseline-Hash lokal & sicher ab
 end
 
 @enduml
