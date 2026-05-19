@@ -67,9 +67,7 @@ oneOf:
     required:
       - attestation_type
       - puk_client_sig
-      - puk_ak_sig
       - apple_attestation_object
-      - signed_hash_puk_client_sig
     description: >-
       Für iOS, iPadOS und macOS identisch. Die Apple App Attest API
       (DeviceCheck-Framework) produziert auf allen Plattformen dasselbe

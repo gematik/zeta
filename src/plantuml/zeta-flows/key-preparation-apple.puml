@@ -51,6 +51,7 @@ AppleOS -> SE++: Generiere Schlüssel (AK)
 SE --> AppleOS--: keyId (Referenz für PrK.AK.Sig)
 AppleOS --> Client: keyId (Referenz für PrK.AK.Sig)
 
+Client -> Client: Create hash_puk_client_sig\n(SHA256(PuK.Client.Sig))
 Client -> AppleOS: DCAppAttest.attestKey(keyId_AK, hash_puk_client_sig)
 AppleOS -> SE++: Attestiere AK und binde hash_puk_client_sig
 SE --> AppleOS--: Hardware-Signatur
