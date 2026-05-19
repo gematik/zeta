@@ -42,7 +42,7 @@ sequenceDiagram {
 !pragma teoz true
 
 box "Device" DEVICE_COLOR
-  participant "TPM / SE" as TPM LEI_COMPONENT_COLOR
+  participant "TPM" as TPM LEI_COMPONENT_COLOR
   participant ZAS as "ZAS" <<zeta>>
   box "Primärsystem" PRIMAERSYSTEM_COLOR
     participant Client as "ZETA Client" <<zeta>>
@@ -64,23 +64,17 @@ alt Kein ZETA Guard Attestation Token
         AuthS --> Client: 202 Accepted {CredentialBlob}
 
         Client -> ZAS++: Activate(CredentialBlob)
-        ZAS -> TPM++: TPM2_ActivateCredential(CredentialBlob)
+        ZAS -> TPM++: TPM2_ActivateCredential\n(CredentialBlob)
         TPM --> ZAS--: Secret
         ZAS --> Client--: Secret
 
         Client -> AuthS: POST /register/verify {Secret}
         AuthS -> AuthS: Secret korrekt? → PuK.Client.Sig hardware-gebunden ✓
 
-    else Hardware Attestation: iOS / iPadOS / macOS (Apple App Attest)
+    else Hardware Attestation: macOS (Apple App Attest)
         Client -> AuthS: POST /register\n{attestation_type="apple", PuK.AK.Sig, Apple_Attestation_Object,\nPuK.Client.Sig, signed_Hash_PuK.Client.Sig}
         AuthS -> AuthS: Validiere Apple_Attestation_Object & signed_Hash_PuK.Client.Sig
-        note right of AuthS: AuthS verifiziert Apple App Attest Root CA und prüft,\ndass PuK.AK.Sig mit x5c[0] des Objekts übereinstimmt.\nFormat identisch auf iOS, iPadOS und macOS.
-
-    else Hardware Attestation: Android (Keystore / TEE / StrongBox)
-        Client -> AuthS: POST /register\n{attestation_type="android", PuK.AK.Sig,\nAndroid_Key_Attestation_Certificate_Chain,\nPuK.Client.Sig, signed_Hash_PuK.Client.Sig\n[, play_integrity_token]}
-        AuthS -> AuthS: Validiere Zertifikatskette gegen Google Root CA
-        AuthS -> AuthS: Prüfe signed_Hash_PuK.Client.Sig & (optional) Play Integrity
-        note right of AuthS: PuK.AK.Sig muss mit dem Blatt-Zertifikat\nder Certificate Chain übereinstimmen.\nSicherheitsniveau: TrustedEnvironment oder StrongBox.
+        note right of AuthS: AuthS verifiziert Apple App Attest Root CA und prüft,\ndass PuK.AK.Sig mit x5c[0] des Objekts übereinstimmt.
 
     else Software Attestation (Legacy OIDC DCR)
         Client -> AuthS: POST /register\n{\n  "client_name": "myClient",\n  "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"],\n  "jwks": { "keys": [ PuK.Client.Sig ] },\n  "token_endpoint_auth_method": "private_key_jwt"\n}
