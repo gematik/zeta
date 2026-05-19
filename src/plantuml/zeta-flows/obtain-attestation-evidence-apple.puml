@@ -32,7 +32,7 @@ alt Apple AppAttest Attestation
   Client -> OS: Ermittle Posture\n(SIP, Gatekeeper, OS-Version, Secure Boot)
   OS --> Client: Posture-Daten (Klartext)
   Client -> Client: clientDataHash = Hash(Nonce + Posture-Daten)
-  Client -> OS: DCAppAttest.generateAssertion(\n  keyId: Handle_PrK.AK.Sig,\n  clientDataHash\n)
+  Client -> OS: DCAppAttest.generateAssertion(\nkeyId: Handle_PrK.AK.Sig,  clientDataHash)
   OS -> SE: Erstelle Hardware-Signatur über clientDataHash
   SE --> OS: Signatur + Authenticator Data (Counter)
   OS --> Client: dc_assertion\n(CBOR: Signatur + authenticatorData)
