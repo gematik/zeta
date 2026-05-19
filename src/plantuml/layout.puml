@@ -1,17 +1,40 @@
+autonumber "(00)"
 skinparam defaultFontSize 10
+skinparam defaultFontName Helvetica
 skinparam DefaultMonospacedFontName Courier
 skinparam lengthAdjust none
+skinparam sequenceReferenceBackgroundColor White
+skinparam SequenceReferenceFontSize 12
+skinparam sequenceMessageAlign left
+hide stereotype
 
-skinparam sequence {
-  ParticipantBorderColor black
-  ParticipantBackgroundColor white
-  ActorBorderColor black
-  ActorBackgroundColor white
-  ArrowColor black
-  LifeLineBorderColor black
-  LifeLineBackgroundColor #F0F0F0
-  NoteBorderColor black
-  NoteBackgroundColor #FEFECE
+' Box colors
+!define ZETA_GUARD_COLOR #FFF3E5
+!define LEI_COLOR #GhostWhite
+!define LEI_COMPONENT_COLOR #E4E4F4
+!define PRIMAERSYSTEM_COLOR #Lavender
+!define PROVIDER_COLOR #EDFDEC
+!define DEVICE_COLOR #fefcff
+
+' Participant colors
+<style>
+sequenceDiagram {
+  participant {
+    .zeta {
+      BackgroundColor #FFE6CC
+      LineColor #D79B00
+    }
+    .provider {
+      BackgroundColor #D5E8D4
+      LineColor #82B366
+    }
+  }
+  lifeline {
+    BackgroundColor White
+    LineColor Black
+  }
 }
+</style>
 
 !pragma teoz true
+

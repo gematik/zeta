@@ -1,37 +1,6 @@
 @startuml "key-preparation"
-autonumber "(00)"
-skinparam defaultFontSize 10
-skinparam defaultFontName Helvetica
-skinparam DefaultMonospacedFontName Courier
-skinparam lengthAdjust none
-skinparam sequenceReferenceBackgroundColor White
-skinparam SequenceReferenceFontSize 12
-skinparam sequenceMessageAlign left
-hide stereotype
+!include ../layout.puml
 
-' Box colors
-!define LEI_COLOR #GhostWhite
-!define LEI_COMPONENT_COLOR #E4E4F4
-!define PRIMAERSYSTEM_COLOR #Lavender
-!define DEVICE_COLOR #fefcff
-
-' Participant colors
-<style>
-sequenceDiagram {
-  participant {
-    .zeta {
-      BackgroundColor #FFE6CC
-      LineColor #D79B00
-    }
-  }
-  lifeline {
-    BackgroundColor White
-    LineColor Black
-  }
-}
-</style>
-
-!pragma teoz true
 
 participant "Apple\nServices" as Apple
 box "Device" DEVICE_COLOR
