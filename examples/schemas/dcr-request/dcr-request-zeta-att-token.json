@@ -1,0 +1,18 @@
+{
+  "$comment": "DCR POST /register via ZETA Guard Attestation Token. Setzt eine vorherige Hardware-Attestierung voraus. PuK.AK.Sig und verifizierte Plattform-Claims sind im JWT enthalten.",
+  "attestation_type": "zeta_attestation_token",
+  "client_name": "ZETA Client App",
+  "token_endpoint_auth_method": "private_key_jwt",
+  "grant_types": [
+    "urn:ietf:params:oauth:grant-type:token-exchange",
+    "refresh_token"
+  ],
+  "PuK.Client.Sig": {
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+    "y": "eZXwxvO1hvCY0KucrPfKo7yAyMT6Ajc3N7OkAB6VYy8"
+  },
+  "zeta_guard_attestation_token": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImF0K2p3dCIsImtpZCI6InpldGEtZ3VhcmQta2V5LTAxIn0.eyJpc3MiOiJodHRwczovL3pldGEtZ3VhcmQuZXhhbXBsZS5kZSIsInN1YiI6ImNsaWVudC1pbnN0YW5jZS11dWlkLTEyMzQiLCJpYXQiOjE3MTU0MjYwMDAsImV4cCI6MTcxNTQyNjMwMCwianRpIjoiNzZhNzE1YzYtMDNlMy00ZGVkLTliNTgtMmUzNTliMmQ0NTlkIiwiYXR0ZXN0YXRpb25fdHlwZSI6InRwbSIsInBsYXRmb3JtIjoid2luZG93cyIsIlB1Sy5BSy5TaWciOiJBVG9BQVFBTEVBQVVBSFFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQT09IiwicGNycyI6eyI3IjoiM2Q0NThjZmU1NWNjMDNlYTFmNDQzZjE1NjJiZWVjOGRmNTFjNzVlMTRhOWZjZjlhNzIzNGExM2YxOThlNzk2OSIsIjIzIjoiMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMCJ9fQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+  "signed_Hash_PuK.Client.Sig": "MEQCIBXampleFastPathSignatureHashBase64urlEncodedValueAABBCCDDEEFFGGHHIIJJKKLLMMNNOOPPQQRRSSTTUUVVWWXXYYZZAiAz1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+}

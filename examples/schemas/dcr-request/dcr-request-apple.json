@@ -1,0 +1,16 @@
+{
+  "$comment": "DCR POST /register – Apple Hardware Attestation iOS/iPadOS/macOS (oneOf variant 2). PuK.Client.Sig ist der zu registrierende ECDSA-Schlüssel; Apple_Attestation_Object ist das CBOR-kodierte Ergebnis der App Attest API.",
+  "attestation_type": "apple",
+  "client_name": "ZETA Client App (Apple)",
+  "token_endpoint_auth_method": "private_key_jwt",
+  "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"],
+  "PuK.Client.Sig": {
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "WKn-ZIGevcwGIyyrzFoZNBdaq9_n_kRy3g5LteDfm3s",
+    "y": "y77t-RvAHRKTsSGdIYESfh-nN6Nekm9b_SnpY92EI7I"
+  },
+  "PuK.AK.Sig": "BHVhPExLjcKJkYNNOmMHD3Y0pBnhXkUdMaM7G3qZKhZJPQWFZtLLW5uXUFfg2zJDQvCe0VFbUhYPxHQdAB3aBQ==",
+  "Apple_Attestation_Object": "o2NmbXRvYXBwbGUtYXBwYXR0ZXN0Z2F0dFN0bXSiY3g1Y4JZAu8wggLrMIICcaADAgECAgYBkBrd8KAwCgYIKoZIzj0EAwIwTzEjMCEGA1UEAwwaQXBwbGUgQXBwIEF0dGVzdGF0aW9uIENBMTETMBEGA1UEChMKQXBwbGUgSW5jLjETMBEGA1UECBMKCaliZm9ybmlhMB4XDTIzMDUxMDE0NTIwMFoXDTIzMDUxMzE0NTIwMFowgYExgYAGCgMCBAUGBwECAwQxLTArBgkqhkiG9w0BCQIxHhMcY29tLmV4YW1wbGUubXlhcHAuMTIzNDU2Nzg5GDAYBgNVBAMMEUFwcCBBdHRlc3QgUHVia2V5MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEWKn+ZIGevcwGIyyrzFoZNBdaq9/n/kRy3g5LteDfm3sy77t+RvAHRKTsSGdIYESfh+nN6Nekm9b/SnpY92EI7Kg==",
+  "signed_Hash_PuK.Client.Sig": "MEUCIQDExampleAppleSignatureHashBase64urlEncodedValueAABBCCDDEEFFGGHHIIJJKKLLMMNNOOPPQQRRSSTTUUVVWWXXYYZZAiEA1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+}

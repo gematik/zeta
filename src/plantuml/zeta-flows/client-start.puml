@@ -15,6 +15,7 @@ hide stereotype
 !define LEI_COMPONENT_COLOR #E4E4F4
 !define PRIMAERSYSTEM_COLOR #Lavender
 !define PROVIDER_COLOR #EDFDEC
+!define DEVICE_COLOR #fefcff
 
 ' Participant colors
 <style>
@@ -40,26 +41,27 @@ sequenceDiagram {
 
 !pragma teoz true
 
-box "LEI" LEI_COLOR
-  participant "TPM / SE" as TPM LEI_COMPONENT_COLOR
+box "Device" DEVICE_COLOR
+  participant "TPM" as TPM LEI_COMPONENT_COLOR
+  participant ZAS as "ZAS" <<zeta>>
   box "Primärsystem" PRIMAERSYSTEM_COLOR
-    participant ZAS as "ZAS" <<zeta>>
     participant Client as "ZETA Client" <<zeta>>
   end box
 end box
 
-alt Hardware Attestation (TPM / SE)
-    ZAS++
-    ZAS -> ZAS: Startet als Hintergrunddienst\n (Root/Admin)
-    
-    alt Windows / Linux (TPM)
-        ZAS --> ZAS: Messung des PS
-        ZAS -> TPM: TPM2_PCR_Extend(23, Messwerte)
-    else macOS (Secure Enclave)
-        ZAS --> ZAS: Initiale Ermittlung\n der Posture (SIP-Status,\n Gatekeeper, OS-Version,\n Secure Boot Policy)
-    end
+TPM++
+alt Windows / Linux (TPM)
+  ZAS++
+  ZAS -> ZAS: Startet als Hintergrunddienst\n (Root/Admin)
+  ZAS -> ZAS: Messung des PS
+  ZAS -> TPM: TPM2_PCR_Extend(23, Messwerte)
+  ZAS -> ZAS: Monitoring des PS Prozesses fortlaufend
 end
+
 Client++
 Client -> Client: Start \n (User Space)
+ZAS -> ZAS: PS Start erkannt
+ZAS -> ZAS: Messung des PS
+ZAS -> TPM: TPM2_PCR_Extend(23, Messwerte)
 
 @enduml
