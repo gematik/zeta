@@ -50,14 +50,17 @@ box "Device" DEVICE_COLOR
 end box
 
 alt Windows / Linux (TPM)
-    ZAS++
-    ZAS -> ZAS: Startet als Hintergrunddienst\n (Root/Admin)
-    
-    ZAS -> ZAS: Messung des PS
-    ZAS -> TPM--: TPM2_PCR_Extend(23, Messwerte)
+  ZAS++
+  ZAS -> ZAS: Startet als Hintergrunddienst\n (Root/Admin)
+  ZAS -> ZAS: Messung des PS
+  ZAS -> TPM: TPM2_PCR_Extend(23, Messwerte)
+  ZAS -> ZAS: Monitoring des PS Prozesses fortlaufend
 end
 
 Client++
 Client -> Client: Start \n (User Space)
+ZAS -> ZAS: PS Start erkannt
+ZAS -> ZAS: Messung des PS
+ZAS -> TPM: TPM2_PCR_Extend(23, Messwerte)
 
 @enduml
