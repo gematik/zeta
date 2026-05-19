@@ -1,0 +1,44 @@
+@startuml "obtain-attestation-evidence"
+
+!include ../puml-layout.txt
+
+
+' title Obtain Attestation Evidence
+
+!pragma teoz true
+
+box "Device" DEVICE_COLOR
+  participant "Secure Enclave" as SE LEI_COMPONENT_COLOR
+  participant OS as "OS (macOS)" <<zeta>>
+  box "Primärsystem" PRIMAERSYSTEM_COLOR
+    participant Client as "ZETA Client" <<zeta>>
+  end box
+end box
+
+box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
+  box "ZETA Guard" ZETA_GUARD_COLOR
+    participant AuthS as "PDP\nAuthorization Server" <<zeta>>
+  end box
+end box
+
+
+Client++
+OS++
+SE++
+Client -> AuthS ++ : GET /nonce
+AuthS --> Client -- : Nonce
+
+alt Apple AppAttest Attestation
+  Client -> OS: Ermittle Posture\n(SIP, Gatekeeper, OS-Version, Secure Boot)
+  OS --> Client: Posture-Daten (Klartext)
+  Client -> Client: clientDataHash = Hash(Nonce + Posture-Daten)
+  Client -> OS: DCAppAttest.generateAssertion(\n  keyId: Handle_PrK.AK.Sig,\n  clientDataHash\n)
+  OS -> SE: Erstelle Hardware-Signatur über clientDataHash
+  SE --> OS: Signatur + Authenticator Data (Counter)
+  OS --> Client: dc_assertion\n(CBOR: Signatur + authenticatorData)
+  Client -> Client: Generiere client-statement\n(Evidence = dc_assertion + Posture-Daten im Klartext)
+else Software Attestation (Fallback)
+  Client -> Client: Generiere client-statement\n(OS und PS Daten ungesichert)
+end
+
+@enduml
