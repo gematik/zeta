@@ -39,11 +39,9 @@ sequenceDiagram {
 !pragma teoz true
 
 Actor User
-box "LEI" LEI_COLOR
-  box "Primärsystem" PRIMAERSYSTEM_COLOR
-    participant FC as "Fach-Client" <<provider>>
-    participant Client as "ZETA Client" <<zeta>>
-  end box
+box "Primärsystem" PRIMAERSYSTEM_COLOR
+  participant FC as "Fach-Client" <<provider>>
+  participant Client as "ZETA Client" <<zeta>>
 end box
 
 box "Anbieter" PROVIDER_COLOR
@@ -65,12 +63,11 @@ alt ZETA/ASL terminates at PEP
   HP --> Client
   Client -> HP: POST /ASL (outer request)\n\
     Body (inner request): GET /resource\n\
-      Authorization: DPoP ... (Accesss token)\n\
-      DPoP: ... (DPoP token)
+      Authorization: DPoP <Access Token for RS> DPoP: <DPoP Proof for RS>
   HP -> HP: Terminate ZETA/ASL
   HP -> HP: Verify Access Token and DPoP Proof for RS
   HP -> RS ++ : forward GET /resource
-  RS -> RS: provide resource access\nand create Response
+  RS -> RS: Create Response
   RS --> HP -- : 200 OK, Response
   HP -> HP: create ZETA/ASL encrypted Response
 else ZETA/ASL terminates at Resource Server
@@ -78,21 +75,19 @@ else ZETA/ASL terminates at Resource Server
   Client -> HP : ZETA/ASL Verbindungsaufbau
   HP --> Client
   Client -> HP: POST /ASL (outer request)\n\
-    Authorization: DPoP <Access token for ZETA/ASL>\n\
-    DPoP: <DPoP token for ZETA/ASL>\n\
+    Authorization: DPoP <Access Token for ZETA/ASL> DPoP: <DPoP Proof for ZETA/ASL>\n\
     Body (ASL encrypted inner request): GET /resource\n\
-      Authorization: DPoP <Access token for RS>\n\
-      DPoP: <DPoP token for RS>
+      Authorization: DPoP <Access Token for RS> DPoP: <DPoP Proof for RS>
   HP -> HP: verify Access Token and DPoP Proof for ZETA/ASL
   HP -> RS ++: forward POST /ASL
   RS -> RS: Terminate ZETA/ASL
   RS -> RS: Verify Access Token and\nDPoP Proof for RS
-  RS -> RS: provide resource access\nand create ZETA/ASL Response
+  RS -> RS: Create ZETA/ASL encrypted Response
   RS --> HP -- : 200 OK, ZETA/ASL encrypted Response
 end
 HP --> Client -- : 200 OK, ZETA/ASL encrypted Response
 Client -> Client: decrypt Response
-Client --> FC -- : 200 OK, Resource
-FC --> User -- : Resource
+Client --> FC -- : 200 OK, Response
+FC --> User -- : Response
 
 @enduml

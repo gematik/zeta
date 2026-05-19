@@ -39,11 +39,9 @@ sequenceDiagram {
 !pragma teoz true
 
 Actor User
-box "LEI" LEI_COLOR
-  box "Primärsystem" PRIMAERSYSTEM_COLOR
-    participant FC as "Fach-Client" <<provider>>
-    participant Client as "ZETA Client" <<zeta>>
-  end box
+box "Primärsystem" PRIMAERSYSTEM_COLOR
+  participant FC as "Fach-Client" <<provider>>
+  participant Client as "ZETA Client" <<zeta>>
 end box
 
 box "Anbieter" PROVIDER_COLOR
@@ -66,11 +64,11 @@ Client -> HP++: GET /resource\n\
 HP -> HP: verify Access Token and DPoP Proof
 HP -> RS ++ : forward GET /resource\n\
 with header and\nPEP header as JSON
-RS -> RS: provide\nresource\naccess
-RS --> HP -- : 200 OK, Resource
-HP --> Client -- : 200 OK, Resource
+RS -> RS: Create Response
+RS --> HP -- : 200 OK, Response
+HP --> Client -- : 200 OK, Response
 
-Client --> FC -- : 200 OK, Resource
-FC --> User -- : Resource
+Client --> FC -- : 200 OK, Response
+FC --> User -- : Response
 
 @enduml
