@@ -1,0 +1,91 @@
+@startuml "zeta-overview-attestation-decision-tree"
+!include ../puml-layout.txt
+
+!pragma teoz true
+
+title Überblick Attestierungsabläufe nach Betriebssystem
+
+box "Device" DEVICE_COLOR
+  box "Primärsystem" PRIMAERSYSTEM_COLOR
+    participant Client as "ZETA Client" <<zeta>>
+  end box
+  participant ZAS as "ZETA Attestation Service" <<zeta>>
+end box
+
+box "ZETA Guard" ZETA_GUARD_COLOR
+  participant AuthS as "Authorization Server" <<zeta>>
+end box
+
+== Einstieg ==
+
+Client -> Client: Installation & Start\nSchlüsselgenerierung
+
+== Wahl des Betriebssystems ==
+
+alt Windows / Linux
+
+    group Windows / Linux Pfad
+
+        alt TPM + ZAS verfügbar
+            Client -> ZAS++: Initialisierung
+            ZAS -> ZAS: TPM Setup\n(SRK, AK, PCR)
+            ZAS -->> Client--: Schlüssel + Handles
+
+            Client -> ZAS++: GetEvidence (Nonce)
+            ZAS -> ZAS: TPM Quote + Event Log
+            ZAS -->> Client--: Evidence
+
+            Client -> AuthS++: Registrierung (TPM Attestation)
+            AuthS -> AuthS: Verifiziere TPM Nachweis
+
+        else Software Fallback
+
+            Client -> Client: Software-Schlüsselpaar
+            Client -> Client: Posture-Erhebung
+
+            Client -> AuthS++: Registrierung (Software)
+            AuthS -> AuthS: Basisvalidierung
+
+        end
+
+    end group
+
+else macOS
+
+    group macOS Pfad
+
+        alt Secure Enclave verfügbar
+
+            Client -> Client: Schlüssel in Secure Enclave
+            Client -> Client: App Attest Assertion\n(Nonce + Posture)
+
+            Client -> AuthS++: Registrierung (Apple Attestation)
+            AuthS -> AuthS: Validiere Attestation Object
+
+        else Software Fallback
+
+            Client -> Client: Software-Schlüsselpaar
+            Client -> Client: Posture-Erhebung
+
+            Client -> AuthS++: Registrierung (Software)
+            AuthS -> AuthS: Basisvalidierung
+
+        end
+
+    end group
+
+end
+
+== Gemeinsame Schritte ==
+
+Client -> AuthS++: Token Exchange\n(client_assertion + Evidence)
+
+alt Hardware Attestation
+    AuthS -> AuthS: Erweiterte Prüfung\n(TPM / SE)
+    AuthS -->> Client--: Access Token + zg_att_token
+else Software Attestation
+    AuthS -> AuthS: Basisprüfung
+    AuthS -->> Client--: Access Token
+end
+
+@enduml
