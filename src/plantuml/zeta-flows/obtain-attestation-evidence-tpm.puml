@@ -8,7 +8,7 @@
 !pragma teoz true
 
 box "Device" DEVICE_COLOR
-  participant "TPM / SE" as TPM LEI_COMPONENT_COLOR
+  participant "TPM" as TPM LEI_COMPONENT_COLOR
   participant ZAS as "ZAS" <<zeta>>
   box "Primärsystem" PRIMAERSYSTEM_COLOR
     participant Client as "ZETA Client" <<zeta>>
