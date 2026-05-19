@@ -4,76 +4,21 @@ description: Payload Schema für den DCR POST /register Body
 type: object
 
 oneOf:
-
   # -----------------------------------------------------------------
-  # 1. TPM Hardware Attestation
+  # 1. TPM Hardware Attestation (Windows / Linux)
   # -----------------------------------------------------------------
   - title: TPM Attestation
     required:
       - attestation_type
-      - PuK.Client.Sig
-      - PuK.TPM.EK
-      - C.TPM.EK
-      - C.Client.Att
-      - signed_Hash_PuK.Client.Sig
+      - puk_client_sig
+      - puk_ek_enc
+      - c_ek_enc
+      - puk_ak_sig
+      - signed_hash_puk_client_sig
     properties:
       attestation_type:
         type: string
         const: tpm
-      PuK.Client.Sig: { $ref: "#/definitions/JWK" }
-      PuK.TPM.EK: { $ref: "#/definitions/JWK" }
-      C.TPM.EK: { type: string }
-      C.Client.Att: { type: string }
-      signed_Hash_PuK.Client.Sig: { type: string }
-
-  # -----------------------------------------------------------------
-  # 2. macOS Hardware Attestation
-  # -----------------------------------------------------------------
-  - title: macOS Attestation
-    required:
-      - attestation_type
-      - PuK.Client.Sig
-      - C.Client.Att
-      - Apple_Attestation_Object
-      - signed_Hash_PuK.Client.Sig
-    properties:
-      attestation_type:
-        type: string
-        const: macos
-      PuK.Client.Sig: { $ref: "#/definitions/JWK" }
-      C.Client.Att: { type: string }
-      Apple_Attestation_Object: { type: string }
-      signed_Hash_PuK.Client.Sig: { type: string }
-
-  # -----------------------------------------------------------------
-  # 3. Fast-Path (ZETA Guard Attestation Token)
-  # -----------------------------------------------------------------
-  - title: Fast-Path Attestation
-    required:
-      - attestation_type
-      - PuK.Client.Sig
-      - zeta_guard_attestation_token
-      - signed_Hash_PuK.Client.Sig
-    properties:
-      attestation_type:
-        type: string
-        const: fast_path
-      PuK.Client.Sig: { $ref: "#/definitions/JWK" }
-      zeta_guard_attestation_token: { type: string }
-      signed_Hash_PuK.Client.Sig: { type: string }
-
-  # -----------------------------------------------------------------
-  # 4. Legacy / Software Attestation
-  # -----------------------------------------------------------------
-  - title: Legacy / Software Attestation
-    required:
-      - client_name
-      - jwks
-      - token_endpoint_auth_method
-    properties:
-      attestation_type:
-        type: string
-        enum: [ software ]
       client_name: { type: string }
       token_endpoint_auth_method: { type: string }
       grant_types:
@@ -84,11 +29,214 @@ oneOf:
         properties:
           keys:
             type: array
-            items: { $ref: "#/definitions/JWK" }
-        required: [ keys ]
+            items: { $ref: "#/definitions/jwk" }
+        required: [keys]
+      puk_client_sig:
+        $ref: "#/definitions/jwk"
+        description: >-
+          Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
+      puk_ek_enc:
+        $ref: "#/definitions/jwk"
+        description: >-
+          Öffentlicher Endorsement Key (EK) des TPM (RSA oder ECC).
+          Wird zur MakeCredential-Operation verwendet.
+      c_ek_enc:
+        type: string
+        description: >-
+          Zertifikat des Endorsement Key (EK) des TPM.
+      puk_ak_sig:
+        type: string
+        description: >-
+          Öffentlicher Attestation Key (AK) des TPM (TPM2B_PUBLIC Struktur).
+          Wird vom AuthS zur Verifikation der TPM-Quote und von
+          signed_hash_puk_client_sig verwendet.
+      signed_hash_puk_client_sig:
+        type: string
+        description: >-
+          Signatur des SHA-256-Hashes von puk_client_sig, erstellt mit
+          dem TPM Attestation Key (puk_ak_sig). Base64url-kodiert.
+
+  # -----------------------------------------------------------------
+  # 2. Apple Hardware Attestation (iOS, iPadOS & macOS)
+  # -----------------------------------------------------------------
+  # Die Apple App Attest API (DeviceCheck-Framework) ist auf iOS,
+  # iPadOS und macOS identisch: gleiches CBOR-Format, gleiche Felder
+  # (attStmt mit x5c + receipt, authData) und gleiches Key-Binding.
+  # -----------------------------------------------------------------
+  - title: Apple Attestation
+    required:
+      - attestation_type
+      - puk_client_sig
+      - apple_attestation_object
+    description: >-
+      Für iOS, iPadOS und macOS identisch. Die Apple App Attest API
+      (DeviceCheck-Framework) produziert auf allen Plattformen dasselbe
+      Objekt-Format und Key-Binding-Protokoll.
+    properties:
+      attestation_type:
+        type: string
+        const: apple
+      client_name: { type: string }
+      token_endpoint_auth_method: { type: string }
+      grant_types:
+        type: array
+        items: { type: string }
+      jwks:
+        type: object
+        properties:
+          keys:
+            type: array
+            items: { $ref: "#/definitions/jwk" }
+        required: [keys]
+      puk_client_sig:
+        $ref: "#/definitions/jwk"
+        description: >-
+          Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
+      apple_attestation_object:
+        type: string
+        description: >-
+          CBOR-kodiertes Attestation-Objekt der Apple App Attest API
+          (fmt: "apple-appattest"). Enthält attStmt (x5c-Zertifikatskette inkl.
+          puk_ak_sig + receipt) sowie authData (rpIdHash, counter, credentialId).
+          Base64-kodiert.
+      apple_assertion_object:
+        type: string
+        description: >-
+          CBOR-kodiertes Assertion-Objekt der Apple App Attest API 
+          (erzeugt via generateAssertion über den SHA-256-Hash von puk_client_sig). 
+          Base64-kodiert.
+
+  # -----------------------------------------------------------------
+  # 3. Android Hardware Attestation
+  # -----------------------------------------------------------------
+  # Nutzt die Android Keystore Key Attestation (TEE / StrongBox).
+  # Der AuthS validiert die Zertifikatskette gegen die Google Hardware
+  # Attestation Root CA. Optional kann ein Play Integrity Token zur
+  # zusätzlichen App-Integritätsprüfung mitgeliefert werden.
+  # -----------------------------------------------------------------
+  - title: Android Attestation
+    required:
+      - attestation_type
+      - puk_client_sig
+      - puk_ak_sig
+      - android_key_attestation_certificate_chain
+      - signed_hash_puk_client_sig
+    properties:
+      attestation_type:
+        type: string
+        const: android
+      client_name: { type: string }
+      token_endpoint_auth_method: { type: string }
+      grant_types:
+        type: array
+        items: { type: string }
+      jwks:
+        type: object
+        properties:
+          keys:
+            type: array
+            items: { $ref: "#/definitions/jwk" }
+        required: [keys]
+      puk_client_sig:
+        $ref: "#/definitions/jwk"
+        description: >-
+          Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
+      android_key_attestation_certificate_chain:
+        type: array
+        description: >-
+          X.509-Zertifikatskette der Android Key Attestation, beginnend
+          mit dem Blatt-Zertifikat des attestierten Schlüssels (C.AK.Sig) bis zur
+          Google Hardware Attestation Root CA. Jedes Zertifikat ist
+          Base64-kodiert (DER-Format).
+        items:
+          type: string
+          description: Base64-kodiertes DER X.509-Zertifikat.
+        minItems: 3
+      signed_hash_puk_client_sig:
+        type: string
+        description: >-
+          Signatur des SHA-256-Hashes von puk_client_sig, erstellt mit
+          dem Android-Keystore-Schlüssel (puk_ak_sig). Base64url-kodiert.
+      play_integrity_token:
+        type: string
+        description: >-
+          Optionales Token der Google Play Integrity API (Base64-kodiert).
+          Ermöglicht dem AuthS die zusätzliche App-Integritätsprüfung
+          (meets_basic_integrity, meets_device_integrity).
+
+  # -----------------------------------------------------------------
+  # 4. ZETA Attestation Token (Fast-Path)
+  # -----------------------------------------------------------------
+  # Wird verwendet, wenn bereits ein gültiger ZETA Guard Attestation
+  # Token vorliegt (aus einer früheren Hardware-Attestierung).
+  # Der AuthS prüft Token-Signatur und extrahiert puk_ak_sig aus dem
+  # Token, um signed_hash_puk_client_sig zu verifizieren.
+  # -----------------------------------------------------------------
+  - title: ZETA Attestation Token
+    required:
+      - attestation_type
+      - puk_client_sig
+      - zeta_guard_attestation_token
+      - signed_hash_puk_client_sig
+    properties:
+      attestation_type:
+        type: string
+        const: zeta_attestation_token
+      client_name: { type: string }
+      token_endpoint_auth_method: { type: string }
+      grant_types:
+        type: array
+        items: { type: string }
+      jwks:
+        type: object
+        properties:
+          keys:
+            type: array
+            items: { $ref: "#/definitions/jwk" }
+        required: [keys]
+      puk_client_sig:
+        $ref: "#/definitions/jwk"
+        description: >-
+          Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
+      zeta_guard_attestation_token:
+        type: string
+        description: >-
+          Signiertes JWT, ausgestellt vom ZETA Guard nach erfolgreicher
+          Hardware-Attestierung. Enthält puk_ak_sig und verifizierte
+          Plattform-Claims. Siehe zeta-attestation-token.yaml.
+      signed_hash_puk_client_sig:
+        type: string
+        description: >-
+          Signatur des SHA-256-Hashes von puk_client_sig, erstellt mit
+          dem im Token enthaltenen puk_ak_sig. Base64url-kodiert.
+
+  # -----------------------------------------------------------------
+  # 5. Legacy / Software Attestation
+  # -----------------------------------------------------------------
+  - title: Legacy / Software Attestation
+    required:
+      - client_name
+      - jwks
+      - token_endpoint_auth_method
+    properties:
+      attestation_type:
+        type: string
+        enum: [software]
+      client_name: { type: string }
+      token_endpoint_auth_method: { type: string }
+      grant_types:
+        type: array
+        items: { type: string }
+      jwks:
+        type: object
+        properties:
+          keys:
+            type: array
+            items: { $ref: "#/definitions/jwk" }
+        required: [keys]
 
 definitions:
-  JWK:
+  jwk:
     type: object
     properties:
       kty: { type: string }
@@ -97,4 +245,4 @@ definitions:
       y: { type: string }
       n: { type: string }
       e: { type: string }
-    required: [ kty ]
+    required: [kty]

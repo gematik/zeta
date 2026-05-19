@@ -15,6 +15,7 @@ hide stereotype
 !define LEI_COMPONENT_COLOR #E4E4F4
 !define PRIMAERSYSTEM_COLOR #Lavender
 !define PROVIDER_COLOR #EDFDEC
+!define DEVICE_COLOR #fefcff
 
 ' Participant colors
 <style>
@@ -40,10 +41,10 @@ sequenceDiagram {
 
 !pragma teoz true
 
-box "LEI" #GhostWhite
-  participant "TPM / SE" as TPM LEI_COMPONENT_COLOR
+box "Device" DEVICE_COLOR
+  participant "TPM" as TPM LEI_COMPONENT_COLOR
+  participant ZAS as "ZAS" <<zeta>>
   box "Primärsystem" PRIMAERSYSTEM_COLOR
-    participant ZAS as "ZAS" <<zeta>>
     participant Client as "ZETA Client" <<zeta>>
   end box
 end box
@@ -63,27 +64,27 @@ alt Kein ZETA Guard Attestation Token
         AuthS --> Client: 202 Accepted {CredentialBlob}
 
         Client -> ZAS++: Activate(CredentialBlob)
-        ZAS -> TPM++: TPM2_ActivateCredential(CredentialBlob)
+        ZAS -> TPM++: TPM2_ActivateCredential\n(CredentialBlob)
         TPM --> ZAS--: Secret
         ZAS --> Client--: Secret
 
         Client -> AuthS: POST /register/verify {Secret}
         AuthS -> AuthS: Secret korrekt? → PuK.Client.Sig hardware-gebunden ✓
 
-    else Hardware Attestation: macOS (Secure Enclave)
-        Client -> AuthS: POST /register\n{attestation_type="macos", PuK.AK.Sig, Apple_Attestation_Object,\nPuK.Client.Sig, signed_Hash_PuK.Client.Sig}
+    else Hardware Attestation: macOS (Apple App Attest)
+        Client -> AuthS: POST /register\n{attestation_type="apple", PuK.AK.Sig, Apple_Attestation_Object,\nPuK.Client.Sig, signed_Hash_PuK.Client.Sig}
         AuthS -> AuthS: Validiere Apple_Attestation_Object & signed_Hash_PuK.Client.Sig
-        note right of AuthS: AuthS verifiziert Apple Root CA und stellt sicher,\ndass PuK.AK.Sig identisch mit x5c[0] im Objekt ist.
+        note right of AuthS: AuthS verifiziert Apple App Attest Root CA und prüft,\ndass PuK.AK.Sig mit x5c[0] des Objekts übereinstimmt.
 
     else Software Attestation (Legacy OIDC DCR)
         Client -> AuthS: POST /register\n{\n  "client_name": "myClient",\n  "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"],\n  "jwks": { "keys": [ PuK.Client.Sig ] },\n  "token_endpoint_auth_method": "private_key_jwt"\n}
-        AuthS -> AuthS: Store Client Placeholder\n(state: pending_attestation)
+        AuthS -> AuthS: Store Client Placeholder (state: pending_attestation)
     end
 
-else ZETA Guard Attestation Token vorhanden (Fast-Path)
-    Client -> AuthS: POST /register\n{attestation_type="fast_path", ZETA Guard Attestation Token,\nPuK.Client.Sig, signed_Hash_PuK.Client.Sig}
+else ZETA Attestation Token vorhanden
+    Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token",\nzeta_guard_attestation_token, PuK.Client.Sig,\nsigned_Hash_PuK.Client.Sig}
     AuthS -> AuthS: Prüfe Token-Signatur & Vertrauensstellung
-    AuthS -> AuthS: Prüfe signed_Hash_PuK.Client.Sig mit dem\nPuK.AK.Sig aus dem Token
+    AuthS -> AuthS: Extrahiere PuK.AK.Sig aus Token, prüfe signed_Hash_PuK.Client.Sig
 end
 
 AuthS --> Client--: 201 Created {client_id}

@@ -1,0 +1,21 @@
+{
+  "$comment": "DCR POST /register – Android Hardware Attestation (oneOf variant 3). PuK.AK.Sig ist der im TEE/StrongBox erzeugte Attestierungsschlüssel; Android_Key_Attestation_Certificate_Chain enthält die X.509-Kette bis zur Google Root CA.",
+  "attestation_type": "android",
+  "client_name": "ZETA Client App (Android)",
+  "token_endpoint_auth_method": "private_key_jwt",
+  "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"],
+  "PuK.Client.Sig": {
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "f83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU",
+    "y": "x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0"
+  },
+  "PuK.AK.Sig": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEf83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEUx_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0==",
+  "Android_Key_Attestation_Certificate_Chain": [
+    "MIIBvTCCAWOgAwIBAgIRAMkupyXp4HJVP1mYvkqFi2kwCgYIKoZIzj0EAwIwKTEnMCUGA1UEAxMeR29vZ2xlIEhhcmR3YXJlIEF0dGVzdGF0aW9uIENBMB4XDTIzMDUxMDEyMDAwMFoXDTIzMDUxNzEyMDAwMFowLzEtMCsGA1UEAxMkZGU6Z2VtYXRpazpleGFtcGxlYXBwLjEyMzQ1Njc4OTAxMjM0NTYwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASQg9fh...",
+    "MIICxjCCAa6gAwIBAgIRAMSm9hh8kJ1iCCBMBvjvJYYwDQYJKoZIhvcNAQELBQAwKTEnMCUGA1UEAxMeR29vZ2xlIEhhcmR3YXJlIEF0dGVzdGF0aW9uIENBMB4XDTIzMDMwMTAwMDAwMFoXDTI0MDMwMTAwMDAwMFowKTEnMCUGA1UEAxMeR29vZ2xlIEhhcmR3YXJlIEF0dGVzdGF0aW9uIENBMIIBIjAN...",
+    "MIICiTCCAXGgAwIBAgIRAKhivWGMHAEEQA49XgGb5XMwDQYJKoZIhvcNAQELBQAwITEfMB0GA1UEAxMWR29vZ2xlIFJvb3QgQ0EgUHVibGljMB4XDTIzMDEwMTAwMDAwMFoXDTI4MDEwMTAwMDAwMFowITEfMB0GA1UEAxMWR29vZ2xlIFJvb3QgQ0EgUHVibGljMIIBIjANBgkqhkiG9w0BAQEFAAOC..."
+  ],
+  "signed_Hash_PuK.Client.Sig": "MEQCIBXampleAndroidSignatureHashBase64urlEncodedValueAABBCCDDEEFFGGHHIIJJKKLLMMNNOOPPQQRRSSTTUUVVWWXXYYZZAiAz1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
+  "play_integrity_token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZXF1ZXN0RGV0YWlscyI6eyJyZXF1ZXN0UGFja2FnZU5hbWUiOiJkZS5nZW1hdGlrLmV4YW1wbGVhcHAiLCJ0aW1lc3RhbXBNcyI6MTcxNTQyNjAwMDAwMH0sImFwcEludGVncml0eSI6eyJhcHBSZWNvZ25pdGlvblZlcmRpY3QiOiJQTEFZX1JFQ09HTklaRUQifSwiZGV2aWNlSW50ZWdyaXR5Ijp7ImRldmljZVJlY29nbml0aW9uVmVyZGljdCI6WyJNRUVUU19ERVZJQ0VfSU5URUdSSVRZIl19fQ.ExamplePlayIntegritySignature"
+}

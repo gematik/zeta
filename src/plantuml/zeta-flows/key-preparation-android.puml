@@ -1,0 +1,59 @@
+@startuml "key-preparation"
+autonumber "(00)"
+skinparam defaultFontSize 10
+skinparam defaultFontName Helvetica
+skinparam DefaultMonospacedFontName Courier
+skinparam lengthAdjust none
+skinparam sequenceReferenceBackgroundColor White
+skinparam SequenceReferenceFontSize 12
+skinparam sequenceMessageAlign left
+hide stereotype
+
+' Box colors
+!define LEI_COLOR #GhostWhite
+!define LEI_COMPONENT_COLOR #E4E4F4
+!define PRIMAERSYSTEM_COLOR #Lavender
+!define DEVICE_COLOR #fefcff
+
+' Participant colors
+<style>
+sequenceDiagram {
+  participant {
+    .zeta {
+      BackgroundColor #FFE6CC
+      LineColor #D79B00
+    }
+  }
+  lifeline {
+    BackgroundColor White
+    LineColor Black
+  }
+}
+</style>
+
+!pragma teoz true
+
+    box "Device" DEVICE_COLOR
+      participant "TEE / StrongBox" as StrongBox
+      participant "Android OS" as AndroidOS
+      box "App" PRIMAERSYSTEM_COLOR
+        participant "ZETA Client" as Client <<zeta>>
+      end box
+    end box
+
+    Client++
+    AndroidOS++
+    note left of Client: App nutzt nativen Android KeyStore.
+    
+    Client -> AndroidOS: KeyStore.generateKey(\nAttestationChallenge = hash_puk_client_sig)
+    AndroidOS -> StrongBox++: Erzeuge Key & Chain
+    StrongBox --> AndroidOS--: Zertifikatskette
+    AndroidOS --> Client: android_key_attestation_certificate_chain
+    
+    Client -> AndroidOS: Signature.sign(KeyStore.getKey(Alias_AK), hash_puk_client_sig)
+    AndroidOS -> StrongBox++: Signiere Hash
+    StrongBox --> AndroidOS--: ECDSA Signatur
+    AndroidOS --> Client--: signed_hash_puk_client_sig
+    Client--
+
+@enduml
