@@ -46,7 +46,7 @@ alt Windows / Linux (lokaler ZAS nötig)
     Client++
     ZAS++
     
-    note left of Client: Client generiert TPM Key prk_client_sig im User Space\nund übergibt Opaque Blob an den ZAS.
+    note left of Client: Client übergibt Opaque Blob an den ZAS\n(enthält prk_client_sig, puk_client_sig;\ndie Schlüssel können nur im TPM verwendet werden).
     Client -> ZAS: PCP_KEY_BLOB(prk_client_sig, puk_client_sig), hash_puk_client_sig
     
     ZAS -> TPM++: TPM2_Load(PCP_KEY_BLOB)
