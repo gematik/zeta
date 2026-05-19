@@ -9,7 +9,7 @@
 
 box "Device" DEVICE_COLOR
   participant "Secure Enclave" as SE LEI_COMPONENT_COLOR
-  participant OS as "OS (macOS)" <<zeta>>
+  participant OS as "OS (macOS)" LEI_COMPONENT_COLOR
   box "Primärsystem" PRIMAERSYSTEM_COLOR
     participant Client as "ZETA Client" <<zeta>>
   end box
