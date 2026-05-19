@@ -1,5 +1,5 @@
 @startuml "tpm-attestation-and-token-exchange-overview"
-!include ../layout.puml
+!include ../puml-layout.txt
 
 
 Actor User

@@ -1,5 +1,5 @@
 @startuml "key-preparation"
-!include ../layout.puml
+!include ../puml-layout.txt
 
 
 box "Apple Device (macOS, iOS, iPadOS)" MOBILE_COLOR

@@ -1,5 +1,5 @@
 @startuml "zeta-workload-identity-federation"
-!include ../layout.puml
+!include ../puml-layout.txt
 
 
 box "TI 2.0 Dienst Anbieter A" PROVIDER_COLOR

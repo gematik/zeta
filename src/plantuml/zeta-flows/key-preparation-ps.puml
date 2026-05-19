@@ -1,5 +1,6 @@
 @startuml "key-preparation"
-!include ../layout.puml
+!include ../puml-layout.txt
+
 
 box "Device" DEVICE_COLOR
   participant "TPM" as TPM LEI_COMPONENT_COLOR

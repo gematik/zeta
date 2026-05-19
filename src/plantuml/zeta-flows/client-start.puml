@@ -1,5 +1,5 @@
 @startuml "client-start"
-!include ../layout.puml
+!include ../puml-layout.txt
 
 
 box "Device" DEVICE_COLOR

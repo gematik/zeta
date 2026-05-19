@@ -1,5 +1,5 @@
 @startuml "key-preparation"
-!include ../layout.puml
+!include ../puml-layout.txt
 
 
 participant "Apple\nServices" as Apple

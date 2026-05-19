@@ -1,5 +1,5 @@
 @startuml "token-exchange-with-attestation"
-!include ../layout.puml
+!include ../puml-layout.txt
 
 
 ' title Token Exchange with Attestation

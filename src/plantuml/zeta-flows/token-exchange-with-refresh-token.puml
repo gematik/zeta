@@ -1,5 +1,5 @@
 @startuml "token-exchange-with-refresh-token"
-!include ../layout.puml
+!include ../puml-layout.txt
 
 
 ' title Token Exchange with Refresh Token

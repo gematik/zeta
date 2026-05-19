@@ -1,6 +1,6 @@
 @startuml "obtain-attestation-evidence"
 
-!include ../layout.puml
+!include ../puml-layout.txt
 
 
 ' title Obtain Attestation Evidence
