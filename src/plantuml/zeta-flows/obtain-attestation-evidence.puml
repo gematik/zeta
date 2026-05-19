@@ -76,6 +76,7 @@ alt Hardware Attestation (TPM / SE)
         TPM --> ZAS-- : dc_assertion\n(CBOR: Signatur + Receipt + counter)
         ZAS --> Client : Evidence {dc_assertion, posture, counter}
     end
+    Client -> Client: Generiere client-statement\n(OS und PS Daten, Evidence)
 else Software Attestation (Fallback)
     Client -> Client: Generiere client-statement\n(OS und PS Daten)
 end
