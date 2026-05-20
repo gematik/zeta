@@ -20,31 +20,54 @@ end box
 
 Client -> Client: Installation & Start\nSchlüsselgenerierung
 
-== Wahl des Betriebssystems ==
+== Betriebssystem-abhängige Schritte ==
 
 alt Windows / Linux
 
     group Windows / Linux Pfad
 
         alt TPM + ZAS verfügbar
-            Client -> ZAS++: Initialisierung
-            ZAS -> ZAS: TPM Setup\n(SRK, AK, PCR)
-            ZAS -->> Client--: Schlüssel + Handles
+            Client -> ZAS: Initialisierung
 
-            Client -> ZAS++: GetEvidence (Nonce)
-            ZAS -> ZAS: TPM Quote + Event Log
-            ZAS -->> Client--: Evidence
+            note right of ZAS
+              TPM Setup:
+              - SRK erstellen
+              - Attestation Key (AK)
+              - PCR Konfiguration
+            end note
 
-            Client -> AuthS++: Registrierung (TPM Attestation)
-            AuthS -> AuthS: Verifiziere TPM Nachweis
+            ZAS --> Client: Schlüssel + Handles
+
+            Client -> ZAS: GetEvidence (Nonce)
+
+            note right of ZAS
+              Evidence-Erzeugung:
+              - TPM Quote
+              - Event Log
+            end note
+
+            ZAS --> Client: Evidence
+
+            Client -> AuthS: Registrierung (TPM Attestation)
+
+            note right of AuthS
+              Validierung:
+              - TPM Nachweis prüfen
+            end note
 
         else Software Fallback
 
-            Client -> Client: Software-Schlüsselpaar
-            Client -> Client: Posture-Erhebung
+            note right of Client
+              Software-Modus:
+              - Schlüsselpaar erzeugen
+              - Posture erfassen
+            end note
 
-            Client -> AuthS++: Registrierung (Software)
-            AuthS -> AuthS: Basisvalidierung
+            Client -> AuthS: Registrierung (Software)
+
+            note right of AuthS
+              Basisvalidierung
+            end note
 
         end
 
@@ -56,19 +79,33 @@ else macOS
 
         alt Secure Enclave verfügbar
 
-            Client -> Client: Schlüssel in Secure Enclave
-            Client -> Client: App Attest Assertion\n(Nonce + Posture)
+            note right of Client
+              Secure Enclave:
+              - Schlüssel generieren
+              - App Attest Assertion
+              - Nonce + Posture
+            end note
 
-            Client -> AuthS++: Registrierung (Apple Attestation)
-            AuthS -> AuthS: Validiere Attestation Object
+            Client -> AuthS: Registrierung (Apple Attestation)
+
+            note right of AuthS
+              Validierung:
+              - Attestation Object prüfen
+            end note
 
         else Software Fallback
 
-            Client -> Client: Software-Schlüsselpaar
-            Client -> Client: Posture-Erhebung
+            note right of Client
+              Software-Modus:
+              - Schlüsselpaar erzeugen
+              - Posture erfassen
+            end note
 
-            Client -> AuthS++: Registrierung (Software)
-            AuthS -> AuthS: Basisvalidierung
+            Client -> AuthS: Registrierung (Software)
+
+            note right of AuthS
+              Basisvalidierung
+            end note
 
         end
 
@@ -78,14 +115,25 @@ end
 
 == Gemeinsame Schritte ==
 
-Client -> AuthS++: Token Exchange\n(client_assertion + Evidence)
+Client -> AuthS: Token Exchange\n(client_assertion + Evidence)
 
 alt Hardware Attestation
-    AuthS -> AuthS: Erweiterte Prüfung\n(TPM / SE)
-    AuthS -->> Client--: Access Token + zg_att_token
+
+    note right of AuthS
+      Erweiterte Prüfung :
+      - TPM oder Secure Enclave
+    end note
+
+    AuthS --> Client: Access Token + zg_att_token
+
 else Software Attestation
-    AuthS -> AuthS: Basisprüfung
-    AuthS -->> Client--: Access Token
+
+    note right of AuthS
+      Basisprüfung
+    end note
+
+    AuthS --> Client: Access Token
+
 end
 
 @enduml
