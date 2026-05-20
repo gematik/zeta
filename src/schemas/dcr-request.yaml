@@ -99,12 +99,6 @@ oneOf:
           (fmt: "apple-appattest"). Enthält attStmt (x5c-Zertifikatskette inkl.
           puk_ak_sig + receipt) sowie authData (rpIdHash, counter, credentialId).
           Base64-kodiert.
-      apple_assertion_object:
-        type: string
-        description: >-
-          CBOR-kodiertes Assertion-Objekt der Apple App Attest API 
-          (erzeugt via generateAssertion über den SHA-256-Hash von puk_client_sig). 
-          Base64-kodiert.
 
   # -----------------------------------------------------------------
   # 3. Android Hardware Attestation
@@ -176,8 +170,7 @@ oneOf:
     required:
       - attestation_type
       - puk_client_sig
-      - zeta_guard_attestation_token
-      - signed_hash_puk_client_sig
+      - zeta_attestation_token
     properties:
       attestation_type:
         type: string
@@ -198,7 +191,7 @@ oneOf:
         $ref: "#/definitions/jwk"
         description: >-
           Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
-      zeta_guard_attestation_token:
+      zeta_attestation_token:
         type: string
         description: >-
           Signiertes JWT, ausgestellt vom ZETA Guard nach erfolgreicher
