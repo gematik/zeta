@@ -1,6 +1,6 @@
 # ZETA API v1.0.0
 
-# Dokumenten- und Versionsübersicht
+## Dokumenten- und Versionsübersicht
 
 
 | Attribut            | Wert            |
@@ -14,7 +14,7 @@
 
 ---
 
-## Zuordnung zu API- und Implementierungsversionen
+### Zuordnung zu API- und Implementierungsversionen
 
 Dieses Dokument beschreibt die Schnittstellen und Abläufe der **ZETA API Version v1.0.0**.  
 Die beschriebenen Inhalte beziehen sich auf die folgenden Implementierungsversionen.
@@ -29,7 +29,7 @@ Die beschriebenen Inhalte beziehen sich auf die folgenden Implementierungsversio
 | Provisioning Processor | zeta-guard-provisioning-processor  | 1.0.0   | Provisioning Processor               |
 ---
 
-## Docker-Image Referenzen
+### Docker-Image Referenzen
 
 Die oben genannten Komponenten werden als Container bereitgestellt.  
 
@@ -86,24 +86,116 @@ Zusätzlich gibt es anwendungsspezifische Voraussetzungen, die für die Nutzung 
 
 - **VSDM2:** Für VSDM2 Requests wird ein PoPP (Proof of Patient Presence) Token benötigt. Das PoPP Token muss im [Header PoPP](https://gemspec.gematik.de/docs/gemSpec/gemSpec_ZETA/latest/#A_25669) an den ZETA Client übergeben werden.
 
-## 3. Konfiguration und Discovery
+---
 
-In dieser Phase ermittelt der ZETA Client die notwendigen Endpunkte und Konfigurationen von den ZETA Guard Komponenten (PEP http Proxy und PDP Authorization Server). Der Client fragt bekannte Endpunkte (`/.well-known/oauth-protected-resource` und `/.well-known/oauth-authorization-server`) ab, um die Konfiguration des Resource Servers und des Authorization Servers zu erhalten. Das folgende Bild zeigt den Ablauf.
+## 3. Discovery und Konfiguration
 
-![Abbildung 2: Ablauf Discovery and Configuration](../../../images/tpm-attestation-and-token-exchange/discovery-and-configuration.svg)
+### 3.1 Zweck
+In dieser Phase ermittelt der ZETA Client die notwendigen Endpunkte und Konfigurationen, um mit der ZETA Guard Infrastruktur (PEP http Proxy und PDP Authorization Server) zu kommunizieren. 
 
-## 4. Client-Registrierung
+Diese Phase stellt die Grundlage für alle folgenden Interaktionen dar, da sie dem Client
+die dynamische Anpassung an die bereitgestellte Infrastruktur ermöglicht.
 
-Die Client‑Registrierung beschreibt den Prozess, mit dem ein ZETA Client erstmalig gegenüber der ZETA‑Infrastruktur bekannt gemacht wird.
+### 3.2 Ablauf
+
+Der ZETA Client führt folgende Schritte aus:
+
+1. **Initiale Voraussetzungen**
+
+   Der Client verfügt über:
+   - den FQDN des Resource Servers
+   - die Trust Anchor Informationen (`roots.json`) zur Validierung der Vertrauenskette
+
+2. **Abruf der Resource Server Konfiguration**
+
+   Der Client sendet eine Anfrage an den bekannten Well-Known-Endpunkt des Resource Servers:
+
+   ```http
+   GET /.well-known/oauth-protected-resource
+
+![Abbildung 2: Ablauf Discovery and Configuration](../../../images/zeta-flows/Abb-ZETA-Service-Discovery.svg)
+
+## 4. Client Registrierung und Trust Bootstrapping
+
+### 4.1 Zweck
+
+Die Client‑Registrierung beschreibt den Prozess, mit dem ein ZETA Client erstmalig gegenüber der ZETA‑Infrastruktur bekannt gemacht wird und eine initiale Vertrauensbeziehung aufgebaut wird.
 Dieser Prozess gilt gleichermaßen für stationäre Clients und mobile Clients.
-Ziel der Client‑Registrierung ist es, eine eindeutige und überprüfbare Client‑Identität zu etablieren, die als Grundlage für alle weiteren Interaktionen mit ZETA‑Komponenten dient.
-Hierzu nutzt der ZETA Client eine Client Assertion, um sich gegenüber der ZETA‑Infrastruktur kryptografisch zu identifizieren.
-Die Client‑Registrierung stellt den Eintrittspunkt in den Attestierungs‑ und Vertrauenslebenszyklus eines ZETA Clients dar.
-Im Rahmen der Registrierung wird jedoch noch keine vollständige Bewertung des Sicherheitszustands des Clients vorgenommen.
-Vielmehr werden die Voraussetzungen geschaffen, um in nachfolgenden Schritten Attestierungs‑ und Posture‑Informationen zu erheben und zu bewerten.
-Die Client‑Registrierung erfolgt in der Regel initial oder bei grundlegenden Änderungen der Client‑Identität und ist nicht zwingend bei jeder Interaktion mit ZETA‑Diensten erforderlich.
+Ziel der Client‑Registrierung ist es, eine eindeutige und überprüfbare Client‑Identität zu etablieren, die als Grundlage für alle weiteren Interaktionen mit der ZETA Guard Infrastruktur dient.
+Hierzu nutzt der ZETA Client eine Client Assertion, um sich gegenüber der ZETA‑Infrastruktur kryptografisch zu identifizieren. Die Client‑Registrierung stellt den Eintrittspunkt in den Attestierungs‑ und Vertrauenslebenszyklus eines ZETA Clients dar. Im Rahmen der Registrierung wird jedoch noch keine vollständige Bewertung des Sicherheitszustands des Clients vorgenommen. Vielmehr werden die Voraussetzungen geschaffen, um in nachfolgenden Schritten Attestierungs‑ und Posture‑Informationen zu erheben und zu bewerten. Die Client‑Registrierung erfolgt in der Regel initial oder bei grundlegenden Änderungen der Client‑Identität und ist nicht zwingend bei jeder Interaktion mit ZETA‑Diensten erforderlich.
 
-### 4.1. Stationäre Clients
+### 4.2 Ablauf
+
+Der Registrierungsprozess umfasst mehrere Schritte, die je nach Client-Typ und Plattform
+variieren können.
+
+1. **Initialisierung des Clients**
+
+   Der Client erzeugt oder nutzt bestehende kryptographische Schlüssel. Die konkrete Ausprägung ist abhängig vom Client-Typ:
+
+   - Mobile Clients nutzen plattformspezifische Sicherheitsmechanismen (z. B. Secure Enclave, App Attest)
+   - Stationäre Clients nutzen typischerweise TPM-basierte Mechanismen
+  
+Für stationäre Clients ist dieser Initialisierungsprozess in beispielhaft in der folgenden Abbildung dargestellt:
+![Abbildung 2: Ablauf Discovery and Configuration](../../../images/zeta-flows/Abb-ZETA-Client-Start-mit-TPM-und-ZAS.svg)
+
+2. **Erstellung der Registrierungsanfrage**
+
+   Der Client stellt eine Registrierungsanfrage an den Authorization Server.
+   Diese enthält unter anderem:
+
+   - öffentliche Schlüssel des Clients
+   - Client-Metadaten (z. B. Plattformtyp)
+   - attestation-relevante Informationen
+
+   ```http
+   POST /client-registration
+
+![Abbildung 2: Ablauf Discovery and Configuration](../../../images/zeta-flows/Abb-ZETA-Service-Discovery.svg)
+
+
+## 5. Attestation und Device Posture Evaluation
+
+### 5.1 Zweck
+
+
+In der Attestation-Phase wird der Sicherheits- und Integritätszustand eines ZETA Clients bewertet. Ziel ist es, sicherzustellen, dass nur vertrauenswürdige Clients Zugriff auf geschützte Ressourcen erhalten.
+
+Die Attestation liefert eine nachvollziehbare Aussage über den Gerätezustand und bildet
+die Grundlage für die nachfolgende Autorisierung. Der Ablauf ist abhängig vom Client-Typ (siehe Kapitel 4.2).
+
+### 5.2 Ablauf
+
+Vielmehr handelt es sich um einen lebenszyklusbegleitenden Ablauf, in dem einzelne Phasen abhängig vom aktuellen Zustand des Clients, vom technischen Kontext sowie von sicherheitsrelevanten Anforderungen wiederholt oder übersprungen werden können.
+Im Rahmen dieses Ablaufs werden unter anderem:
+
+- der ZETA Client gestartet und initialisiert,
+- aktuelle Zustands‑ und Posture‑Informationen erhoben,
+- Attestierungsinformationen bereitgestellt,
+- sowie Token zur Authentifizierung und Autorisierung gegenüber ZETA‑Diensten ausgetauscht.
+
+Der Ablauf gilt gleichermaßen für stationäre und mobile Clients. Unterschiede können sich aus der jeweiligen Plattform, der Verfügbarkeit sicherheitsrelevanter Funktionen sowie der Art der erhobenen Zustandsinformationen ergeben, ohne dass sich die grundsätzliche Struktur des Ablaufs ändert.
+Die nachfolgenden Kapitel beschreiben die einzelnen Phasen dieses Ablaufs detailliert und ordnen ihnen die entsprechenden API‑Endpunkte zu.
+
+1. Anforderung einer Attestation Challenge
+
+Der Client fordert beim Authorization Server eine Challenge an über den Endpunkt POST /attestation/challenge.
+Die Antwort enthält eine einmalige Challenge, eine Gültigkeitsdauer sowie ggf. zusätzliche Parameter zur Durchführung der Attestation.
+Die Challenge stellt sicher, dass jede Attestation eindeutig einer Anfrage zugeordnet ist und nicht wiederverwendet werden kann. Dadurch wird ein Schutz vor Replay-Angriffen erreicht.
+
+2. Erstellung des Attestation Statements
+
+Der Client erstellt auf Basis der erhaltenen Challenge ein Attestation-Statement.
+Dieses Statement enthält die Challenge selbst, gerätespezifische Identifikationsmerkmale, kryptographische Nachweise über die Integrität des Geräts sowie eine Signatur über alle relevanten Daten.
+Das genaue Format und die enthaltenen Daten sind plattformabhängig.
+
+3. Plattformspezifische Attestation-Mechanismen
+
+Die konkrete Erstellung des Attestation-Statements unterscheidet sich abhängig vom Client-Typ.
+
+-- TODO --
+
+### 5.2.1. Stationäre Clients
 
 Jeder ZETA Client muss sich am ZETA Guard registrieren, über den er auf geschützte Ressourcen zugreifen möchte. Dieser Prozess findet **einmalig pro ZETA Guard-Instanz** statt. Die erste erfolgreiche Attestierung ist Teil des in Kapitel 4 beschriebenen Attestierungs‑ und Vertrauenslebenszyklus. Der gesamte Prozess ist zweistufig, um die administrative Einrichtung von der technischen Inbetriebnahme zu trennen:
 
@@ -123,26 +215,9 @@ Für die initiale Registrierung sendet der ZETA Client eine Anfrage an den Dynam
 
 ---
 
-### 4.2. Mobile Clients
+### 5.2.2. Mobile Clients
 
 _Hinweis:_ Der Prozess für Mobile Clients wird in zukünftigen Versionen der API detaillierter beschrieben, sobald die Entwicklung von ZETA Stufe 2 abgeschlossen ist.
-
-## 5. Ablauf im Attestierungs‑ und Vertrauenslebenszyklus
-
-Dieses Kapitel beschreibt den Ablauf der Interaktionen eines ZETA Clients innerhalb des Attestierungs‑ und Vertrauenslebenszyklus.
-Der Ablauf bezieht sich auf einen bereits konfigurierten und registrierten ZETA Client und ergänzt die in den vorherigen Kapiteln beschriebenen Vorbereitungs‑ und Eintrittsschritte.
-Der Ablauf ist nicht als linearer, einmaliger Prozess zu verstehen.
-Vielmehr handelt es sich um einen lebenszyklusbegleitenden Ablauf, in dem einzelne Phasen abhängig vom aktuellen Zustand des Clients, vom technischen Kontext sowie von sicherheitsrelevanten Anforderungen wiederholt oder übersprungen werden können.
-Im Rahmen dieses Ablaufs werden unter anderem:
-
-- der ZETA Client gestartet und initialisiert,
-- aktuelle Zustands‑ und Posture‑Informationen erhoben,
-- Attestierungsinformationen bereitgestellt,
-- sowie Token zur Authentifizierung und Autorisierung gegenüber ZETA‑Diensten ausgetauscht.
-
-Der Ablauf gilt gleichermaßen für stationäre und mobile Clients. Unterschiede können sich aus der jeweiligen Plattform, der Verfügbarkeit sicherheitsrelevanter Funktionen sowie der Art der erhobenen Zustandsinformationen ergeben, ohne dass sich die grundsätzliche Struktur des Ablaufs ändert.
-Die nachfolgenden Kapitel beschreiben die einzelnen Phasen dieses Ablaufs detailliert und ordnen ihnen die entsprechenden API‑Endpunkte zu.
-
 
 ## 6. Authentifizierung und Autorisierung
 
