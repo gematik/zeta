@@ -1,4 +1,4 @@
-# ZETA API v1
+# ZETA API v1.0.0
 
 Diese API beschreibt die Interaktion eines ZETA Clients mit den ZETA‑Komponenten.
 Dabei werden sowohl stationäre Clients (z. B. Arbeitsplatz‑ oder Serversysteme) als auch mobile Clients (z. B. mobile Endgeräte) unterstützt.
