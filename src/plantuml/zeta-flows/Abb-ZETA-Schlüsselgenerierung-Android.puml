@@ -1,0 +1,50 @@
+@startuml "key-preparation"
+!include ../puml-layout.txt
+
+    box "Google" #FFFFFF
+      participant "Play Integrity API" as PlayAPI
+    end box
+
+    box "Device" DEVICE_COLOR
+      participant "TEE / StrongBox" as StrongBox
+      participant "Android OS" as AndroidOS
+      box "App" PRIMAERSYSTEM_COLOR
+        participant "ZETA Client" as Client <<zeta>>
+      end box
+    end box
+
+    Client++
+    AndroidOS++
+    
+    == Client Instance Key Pair (PrK.Client.Sig; PuK.Client.Sig) ==
+    note left of Client: Generierung des primären Schlüssels\nfür Client Assertions.
+    Client -> AndroidOS: KeyStore.generateKey(Alias_Client_Sig)
+    
+    AndroidOS -> StrongBox++: Erzeuge Client Key Pair
+    StrongBox --> AndroidOS--: (Schlüssel verbleibt in HW)
+    
+    AndroidOS --> Client: Client Key Referenz (Alias)
+    Client -> Client: Berechne hash_puk_client_sig =\nSHA-256(PuK.Client.Sig)
+
+    == Hardware-Attestierung (Attestation Key) ==
+    note left of Client: Generierung des dedizierten Attestation Keys (AK)\nund Bindung an den Client Key.
+    Client -> AndroidOS: KeyStore.generateKey(Alias_AK,\nAttestationChallenge = hash_puk_client_sig)
+    
+    AndroidOS -> StrongBox++: Erzeuge Attestation Key Pair (AK) & Chain
+    StrongBox --> AndroidOS--: Zertifikatskette (inkl. PuK.AK.Sig)
+    AndroidOS --> Client: android_key_attestation_certificate_chain
+    
+    == Expliziter Besitznachweis (Proof of Possession) ==
+    Client -> AndroidOS: Signature.sign(KeyStore.getKey(Alias_AK), hash_puk_client_sig)
+    AndroidOS -> StrongBox++: Signiere Hash mit PrK.AK.Sig
+    StrongBox --> AndroidOS--: ECDSA Signatur
+    AndroidOS --> Client: signed_hash_puk_client_sig
+    
+    == Play Integrity API (Optional, empfohlen) ==
+    note left of Client: Einholung des Geräte- und App-Zustands.
+    Client -> PlayAPI++: requestIntegrityToken(\nnonce = hash_puk_client_sig)
+    PlayAPI --> Client--: play_integrity_token (Base64)
+
+    Client--
+
+@enduml

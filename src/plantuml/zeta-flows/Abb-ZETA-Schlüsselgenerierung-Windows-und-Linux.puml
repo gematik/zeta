@@ -1,0 +1,41 @@
+@startuml "client-installation"
+!include ../puml-layout.txt
+
+
+box "Device" DEVICE_COLOR
+  participant "TPM" as TPM LEI_COMPONENT_COLOR
+  participant ZAS as "ZAS" <<zeta>>
+  box "Primärsystem" PRIMAERSYSTEM_COLOR
+    participant Client as "ZETA Client" <<zeta>>
+  end box
+end box
+
+alt TPM and ZAS available
+
+    ZAS++    
+    ZAS --> ZAS: Installation (Root/Admin rights)
+    Client++
+    Client --> Client: Installation (User Space)
+    group Vertrauensbeziehung zwischen ZAS und Client wird aufgebaut
+        ZAS -> Client
+        Client --> ZAS
+    end
+
+    Client -> TPM++: Generiere PrK.Client.Sig, PuK.Client.Sig\nvia OS-Provider (z.B. MS CNG)
+    TPM --> Client: PuK.Client.Sig, Handle_PrK.Client.Sig
+    ZAS --> ZAS: Messung des PS & Vergleich mit Hersteller-Wert
+    ZAS -> TPM: TPM2_CreatePrimary() → Storage Root Key (SRK)
+    ZAS -> TPM: TPM2_Create(SRK, restricted=sign, fixedTPM=true)
+    TPM --> ZAS: PuK.AK.Sig, PrK.AK.Sig (blob)
+    ZAS -> TPM: TPM2_Load(SRK, PrK.AK.Sig, PuK.AK.Sig)
+    TPM --> ZAS: Handle_PrK.AK.Sig
+    ZAS -> TPM: TPM2_PCR_Extend(23, Messwerte)
+    note right: PCR_23 Könnte belegt sein; muss vorher geprüft werden 
+    TPM--
+
+else Fallback
+    Client --> Client: Installation (User Space)
+    Client -> Client: Generiere PrK.Client.Sig,\nPuK.Client.Sig
+end
+
+@enduml

@@ -1,0 +1,51 @@
+@startuml "dcr-with-key-binding"
+!include ../puml-layout.txt
+
+
+box "Device" DEVICE_COLOR
+  box "App" PRIMAERSYSTEM_COLOR
+    participant Client as "ZETA Client" <<zeta>>
+  end box
+end box
+
+box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
+  box "ZETA Guard" ZETA_GUARD_COLOR
+    participant AuthS as "PDP\nAuthorization Server" <<zeta>>
+  end box
+end box
+
+Client++
+alt Kein ZETA Guard Attestation Token
+    
+    alt Hardware Attestation: iOS, iPadOS, macOS (Apple App Attest)
+        Client -> AuthS++: POST /register\n{attestation_type="apple", Apple_Attestation_Object, PuK.Client.Sig}
+        AuthS -> AuthS: Validiere Apple_Attestation_Object
+        note right of AuthS: AuthS verifiziert Apple App Attest Root CA.\nExtrahiert Hash(PuK.Client.Sig) aus Objekt\nund vergleicht ihn mit dem Payload.
+
+    else Hardware Attestation: Android (Keystore, TEE, StrongBox)
+        Client -> AuthS: POST /register\n{attestation_type="android", PuK.AK.Sig,\nAndroid_Key_Attestation_Certificate_Chain,\nPuK.Client.Sig, signed_Hash_PuK.Client.Sig,\nplay_integrity_token}
+        AuthS -> AuthS: Validiere Zertifikatskette gegen Google Root CA
+        AuthS -> AuthS: Prüfe signed_Hash_PuK.Client.Sig
+        
+        opt Play Integrity Prüfung
+            AuthS -> AuthS: Entschlüssele play_integrity_token (lokal/remote)
+            AuthS -> AuthS: Verifiziere Nonce (Muss Hash(PuK.Client.Sig) entsprechen)
+            AuthS -> AuthS: Werte Verdicts aus (appIntegrity, deviceIntegrity, accountDetails)
+        end
+        
+        note right of AuthS: PuK.AK.Sig muss mit dem Blatt-Zertifikat\nder Certificate Chain übereinstimmen.\nSicherheitsniveau: TrustedEnvironment oder StrongBox.
+
+    else Software Attestation (Legacy OIDC DCR)
+        Client -> AuthS: POST /register\n{\n  "client_name": "myClient",\n  "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"],\n  "jwks": { "keys": [ PuK.Client.Sig ] },\n  "token_endpoint_auth_method": "private_key_jwt"\n}
+        AuthS -> AuthS: Store Client Placeholder (state: pending_attestation)
+    end
+
+else ZETA Attestation Token vorhanden (Fast-Path)
+    Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token",\nzeta_guard_attestation_token, PuK.Client.Sig,\nBesitznachweis (Signatur/Assertion)}
+    AuthS -> AuthS: Prüfe Token-Signatur & Vertrauensstellung
+    AuthS -> AuthS: Extrahiere PuK.AK.Sig aus Token, verifiziere Besitznachweis
+end
+
+AuthS --> Client--: 201 Created {client_id}
+
+@enduml
