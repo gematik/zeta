@@ -2,7 +2,6 @@
 
 # Dokumenten- und Versionsübersicht
 
-## Dokumentenmetadaten
 
 | Attribut            | Wert            |
 |---------------------|-----------------|
