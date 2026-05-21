@@ -1,210 +1,127 @@
-# ===================================================================
-# Schema für das ZETA Guard Attestation Token
-# ===================================================================
-# Ein kurzlebiges, signiertes JWT, das der ZETA Guard nach erfolgreicher
-# Hardware-Attestierung ausstellt. Es kapselt die verifizierten
-# Attestation-Ergebnisse und den geprüften PuK.AK.Sig, damit ein
-# Client bei nachfolgenden DCR-Anfragen keinen erneuten
-# Hardware-Attestierungsvorgang durchführen muss ("Fast-Path").
-#
-# Verwendung im DCR:
-#   attestation_type = "zeta_attestation_token"
-#   zeta_guard_attestation_token = <dieses JWT>
-#   signed_Hash_PuK.Client.Sig = Signatur über SHA-256(PuK.Client.Sig)
-#                                  mit PuK.AK.Sig aus diesem Token
-# ===================================================================
 $schema: "http://json-schema.org/draft-07/schema#"
 title: ZETA Guard Attestation Token
-description: >
-  JWT-Payload des vom ZETA Guard ausgestellten Attestation Tokens.
-  Der AuthS validiert die Signatur dieses Tokens anhand des
-  bekannten ZETA Guard Public Keys und extrahiert PuK.AK.Sig,
-  um die signed_Hash_PuK.Client.Sig im DCR-Request zu verifizieren.
 type: object
-properties:
-  # -------------------------------------------------------------------
-  # Standard JWT Claims (RFC 7519)
-  # -------------------------------------------------------------------
-  iss:
-    type: string
-    format: uri
-    description: >-
-      Issuer: URL des ZETA Guard, der das Token ausgestellt hat.
-    example: "https://zeta-guard.example.de"
+description: >-
+  Ein signiertes JWT, das der ZETA Guard nach erfolgreicher
+  Hardware-Attestierung ausstellt ("Fast-Path").
+# oneOf zwingt das Objekt, exakt einem der referenzierten Sub-Schemata zu entsprechen
+oneOf:
+  - $ref: "#/definitions/TpmAttestationToken"
+  - $ref: "#/definitions/AppleAttestationToken"
+  - $ref: "#/definitions/AndroidAttestationToken"
+# Sagt dem Code-Generator, welches Feld zur Unterscheidung der Klassen genutzt wird.
+discriminator:
+  propertyName: attestation_type
 
-  sub:
-    type: string
-    description: >-
-      Subject: Eindeutige ID der Client-Instanz (UUID), für die das
-      Token ausgestellt wurde.
-    example: "client-instance-uuid-1234"
-
-  iat:
-    type: integer
-    description: >-
-      Issued At: Unix-Timestamp des Ausstellungszeitpunkts.
-    example: 1715426000
-
-  exp:
-    type: integer
-    description: >-
-      Expiration Time: Unix-Timestamp des Ablaufzeitpunkts.
-      Das Token ist langlebig (empfohlen: max. 6 Monate).
-      Replay-Angriffe werden durch das jti verhindert.
-    example: 1715426300
-
-  jti:
-    type: string
-    format: uuid
-    description: >-
-      JWT ID: Eindeutiger Bezeichner des Tokens zur Verhinderung
-      von Replay-Angriffen. Der AuthS MUSS prüfen, dass jede jti
-      nur einmal akzeptiert wird.
-    example: "76a715c6-03e3-4ded-9b58-2e359b2d459d"
-
-  # -------------------------------------------------------------------
-  # Attestation-Kontext
-  # -------------------------------------------------------------------
-  attestation_type:
-    type: string
-    description: >-
-      Der Typ der Hardware-Attestierung, die zur Ausstellung dieses
-      Tokens geführt hat.
-    enum: [tpm, apple, android]
-    example: "tpm"
-
-  platform:
-    type: string
-    description: >-
-      Die Betriebssystemplattform des attestierten Geräts.
-    enum: [windows, linux, apple, android]
-    example: "windows"
-
-  # -------------------------------------------------------------------
-  # Key Binding
-  # -------------------------------------------------------------------
-  "PuK.AK.Sig":
-    type: string
-    description: >-
-      Der vom ZETA Guard verifizierte öffentliche Attestierungsschlüssel
-      (Attestation Key). Base64url-kodiert.
-      - TPM:     TPM2B_PUBLIC Struktur des AK
-      - Apple:   ECDSA P-256 App-Attest-Schlüssel aus Secure Enclave
-      - Android: ECDSA P-256 Android-Keystore-Schlüssel (TEE/StrongBox)
-      Der AuthS verwendet diesen Schlüssel, um signed_Hash_PuK.Client.Sig
-      im Fast-Path-DCR zu verifizieren.
-    example: "AToAAQALAAUAdAAAAAAQABAA..."
-
-  # -------------------------------------------------------------------
-  # Plattformspezifische Attestation-Ergebnisse (oneOf)
-  # -------------------------------------------------------------------
-  # Genau eines der folgenden Objekte ist befüllt, passend zu
-  # attestation_type.
-
-  tpm:
+definitions:
+  # -------------------------------------------------------------
+  # 1. Gemeinsame Basis-Felder (verhindert Code-Duplizierung)
+  # -------------------------------------------------------------
+  BaseTokenProperties:
     type: object
-    description: >-
-      Verifizierte TPM-Claims. Nur vorhanden wenn attestation_type = "tpm".
+    required: [iss, sub, iat, exp, jti, cnf, platform]
     properties:
-      pcrs:
+      iss: 
+        type: string
+        format: uri 
+      sub: 
+        type: string 
+      iat: 
+        type: integer 
+      exp: 
+        type: integer 
+      jti: 
+        type: string
+        format: uuid 
+      platform: 
+        type: string
+        enum: [windows, linux, apple, android]
+      cnf:
         type: object
-        description: >-
-          Map der verifizierten PCR-Werte (Key = PCR-Index als String,
-          Value = Hex-kodierter SHA-256-Hash). Enthält mindestens
-          PCR 7 (Secure Boot Policy) und PCR 23 (Application).
-        additionalProperties:
-          type: string
-        example:
-          "7": "3d458cfe55cc03ea1f443f1562beec8df51c75e14a9fcf9a7234a13f198e7969"
-          "23": "0000000000000000000000000000000000000000000000000000000000000000"
-      quote_verified:
-        type: boolean
-        description: >-
-          True, wenn die TPM-Quote-Signatur erfolgreich gegen PuK.AK.Sig
-          verifiziert wurde.
-        example: true
-    required:
-      - pcrs
-      - quote_verified
+        description: Confirmation Claim nach RFC 7800 (Proof-of-Possession).
+        required: [jwk]
+        properties:
+          jwk: 
+            type: object
+            required: [kty]
+            properties:
+              kty: { type: string }
+              crv: { type: string }
+              x: { type: string }
+              y: { type: string }
+              n: { type: string }
+              e: { type: string }
+              description: Der verifizierte Public Key (PuK.AK.Sig) als JSON Web Key.
 
-  apple:
+  # -------------------------------------------------------------
+  # 2. Die spezifischen Klassen (Sub-Schemas)
+  # -------------------------------------------------------------
+  TpmAttestationToken:
     type: object
-    description: >-
-      Verifizierte Apple-App-Attest-Claims. Nur vorhanden wenn
-      attestation_type = "apple".
-    properties:
-      app_id:
-        type: string
-        description: >-
-          Verifizierte App-ID (Relying-Party-ID), extrahiert aus
-          authData.rpIdHash des Attestation-Objekts.
-        example: "de.gematik.exampleapp"
-      environment:
-        type: string
-        description: >-
-          Ausführungsumgebung: "development" (TestFlight / Simulator)
-          oder "production" (App Store). Abgeleitet aus authData.aaguid.
-        enum: [development, production]
-        example: "production"
-      assertion_verified:
-        type: boolean
-        description: >-
-          True, wenn die Apple-Attestation-Signatur erfolgreich gegen
-          die Apple App Attest Root CA verifiziert wurde.
-        example: true
-    required:
-      - app_id
-      - environment
-      - assertion_verified
+    # allOf bedeutet hier klassische Vererbung: Erbe von BaseTokenProperties
+    allOf:
+      - $ref: "#/definitions/BaseTokenProperties"
+      - type: object
+        required: [attestation_type, tpm]
+        properties:
+          attestation_type:
+            type: string
+            const: tpm
+          tpm:
+            type: object
+            required: [pcrs, quote_verified]
+            properties:
+              pcrs:
+                type: object
+                additionalProperties: { type: string }
+              quote_verified: 
+                type: boolean
 
-  android:
+  AppleAttestationToken:
     type: object
-    description: >-
-      Verifizierte Android-Key-Attestation-Claims. Nur vorhanden wenn
-      attestation_type = "android".
-    properties:
-      key_attestation_verified:
-        type: boolean
-        description: >-
-          True, wenn die Android Key Attestation Certificate Chain
-          erfolgreich gegen die Google Hardware Attestation Root CA
-          verifiziert wurde.
-        example: true
-      security_level:
-        type: string
-        description: >-
-          Sicherheitsniveau des attestierten Schlüssels laut
-          Android-Attestierungs-Extension.
-        enum: [Software, TrustedEnvironment, StrongBox]
-        example: "StrongBox"
-      meets_basic_integrity:
-        type: boolean
-        description: >-
-          Ergebnis der Google Play Integrity API: Basic Integrity.
-          Nur vorhanden, wenn play_integrity_token im DCR mitgeliefert wurde.
-        example: true
-      meets_device_integrity:
-        type: boolean
-        description: >-
-          Ergebnis der Google Play Integrity API: Device Integrity
-          (GMS-zertifiziertes Gerät).
-        example: true
-      meets_strong_integrity:
-        type: boolean
-        description: >-
-          Ergebnis der Google Play Integrity API: Strong Integrity
-          (aktuelles Sicherheitspatch-Level).
-        example: false
-    required:
-      - key_attestation_verified
-      - security_level
+    allOf:
+      - $ref: "#/definitions/BaseTokenProperties"
+      - type: object
+        required: [attestation_type, apple]
+        properties:
+          attestation_type:
+            type: string
+            const: apple
+          apple:
+            type: object
+            required: [app_id, environment, assertion_verified]
+            properties:
+              app_id: 
+                type: string
+              environment:
+                type: string
+                enum: [development, production]
+              assertion_verified: 
+                type: boolean
 
-required:
-  - iss
-  - sub
-  - iat
-  - exp
-  - jti
-  - attestation_type
-  - platform
-  - "PuK.AK.Sig"
+  AndroidAttestationToken:
+    type: object
+    allOf:
+      - $ref: "#/definitions/BaseTokenProperties"
+      - type: object
+        required: [attestation_type, android]
+        properties:
+          attestation_type:
+            type: string
+            const: android
+          android:
+            type: object
+            required: [key_attestation_verified, security_level]
+            properties:
+              key_attestation_verified: 
+                type: boolean
+              security_level:
+                type: string
+                # Hier in snake_case umgewandelt!
+                enum: [software, trusted_environment, strong_box]
+              meets_basic_integrity: 
+                type: boolean
+              meets_device_integrity: 
+                type: boolean
+              meets_strong_integrity: 
+                type: boolean

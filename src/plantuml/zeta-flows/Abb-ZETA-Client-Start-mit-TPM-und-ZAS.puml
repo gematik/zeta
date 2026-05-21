@@ -1,0 +1,28 @@
+@startuml "client-start"
+!include ../puml-layout.txt
+
+
+box "Device" DEVICE_COLOR
+  participant "TPM" as TPM LEI_COMPONENT_COLOR
+  participant ZAS as "ZAS" <<zeta>>
+  box "Primärsystem" PRIMAERSYSTEM_COLOR
+    participant Client as "ZETA Client" <<zeta>>
+  end box
+end box
+
+TPM++
+alt Windows / Linux (TPM)
+  ZAS++
+  ZAS -> ZAS: Startet als Hintergrunddienst\n (Root/Admin)
+  ZAS -> ZAS: Messung des PS
+  ZAS -> TPM: TPM2_PCR_Extend(23, Messwerte)
+  ZAS -> ZAS: Monitoring des PS Prozesses fortlaufend
+end
+
+Client++
+Client -> Client: Start \n (User Space)
+ZAS -> ZAS: PS Start erkannt
+ZAS -> ZAS: Messung des PS
+ZAS -> TPM: TPM2_PCR_Extend(23, Messwerte)
+
+@enduml

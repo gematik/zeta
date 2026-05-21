@@ -1,0 +1,38 @@
+@startuml "key-preparation"
+!include ../puml-layout.txt
+
+
+box "Device" DEVICE_COLOR
+  participant "TPM" as TPM LEI_COMPONENT_COLOR
+  participant ZAS as "ZAS" <<zeta>>
+  box "Primärsystem" PRIMAERSYSTEM_COLOR
+    participant Client as "ZETA Client" <<zeta>>
+  end box
+end box
+
+Client++
+ZAS++
+TPM++
+
+note left of Client: Client übergibt Opaque Blob an den ZAS\n(enthält prk_client_sig, puk_client_sig;\ndie Schlüssel können nur im TPM verwendet werden).
+Client -> ZAS: PCP_KEY_BLOB(prk_client_sig, puk_client_sig), hash_puk_client_sig
+
+ZAS -> TPM: TPM2_Load(PCP_KEY_BLOB)
+TPM --> ZAS: Handle_prk_client_sig
+    
+note left of ZAS: ZAS übergibt hash_puk_client_sig als "qualifyingData"\nan TPM2_Certify zur Bindung an den Session-Kontext.
+ZAS -> TPM: TPM2_Certify(Handle_prk_ak_sig, Handle_prk_client_sig, hash_puk_client_sig)
+TPM --> ZAS: tpm2b_attest, tpmt_signature
+ZAS -> TPM: TPM2_ReadPublic(AttestationKey)
+TPM --> ZAS: puk_ak_sig
+ZAS --> Client: puk_ak_sig, tpm2b_attest, tpmt_signature
+
+Client -> ZAS: Request puk_ek_enc, c_ek_enc
+ZAS -> TPM: TPM2_ReadPublic(EndorsementKey)
+TPM --> ZAS: puk_ek_enc
+ZAS -> TPM: TPM2_NV_Read(EndorsementKey_Cert)
+TPM --> ZAS: c_ek_enc
+ZAS --> Client--: puk_ek_enc, c_ek_enc
+Client--
+
+@enduml

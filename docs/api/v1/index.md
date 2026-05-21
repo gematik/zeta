@@ -1,4 +1,4 @@
-# ZETA API v1.1
+# ZETA API v1
 
 Diese API beschreibt die Interaktion eines ZETA Clients mit den ZETA‑Komponenten.
 Dabei werden sowohl stationäre Clients (z. B. Arbeitsplatz‑ oder Serversysteme) als auch mobile Clients (z. B. mobile Endgeräte) unterstützt.
@@ -47,7 +47,7 @@ Die Client‑Registrierung erfolgt in der Regel initial oder bei grundlegenden �
 
 ### 3.1. Stationäre Clients
 
-Jeder ZETA Client muss sich am ZETA Guard registrieren, über den er auf geschützte Ressourcen zugreifen möchte. Dieser Prozess findet **einmalig pro ZETA Guard-Instanz** statt. Der gesamte Prozess ist zweistufig, um die administrative Einrichtung von der technischen Inbetriebnahme zu trennen:
+Jeder ZETA Client muss sich am ZETA Guard registrieren, über den er auf geschützte Ressourcen zugreifen möchte. Dieser Prozess findet **einmalig pro ZETA Guard-Instanz** statt. Die erste erfolgreiche Attestierung ist Teil des in Kapitel 4 beschriebenen Attestierungs‑ und Vertrauenslebenszyklus. Der gesamte Prozess ist zweistufig, um die administrative Einrichtung von der technischen Inbetriebnahme zu trennen:
 
 - **Initiale Registrierung:** Der Client erzeugt ein langlebiges kryptographisches Schlüsselpaar (**Client Instance Key**), sendet den öffentlichen Teil an den Authorization Server und erhält im Gegenzug eine `client_id`. Der Client ist danach im System bekannt, aber sein Status ist `pending_attestation`, d.h. er ist noch nicht für den Zugriff auf Ressourcen freigeschaltet.
 - **Aktivierung (Erster Token Exchange):** Der Client wird aktiviert, indem er zum ersten Mal einen Token Exchange mit einer erfolgreichen **Attestierung** durchführt. Damit beweist er nicht nur den Besitz des privaten Schlüssels, sondern (bei der TPM-Attestierung) auch die Integrität der Plattform, auf der er läuft. Nach erfolgreicher Prüfung wird sein Status im ZETA Guard auf `active` gesetzt.

@@ -1,28 +1,31 @@
 @startuml "Mobile Client Registration with API Details"
 
-!include ../layout.puml
+!include ../puml-layout.txt
+
+!pragma teoz true
+
 
 Actor User
 box "Mobile Device" #GhostWhite
   box "mobile Application"
-    participant "Application" as FachClient #DeepSkyBlue
-    participant "ZETA Client\n(SDK)" as ZetaClient #SandyBrown
+    participant "Application" as FachClient <<provider>>
+    participant "ZETA Client\n(SDK)" as ZetaClient <<zeta>>
   end box
 end box
 
 box "Provider" #TECHNOLOGY
-    box "ZETA Guard 1" #SandyBrown
-        participant AuthS as "First AuthS"
-        participant PDPDB as "PDP DB"
+    box "ZETA Guard 1" <<zeta>>
+        participant AuthS as "First AuthS" <<zeta>>
+        participant PDPDB as "PDP DB" <<zeta>>
     end box
 end box
 
 participant "Attestation\nService" as AttService
 
 box "Provider" #TECHNOLOGY
-    box "ZETA Guard 2" #SandyBrown
-        participant AuthS2 as "AuthS"
-        participant PDPDB2 as "PDP DB"
+    box "ZETA Guard 2" <<zeta>>
+        participant AuthS2 as "AuthS" <<zeta>>
+        participant PDPDB2 as "PDP DB" <<zeta>>
     end box
 end box
 
