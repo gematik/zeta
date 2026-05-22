@@ -11,8 +11,7 @@
 | Status              | Draft           |
 | Verantwortlich      | gematik         |
 | Gültigkeitsbereich  | ZETA Guard API  |
-
----
+| Spezifikationsgrundlage | gemSpec_ZETA, Version 1.3.1 |
 
 ### Zuordnung zu API- und Implementierungsversionen
 
@@ -27,6 +26,7 @@ Die beschriebenen Inhalte beziehen sich auf die folgenden Implementierungsversio
 | Helm Charts          | zeta-helm-charts          | 1.0.1   | Helm Charts                                      |
 | Terraform            | zeta-guard-terraform      | 0.2.1   | Terraform                                      |
 | Provisioning Processor | zeta-guard-provisioning-processor  | 1.0.0   | Provisioning Processor               |
+
 ---
 
 ### Docker-Image Referenzen
@@ -54,7 +54,7 @@ europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr (Docker-Image Reposito
 - Cert Validation Mock (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/zeta-cert-validation-mock:1.0.0)
 - PoPP Token Generator (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/popp-token-generator:1.0.1)
 
-
+---
 
 ## 1. Einführung
 
