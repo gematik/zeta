@@ -1,4 +1,4 @@
-@startuml "obtain-attestation-evidence"
+@startuml "Abb-ZETA-Service-Discovery"
 !include ../puml-layout.txt
 
 

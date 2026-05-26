@@ -1,4 +1,4 @@
-@startuml "key-preparation"
+@startuml "Abb-ZETA-Schlüsselgenerierung-Android"
 !include ../puml-layout.txt
 
     box "Google" #FFFFFF

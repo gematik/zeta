@@ -1,4 +1,4 @@
-@startuml "zeta-overview-attestation-decision-tree"
+@startuml "Abb-ZETA-Attestierungsablauf-nach-Betriebssystem"
 !include ../puml-layout.txt
 
 !pragma teoz true

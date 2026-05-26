@@ -1,4 +1,4 @@
-@startuml "token-exchange-with-attestation"
+@startuml "Abb-ZETA-Token-Exchange-mit-Attestation"
 !include ../puml-layout.txt
 
 

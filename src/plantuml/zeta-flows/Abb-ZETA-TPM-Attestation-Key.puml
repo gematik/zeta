@@ -1,4 +1,4 @@
-@startuml "key-preparation"
+@startuml "Abb-ZETA-TPM-Attestation-Key"
 !include ../puml-layout.txt
 
 

@@ -1,5 +1,4 @@
-@startuml "obtain-attestation-evidence"
-
+@startuml "Abb-ZETA-Client-Statement-mit-Apple-AppAttest"
 !include ../puml-layout.txt
 
 

@@ -110,60 +110,225 @@ Der detaillierte Discovery-Ablauf ist in der folgenden Abbildung dargestellt:
 ## 4. Client Registrierung und Trust Bootstrapping
 
 ### 4.1 Zweck
-Die Client-Registrierung ist der Prozess, mit dem ein ZETA Client erstmalig gegenüber der ZETA-Infrastruktur registriert wird, um eine eindeutige, kryptografisch überprüfbare Identität (Client Instance Key) zu etablieren. Erst nach erfolgreicher Registrierung erhält der Client eine `client_id` mit dem Status `pending_attestation`. Die Aktivierung des Clients erfolgt beim ersten Token Exchange durch eine erfolgreiche Hardware-Attestierung.
+Die Client-Registrierung ist der Prozess, mit dem ein ZETA Client erstmalig gegenüber der ZETA-Infrastruktur registriert wird, um eine eindeutige, kryptografisch überprüfbare Identität (Client Instance Key) zu etablieren. Erst nach erfolgreicher Registrierung erhält der Client eine `client_id` mit dem Status `pending_attestation`. Die Aktivierung des Clients erfolgt beim ersten Token Exchange durch eine erfolgreiche Attestierung.
 
 ### 4.2 Ablauf für stationäre Clients
-Der Bootstrapping- und Registrierungsprozess stationärer Clients gliedert sich in folgende Phasen:
 
-#### 4.2.1 Client Installation und Schlüsselgenerierung
-1. **ZAS Installation (Root/Admin):** Der ZETA Attestation Service (ZAS) wird mit administrativen Rechten installiert, um Zugriff auf die privilegierten Funktionen des TPM 2.0 zu erhalten.
-2. **Client Installation (User Space):** Der ZETA Client wird im Benutzerkontext installiert. Zwischen ZAS und ZETA Client wird eine sichere IPC-Vertrauensbeziehung mit Code-Signatur-Prüfungen aufgebaut.
-3. **Client-Schlüssel generieren:** Der Client erzeugt sein langlebiges Signatur-Schlüsselpaar (**Client Instance Key**: `PrK.Client.Sig` / `PuK.Client.Sig`). Auf Windows/Linux-Systemen erfolgt dies über den TPM Provider, auf macOS-Systemen in der Secure Enclave.
-4. **Storage Root Key (SRK) und Attestation Key (AK):** Im TPM wird ein SRK als Vertrauensanker und ein hardwaregebundener Attestierungsschlüssel (**Attestation Key**: `PrK.AK.Sig` / `PuK.AK.Sig`) erzeugt. Der öffentliche Teil `PuK.AK.Sig` wird exportiert.
-5. **PCR Register erweitern:** Die Messergebnisse der unberührten Client-Komponenten werden durch den ZAS in PCR 23 (oder 22) geschrieben.
+Der Bootstrapping- und Registrierungsprozess stationärer Clients wird nachfolgend getrennt nach Plattform beschrieben. Beide Plattformpfade durchlaufen dieselben vier logischen Phasen — Installation und Schlüsselgenerierung, Client-Start, Vorbereitung der Registrierung und Dynamic Client Registration — unterscheiden sich jedoch grundlegend in den eingesetzten Sicherheitsmechanismen.
 
-Die Installation und Schlüsselgenerierung auf Windows/Linux und macOS ist in den folgenden Abbildungen dargestellt:
+---
+
+#### 4.2.1 Windows und Linux mit TPM 2.0 und ZAS
+
+Unter Windows und Linux basiert der Vertrauensaufbau auf dem **Trusted Platform Module (TPM 2.0)** und dem privilegierten Hintergrunddienst **ZETA Attestation Service (ZAS)**.
+
+##### 4.2.1.1 Installation und Schlüsselgenerierung
+
+- *(01) Privilegierte ZAS-Installation:* Der ZAS wird mit administrativen Rechten (Root/Admin) installiert. Nur so kann er Messungen in TPM PCR-Register schreiben.
+- *(02) Unprivilegierte Client-Installation:* Der ZETA Client wird im Benutzerkontext des Primärsystems installiert.
+- *(03)–(04) IPC-Vertrauensbeziehung:* Zwischen ZAS (privilegiert) und ZETA Client (User Space) wird eine gegenseitig authentifizierte IPC-Verbindung aufgebaut, gesichert durch Code-Signatur-Prüfungen beider Seiten.
+- *(05)–(06) Client Instance Key:* Das langlebige Signatur-Schlüsselpaar (`PrK.Client.Sig` / `PuK.Client.Sig`) wird über den OS- oder TPM-Provider erzeugt. Der öffentliche Schlüssel und das Handle werden dem Client übergeben.
+- *(07) Systemmessung:* Der ZAS misst die unveränderlichen Teile des Primärsystems.
+- *(08) Storage Root Key (SRK):* Im TPM wird ein SRK als lokaler Vertrauensanker erzeugt.
+- *(09)–(12) Attestation Key (AK):* Ein hardwaregebundener Attestierungsschlüssel (`PrK.AK.Sig` / `PuK.AK.Sig`) wird im TPM erzeugt und geladen. Das AK-Handle wird an den ZETA Client übergeben.
+- *(13) PCR-Erweiterung:* Die Messwerte der unveränderlichen Systemkomponenten werden in PCR 23 geschrieben und bilden die initiale Baseline.
+- *Fallback (14)–(15):* Ist kein TPM vorhanden oder kein PCR frei, erzeugt der ZETA Client das Schlüsselpaar im Software-Kontext (Software-Attestation).
 
 ![Abbildung 2: Schlüsselgenerierung auf Windows und Linux](../../../images/zeta-flows/Abb-ZETA-Schlüsselgenerierung-Windows-und-Linux.svg)
 
-![Abbildung 3: Schlüsselgenerierung auf macOS](../../../images/zeta-flows/Abb-ZETA-Schlüsselgenerierung-macOS.svg)
+##### 4.2.1.2 Client-Start und Baseline-Aktualisierung
 
-#### 4.2.2 Client-Start
-Bei jedem Systemboot und Client-Start führt der ZAS eine erneute Integritätsmessung der Client-Komponenten durch und erweitert das PCR 23. Dies dient der Erstellung einer frischen Baseline des Systems.
+Bei jedem Systemboot und jedem Start des Primärsystems führt der ZAS eine erneute Integritätsmessung durch:
 
-![Abbildung 4: Client Start mit TPM und ZAS](../../../images/zeta-flows/Abb-ZETA-Client-Start-mit-TPM-und-ZAS.svg)
+- *(01) ZAS-Bootstart:* Der ZAS wird beim Booten als Systemdienst gestartet.
+- *(02)–(03) Initiale Messung:* Der ZAS misst unveränderliche Systemteile und erweitert PCR 23.
+- *(04)–(08) Client-Startmessung:* Sobald der ZAS den Start des Primärsystems erkennt, führt er eine zweite Messung durch und erweitert erneut PCR 23, um den aktuellen Systemzustand im TPM zu verankern.
 
-#### 4.2.3 Vorbereitung der Client-Registrierung
-Der Client sammelt alle kryptografischen Nachweise, um zu belegen, dass der Client Instance Key im selben TPM generiert wurde wie der Attestation Key.
-- **TPM (Windows/Linux):** Der ZAS führt eine `TPM2_Certify` Operation über `PuK.Client.Sig` mit dem `PrK.AK.Sig` aus. Es entstehen eine Signatur (`tpmt_signature`) und Zertifizierungsdaten (`tpm2b_attest`). Zudem wird das Endorsement Key Zertifikat (`C.EK.Enc`) ausgelesen.
-- **Secure Enclave (macOS):** Das Apple OS attestiert den Client-Schlüssel und liefert das Apple Attestation Object.
+![Abbildung 3: Client Start mit TPM und ZAS](../../../images/zeta-flows/Abb-ZETA-Client-Start-mit-TPM-und-ZAS.svg)
 
-![Abbildung 5: Vorbereitung per TPM Attestation Key](../../../images/zeta-flows/Abb-ZETA-TPM-Attestation-Key.svg)
+##### 4.2.1.3 Vorbereitung der Client-Registrierung (Key Certification)
 
-![Abbildung 6: Vorbereitung per Secure Enclave Attestation Key](../../../images/zeta-flows/Abb-ZETA-SE-Attestation-Key.svg)
+Vor der Registrierung beim AS muss der Client nachweisen, dass `PuK.Client.Sig` auf demselben physischen TPM-Chip existiert wie der AK:
 
-#### 4.2.4 Dynamic Client Registration (DCR)
-Der Client sendet eine POST-Registrierungsanfrage an den `/register`-Endpunkt des PDP Authorization Servers. Die Anfrage entspricht dem Schema [dcr-request.yaml](../../../src/schemas/dcr-request.yaml). Der AS verifiziert die Attestierungsdaten und die Zertifikatskette und speichert bei Erfolg die `client_id` im Status `pending_attestation`.
+- *(01)–(03) Client-Key laden:* Der ZETA Client übergibt das Schlüssel-Handle und den SHA-256-Hash von `PuK.Client.Sig` an den ZAS. Der ZAS lädt den Client-Schlüssel in das TPM.
+- *(04)–(05) TPM2_Certify:* Das TPM führt eine `TPM2_Certify`-Operation durch: Es signiert mit `PrK.AK.Sig` kryptografisch, dass sich `PuK.Client.Sig` im selben TPM-Sicherheitschip befindet. Ergebnis sind `tpm2b_attest` (Zertifizierungsdaten) und `tpmt_signature` (Signatur).
+- *(06)–(14) EK und AK auslesen:* Der ZAS liest den öffentlichen Endorsement Key (`PuK.EK.Enc`), den öffentlichen AK (`PuK.AK.Sig`) und das herstellerseitige EK-Zertifikat (`C.EK.Enc`) aus dem TPM und übergibt alle Daten an den ZETA Client.
 
-![Abbildung 7: DCR für stationäre Clients](../../../images/zeta-flows/Abb-ZETA-DCR-für-stationäre-Clients.svg)
+![Abbildung 4: Vorbereitung per TPM Attestation Key](../../../images/zeta-flows/Abb-ZETA-TPM-Attestation-Key.svg)
+
+##### 4.2.1.4 Dynamic Client Registration (DCR)
+
+- *(01) POST /register:* Der ZETA Client sendet die Registrierungsanfrage gemäß Schema [dcr-request.yaml](../../../src/schemas/dcr-request.yaml) an den PDP AS. Der Body enthält `attestation_type: "tpm"`, `PuK.Client.Sig`, `PuK.AK.Sig`, `PuK.EK.Enc`, `C.EK.Enc` und `signed_hash_puk_client_sig`.
+- *(02)–(03) MakeCredential:* Der AS validiert die EK-Zertifikatskette gegen die Hersteller-CA. Zur Verifikation des Schlüsselbesitzes generiert er ein verschlüsseltes `CredentialBlob` per `TPM2_MakeCredential` (verschlüsselt mit `PuK.EK.Enc`, gebunden an `PuK.AK.Sig`) und antwortet mit `202 Accepted {CredentialBlob}`.
+- *(04)–(08) ActivateCredential:* Der ZETA Client leitet das `CredentialBlob` an den ZAS weiter. Der ZAS führt im TPM `TPM2_ActivateCredential` aus — dieser Befehl gelingt nur, wenn EK und AK im selben TPM vorhanden sind. Das entschlüsselte Secret wird an den Client zurückgegeben.
+- *(09)–(10) POST /register/verify:* Der Client sendet das Secret an den AS. Der AS verifiziert das Secret und schließt die Registrierung ab: `201 Created {client_id}` mit Status `pending_attestation`.
+
+![Abbildung 5: DCR für stationäre Clients](../../../images/zeta-flows/Abb-ZETA-DCR-für-stationäre-Clients.svg)
+
+---
+
+#### 4.2.2 macOS mit Secure Enclave
+
+Unter macOS (sowie iOS und iPadOS) basiert der Vertrauensaufbau vollständig auf der hardwareintegrierten **Secure Enclave** und den Apple-eigenen APIs **App Attest** bzw. **DeviceCheck**. Ein separater privilegierter Dienst wie der ZAS ist nicht erforderlich.
+
+##### 4.2.2.1 Installation und Schlüsselgenerierung
+
+- *(01) App-Installation:* Die Anwendung inklusive ZETA Client wird im User Space des Apple-Betriebssystems installiert.
+- *(02)–(05) Secure Enclave Key-Generierung:* Der ZETA Client ruft die native Apple API `SecKeyCreateRandomKey` mit dem Parameter `kSecAttrTokenIDSecureEnclave` auf. Das Betriebssystem leitet den Befehl an die isolierte Secure Enclave weiter. Dort wird das Schlüsselpaar (`PrK.Client.Sig` / `PuK.Client.Sig`) erzeugt. **Der private Schlüssel verlässt die Secure Enclave zu keinem Zeitpunkt.** Das OS übergibt dem Client lediglich eine Schlüsselreferenz (`keyId`).
+- *Fallback (06):* Ist die Secure Enclave nicht verfügbar, erzeugt der ZETA Client das Schlüsselpaar im regulären Software-Speicher (Software-Fallback ohne Hardwarebindung).
+
+![Abbildung 6: Schlüsselgenerierung auf macOS](../../../images/zeta-flows/Abb-ZETA-Schlüsselgenerierung-macOS.svg)
+
+##### 4.2.2.2 Client-Start und Posture-Erhebung
+
+Unter macOS gibt es keinen privilegierten ZAS-Dienst. Die Integritätsbewertung basiert stattdessen auf der Erhebung von Sicherheitszustandsdaten (Posture):
+
+- *(01)–(03) Systemstart:* Der ZETA Client startet direkt im User Space ohne Voraussetzungen durch einen Admin-Dienst.
+- *(04) Posture-Erhebung:* Der Client liest über native macOS APIs die sicherheitsrelevanten Systemzustände aus:
+  - System Integrity Protection (SIP): aktiviert / deaktiviert
+  - Gatekeeper: aktiviert / deaktiviert
+  - Secure Boot Policy: Full / Medium / No Security
+  - FileVault-Status
+  - Betriebssystemversion und Build-Nummer
+- *(05) Initialisierung:* Der Client initialisiert seine internen Sitzungsstrukturen im Benutzerkontext.
+
+##### 4.2.2.3 Vorbereitung der Client-Registrierung (Apple Attestation)
+
+Vor der Registrierung beim AS muss der ZETA Client nachweisen, dass `PuK.Client.Sig` hardwaregebunden in der Secure Enclave vorliegt:
+
+- *(01)–(02) Nonce abrufen:* Der Client fordert eine frische Nonce beim PDP AS an (`GET /nonce`).
+- *(03)–(04) Posture-Daten erheben:* Der Client liest die aktuellen Sicherheitszustände aus (SIP, Gatekeeper, OS-Version, Secure Boot).
+- *(05) clientDataHash berechnen:* Der Client berechnet `clientDataHash = SHA256(Nonce ‖ Posture-Daten)`. Dieser Hash bindet den Attestierungsnachweis fest an die aktuelle Transaktion.
+- *(06) Apple API aufrufen:* Der Client ruft `DCAppAttestService.shared.attestKey(keyId_AK, clientDataHash)` auf und übergibt den berechneten Hash an die Secure Enclave.
+- *(07)–(08) Secure Enclave signiert:* Die Secure Enclave signiert ausschließlich den übergebenen Hash mit `PrK.AK.Sig`. Sie erzeugt zudem einen monoton steigenden Replay-Counter.
+- *(09)–(11) Apple Attestation Object:* Das OS verpackt Signatur, Apple-Zertifikatskette und Authenticator-Daten (inkl. Counter) in ein standardisiertes, CBOR-kodiertes **Apple Attestation Object** und übergibt es dem ZETA Client.
+
+![Abbildung 7: Vorbereitung per Secure Enclave Attestation Key](../../../images/zeta-flows/Abb-ZETA-SE-Attestation-Key.svg)
+
+##### 4.2.2.4 Dynamic Client Registration (DCR)
+
+- *(11)–(12) POST /register:* Der ZETA Client sendet die Registrierungsanfrage gemäß Schema [dcr-request.yaml](../../../src/schemas/dcr-request.yaml) an den PDP AS. Der Body enthält `attestation_type: "apple"`, `PuK.Client.Sig`, `PuK.AK.Sig`, `apple_attestation_object` sowie `signed_hash_puk_client_sig`.
+- *(13) AS validiert Apple Attestation Object:* Der AS prüft die X.509-Zertifikatskette gegen die offizielle **Apple App Attest Root CA**, verifiziert den Replay-Counter und stellt sicher, dass `PuK.AK.Sig` identisch mit dem Schlüssel in `x5c[0]` des Attestation Objects ist.
+- *(14) Hash-Rekonstruktion:* Der AS rekonstruiert `clientDataHash` aus der übermittelten Nonce und den Posture-Klartextdaten und prüft die Übereinstimmung mit dem signierten Hash. Nur bei Übereinstimmung ist der Nachweis gültig.
+- *(15) signed_hash_puk_client_sig prüfen:* Der AS verifiziert, dass `PuK.Client.Sig` durch `PrK.AK.Sig` signiert wurde, was beweist, dass beide Schlüssel auf demselben Gerät kontrolliert werden.
+- *(16) Abschluss:* Bei erfolgreicher Validierung antwortet der AS mit `201 Created {client_id}` mit Status `pending_attestation`.
+
+![Abbildung 8: DCR für stationäre Clients](../../../images/zeta-flows/Abb-ZETA-DCR-für-stationäre-Clients.svg)
 
 ### 4.3 Ablauf für mobile Clients
-Der Lebenszyklus mobiler Clients (Android/iOS) folgt einer ähnlichen logischen Struktur, berücksichtigt jedoch plattformspezifische Besonderheiten und erfordert eine interaktive Nutzerbindung:
 
-#### 4.3.1 Initialisierung und Schlüsselgenerierung
-- **Android:** Der Client fordert über den KeyStore die Generierung des Client Instance Keys in der TEE oder StrongBox an. Ein zweiter hardwaregebundener Attestierungsschlüssel (AK) wird mit einer Challenge (Hash des Client Instance Keys) generiert. Hierdurch wird eine unveränderliche Bindung geschaffen. Das Betriebssystem liefert eine X.509-Zertifikatskette (`android_key_attestation_certificate_chain`). Zudem wird optional ein Integritäts-Token über die Google Play Integrity API bezogen.
-- **Apple iOS:** Die Generierung des Client-Instance-Schlüssels erfolgt analog zu macOS in der Secure Enclave.
+Der Lebenszyklus mobiler Clients folgt denselben vier logischen Phasen wie bei stationären Clients — Schlüsselgenerierung, Client-Start, Attestierungs-Vorbereitung und DCR. Mobile Clients unterscheiden sich jedoch grundlegend in der eingesetzten Attestierungstechnologie und erfordern zusätzlich eine interaktive **Nutzerbindung (Trust-On-First-Use, TOFU)**. Die Beschreibung ist getrennt nach Android und Apple iOS/iPadOS.
 
-![Abbildung 8: Schlüsselgenerierung auf Android](../../../images/zeta-flows/Abb-ZETA-Schlüsselgenerierung-Android.svg)
+---
 
-#### 4.3.2 DCR und TOFU-Bindung
-Im Rahmen der DCR an den PDP Authorization Server (`POST /register`) erfolgt eine zusätzliche **Trust-On-First-Use (TOFU)** Nutzerbindung:
-1. Der Client sendet die DCR-Anfrage inklusive der hardwarebasierten Attestierungsnachweise und der E-Mail-Adresse des Nutzers.
-2. Der Authorization Server empfängt die Anfrage, validiert die Signaturen und die Vertrauenskette (z.B. gegen die Google Root CA oder die Apple App Attest Root CA).
-3. Der AS sendet einen OTP-Bestätigungscode an die angegebene E-Mail-Adresse des Nutzers.
-4. Der Nutzer gibt den Code im Client ein. Der Client sendet den Code an den AS, um die Registrierung abzuschließen. Der Client ist nun mit der `client_id` im Status `pending_attestation` registriert.
+#### 4.3.1 Android (TEE / StrongBox)
 
-![Abbildung 9: DCR für mobile Clients](../../../images/zeta-flows/Abb-ZETA-DCR-für-mobile-Clients.svg)
+Unter Android basiert der Vertrauensaufbau auf dem **Trusted Execution Environment (TEE)** oder der hardwaregesicherten **StrongBox** und nutzt die **Android Key Attestation** sowie optional die **Google Play Integrity API**.
+
+##### 4.3.1.1 Schlüsselgenerierung
+
+Android verwendet ein **Zwei-Schlüssel-Modell**: Ein langlebiger Client Instance Key dient der Authentifizierung, ein separater Attestation Key beweist die Hardwarebindung.
+
+- *(01) Client Instance Key anfordern:* Der ZETA Client fordert über den Android `KeyStore` die Generierung des primären Signaturschlüssels (`PrK.Client.Sig` / `PuK.Client.Sig`) an, mit dem Parameter `StrongBoxBacked = true` (Fallback auf TEE).
+- *(02)–(03) Schlüssel in Hardware erzeugen:* Das Betriebssystem leitet den Befehl an TEE oder StrongBox weiter. Das Schlüsselpaar wird dort erzeugt. **Der private Schlüssel verlässt die Hardware zu keinem Zeitpunkt.** Der Client erhält nur eine Alias-Referenz zurück.
+- *(04) Hash berechnen:* Der Client berechnet `hash_puk_client_sig = SHA256(PuK.Client.Sig)`. Dieser Hash dient als Bindeglied zum Attestation Key.
+- *(05) Attestation Key anfordern:* Der Client fordert die Generierung eines zweiten Schlüssels (Attestation Key, `PrK.AK.Sig` / `PuK.AK.Sig`) an und übergibt dabei `hash_puk_client_sig` als `AttestationChallenge`.
+- *(06)–(08) AK mit Challenge attestieren:* TEE oder StrongBox erzeugt das AK-Schlüsselpaar und eine X.509-Zertifikatskette. Der Challenge-Hash wird kryptografisch und unveränderlich in das AK-Zertifikat eingebettet — so beweist die Kette, dass `PuK.Client.Sig` zur Schlüsselgenerierung dieses AK gehört.
+- *(09) Zertifikatskette übergeben:* Die fertige `android_key_attestation_certificate_chain` (Leaf bis Google Hardware Attestation Root CA) wird an den Client übergeben.
+- *(10)–(13) Besitznachweis (Proof of Possession):* Der Client lässt `hash_puk_client_sig` durch den `PrK.AK.Sig` in der Hardware signieren. Ergebnis ist `signed_hash_puk_client_sig` (ECDSA-Signatur).
+- *(14)–(15) Play Integrity Token (optional):* Der Client ruft die Google Play Integrity API auf und übergibt `hash_puk_client_sig` als Nonce. Google liefert ein signiertes `play_integrity_token`, das den Laufzeitzustand von Gerät und App bestätigt und an den Client-Schlüssel bindet.
+
+![Abbildung 9: Schlüsselgenerierung auf Android](../../../images/zeta-flows/Abb-ZETA-Schlüsselgenerierung-Android.svg)
+
+##### 4.3.1.2 Client-Start und Posture-Erhebung
+
+Unter Android gibt es keinen separaten privilegierten Dienst. Die Sicherheitszustände werden durch das Betriebssystem bereitgestellt:
+
+- *(01) App-Start:* Der ZETA Client startet im App-Prozess unter dem normalen Android App-Sandbox-Modell.
+- *(02) Posture-Erhebung:* Der Client fragt folgende Sicherheitszustände über Android-System-APIs ab:
+  - Verified Boot State (`LOCKED` / `UNLOCKED`)
+  - Security Patch Level (Monat/Jahr)
+  - OS-Version und Build-Fingerprint
+  - Hersteller und Gerätemodell
+  - `isDeviceSecure` (Bildschirmsperre aktiv?)
+- *(03) Initialisierung:* Die internen Sitzungsstrukturen (Token-Speicher, DPoP-Key-Kontext) werden initialisiert.
+
+##### 4.3.1.3 Vorbereitung der Client-Registrierung
+
+Der Attestierungsnachweis steht bereits nach der Schlüsselgenerierung bereit — die `android_key_attestation_certificate_chain` beweist die Hardwarebindung; `signed_hash_puk_client_sig` beweist den Schlüsselbesitz. Eine zusätzliche Challenge-Anfrage an den AS ist in dieser Phase nicht erforderlich, da die Challenge (`hash_puk_client_sig`) clientseitig berechnet wurde.
+
+Vor der DCR ruft der Client optional die Play Integrity API erneut auf, um einen frischen `play_integrity_token` mit der aktuellen Nonce zu erhalten.
+
+##### 4.3.1.4 Dynamic Client Registration und TOFU-Nutzerbindung
+
+- *(01) POST /register:* Der ZETA Client sendet die Registrierungsanfrage gemäß Schema [dcr-request.yaml](../../../src/schemas/dcr-request.yaml) an den PDP AS. Der Body enthält:
+  - `attestation_type: "android"`
+  - `puk_client_sig` (JWK)
+  - `puk_ak_sig` (JWK)
+  - `android_key_attestation_certificate_chain` (Array von Base64-DER-Zertifikaten)
+  - `signed_hash_puk_client_sig` (Base64url-ECDSA-Signatur)
+  - `play_integrity_token` (optional)
+- *(02) AS validiert Zertifikatskette:* Der AS prüft die Zertifikatskette gegen die Google Hardware Attestation Root CA und liest den eingebetteten Challenge-Wert (`hash_puk_client_sig`) aus dem AK-Zertifikat aus.
+- *(03) Besitznachweis prüfen:* Der AS verifiziert `signed_hash_puk_client_sig` mit `PuK.AK.Sig` und bestätigt, dass `PuK.Client.Sig` zum selben Hardware-Schlüsselsatz gehört.
+- *(04) Play Integrity prüfen (optional):* Der AS validiert das `play_integrity_token` gegenüber der Google Play Integrity API, um Laufzeitzustand und App-Integrität zu verifizieren.
+- *(05)–(08) TOFU E-Mail-Bindung:* Der AS sendet einen OTP-Bestätigungscode an die im Request angegebene E-Mail-Adresse des Nutzers. Der Nutzer gibt den Code im Client ein; der Client sendet ihn via `POST /register/verify` an den AS.
+- *(09) Abschluss:* Der AS bestätigt die Registrierung mit `201 Created {client_id}` mit Status `pending_attestation`.
+
+![Abbildung 10: DCR für mobile Clients](../../../images/zeta-flows/Abb-ZETA-DCR-für-mobile-Clients.svg)
+
+---
+
+#### 4.3.2 Apple iOS und iPadOS (Secure Enclave)
+
+Unter iOS und iPadOS basiert der Vertrauensaufbau auf der hardwareintegrierten **Secure Enclave** und der Apple-eigenen **App Attest API** (DeviceCheck-Framework). Der Ablauf ist identisch zu macOS (vgl. Kapitel 4.2.2), unterscheidet sich jedoch in plattformspezifischen Posture-Parametern.
+
+##### 4.3.2.1 Schlüsselgenerierung
+
+- *(01) App-Installation:* Die App inklusive ZETA Client wird über den App Store installiert und im App-Sandbox-Kontext des iOS/iPadOS-Betriebssystems gestartet.
+- *(02) Client Instance Key anfordern:* Der ZETA Client ruft `SecKeyCreateRandomKey` mit `kSecAttrTokenIDSecureEnclave` auf, um das Schlüsselpaar (`PrK.Client.Sig` / `PuK.Client.Sig`) in der Secure Enclave zu erzeugen.
+- *(03) Schlüssel in Secure Enclave erzeugen:* Das Betriebssystem leitet den Befehl an den isolierten Hardware-Chip weiter. **Der private Schlüssel verlässt die Secure Enclave zu keinem Zeitpunkt.** Der Client erhält nur die Schlüsselreferenz (`keyId`) zurück.
+- *(04) Attestation Key erzeugen:* Der Client ruft `DCAppAttestService.shared.generateKey()` auf. Die App Attest API erzeugt ein AK-Schlüsselpaar in der Secure Enclave und gibt eine `keyId_AK` zurück.
+- *Fallback (05):* Ist die Secure Enclave nicht verfügbar (ältere Geräte ohne Secure Enclave), werden beide Schlüssel im regulären Software-Speicher erzeugt (Software-Fallback).
+
+![Abbildung 11: Schlüsselgenerierung auf macOS/iOS (Secure Enclave)](../../../images/zeta-flows/Abb-ZETA-Schlüsselgenerierung-macOS.svg)
+
+##### 4.3.2.2 Client-Start und Posture-Erhebung
+
+- *(01) App-Start:* Der ZETA Client startet im App-Prozess unter dem iOS/iPadOS-Sandbox-Modell.
+- *(02) Posture-Erhebung:* Der Client liest über native iOS-APIs die sicherheitsrelevanten Systemzustände aus:
+  - Betriebssystemversion und Build-Nummer
+  - Gerätemodell und Hersteller
+  - Jailbreak-Status (Indikator: Schreibzugriff auf `/private` oder Vorhandensein von Cydia)
+  - Secure Boot Status (über `MobileGestalt` APIs)
+  - App-Signierungsstatus (Distribution vs. Enterprise vs. Ad-hoc)
+- *(03) Initialisierung:* Interne Sitzungsstrukturen (Token-Speicher, DPoP-Key-Kontext) werden initialisiert.
+
+##### 4.3.2.3 Vorbereitung der Client-Registrierung (Apple App Attest)
+
+- *(01)–(02) Nonce abrufen:* Der Client fordert eine frische Nonce beim PDP AS an (`GET /nonce`).
+- *(03)–(04) Posture-Daten erheben:* Der Client liest die aktuellen Sicherheitszustände aus (OS-Version, Gerätemodell, Secure Boot, Jailbreak-Indikatoren).
+- *(05) clientDataHash berechnen:* `clientDataHash = SHA256(Nonce ‖ Posture-Daten)`. Dieser Hash bindet den Attestierungsnachweis fest an diese Transaktion und verhindert Replay-Angriffe.
+- *(06) App Attest API aufrufen:* Der Client ruft `DCAppAttestService.shared.attestKey(keyId_AK, clientDataHash)` auf.
+- *(07)–(08) Secure Enclave signiert:* Die Secure Enclave signiert den Hash mit `PrK.AK.Sig` und generiert einen monoton steigenden Replay-Counter (Authenticator Counter).
+- *(09)–(10) Apple Attestation Object erstellen:* Das OS bündelt Signatur, X.509-Zertifikatskette (vom AK bis zur Apple App Attest Root CA) und Authenticator-Daten (inkl. Counter und `rpIdHash`) in ein standardisiertes, **CBOR-kodiertes Apple Attestation Object** und gibt es dem Client zurück.
+
+![Abbildung 12: Vorbereitung per Secure Enclave Attestation Key (iOS)](../../../images/zeta-flows/Abb-ZETA-SE-Attestation-Key.svg)
+
+##### 4.3.2.4 Dynamic Client Registration und TOFU-Nutzerbindung
+
+- *(01) POST /register:* Der ZETA Client sendet die Registrierungsanfrage gemäß Schema [dcr-request.yaml](../../../src/schemas/dcr-request.yaml) an den PDP AS. Der Body enthält:
+  - `attestation_type: "apple"`
+  - `puk_client_sig` (JWK)
+  - `puk_ak_sig` (JWK)
+  - `apple_attestation_object` (Base64-CBOR)
+  - `signed_hash_puk_client_sig`
+- *(02) AS validiert Attestation Object:* Der AS prüft die X.509-Zertifikatskette gegen die **Apple App Attest Root CA**, verifiziert den Replay-Counter und stellt sicher, dass `PuK.AK.Sig` identisch mit dem Schlüssel in `x5c[0]` ist.
+- *(03) Hash-Rekonstruktion:* Der AS rekonstruiert `clientDataHash` aus übermittelter Nonce und Posture-Klartextdaten und prüft die Übereinstimmung mit dem signierten Hash.
+- *(04) Besitznachweis prüfen:* Der AS verifiziert `signed_hash_puk_client_sig` mit `PuK.AK.Sig`, um zu bestätigen, dass `PuK.Client.Sig` und der AK auf demselben Gerät in der Secure Enclave liegen.
+- *(05)–(08) TOFU E-Mail-Bindung:* Analog zu Android: Der AS sendet einen OTP-Code an die E-Mail des Nutzers; der Client übermittelt den Code via `POST /register/verify`.
+- *(09) Abschluss:* Der AS bestätigt die Registrierung mit `201 Created {client_id}` mit Status `pending_attestation`.
+
+![Abbildung 13: DCR für mobile Clients (Apple iOS)](../../../images/zeta-flows/Abb-ZETA-DCR-für-mobile-Clients.svg)
 
 ## 5. Attestation und Device Posture Evaluation
 

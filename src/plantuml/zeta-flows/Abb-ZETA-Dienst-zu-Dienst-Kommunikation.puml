@@ -1,4 +1,4 @@
-@startuml "zeta-workload-identity-federation"
+@startuml "Abb-ZETA-Dienst-zu-Dienst-Kommunikation"
 !include ../puml-layout.txt
 
 
