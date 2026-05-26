@@ -82,6 +82,8 @@ In dieser Phase ermittelt der ZETA Client dynamisch die notwendigen Endpunkte un
 ### 3.2 Ablauf
 Der Service Discovery-Ablauf ist für stationäre und mobile Clients identisch:
 
+- **Verwendete Endpunkt-Pfade:** `GET /.well-known/oauth-protected-resource` und `GET /.well-known/oauth-authorization-server`
+
 1. **Initiale Voraussetzungen**
    Der Client verfügt über den FQDN des Resource Servers und die `roots.json` zur Validierung der Vertrauenskette.
 2. **Abruf der Resource Server Konfiguration**
@@ -158,6 +160,7 @@ Vor der Registrierung beim AS muss der Client nachweisen, dass `PuK.Client.Sig` 
 
 ##### 4.2.1.4 Dynamic Client Registration (DCR)
 
+- **Verwendete Endpunkt-Pfade (Windows/Linux):** `POST /register` und `POST /register/verify`
 - *(01) POST /register:* Der ZETA Client sendet die Registrierungsanfrage gemäß Schema [dcr-request.yaml](../../../src/schemas/dcr-request.yaml) an den PDP AS. Der Body enthält `attestation_type: "tpm"`, `PuK.Client.Sig`, `PuK.AK.Sig`, `PuK.EK.Enc`, `C.EK.Enc` und `signed_hash_puk_client_sig`.
 - *(02)–(03) MakeCredential:* Der AS validiert die EK-Zertifikatskette gegen die Hersteller-CA. Zur Verifikation des Schlüsselbesitzes generiert er ein verschlüsseltes `CredentialBlob` per `TPM2_MakeCredential` (verschlüsselt mit `PuK.EK.Enc`, gebunden an `PuK.AK.Sig`) und antwortet mit `202 Accepted {CredentialBlob}`.
 - *(04)–(08) ActivateCredential:* Der ZETA Client leitet das `CredentialBlob` an den ZAS weiter. Der ZAS führt im TPM `TPM2_ActivateCredential` aus — dieser Befehl gelingt nur, wenn EK und AK im selben TPM vorhanden sind. Das entschlüsselte Secret wird an den Client zurückgegeben.
@@ -196,6 +199,7 @@ Unter macOS gibt es keinen privilegierten ZAS-Dienst. Die Integritätsbewertung 
 
 Vor der Registrierung beim AS muss der ZETA Client nachweisen, dass `PuK.Client.Sig` hardwaregebunden in der Secure Enclave vorliegt:
 
+- **Verwendeter Endpunkt-Pfad (macOS/Apple):** `GET /nonce`
 - *(01)–(02) Nonce abrufen:* Der Client fordert eine frische Nonce beim PDP AS an (`GET /nonce`).
 - *(03)–(04) Posture-Daten erheben:* Der Client liest die aktuellen Sicherheitszustände aus (SIP, Gatekeeper, OS-Version, Secure Boot).
 - *(05) clientDataHash berechnen:* Der Client berechnet `clientDataHash = SHA256(Nonce ‖ Posture-Daten)`. Dieser Hash bindet den Attestierungsnachweis fest an die aktuelle Transaktion.
@@ -207,6 +211,7 @@ Vor der Registrierung beim AS muss der ZETA Client nachweisen, dass `PuK.Client.
 
 ##### 4.2.2.4 Dynamic Client Registration (DCR)
 
+- **Verwendeter Endpunkt-Pfad (macOS/Apple):** `POST /register`
 - *(11)–(12) POST /register:* Der ZETA Client sendet die Registrierungsanfrage gemäß Schema [dcr-request.yaml](../../../src/schemas/dcr-request.yaml) an den PDP AS. Der Body enthält `attestation_type: "apple"`, `PuK.Client.Sig`, `PuK.AK.Sig`, `apple_attestation_object` sowie `signed_hash_puk_client_sig`.
 - *(13) AS validiert Apple Attestation Object:* Der AS prüft die X.509-Zertifikatskette gegen die offizielle **Apple App Attest Root CA**, verifiziert den Replay-Counter und stellt sicher, dass `PuK.AK.Sig` identisch mit dem Schlüssel in `x5c[0]` des Attestation Objects ist.
 - *(14) Hash-Rekonstruktion:* Der AS rekonstruiert `clientDataHash` aus der übermittelten Nonce und den Posture-Klartextdaten und prüft die Übereinstimmung mit dem signierten Hash. Nur bei Übereinstimmung ist der Nachweis gültig.
@@ -261,6 +266,7 @@ Vor der DCR ruft der Client optional die Play Integrity API erneut auf, um einen
 
 ##### 4.3.1.4 Dynamic Client Registration und TOFU-Nutzerbindung
 
+- **Verwendete Endpunkt-Pfade (Android):** `POST /register` und `POST /register/verify`
 - *(01) POST /register:* Der ZETA Client sendet die Registrierungsanfrage gemäß Schema [dcr-request.yaml](../../../src/schemas/dcr-request.yaml) an den PDP AS. Der Body enthält:
   - `attestation_type: "android"`
   - `puk_client_sig` (JWK)
@@ -305,6 +311,7 @@ Unter iOS und iPadOS basiert der Vertrauensaufbau auf der hardwareintegrierten *
 
 ##### 4.3.2.3 Vorbereitung der Client-Registrierung (Apple App Attest)
 
+- **Verwendeter Endpunkt-Pfad (iOS/Apple):** `GET /nonce`
 - *(01)–(02) Nonce abrufen:* Der Client fordert eine frische Nonce beim PDP AS an (`GET /nonce`).
 - *(03)–(04) Posture-Daten erheben:* Der Client liest die aktuellen Sicherheitszustände aus (OS-Version, Gerätemodell, Secure Boot, Jailbreak-Indikatoren).
 - *(05) clientDataHash berechnen:* `clientDataHash = SHA256(Nonce ‖ Posture-Daten)`. Dieser Hash bindet den Attestierungsnachweis fest an diese Transaktion und verhindert Replay-Angriffe.
@@ -316,6 +323,7 @@ Unter iOS und iPadOS basiert der Vertrauensaufbau auf der hardwareintegrierten *
 
 ##### 4.3.2.4 Dynamic Client Registration und TOFU-Nutzerbindung
 
+- **Verwendete Endpunkt-Pfade (iOS/Apple):** `POST /register` und `POST /register/verify`
 - *(01) POST /register:* Der ZETA Client sendet die Registrierungsanfrage gemäß Schema [dcr-request.yaml](../../../src/schemas/dcr-request.yaml) an den PDP AS. Der Body enthält:
   - `attestation_type: "apple"`
   - `puk_client_sig` (JWK)
@@ -358,6 +366,8 @@ Um auf einen Fachdienst zuzugreifen, benötigt der ZETA Client ein kurzlebiges, 
 #### 6.1.1 Pfad A: Token-Austausch mit Attestierung
 Dieser Pfad wird beim ersten Session-Aufbau oder zur Re-Attestierung durchlaufen. 
 
+- **Verwendete Endpunkt-Pfade:** `GET /nonce`, `POST /token` und Policy-Engine `POST /v1/data/authz`
+
 1. **Nonce abrufen:** Der Client fordert eine frische, einmalig gültige Nonce vom AS an (`GET /nonce`).
 2. **DPoP-Schlüssel erzeugen:** Der Client generiert ein temporäres, sitzungsbasiertes DPoP-Schlüsselpaar (`PrK.DPoP.Sig` / `PuK.DPoP.Sig`).
 3. **Integritätsnachweis erheben:** Der Client berechnet die `attestation_challenge` und fordert beim ZAS die TPM Quote bzw. das Apple Attestation Object an.
@@ -374,16 +384,23 @@ Der vollständige Token Exchange mit Attestierung ist in der folgenden Abbildung
 #### 6.1.2 Pfad B: Token-Erneuerung via Refresh Token
 Dieser performante Pfad wird genutzt, solange ein gültiges Refresh Token vorliegt. Auf eine erneute Hardware-Attestierung wird hierbei verzichtet. Der Client sendet eine einfache Client Assertion (ohne embedded Attestierung) zusammen mit dem Refresh Token an den `/token`-Endpunkt. Der AS validiert die Signaturen und führt eine Refresh Token Rotation durch.
 
+- **Verwendeter Endpunkt-Pfad:** `POST /token`
+
 ![Abbildung 13: Token Exchange mit Refresh Token](../../../images/zeta-flows/Abb-ZETA-Token-Exchange-mit-Refresh-Token.svg)
 
 ### 6.2 Mobile Clients
 Bei mobilen Clients erfolgt der Token-Abruf über den OIDC Authorization Code Flow mit PKCE:
+
+- **Verwendeter Endpunkt-Pfad:** `POST /token` (Authorization Code Flow)
+
 1. Der Nutzer authentifiziert sich interaktiv gegenüber dem Identity Provider (IDP).
 2. Der Client tauscht den Authorization Code am `/token`-Endpunkt gegen die Session-Token aus, indem er seine Client Assertion und seine DPoP-gebundenen Attestierungsnachweise mitsendet.
 3. Bei erfolgreicher Validierung stellt der AS die Token (Access Token, Refresh Token, optionales Attestation Token) aus.
 
 ### 6.3 Zugriff auf den Resource Server
 Nach erfolgreichem Token-Bezug greift der Client auf den Resource Server (RS) zu. Die Absicherung erfolgt über den PEP HTTP Proxy:
+
+- **Verwendete Endpunkt-Pfade:** `GET /api/resource` (bzw. `POST /ASL` bei ZETA/ASL-Verschlüsselung)
 
 - **Zugriff mit ZETA/ASL:** Erfordert die Protected Resource eine zusätzliche Verschlüsselungsebene (ZETA/ASL), wird ein verschlüsselter Tunnel aufgebaut. Der Tunnel kann entweder am PEP (HTTP Proxy) oder direkt am Resource Server (Ende-zu-Ende) terminieren. Der Client verpackt den Fach-Request in einen verschlüsselten `POST /ASL` Request.
 - **Zugriff ohne ZETA/ASL:** Der Client sendet den Request direkt an den PEP mit dem Access Token im `Authorization`-Header (DPoP-gebunden) und dem DPoP-Proof im `DPoP`-Header.
@@ -397,7 +414,9 @@ Die beiden Zugriffsszenarien sind in den folgenden Abbildungen dargestellt:
 ![Abbildung 15: Zugriff auf RS ohne ASL](../../../images/zeta-flows/Abb-ZETA-Zugriff-auf-RS-ohne-ASL.svg)
 
 ### 6.4 Dienst-zu-Dienst Kommunikation
-Für die maschinelle Kommunikation zwischen Backend-Diensten wird die **Workload Identity Federation** eingesetzt. Der PDP des anfragenden Dienstes fungiert als Identity Provider (IDP) und stellt ein Workload-Token (Subject Token) aus, das beim PDP des Zieldienstes per Token-Exchange gegen ein Access Token für den dortigen PEP ausgetauscht wird.
+Für die maschinelle Kommunikation zwischen Backend-Diensten wird die **Workload Identity Federation** eingesetzt.
+
+- **Verwendeter Endpunkt-Pfad:** `POST /token` Der PDP des anfragenden Dienstes fungiert als Identity Provider (IDP) und stellt ein Workload-Token (Subject Token) aus, das beim PDP des Zieldienstes per Token-Exchange gegen ein Access Token für den dortigen PEP ausgetauscht wird.
 
 ![Abbildung 16: Dienst-zu-Dienst Kommunikation](../../../images/zeta-flows/Abb-ZETA-Dienst-zu-Dienst-Kommunikation.svg)
 
@@ -410,7 +429,7 @@ Die ZETA Guard API Endpunkte sind über HTTPS erreichbar und erfordern TLS 1.3 o
 #### 7.1.1 OAuth Protected Resource Well-Known Endpoint
 Bietet eine standardisierte Methode, um Konfigurationsdetails einer Protected Resource abzurufen (gemäß RFC 9728).
 - **Pfad:** `GET /.well-known/oauth-protected-resource`
-- **Schema:** [opr-well-known.yaml](../../../src/schemas/opr-well-known.yaml)
+- **Request-Schema:** *Keines (kein Request-Body)*
 
 ##### 7.1.1.1 Anfrage-Beispiel
 ```http
@@ -421,6 +440,7 @@ Accept: application/json
 
 ##### 7.1.1.2 Antwort-Beispiele
 **200 OK (Erfolgreich):**
+- **Response-Schema:** [opr-well-known.yaml](../../../src/schemas/opr-well-known.yaml)
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/json
@@ -455,31 +475,29 @@ ETag: "w/37b12-abc12345"
 }
 ```
 
-**404 Not Found:**
+**404 Not Found (Fehler):**
+- **Response-Schema:** [zeta-error.yaml](../../../src/schemas/zeta-error.yaml)
 ```http
 HTTP/1.1 404 Not Found
-Content-Type: application/problem+json
+Content-Type: application/json
 
 {
-  "type": "https://httpstatuses.com/404",
-  "title": "OAuth Protected Resource Configuration Not Found",
-  "status": 404,
-  "detail": "The requested OAuth Protected Resource configuration could not be found at this path.",
-  "instance": "/.well-known/oauth-protected-resource"
+  "error": "resource_not_found",
+  "error_description": "The requested OAuth Protected Resource configuration could not be found at this path.",
+  "error_uri": "https://gematik.de/errors/resource_not_found"
 }
 ```
 
-**500 Internal Server Error:**
+**500 Internal Server Error (Fehler):**
+- **Response-Schema:** [zeta-error.yaml](../../../src/schemas/zeta-error.yaml)
 ```http
 HTTP/1.1 500 Internal Server Error
-Content-Type: application/problem+json
+Content-Type: application/json
 
 {
-  "type": "https://httpstatuses.com/500",
-  "title": "Internal Server Error",
-  "status": 500,
-  "detail": "An unexpected error occurred while processing your request.",
-  "instance": "/.well-known/oauth-protected-resource"
+  "error": "server_error",
+  "error_description": "An unexpected error occurred while processing your request.",
+  "error_uri": "https://gematik.de/errors/server_error"
 }
 ```
 
@@ -488,7 +506,7 @@ Content-Type: application/problem+json
 #### 7.1.2 Authorization Server Well-Known Endpoint
 Bietet Metadaten über den PDP Authorization Server (gemäß RFC 8414).
 - **Pfad:** `GET /.well-known/oauth-authorization-server`
-- **Schema:** [as-well-known.yaml](../../../src/schemas/as-well-known.yaml)
+- **Request-Schema:** *Keines (kein Request-Body)*
 
 ##### 7.1.2.1 Anfrage-Beispiel
 ```http
@@ -499,6 +517,7 @@ Accept: application/json
 
 ##### 7.1.2.2 Antwort-Beispiele
 **200 OK (Erfolgreich):**
+- **Response-Schema:** [as-well-known.yaml](../../../src/schemas/as-well-known.yaml)
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/json
@@ -537,13 +556,15 @@ ETag: "w/98d41-xyz98765"
 ```
 
 **404/500 Errors:**
-Folgen dem RFC 9457 Problem Details JSON-Standard (analog zu Kapitel 7.1.1.2).
+- **Response-Schema:** [zeta-error.yaml](../../../src/schemas/zeta-error.yaml)
+Folgen dem Schema [zeta-error.yaml](../../../src/schemas/zeta-error.yaml) (analog zu Kapitel 7.1.1.2).
 
 ---
 
 #### 7.1.3 Nonce Endpoint
 Liefert einen frischen 128-Bit-Einmalwert (Nonce) zur Bindung von Attestierungen und zur Absicherung gegen Replay-Angriffe.
 - **Pfad:** `GET /nonce`
+- **Request-Schema:** *Keines (kein Request-Body)*
 - **Authentifizierung:** Keine erforderlich.
 
 ##### 7.1.3.1 Anfrage-Beispiel
@@ -555,6 +576,7 @@ Accept: application/json
 
 ##### 7.1.3.2 Antwort-Beispiele
 **200 OK (Erfolgreich):**
+- **Response-Schema:** *Kein spezifisches Schema (einfaches JSON)*
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/json
@@ -566,17 +588,23 @@ Content-Type: application/json
 ```
 
 **429 Too Many Requests (Rate-Limit überschritten):**
+- **Response-Schema:** [zeta-error.yaml](../../../src/schemas/zeta-error.yaml)
+- **Rate-Limit-Header (gemSpec_ZETA A_26668-02):**
+  - `x-rate-limit-limit`: Maximal erlaubte Anzahl an Anfragen.
+  - `x-rate-limit-remaining`: Verbleibende Anzahl an Anfragen (0 bei 429).
+  - `x-rate-limit-reset`: Unix-Zeitstempel (UTC), wann das Limit zurückgesetzt wird.
 ```http
 HTTP/1.1 429 Too Many Requests
-Content-Type: application/problem+json
+Content-Type: application/json
 Retry-After: 15
+x-rate-limit-limit: 10
+x-rate-limit-remaining: 0
+x-rate-limit-reset: 1779782415
 
 {
-  "type": "tag:gematik.de,2026:oauth:nonce:rate_limit_exceeded",
-  "title": "Rate Limit Exceeded",
-  "status": 429,
-  "detail": "Sie haben die maximale Anzahl von Nonce-Anfragen überschritten. Bitte warten Sie 15 Sekunden.",
-  "instance": "/nonce"
+  "error": "rate_limit_exceeded",
+  "error_description": "Sie haben die maximale Anzahl von Nonce-Anfragen überschritten. Bitte warten Sie 15 Sekunden.",
+  "error_uri": "https://gematik.de/errors/rate_limit_exceeded"
 }
 ```
 
@@ -585,7 +613,7 @@ Retry-After: 15
 #### 7.1.4 Dynamic Client Registration Endpoint
 Ermöglicht die Registrierung neuer Clients beim PDP AS. Die Registrierung verknüpft den Client Instance Key mit einem plattformspezifischen Attestierungsnachweis.
 - **Pfad:** `POST /register`
-- **Schema:** [dcr-request.yaml](../../../src/schemas/dcr-request.yaml)
+- **Request-Schema:** [dcr-request.yaml](../../../src/schemas/dcr-request.yaml)
 
 ##### 7.1.4.1 Anfrage-Beispiele
 
@@ -792,6 +820,7 @@ Content-Type: application/json
 
 ##### 7.1.4.2 Antwort-Beispiele
 **201 Created (Erfolgreich):**
+- **Response-Schema:** *Kein spezifisches Schema (einfaches JSON)*
 ```http
 HTTP/1.1 201 Created
 Content-Type: application/json
@@ -821,16 +850,15 @@ Content-Type: application/json
 ```
 
 **409 Conflict (Client Instance Key existiert bereits):**
+- **Response-Schema:** [zeta-error.yaml](../../../src/schemas/zeta-error.yaml)
 ```http
 HTTP/1.1 409 Conflict
-Content-Type: application/problem+json
+Content-Type: application/json
 
 {
-  "type": "https://httpstatuses.com/409",
-  "title": "Conflict",
-  "status": 409,
-  "detail": "Ein Client mit dem angegebenen Client_Instance_Public_Key existiert bereits.",
-  "instance": "/register"
+  "error": "conflict",
+  "error_description": "Ein Client mit dem angegebenen Client_Instance_Public_Key existiert bereits.",
+  "error_uri": "https://gematik.de/errors/conflict"
 }
 ```
 
@@ -839,6 +867,9 @@ Ermöglicht den Bezug von Access- und Session-Tokens per Token Exchange.
 - **Pfad:** `/token`
 - **Methode:** `POST`
 - **Content-Type:** `application/x-www-form-urlencoded`
+- **Request-Schemas (Referenzen für JWTs im Parameter-Body):**
+  - `client_assertion`: [client-assertion-jwt.yaml](../../../src/schemas/client-assertion-jwt.yaml)
+  - `subject_token` (SMC-B): [subject-token-smb.yaml](../../../src/schemas/subject-token-smb.yaml)
 
 ##### 7.1.5.1 Token Exchange Request mit TPM Attestierung
 Die Formular-kodierten Parameter im Body kombinieren das SMC-B Subject Token, die Client Assertion (mit dem embedded Attestierung-Statement) und den DPoP-Proof.
@@ -954,6 +985,9 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 ##### 7.1.5.3 Antwort-Beispiele
 
 **200 OK (Erfolgreich mit ZETA Attestation Token bei Hardware-Attestierung):**
+- **Response-Schema (Token-Inhalte):**
+  - `access_token` entspricht: [access-token.yaml](../../../src/schemas/access-token.yaml)
+  - `zg_att_token` entspricht: [zeta-attestation-token.yaml](../../../src/schemas/zeta-attestation-token.yaml)
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/json
@@ -971,44 +1005,41 @@ ZETA-API-Version: 1.3.0
 ```
 
 **400 Bad Request (z. B. Ungültiger DPoP Proof):**
+- **Response-Schema:** [zeta-error.yaml](../../../src/schemas/zeta-error.yaml)
 ```http
 HTTP/1.1 400 Bad Request
-Content-Type: application/problem+json
+Content-Type: application/json
 
 {
-  "type": "https://httpstatuses.com/400",
-  "title": "Bad Request",
-  "status": 400,
-  "detail": "Der DPoP Proof im Header ist ungültig oder abgelaufen (Nonce-Fehler).",
-  "instance": "/token"
+  "error": "invalid_request",
+  "error_description": "Der DPoP Proof im Header ist ungültig oder abgelaufen (Nonce-Fehler).",
+  "error_uri": "https://gematik.de/errors/invalid_request"
 }
 ```
 
 **401 Unauthorized (Client-Authentifizierung fehlgeschlagen):**
+- **Response-Schema:** [zeta-error.yaml](../../../src/schemas/zeta-error.yaml)
 ```http
 HTTP/1.1 401 Unauthorized
-Content-Type: application/problem+json
+Content-Type: application/json
 
 {
-  "type": "https://httpstatuses.com/401",
-  "title": "Unauthorized",
-  "status": 401,
-  "detail": "Die Signatur der Client Assertion ist ungültig oder der Client Instance Key unbekannt.",
-  "instance": "/token"
+  "error": "invalid_client",
+  "error_description": "Die Signatur der Client Assertion ist ungültig oder der Client Instance Key unbekannt.",
+  "error_uri": "https://gematik.de/errors/invalid_client"
 }
 ```
 
 **403 Forbidden (Policy-Entscheidung negativ / Attestierungsfehler):**
+- **Response-Schema:** [zeta-error.yaml](../../../src/schemas/zeta-error.yaml)
 ```http
 HTTP/1.1 403 Forbidden
-Content-Type: application/problem+json
+Content-Type: application/json
 
 {
-  "type": "https://httpstatuses.com/403",
-  "title": "Forbidden",
-  "status": 403,
-  "detail": "Geräteattestierung fehlgeschlagen: Die PCR-Messwerte weichen von der Sicherheits-Baseline ab.",
-  "instance": "/token"
+  "error": "access_denied",
+  "error_description": "Geräteattestierung fehlgeschlagen: Die PCR-Messwerte weichen von der Sicherheits-Baseline ab.",
+  "error_uri": "https://gematik.de/errors/access_denied"
 }
 ```
 
