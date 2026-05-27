@@ -1,10 +1,8 @@
-@startuml "token-exchange-with-attestation"
+@startuml "Abb-ZETA-Token-Exchange-mit-Attestation"
 !include ../puml-layout.txt
 
 
 ' title Token Exchange with Attestation
-
-!pragma teoz true
 
 participant Konnektor as "Konnektor or\nTI-Gateway" LEI_COMPONENT_COLOR
 participant SMB as "SM(C)-B" LEI_COMPONENT_COLOR
@@ -35,7 +33,7 @@ note right: Session-based Key Pair for DPoP binding.
 Client -> Client : Create DPoP Proof (with Nonce from AuthS)
 Client -> AuthS++: POST /token dpop: dpop_proof\n{client_assertion (JWT, PrK.Client.Sig signiert),\nsubject_token (SMC-B signiert, inkl. Nonce),\n[Evidence]}
 
-AuthS -> AuthS: Validate Request (Client Assertion, DPoP Proof,\nSubject Token, Nonce and Key bindings from DCR)        
+AuthS -> AuthS: Validate Request (Client Assertion, DPoP Proof,\nSubject Token, Nonce and Key bindings from DCR,\nSperrstatus (OCSP) der SM(C)-B)
 alt TPM Attestation (Windows / Linux)
     AuthS -> AuthS: Verifiziere Hardware-Signatur (Quote) gegen extrahierte Nonce\nPCR-Replay via Event Log
 else macOS Attestation (Secure Enclave)
@@ -55,10 +53,10 @@ alt Validation successful
             AuthS --> Client: 200 OK {Access Token, Refresh Token}
         end
     else Policy Decision deny
-        AuthS --> Client--: 403 Forbidden
+        AuthS --> Client--: 403 Forbidden {"reasons": [""...]}
     end
 else Validation fehlerhaft
-    AuthS --> Client--: 403 Forbidden
+    AuthS --> Client--: 403 Forbidden {"reasons": [""...]}
 end
 
 @enduml

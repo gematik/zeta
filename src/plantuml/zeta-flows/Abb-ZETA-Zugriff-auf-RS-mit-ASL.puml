@@ -1,4 +1,4 @@
-@startuml "tpm-attestation-and-token-exchange-overview"
+@startuml "Abb-ZETA-Zugriff-auf-RS-mit-ASL"
 !include ../puml-layout.txt
 
 

@@ -228,6 +228,26 @@ oneOf:
             items: { $ref: "#/definitions/jwk" }
         required: [keys]
 
+  # -----------------------------------------------------------------
+  # 6. Registration Verification Request (POST /register/verify)
+  # -----------------------------------------------------------------
+  - title: Registration Verification Request
+    description: >-
+      Payload Schema für die Verifizierung der Registrierung unter POST /register/verify.
+      Wird bei TPM-Attestierung (Secret) sowie bei TOFU-E-Mail-Bindung für mobile Clients (OTP-Code) genutzt.
+    required:
+      - client_id
+    properties:
+      client_id:
+        type: string
+        description: Die client_id des registrierten Clients.
+      secret:
+        type: string
+        description: Das entschlüsselte Secret der TPM-MakeCredential-Operation.
+      code:
+        type: string
+        description: Der OTP-Code zur Nutzerbindung bei mobilen Clients (TOFU).
+
 definitions:
   jwk:
     type: object

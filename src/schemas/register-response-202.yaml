@@ -1,0 +1,70 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: Registration Accepted Response (202)
+type: object
+description: >-
+  Wird vom ZETA Guard zurückgegeben, wenn die initiale Registrierungsanfrage 
+  kryptografisch valide war, aber eine asynchrone Herausforderung (Challenge) 
+  gelöst werden muss, bevor die endgültige client_id vergeben wird.
+oneOf:
+  - $ref: "#/definitions/OtpChallengeResponse"
+  - $ref: "#/definitions/TpmChallengeResponse"
+discriminator:
+  propertyName: challenge_type
+
+definitions:
+  # --- Gemeinsame Basis-Felder ---
+  BaseResponse:
+    type: object
+    required: [transaction_id, status, expires_in]
+    properties:
+      transaction_id:
+        type: string
+        format: uuid
+        description: >-
+          Temporäre Transaktions-ID. Muss vom Client im /verify Request 
+          wieder mitgeschickt werden.
+      status:
+        type: string
+        enum: [pending_verification]
+        description: Der aktuelle Status der Registrierung.
+      expires_in:
+        type: integer
+        description: Zeit in Sekunden, bis die transaction_id abläuft (z.B. 600).
+
+  # --- TOFU / E-Mail OTP Fall ---
+  OtpChallengeResponse:
+    type: object
+    allOf:
+      - $ref: "#/definitions/BaseResponse"
+      - type: object
+        required: [challenge_type, message]
+        properties:
+          challenge_type:
+            type: string
+            const: email_otp
+          message:
+            type: string
+            description: Ein für den Nutzer anzeigbarer Text.
+            example: "Bitte geben Sie den 6-stelligen Code aus der E-Mail ein."
+
+  # --- TPM MakeCredential Fall ---
+  TpmChallengeResponse:
+    type: object
+    allOf:
+      - $ref: "#/definitions/BaseResponse"
+      - type: object
+        required: [challenge_type, tpm_credential_blob, tpm_encrypted_secret]
+        properties:
+          challenge_type:
+            type: string
+            const: tpm_activation
+          tpm_credential_blob:
+            type: string
+            description: >-
+              Base64-kodierter CredentialBlob (TPM2B_ID_OBJECT), generiert 
+              durch den TPM-Befehl MakeCredential auf dem Server.
+          tpm_encrypted_secret:
+            type: string
+            description: >-
+              Base64-kodiertes verschlüsseltes Geheimnis (TPM2B_ENCRYPTED_SECRET), 
+              generiert durch MakeCredential. Der Client benötigt dies für ActivateCredential.
