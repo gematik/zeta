@@ -172,10 +172,10 @@ Vor der Registrierung beim AuthS muss der Client nachweisen, dass `PuK.Client.Si
 ##### 4.2.1.4 Dynamic Client Registration (DCR)
 
 - **Verwendete Endpunkt-Pfade (Windows/Linux):** `POST /register` und `POST /register/verify`
-- *(01) POST /register:* Der ZETA Client sendet die Registrierungsanfrage gemäß Schema [dcr-request.yaml](../../../src/schemas/dcr-request.yaml) an den PDP AS. Der Body enthält `attestation_type: "tpm"`, `PuK.Client.Sig`, `PuK.AK.Sig`, `PuK.EK.Enc`, `C.EK.Enc` und `signed_hash_puk_client_sig`.
+- *(01) POST /register:* Der ZETA Client sendet die Registrierungsanfrage gemäß Schema [dcr-request.yaml](../../../src/schemas/dcr-request.yaml) an den PDP AuthS. Der Body enthält `attestation_type: "tpm"`, `PuK.Client.Sig`, `PuK.AK.Sig`, `PuK.EK.Enc`, `C.EK.Enc` und `signed_hash_puk_client_sig`.
 - *(02)–(03) MakeCredential:* Der AuthS validiert die EK-Zertifikatskette gegen die Hersteller-CA. Zur Verifikation des Schlüsselbesitzes generiert er ein verschlüsseltes `CredentialBlob` per `TPM2_MakeCredential` (verschlüsselt mit `PuK.EK.Enc`, gebunden an `PuK.AK.Sig`) und antwortet mit `202 Accepted {CredentialBlob}`.
 - *(04)–(08) ActivateCredential:* Der ZETA Client leitet das `CredentialBlob` an den ZAS weiter. Der ZAS führt im TPM `TPM2_ActivateCredential` aus — dieser Befehl gelingt nur, wenn EK und AK im selben TPM vorhanden sind. Das entschlüsselte Secret wird an den Client zurückgegeben.
-- *(09)–(10) POST /register/verify:* Der Client sendet das Secret an den AS. Der AuthS verifiziert das Secret und schließt die Registrierung ab: `201 Created {client_id}` mit Status `pending_attestation`.
+- *(09)–(10) POST /register/verify:* Der Client sendet das Secret an den AuthS. Der AuthS verifiziert das Secret und schließt die Registrierung ab: `201 Created {client_id}` mit Status `pending_attestation`.
 
 ![Abbildung 5: DCR für stationäre Clients](../../../images/zeta-flows/Abb-ZETA-DCR-für-stationäre-Clients.svg)
 
@@ -223,7 +223,7 @@ Vor der Registrierung beim AuthS muss der ZETA Client nachweisen, dass der `PuK.
 ##### 4.2.2.4 Dynamic Client Registration (DCR)
 
 - **Verwendeter Endpunkt-Pfad (macOS/Apple):** `POST /register`
-- *(11)–(12) POST /register:* Der ZETA Client sendet die Registrierungsanfrage gemäß Schema [dcr-request.yaml](../../../src/schemas/dcr-request.yaml) an den PDP AS. Der Body enthält `attestation_type: "apple"`, `PuK.Client.Sig`, `PuK.AK.Sig` und `apple_attestation_object`.
+- *(11)–(12) POST /register:* Der ZETA Client sendet die Registrierungsanfrage gemäß Schema [dcr-request.yaml](../../../src/schemas/dcr-request.yaml) an den PDP AuthS. Der Body enthält `attestation_type: "apple"`, `PuK.Client.Sig`, `PuK.AK.Sig` und `apple_attestation_object`.
 - *(13) AuthS validiert Apple Attestation Object:* Der AuthS prüft die X.509-Zertifikatskette gegen die offizielle **Apple App Attest Root CA**, verifiziert den Replay-Counter und stellt sicher, dass `PuK.AK.Sig` identisch mit dem Schlüssel in `x5c[0]` des Attestation Objects ist.
 - *(14) Hash-Rekonstruktion:* Der AuthS rekonstruiert `clientDataHash` aus der übermittelten Nonce und den Posture-Klartextdaten und prüft die Übereinstimmung mit dem signierten Hash. Nur bei Übereinstimmung ist der Nachweis gültig.
 - *(15) signed_hash_puk_client_sig prüfen:* Der AuthS verifiziert, dass `PuK.Client.Sig` durch `PrK.AK.Sig` signiert wurde, was beweist, dass beide Schlüssel auf demselben Gerät kontrolliert werden.
@@ -277,19 +277,30 @@ Vor der DCR ruft der Client optional die Play Integrity API erneut auf, um einen
 
 ##### 4.3.1.4 Dynamic Client Registration und TOFU-Nutzerbindung
 
+Falls kein ZETA Attestation Token vorhanden ist, wird der Pfad **Hardware Attestation: Android** durchlaufen.
+*Hinweis: Der ZETA Client erhält ein ZETA Attestation Token beim ersten erfolgreichen DCR-Prozess bei einem ZETA Guard und speichert es lokal für zukünftige DCR-Prozesse bei anderen ZETA Guards. Dadurch wird die Notwendigkeit der TOFU-Nutzerbindung beim ersten DCR bei einem neuen ZETA Guard umgangen.*
+
 - **Verwendete Endpunkt-Pfade (Android):** `POST /register` und `POST /register/verify`
-- *(01) POST /register:* Der ZETA Client sendet die Registrierungsanfrage gemäß Schema [dcr-request.yaml](../../../src/schemas/dcr-request.yaml) an den PDP AS. Der Body enthält:
+- *POST /register:* Der ZETA Client sendet die Registrierungsanfrage gemäß Schema [dcr-request.yaml](../../../src/schemas/dcr-request.yaml) an den PDP AuthS. Der Body enthält:
   - `attestation_type: "android"`
   - `puk_client_sig` (JWK)
   - `puk_ak_sig` (JWK)
   - `android_key_attestation_certificate_chain` (Array von Base64-DER-Zertifikaten)
   - `signed_hash_puk_client_sig` (Base64url-ECDSA-Signatur)
   - `play_integrity_token` (optional)
-- *(02) AuthS validiert Zertifikatskette:* Der AuthS prüft die Zertifikatskette gegen die Google Hardware Attestation Root CA und liest den eingebetteten Challenge-Wert (`hash_puk_client_sig`) aus dem AK-Zertifikat aus.
-- *(03) Besitznachweis prüfen:* Der AuthS verifiziert `signed_hash_puk_client_sig` mit `PuK.AK.Sig` und bestätigt, dass `PuK.Client.Sig` zum selben Hardware-Schlüsselsatz gehört.
-- *(04) Play Integrity prüfen (optional):* Der AuthS validiert das `play_integrity_token` gegenüber der Google Play Integrity API, um Laufzeitzustand und App-Integrität zu verifizieren.
-- *(05)–(08) TOFU E-Mail-Bindung:* Der AuthS sendet einen OTP-Bestätigungscode an die im Request angegebene E-Mail-Adresse des Nutzers. Der Nutzer gibt den Code im Client ein; der Client sendet ihn via `POST /register/verify` an den AS.
-- *(09) Abschluss:* Der AuthS bestätigt die Registrierung mit `201 Created {client_id}` mit Status `pending_attestation`.
+- *AuthS validiert Zertifikatskette:* Der AuthS prüft die Zertifikatskette gegen die Google Hardware Attestation Root CA und liest den eingebetteten Challenge-Wert (`hash_puk_client_sig`) aus dem AK-Zertifikat aus.
+- *AuthS verifiziert Besitznachweis:* Der AuthS verifiziert `signed_hash_puk_client_sig` mit `PuK.AK.Sig` und bestätigt, dass `PuK.Client.Sig` zum selben Hardware-Schlüsselsatz gehört.
+- *AuthS validiert Play Integrity (optional):* Der AuthS validiert das `play_integrity_token` gegenüber der Google Play Integrity API, um Laufzeitzustand und App-Integrität zu verifizieren.
+- *TOFU E-Mail-Bindung:* Der AuthS sendet einen OTP-Bestätigungscode an die im Request angegebene E-Mail-Adresse des Nutzers. Der Nutzer gibt den Code im Client ein; der Client sendet ihn via `POST /register/verify` an den AuthS.
+
+Falls ein ZETA Attestation Token vorhanden ist, wird der Pfad **ZETA Attestation Token vorhanden (Fast-Path)** durchlaufen.
+- *POST /register:* Der ZETA Client sendet die Registrierungsanfrage gemäß Schema [dcr-request.yaml](../../../src/schemas/dcr-request.yaml) an den PDP AuthS. Der Body enthält:
+  - `attestation_type: "zeta_attestation_token"`
+  - `zeta_attestation_token` (Base64url-kodiertes ZETA Attestation Token)
+  - `puk_client_sig` (JWK)
+  - `signed_hash_puk_client_sig` (string)
+
+- *Abschluss:* Der AuthS bestätigt die Registrierung mit `201 Created {client_id}` mit Status `pending_user_binding`.
 
 ![Abbildung 10: DCR für mobile Clients](../../../images/zeta-flows/Abb-ZETA-DCR-für-mobile-Clients.svg)
 
@@ -335,7 +346,7 @@ Unter iOS und iPadOS basiert der Vertrauensaufbau auf der hardwareintegrierten *
 ##### 4.3.2.4 Dynamic Client Registration und TOFU-Nutzerbindung
 
 - **Verwendete Endpunkt-Pfade (iOS/Apple):** `POST /register` und `POST /register/verify`
-- *(01) POST /register:* Der ZETA Client sendet die Registrierungsanfrage gemäß Schema [dcr-request.yaml](../../../src/schemas/dcr-request.yaml) an den PDP AS. Der Body enthält:
+- *(01) POST /register:* Der ZETA Client sendet die Registrierungsanfrage gemäß Schema [dcr-request.yaml](../../../src/schemas/dcr-request.yaml) an den PDP AuthS. Der Body enthält:
   - `attestation_type: "apple"`
   - `puk_client_sig` (JWK)
   - `puk_ak_sig` (JWK)
@@ -655,7 +666,7 @@ x-rate-limit-reset: 1779782415
 
 #### 7.1.4 Dynamic Client Registration Endpoint
 
-Ermöglicht die Registrierung neuer Clients beim PDP AS. Die Registrierung verknüpft den Client Instance Key mit einem plattformspezifischen Attestierungsnachweis.
+Ermöglicht die Registrierung neuer Clients beim PDP AuthS. Die Registrierung verknüpft den Client Instance Key mit einem plattformspezifischen Attestierungsnachweis.
 
 - **Pfad:** `POST /register`
 - **Request-Schema:** [dcr-request.yaml](../../../src/schemas/dcr-request.yaml)
