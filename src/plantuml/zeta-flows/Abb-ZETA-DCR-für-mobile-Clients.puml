@@ -41,6 +41,21 @@ alt Kein ZETA Guard Attestation Token
         AuthS -> AuthS: Store Client Placeholder (state: pending_attestation)
     end
 
+    ' Trust On First Use (TOFU)
+    AuthS -> AuthS: Generiere OTP & transaction_id\nSpeichere Request im temporären Cache
+    AuthS -> User: E-Mail mit OTP-Bestätigungscode (Out-of-Band)
+    
+    ' Server antwortet mit 202, noch KEINE client_id!
+    AuthS --> Client--: 202 Accepted {transaction_id, message="OTP sent"}
+
+    ' Warte auf Nutzer-Eingabe
+    User -> Client: Gibt OTP-Bestätigungscode ein
+    
+    ' Verifikation mit der temporären ID
+    Client -> AuthS++: POST /register/verify\n{transaction_id, code}
+    AuthS -> AuthS: Verifiziere OTP-Code gegen Cache
+
+
 else ZETA Attestation Token vorhanden (Fast-Path)
     Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token",\nzeta_guard_attestation_token, PuK.Client.Sig,\nBesitznachweis (Signatur/Assertion)}
     AuthS -> AuthS: Prüfe Token-Signatur & Vertrauensstellung
@@ -48,13 +63,5 @@ else ZETA Attestation Token vorhanden (Fast-Path)
 end
 
 AuthS --> Client--: 201 Created {client_id, status="pending_attestation"}
-
-opt Mobile DCR: TOFU (Trust-On-First-Use) E-Mail-Bindung
-    AuthS -> User: E-Mail mit OTP-Bestätigungscode (Out-of-Band)
-    User -> Client: Gibt OTP-Bestätigungscode ein
-    Client -> AuthS++: POST /register/verify\n{client_id, code}
-    AuthS -> AuthS: Verifiziere OTP-Code & aktiviere Client
-    AuthS --> Client--: 200 OK
-end
 
 @enduml
