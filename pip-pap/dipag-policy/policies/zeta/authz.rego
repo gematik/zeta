@@ -56,7 +56,7 @@ user_oid := input.user_info.professionOID
 
 # Ist die Profession grundsätzlich für DiPag zugelassen?
 user_profession_is_allowed if {
-	user_oid in data.professions.profession_to_role
+	user_oid in data.professions.allowed_professions
 }
 
 # Ermittelt die Rolle des Nutzers anhand seiner ProfessionOID
