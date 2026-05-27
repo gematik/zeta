@@ -16,7 +16,7 @@ box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
 end box
 
 Client++
-alt Kein ZETA Guard Attestation Token
+alt Kein ZETA Attestation Token
     
     alt Hardware Attestation: iOS, iPadOS, macOS (Apple App Attest)
         Client -> AuthS++: POST /register\n{attestation_type="apple", Apple_Attestation_Object, PuK.Client.Sig}
