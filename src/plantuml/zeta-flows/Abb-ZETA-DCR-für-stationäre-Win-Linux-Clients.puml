@@ -32,11 +32,6 @@ alt Kein ZETA Guard Attestation Token
         Client -> AuthS: POST /register/verify {Secret}
         AuthS -> AuthS: Secret korrekt? → PuK.Client.Sig hardware-gebunden ✓
 
-    else Hardware Attestation: macOS (Apple App Attest)
-        Client -> AuthS: POST /register\n{attestation_type="apple", PuK.AK.Sig, Apple_Attestation_Object,\nPuK.Client.Sig, signed_Hash_PuK.Client.Sig}
-        AuthS -> AuthS: Validiere Apple_Attestation_Object & signed_Hash_PuK.Client.Sig
-        note right of AuthS: AuthS verifiziert Apple App Attest Root CA und prüft,\ndass PuK.AK.Sig mit x5c[0] des Objekts übereinstimmt.
-
     else Software Attestation (Legacy OIDC DCR)
         Client -> AuthS: POST /register\n{\n  "client_name": "myClient",\n  "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"],\n  "jwks": { "keys": [ PuK.Client.Sig ] },\n  "token_endpoint_auth_method": "private_key_jwt"\n}
     end

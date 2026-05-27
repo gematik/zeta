@@ -1,0 +1,777 @@
+# ZETA API v1.3.0
+
+## Dokumenten- und Versionsübersicht
+
+| Attribut                    | Wert                        |
+|-----------------------------|-----------------------------|
+| Dokumenttitel               | ZETA API v1.3.0             |
+| Dokumentversion             | 1.3.0                       |
+| Stand                       | 2026-05-27                  |
+| Status                      | Final Draft                 |
+| Verantwortlich              | gematik                     |
+| Gültigkeitsbereich          | ZETA Guard API              |
+| Spezifikationsgrundlage     | gemSpec_ZETA, Version 1.3.1 |
+
+### Zuordnung zu API- und Implementierungsversionen
+
+Dieses Dokument beschreibt die Schnittstellen und Abläufe der **ZETA API Version v1.3.0**. Die beschriebenen Inhalte beziehen sich auf die folgenden Implementierungsversionen:
+
+| Komponente                     | Artefakt / Image                     | Version | Beschreibung                             |
+|--------------------------------|--------------------------------------|---------|------------------------------------------|
+| ZETA Guard (PEP)               | zeta-guard-pep                       | 1.3.0   | Policy Enforcement Point (HTTP Proxy)    |
+| ZETA Guard (PDP)               | zeta-guard-pdp                       | 1.3.0   | Authorization Server / Policy Decision   |
+| ZETA Client SDK                | zeta-sdk                             | 1.3.0   | Clientbibliothek zur Integration         |
+| Helm Charts                    | zeta-helm-charts                     | 1.3.0   | Helm Charts                              |
+| Terraform                      | zeta-guard-terraform                 | 0.3.0   | Terraform                                |
+| Provisioning Processor         | zeta-guard-provisioning-processor    | 1.3.0   | Provisioning Processor                   |
+
+---
+
+### Docker-Image Referenzen
+
+Die oben genannten Komponenten werden als OCI-konforme Container Images in der ZETA Artifact Registry bereitgestellt.  
+
+Repository: [europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr](https://europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr)
+
+#### Produkt
+
+- PEP (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/ngx_pep:1.3.0)
+- PDP (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/keycloak-zeta:1.3.0)
+- Provisioning Processor (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/provisioning-processor:1.3.0)
+- Nginx Ingress (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/nginx-ingress:1.3.0)
+- Nginx-Prometheus-Exporter (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/nginx-prometheus-exporter:1.5.1-zeta2)
+- Open Policy Agent (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/opa:1.14.1-static)
+- Postgres (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/postgres:17.9-standard-trixie)
+- Telemetry Gateway (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/zeta-telemetry-gateway:v0.151.0-release.3)
+
+#### Test
+
+- Tiger-Testsuite (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/tiger-testsuite:1.3.0)
+- Testfachdienst (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/testfachdienst:1.3.0)
+- HSM Simulator (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/hsm_sim:1.3.0)
+- Zeta-Tigerproxy (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/testproxy:1.3.0)
+- Zeta TLS Test Tool (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/zeta-tls-test-tool-service:1.3.0)
+- Cert Validation Mock (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/zeta-cert-validation-mock:1.3.0)
+- PoPP Token Generator (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/popp-token-generator:1.3.0)
+
+---
+
+## 1. Einführung
+
+Diese API-Spezifikation beschreibt die Interaktion eines ZETA-Clients mit der ZETA Guard-Infrastruktur. Dabei werden stationäre Clients (z. B. Arbeitsplatz- oder Serversysteme), mobile Clients (z. B. mobile Endgeräte mit iOS oder Android Betriebssystemen) sowie die direkte Dienst-zu-Dienst (Backend-to-Backend) Kommunikation abgedeckt.
+
+Unabhängig von der jeweiligen Client-Plattform stellt die ZETA API Mechanismen bereit, um:
+- Eine initiale Vertrauensbeziehung zwischen Client und ZETA-Infrastruktur aufzubauen (Trust Establishment via Dynamic Client Registration),
+- Den Sicherheits- und Integritätszustand eines Clients kryptografisch zu bewerten (Attestation & Posture-Erhebung unter Verwendung von TPM 2.0, Apple App Attest, Android Key Attestation oder Software-Fallback),
+- Den Zugriff auf ZETA-geschützte Dienste über Token-basierte Verfahren (OAuth 2.0 Token Exchange mit DPoP-Bindung und optionaler Verschlüsselung über den ZETA/ASL-Kanal) zu authentifizieren und zu autorisieren.
+
+---
+
+## 2. Voraussetzungen & Basiswissen (Trust Anchor, VSDM2)
+
+Bevor ein ZETA-Client erfolgreich mit einem Resource Server kommunizieren kann, müssen folgende Voraussetzungen und informationelle Grundlagen erfüllt sein:
+
+1. **FQDN des Resource Servers**: Der vollqualifizierte Domänenname (Fully Qualified Domain Name, FQDN) der geschützten Schnittstelle wird vom Client benötigt, um den initialen Discovery-Prozess zu starten.
+2. **Trust Anchor Informationen (`roots.json`)**: Die Datei [roots.json](https://download.tsl.ti-dienste.de/ECC/ROOT-CA/roots.json) dient dem Client als lokaler Vertrauensanker, um die Vertrauenskette beim Aufbau einer ZETA/ASL-Verbindung zu validieren. Diese Datei muss wöchentlich aktualisiert werden.
+3. **Konnektor und SMC-B**: Bei stationären Clients im Leistungserbringer-Umfeld wird zur Authentifizierung der Institution ein SMC-B-Institutionszertifikat sowie die Schnittstelle des Konnektors oder TI-Gateways benötigt.
+4. **VSDM2 (Versichertenstammdatenmanagement 2.0)**: Für fachspezifische Anfragen an einen VSDM2-Resource-Server muss ein gültiges **PoPP-Token** (Proof of Patient Presence) im HTTP-Header `PoPP` an den ZETA-Client übergeben und an die PDP übermittelt werden.
+
+---
+
+## 3. Discovery und Konfiguration
+
+In dieser Phase ermittelt der ZETA-Client dynamisch die Endpunkte und Konfigurationen der ZETA Guard-Infrastruktur (PEP HTTP Proxy und PDP Authorization Server).
+
+### 3.1 Ablauf
+Der Discovery-Ablauf ist für alle Client-Typen identisch und greift auf standardisierte `.well-known` Endpunkte zu (siehe auch [Abbildung 1: Ablauf Service Discovery](../../../images/zeta-flows/Abb-ZETA-Service-Discovery.svg)):
+
+1. Der Client sendet eine `GET`-Anfrage an den Well-Known-Endpunkt der geschützten Ressource (PEP).
+2. PEP antwortet mit Metadaten über unterstützte Token-Methoden und den zuständigen Authorization Server (PDP).
+3. Der Client fragt die detaillierten Authorization Server Metadaten (PDP) ab, um Endpunkte für Registrierung, Token-Bezug und Nonce-Generierung zu erhalten.
+
+### 3.2 Endpunkt-Spezifikationen
+
+#### 3.2.1 GET /.well-known/oauth-protected-resource
+Gibt die Konfigurationsdetails des PEP für eine geschützte Ressource zurück (gemäß RFC 9728).
+
+**Anfrage-Beispiel:**
+```http
+GET /.well-known/oauth-protected-resource HTTP/1.1
+Host: api.example.com
+Accept: application/json
+```
+
+**Antwort-Beispiel (200 OK):**
+*Response-Schema: [opr-well-known.yaml](../../../src/schemas/opr-well-known.yaml)*
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+Cache-Control: public, max-age=86400
+ETag: "w/37b12-abc12345"
+
+{
+  "resource": "https://api.example.com",
+  "authorization_servers": [
+    "https://auth.example.com"
+  ],
+  "scopes_supported": [
+    "vsdservice.read",
+    "vsdservice.write"
+  ],
+  "bearer_methods_supported": [
+    "header"
+  ],
+  "dpop_signing_alg_values_supported": [
+    "ES256"
+  ],
+  "dpop_bound_access_tokens_required": true,
+  "zeta_asl_use": "required",
+  "api_versions_supported": [
+    {
+      "major_version": 1,
+      "version": "1.3.0",
+      "status": "stable",
+      "documentation_uri": "https://gematik.de/docs/api/v1.3"
+    }
+  ]
+}
+```
+
+---
+
+#### 3.2.2 GET /.well-known/oauth-authorization-server
+Gibt Metadaten und unterstützte Endpunkte des PDP Authorization Servers zurück (gemäß RFC 8414).
+
+**Anfrage-Beispiel:**
+```http
+GET /.well-known/oauth-authorization-server HTTP/1.1
+Host: auth.example.com
+Accept: application/json
+```
+
+**Antwort-Beispiel (200 OK):**
+*Response-Schema: [as-well-known.yaml](../../../src/schemas/as-well-known.yaml)*
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+Cache-Control: public, max-age=86400
+ETag: "w/98d41-xyz98765"
+
+{
+  "issuer": "https://auth.example.com",
+  "authorization_endpoint": "https://auth.example.com/auth",
+  "token_endpoint": "https://auth.example.com/token",
+  "registration_endpoint": "https://auth.example.com/register",
+  "jwks_uri": "https://auth.example.com/certs",
+  "grant_types_supported": [
+    "urn:ietf:params:oauth:grant-type:token-exchange",
+    "refresh_token",
+    "authorization_code"
+  ],
+  "token_endpoint_auth_methods_supported": [
+    "private_key_jwt"
+  ],
+  "token_endpoint_auth_signing_alg_values_supported": [
+    "ES256"
+  ],
+  "code_challenge_methods_supported": [
+    "S256"
+  ],
+  "api_versions_supported": [
+    {
+      "major_version": 1,
+      "version": "1.3.0",
+      "status": "stable",
+      "documentation_uri": "https://gematik.de/docs/api/v1.3"
+    }
+  ]
+}
+```
+
+---
+
+## 4. Stationäre Clients (Windows, Linux, macOS)
+
+### Quick Start: 5-Punkte-Checkliste für Entwickler
+1. **[ ] Zertifikate laden**: Lokale TI-Vertrauensanker CA-Zertifikate (`roots.json`) einbinden und SMC-B-Institutionszertifikat auslesen.
+2. **[ ] Keys generieren**: Hardwaregebundene Client Instance Keys (`PrK.Client.Sig` / `PuK.Client.Sig`) erzeugen (TPM 2.0 via ZAS oder Secure Enclave via Native API).
+3. **[ ] DCR aufrufen**: Client bei PDP registrieren (`POST /register` und optionales Challenge-Handling bei TPM).
+4. **[ ] Token abholen**: Mit DPoP-Proof und SMC-B Subject Token ein Access Token am `/token`-Endpunkt anfragen.
+5. **[ ] RS anfragen**: DPoP-gebundenes Access Token im Authorization-Header mitsenden und die geschützte API `/api/resource` anfragen.
+
+---
+
+### 4.1. Trust Bootstrapping & Registrierung
+
+Stationäre Clients etablieren eine hardwaregestützte Identität, um sich bei der ZETA Guard-Infrastruktur anzumelden. Unter Windows/Linux wird hierfür das TPM 2.0 mittels des ZETA Attestation Services (ZAS) angesprochen. macOS-Clients nutzen die Secure Enclave.
+
+#### 4.1.1 Endpunkt-Spezifikationen für das Bootstrapping
+
+##### 4.1.1.1 GET /nonce
+Liefert einen kryptografischen Einmalwert, um Registrierungen und Attestierungen an eine aktuelle Sitzung zu binden (Schutz gegen Replay-Angriffe).
+
+**Anfrage-Beispiel:**
+```http
+GET /nonce HTTP/1.1
+Host: auth.example.com
+Accept: application/json
+```
+
+**Antwort-Beispiel (200 OK):**
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "nonce": "s.fRzE3M0J_QxL-x.6gA~x",
+  "expires_in": 30
+}
+```
+
+---
+
+##### 4.1.1.2 POST /register
+Führt die Dynamic Client Registration (DCR) aus. Registriert den öffentlichen Signaturschlüssel (`PuK.Client.Sig`) gekoppelt mit dem Hardware-Attestierungsnachweis.
+
+**Anfrage-Beispiel 1: TPM Hardware Attestation (Windows / Linux)**
+*Siehe auch [Abbildung 5: DCR für stationäre Clients](../../../images/zeta-flows/Abb-ZETA-DCR-für-stationäre-Clients.svg)*
+```http
+POST /register HTTP/1.1
+Host: auth.example.com
+Content-Type: application/json
+
+{
+  "attestation_type": "tpm",
+  "client_name": "Praxis-PC-123",
+  "token_endpoint_auth_method": "private_key_jwt",
+  "grant_types": [
+    "urn:ietf:params:oauth:grant-type:token-exchange",
+    "refresh_token"
+  ],
+  "jwks": {
+    "keys": [
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "MKBJD5N2457sT_yP...",
+        "y": "89sDJNskd98sJDsd...",
+        "use": "sig",
+        "kid": "client-instance-key-1"
+      }
+    ]
+  },
+  "puk_client_sig": {
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "MKBJD5N2457sT_yP...",
+    "y": "89sDJNskd98sJDsd...",
+    "use": "sig",
+    "kid": "client-instance-key-1"
+  },
+  "puk_ek_enc": {
+    "kty": "RSA",
+    "n": "0vx7agoebGcQSuuPiLJ...",
+    "e": "AQAB"
+  },
+  "c_ek_enc": "MIIFvTCCA6WgAwIBAgITG3o...",
+  "puk_ak_sig": "AABtAFAAFAAAAAAA...",
+  "signed_hash_puk_client_sig": "MEQCIE7sYJ89sJDskd..."
+}
+```
+
+**Anfrage-Beispiel 2: Apple Hardware Attestation (macOS)**
+```http
+POST /register HTTP/1.1
+Host: auth.example.com
+Content-Type: application/json
+
+{
+  "attestation_type": "apple",
+  "client_name": "Macbook-Dr-Meier",
+  "token_endpoint_auth_method": "private_key_jwt",
+  "grant_types": [
+    "urn:ietf:params:oauth:grant-type:token-exchange",
+    "refresh_token"
+  ],
+  "jwks": {
+    "keys": [
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "f83OJ3D2xFsgL...",
+        "y": "x_daEAdZu928s...",
+        "use": "sig",
+        "kid": "apple-instance-key-1"
+      }
+    ]
+  },
+  "puk_client_sig": {
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "f83OJ3D2xFsgL...",
+    "y": "x_daEAdZu928s...",
+    "use": "sig",
+    "kid": "apple-instance-key-1"
+  },
+  "apple_attestation_object": "o2ZmbXRsYXBwbGUtYXBwYXR0ZXN0Z2F0dFN0bX..."
+}
+```
+
+**Antwort-Beispiel (202 Accepted bei TPM-MakeCredential):**
+Das System fordert einen zweiten Schritt zur Bestätigung der In-Hardware-Bindung an.
+```http
+HTTP/1.1 202 Accepted
+Content-Type: application/json
+
+{
+  "transaction_id": "tx-98127398127",
+  "credential_blob": "base64-encoded-tpm2-makecredential-blob..."
+}
+```
+
+**Antwort-Beispiel (201 Created bei direkt verifizierbarem Attest, z. B. macOS):**
+```http
+HTTP/1.1 201 Created
+Content-Type: application/json
+
+{
+  "client_id": "zeta-client-abc12345",
+  "client_id_issued_at": 1779782400,
+  "client_name": "Macbook-Dr-Meier",
+  "token_endpoint_auth_method": "private_key_jwt",
+  "jwks": {
+    "keys": [
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "f83OJ3D2xFsgL...",
+        "y": "x_daEAdZu928s...",
+        "use": "sig",
+        "kid": "apple-instance-key-1"
+      }
+    ]
+  }
+}
+```
+
+---
+
+##### 4.1.1.3 POST /register/verify
+Schließt den DCR-Prozess ab, indem das entschlüsselte Secret (erhalten aus `TPM2_ActivateCredential`) an die PDP zurückgesendet wird.
+
+**Anfrage-Beispiel:**
+```http
+POST /register/verify HTTP/1.1
+Host: auth.example.com
+Content-Type: application/json
+
+{
+  "transaction_id": "tx-98127398127",
+  "decrypted_secret": "3a7f8e12bc4d9e03"
+}
+```
+
+**Antwort-Beispiel (201 Created):**
+```http
+HTTP/1.1 201 Created
+Content-Type: application/json
+
+{
+  "client_id": "zeta-client-abc12345",
+  "status": "pending_attestation"
+}
+```
+
+---
+
+### 4.2. Attestation & Posture-Erhebung
+
+Vor der Token-Ausstellung bewertet die PDP den Integritätszustand (Device Posture) des stationären Clients.
+- **Windows / Linux**: Der Client fordert über den lokalen Hintergrunddienst **ZAS** eine kryptografische TPM-Messung (`TPM2_Quote`) über PCR 7 (Secure Boot) und PCR 23 (Anwendungsspezifische Baseline) an (siehe [Abbildung 10: Client Statement mit TPM Attestation](../../../images/zeta-flows/Abb-ZETA-Client-Statement-mit-TPM-Attestation.svg)).
+- **macOS**: Es wird ein Attestierungs-Statement erzeugt, das Systemsicherheitsindikatoren (SIP, Gatekeeper) enthält (siehe [Abbildung 11: Client Statement mit Apple AppAttest](../../../images/zeta-flows/Abb-ZETA-Client-Statement-mit-Apple-AppAttest.svg)).
+
+Dieses hardwaregebundene Statement wird als JWT-Payload (`client_statement`) formatiert und in der Client Assertion an den `/token`-Endpunkt übertragen.
+
+---
+
+### 4.3. Authentifizierung & Token Exchange
+
+Das Access Token wird über einen Token Exchange gemäß RFC 8693 bezogen. Dabei wird das SMC-B-Zertifikat über die Konnektor-Schnittstelle zur Signatur des `subject_token` herangezogen.
+
+#### 4.3.1 POST /token (Token Exchange Request)
+*Siehe auch [Abbildung 12: Token Exchange mit Attestation](../../../images/zeta-flows/Abb-ZETA-Token-Exchange-mit-Attestation.svg)*
+
+**Anfrage-Beispiel (URL-decodiert für bessere Lesbarkeit):**
+```http
+POST /token HTTP/1.1
+Host: auth.example.com
+Content-Type: application/x-www-form-urlencoded
+DPoP: eyJhbGciOiJFUzI1NiIsInR5cCI6ImRwb3Arand0IiwiandrIjp7Imt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoiMEp1...",
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+&client_assertion=eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImNsaWVudC1pbnN0YW5jZS1rZXktMSJ9.eyJpc3MiOiJ6ZXRhLWNsaWVudC1hYmMxMjM0NSIsInN1YiI6InNldGEtY2xpZW50LWFiYzEyMzQ1IiwiYXVkIjoiaHR0cHM6Ly9hdXRoLmV4YW1wbGUuY29tL3Rva2VuIiwiZXhwIjoxNzc5NzgyNzAwLCJqdGkiOiJqdGktYWJjLTEyMyIsImNsaWVudF9zdGF0ZW1lbnQiOnsic3ViIjoiemV0YS1jbGllbnQtYWJjLWUxMjM0NSIsInBsYXRmb3JtIjoid2luZG93cyIsInBvc3R1cmVfdHlwZSI6InRwbSIsInBvc3R1cmUiOnsicHJvZHVjdF9pZCI6IlByYXhpc1N5c3RlbSIsInByb2R1Y3RfdmVyc2lvbiI6IjEuMy4wIiwib3MiOiJ3aW5kb3dzIiwib3NfdmVyc2lvbiI6IjExIiwiYXJjaCI6Ing2NF9oc20iLCJ0cG1fYXR0ZXN0YXRpb25fa2V5IjoiQUFCdEFGQUFGQSIsImRwb3Bfa2V5X2hhc2giOiJjbmYifSwiYXR0ZXN0YXRpb25fdGltZXN0YW1wIjoxNzc5NzgyNDAwfX0.signature
+&resource=https://api.example.com/resource
+&subject_token_type=urn:ietf:params:oauth:token-type:jwt
+&subject_token=eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InNtY2Ita2V5LTEifQ.eyJqdGkiOiJqdGktc21jYi05ODciLCJpc3MiOiJ6ZXRhLWNsaWVudC1hYmMxMjM0NSIsInN1YiI6IjEtMi1TTUMtQi1UZXN0a2FydGUtODgzMTEwMDAwMTI5MDY4IiwiYXVkIjoiaHR0cHM6Ly9hdXRoLmV4YW1wbGUuY29tL3Rva2VuIiwiZXhwIjoxNzc5NzgyOTAwLCJjbGllbnRfa2V5Ijp7ImprdCI6Ik1LQkpENSJ9LCJkcG9wX2tleSI6eyJqa3QiOiIwSmNPTCJ9fQ.connector_smcb_signature
+&scope=vsdservice.read vsdservice.write
+```
+
+**Antwort-Beispiel (200 OK):**
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+ZETA-API-Version: 1.3.0
+
+{
+  "access_token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImFzLXNpZ25pbmcta2V5LTEifQ...",
+  "token_type": "DPoP",
+  "expires_in": 3600,
+  "scope": "vsdservice.read vsdservice.write",
+  "refresh_token": "rt-9821hdnasd9821hdn",
+  "issued_token_type": "urn:ietf:params:oauth:token-type:access_token",
+  "zg_att_token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+---
+
+## 5. Mobile Clients (Android, iOS, iPadOS)
+
+### Quick Start: 5-Punkte-Checkliste für Entwickler
+1. **[ ] Zertifikate laden**: Mobile OS-Vertrauensanker und optionale Client-Zertifikate initialisieren.
+2. **[ ] Keys generieren**: Hardwarebasierten Client Instance Key (`PuK.Client.Sig`) im TEE / StrongBox (Android) bzw. in der Secure Enclave (iOS) erstellen.
+3. **[ ] DCR aufrufen**: Registrierung absenden (`POST /register`), um den Status `pending_user_binding` zu erlangen.
+4. **[ ] Token abholen**: Führe die interaktive Nutzerbindung per OTP (TOFU) aus, hole die Autorisierung ein und fordere das Token an (`POST /token`).
+5. **[ ] RS anfragen**: DPoP-gebundenes Token im Header mitsenden und die Ziel-API `/api/resource` aufrufen.
+
+---
+
+### 5.1. Trust Bootstrapping, Registrierung & TOFU
+
+Mobile Clients binden den Registrierungsprozess an eine interaktive Benutzeridentifizierung mittels **Trust-On-First-Use (TOFU)**.
+
+#### 5.1.1 POST /register (Mobile Client)
+*Siehe auch [Abbildung 10: DCR für mobile Clients](../../../images/zeta-flows/Abb-ZETA-DCR-für-mobile-Clients.svg)*
+
+**Anfrage-Beispiel: Android Hardware Attestation**
+```http
+POST /register HTTP/1.1
+Host: auth.example.com
+Content-Type: application/json
+
+{
+  "attestation_type": "android",
+  "client_name": "Tablet-Praxishelfer",
+  "token_endpoint_auth_method": "private_key_jwt",
+  "grant_types": [
+    "urn:ietf:params:oauth:grant-type:token-exchange",
+    "refresh_token"
+  ],
+  "puk_client_sig": {
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "h82Jdsa8s98Jsd...",
+    "y": "d7sJSD9s82Jskd...",
+    "use": "sig",
+    "kid": "android-instance-key-1"
+  },
+  "android_key_attestation_certificate_chain": [
+    "MIIFzDCCA7SgAwIBAgIR...",
+    "MIIFvTCCA6WgAwIBAgIT..."
+  ],
+  "puk_ak_sig": {
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "k92Jdsia92Nskd...",
+    "y": "m2Nskdis92Jskd..."
+  },
+  "signed_hash_puk_client_sig": "MEQCID7sNsjdi9Nskd...",
+  "play_integrity_token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6..."
+}
+```
+
+**Antwort-Beispiel (202 Accepted bei TOFU OTP Trigger):**
+```http
+HTTP/1.1 202 Accepted
+Content-Type: application/json
+
+{
+  "transaction_id": "tx-mobile-12345",
+  "verification_method": "email_otp",
+  "expires_in": 300
+}
+```
+
+---
+
+##### 5.1.2 POST /register/verify (TOFU Verifikation)
+Bestätigt den OTP-Code, der an die E-Mail-Adresse des Benutzers geschickt wurde, um die Client-Registrierung zu aktivieren.
+
+**Anfrage-Beispiel:**
+```http
+POST /register/verify HTTP/1.1
+Host: auth.example.com
+Content-Type: application/json
+
+{
+  "transaction_id": "tx-mobile-12345",
+  "otp_code": "872419"
+}
+```
+
+**Antwort-Beispiel (201 Created):**
+```http
+HTTP/1.1 201 Created
+Content-Type: application/json
+
+{
+  "client_id": "zeta-client-mobile-abc",
+  "status": "pending_attestation"
+}
+```
+
+---
+
+### 5.2. Attestation & Posture-Erhebung
+
+Mobile Clients erheben detaillierte Laufzeitparameter und Integritätsnachweise:
+- **Android**: Nutzt die **Android Key Attestation** sowie optional das Token der **Google Play Integrity API**.
+- **iOS / iPadOS**: Verwendet das native **DeviceCheck** bzw. **App Attest Framework**, um ein CBOR-kodiertes *Apple Attestation Object* an den `/nonce`-Wert gebunden zu erzeugen.
+
+---
+
+### 5.3. Authentifizierung & Autorisierung (OIDC Flow)
+
+Der Token-Bezug für mobile Benutzer erfolgt über den standardisierten **OpenID Connect (OIDC) Authorization Code Flow** unter Einbindung von **PKCE** (RFC 7636).
+
+#### 5.3.1 POST /token (Authorization Code Exchange)
+Tauscht den Autorisierungscode der OIDC-Sitzung gegen die DPoP-gebundenen Token aus.
+
+**Anfrage-Beispiel:**
+```http
+POST /token HTTP/1.1
+Host: auth.example.com
+Content-Type: application/x-www-form-urlencoded
+DPoP: eyJhbGciOiJFUzI1NiIsInR5cCI6ImRwb3Arand0IiwiandrIjp7...
+
+grant_type=authorization_code
+&code=SplxlOBeZQQYbYS6WxSbIA
+&redirect_uri=https://client.example.com/callback
+&code_verifier=dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk
+&client_id=zeta-client-mobile-abc
+&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+&client_assertion=eyJhbGciOiJFUzI1NiJ9.eyJpc3MiOiJ6ZXRhLWNsaWVudC1tb2JpbGUtYWJjIiwiYXR0ZXN0YXRpb25fcG9zdHVyZSI6eyJvc192ZXJzaW9uIjoiMTUuMiIsImphaWxicmVha19mcmVlIjp0cnVlfX0.signature
+```
+
+**Antwort-Beispiel (200 OK):**
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "access_token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVC...",
+  "token_type": "DPoP",
+  "expires_in": 3600,
+  "refresh_token": "rt-mobile-77612dhasda"
+}
+```
+
+---
+
+## 6. Dienst-zu-Dienst Kommunikation (Backend-to-Backend)
+
+Für die sichere Maschine-zu-Maschine Interaktion zwischen Backends wird die **Workload Identity Federation** etabliert. Ein Backend-Dienst authentifiziert sich mit einem signierten JWT (ausgestellt durch den eigenen PDP/Kubernetes IDP) am token_endpoint des Ziel-Dienstes.
+
+### 6.1 POST /token (Client Credentials & Token Exchange)
+*Siehe auch [Abbildung 16: Dienst-zu-Dienst Kommunikation](../../../images/zeta-flows/Abb-ZETA-Dienst-zu-Dienst-Kommunikation.svg)*
+
+**Anfrage-Beispiel:**
+```http
+POST /token HTTP/1.1
+Host: auth-target.example.com
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+&subject_token_type=urn:ietf:params:oauth:token-type:jwt
+&subject_token=eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2F1dGgtc291cmNlLmV4YW1wbGUuY29tIiwic3ViIjoic2VydmljZS1hIiwiYXVkIjoiaHR0cHM6Ly9hdXRoLXRhcmdldC5leGFtcGxlLmNvbS90b2tlbiJ9.signature
+&requested_token_type=urn:ietf:params:oauth:token-type:access_token
+```
+
+**Antwort-Beispiel (200 OK):**
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "access_token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVC...",
+  "token_type": "Bearer",
+  "expires_in": 3600
+}
+```
+
+---
+
+## 7. Zugriff auf den Resource Server
+
+Nach erfolgreichem Erhalt der Access-Token sendet der ZETA-Client Anfragen an den Fachdienst (Resource Server).
+
+### 7.1. Option A: Zugriff mit ZETA/ASL (Tunnelverschlüsselung)
+*Siehe auch [Abbildung 14: Zugriff auf RS mit ASL](../../../images/zeta-flows/Abb-ZETA-Zugriff-auf-RS-mit-ASL.svg)*
+
+Erfordert der Fachdienst eine dedizierte Verschlüsselung (ASL), baut der Client einen verschlüsselten Tunnel auf. Der Client sendet die verschlüsselten Fachdaten per HTTP `POST` an den Endpoint `/ASL` des PEP Proxys.
+
+**Anfrage-Beispiel:**
+```http
+POST /ASL HTTP/1.1
+Host: api.example.com
+Content-Type: application/jose
+Authorization: DPoP eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImFzLXNpZ25pbmcta2V5LTEifQ...
+DPoP: eyJhbGciOiJFUzI1NiIsInR5cCI6ImRwb3Arand0IiwiandrIjp7...
+
+[Verschlüsselte JWE Payload (Fachnachricht)]
+```
+
+---
+
+### 7.2. Option B: Direkter Zugriff ohne ZETA/ASL
+*Siehe auch [Abbildung 15: Zugriff auf RS ohne ASL](../../../images/zeta-flows/Abb-ZETA-Zugriff-auf-RS-ohne-ASL.svg)*
+
+Der Client sendet den Request direkt an den PEP mit dem Access Token im `Authorization`-Header (DPoP-gebunden) und dem DPoP-Proof im `DPoP`-Header.
+
+**Anfrage-Beispiel:**
+```http
+GET /api/resource HTTP/1.1
+Host: api.example.com
+Authorization: DPoP eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImFzLXNpZ25pbmcta2V5LTEifQ...
+DPoP: eyJhbGciOiJFUzI1NiIsInR5cCI6ImRwb3Arand0IiwiandrIjp7...
+Accept: application/json
+```
+
+**Weiterleitung an den Resource Server:**
+Der PEP HTTP Proxy validiert Token und Signaturen und hängt die entschlüsselten/validierten Metadaten als Custom Header an die interne Backend-Anfrage an:
+- `zeta-user-info` (Base64URL-kodiertes JSON mapping zu [zeta-user-info.yaml](../../../src/schemas/zeta-user-info.yaml))
+- `zeta-client-data` (Base64URL-kodiertes JSON mapping zu [client-data.yaml](../../../src/schemas/client-data.yaml))
+
+**Entschlüsseltes Beispiel für `zeta-user-info`:**
+```json
+{
+  "identifier": "1-234567890123",
+  "professionOID": "1.2.276.0.76.4.50",
+  "commonName": "Arztpraxis Dr. Meier",
+  "organizationName": "Gemeinschaftspraxis Meier & Kollegen"
+}
+```
+
+---
+
+## 8. Fehlerbehandlung und Statuscodes (Zentrales Nachschlagewerk)
+
+Dieses Kapitel dient Entwicklern als zentrales Nachschlagewerk zur Analyse und schnellen Behebung von Fehlern bei der ZETA API-Integration.
+
+### 8.1 JSON Fehler-Schema
+Sämtliche Fehler der ZETA Guard Endpunkte folgen dem JSON-Schema [zeta-error.yaml](../../../src/schemas/zeta-error.yaml):
+```json
+{
+  "error": "Fehler-Identifikationsstring (z.B. invalid_request)",
+  "error_description": "Klartextbeschreibung des Fehlers für Entwickler",
+  "error_uri": "https://gematik.de/errors/Fehler-Identifikationsstring"
+}
+```
+
+### 8.2 API Fehler-Tabelle & Troubleshooting
+
+| HTTP Status | Fehler-Code (`error`) | Mögliche Ursache | Troubleshooting-Schritte |
+|-------------|-----------------------|------------------|--------------------------|
+| **400** | `invalid_request` | Der DPoP-Proof oder das HTTP-Format ist ungültig. | 1. Gültigkeit des `DPoP`-Headers prüfen (z.B. Zeitstempel, URI).<br>2. Parameter im URL-kodierten Request-Body validieren. |
+| **401** | `invalid_client` | Die Signatur der Client Assertion ist ungültig oder der Client Instance Key unbekannt. | 1. DCR-Registrierungsstatus des Clients prüfen.<br>2. Verwendeten Signaturalgorithmus und Schlüssel verifizieren. |
+| **403** | `access_denied` | Attestierungsprüfung fehlgeschlagen; PCR-Werte weichen von Baseline ab. | 1. TPM PCRs prüfen (Integrität von ZAS/System).<br>2. Sicherstellen, dass keine unerlaubte Kernel-Modifikation vorliegt. |
+| **404** | `resource_not_found` | Falscher Well-Known Pfad oder Endpoint. | 1. FQDN des Resource Servers und Pfadstruktur prüfen. |
+| **409** | `conflict` | Der Client Instance Key (`PuK.Client.Sig`) existiert bereits im PDP-System. | 1. Verwenden Sie ein neues Schlüsselpaar für eine Neuinstallation.<br>2. Prüfen Sie, ob ein Registrierungs-Reset nötig ist. |
+| **429** | `rate_limit_exceeded` | Zu viele Anfragen (z.B. an den `/nonce` Endpoint). | 1. Implementieren Sie Exponential Backoff mit Jitter clientseitig.<br>2. Den Timeout-Wert in `Retry-After` auswerten. |
+| **500** | `server_error` | Ein unerwarteter interner Verarbeitungsfehler im ZETA Guard. | 1. Logfiles des PDP / OPA überprüfen.<br>2. Verbindung zur PDP-Datenbank verifizieren. |
+
+---
+
+## 9. Schlüsselverwaltung (Key Management)
+
+Teil der Sicherheitsarchitektur von ZETA ist ein robustes Schlüsselmanagement. Um ein klares Verständnis der kryptografischen Architektur zu vermitteln, verwendet diese Spezifikation standardisierte **Schlüssel-IDs** nach folgendem Schema: `[Typ].[Komponente].[Zweck]` (z.B. `PrK.AuthS.Sig` für den privaten Signaturschlüssel des Authorization Servers).
+
+### 9.1 ZETA Guard Schlüssel (Anbieter-Seite)
+
+Diese Schlüssel werden vom Betreiber des TI 2.0-Dienstes (ZETA Guard) verwaltet. Bei Verarbeitung von Daten mit Schutzbedarf "sehr hoch" greifen strenge VAU- und HSM-Pflichten.
+
+*Hinweis: Schlüssel mit dem Vermerk "Die Schlüsselverwaltung muss dokumentiert werden", werden vom Anbieter des TI 2.0 Dienstes verwaltet. Die Schlüssel ohne Vermerk verwaltet ZETA Guard automatisch.*
+
+| Schlüssel-ID | Bezeichnung & Zweck | Speicherung / Betrieb OHNE VAU | Speicherung / Betrieb MIT VAU (Schutzbedarf "sehr hoch") |
+|--------------|---------------------|--------------------------------|----------------------------------------------------------|
+| **PrK.AuthS.Sig**<br>**PuK.AuthS.Sig** | AuthS Token-Signaturschlüssel<br>Signatur von Access- und Refresh-Token sowie Entity Statements. Der PuK wird im JWKS bereitgestellt.<br>*Schlüsselverwaltung muss dokumentiert werden.* | PrK: Sicherer Software-Keystore des AuthS. | PrK: Muss durch HSM geschützt sein (z.B. mittels KEK aus dem HSM gesichert). |
+| **PrK.AuthS.TLS**<br>**C.AuthS.TLS** | AuthS Internet-Identität (TLS)<br>Terminierung der externen TLS-Verbindung am Authorization Server.<br>*Schlüsselverwaltung muss dokumentiert werden.* | Sicherer Software-Keystore. | PrK: Verbleibt zwingend im HSM (via HSM-Proxy), falls kein ASL-Tunnel zum AuthS existiert. |
+| **SymK.DB.Enc** | Datenbank-Verschlüsselung<br>Verschlüsselung der Session-, Nutzer- und Client-Daten At-Rest im Authorization Server. | Sicherer Software-Keystore (z.B. K8s Secrets). | Muss durch HSM geschützt sein. Übergabe an AuthS darf nur an attestierte Instanzen erfolgen. |
+| **PrK.PEP.TLS**<br>**C.PEP.TLS** | PEP Internet-Identität (TLS)<br>Terminierung der externen TLS-Verbindung am HTTP Proxy.<br>*Schlüsselverwaltung muss dokumentiert werden.* | Sicherer Software-Keystore. | PrK: Verbleibt zwingend im HSM, falls kein ASL-Tunnel zum HTTP Proxy existiert. |
+| **PrK.PEP.Sig**<br>**C.PEP.Sig** | PEP Signatur-Identität<br>Zertifikat aus der Komponenten-PKI. Dient als Identität des PEP (für Signatur des ASL Master-Schlüssels).<br>*Schlüsselverwaltung muss dokumentiert werden.* | Sicherer Software-Keystore. | Privater Schlüssel verbleibt zwingend im HSM (Zugriff via HSM-Proxy). |
+| **PrK.PEP.ASL**<br>**PuK.PEP.ASL** | PEP ASL-Identität<br>Semi-statische Schlüsselpaare für den ZETA/ASL-Kanal (maximal 1 Monat gültig). | Im RAM des PEP. | Wird im PEP generiert, aber vom PrK.PEP.Sig im HSM beglaubigt. |
+| **SymK.PEP.ASL** | PEP ASL Session-Key<br>Abgeleiteter kurzlebiger Schlüssel für den eigentlichen ASL-Traffic. | Im RAM des PEP. | Wird im PEP generiert. |
+| **PrK.ZG.IDP**<br>**PuK.ZG.IDP** | IDP für die ZETA Guard Workload Identity<br>Zur Signatur von Subject Token für gematik-Dienste (SIEM, Telemetrie) und Backend-to-Backend.<br>*Schlüsselverwaltung muss dokumentiert werden.* | Innerhalb der Kubernetes-Infrastruktur des Anbieters. | Wenn langlebiger Schlüssel, dann wird der private Schlüssel im HSM gespeichert. |
+| **PrK.Ingress.TLS**<br>**C.Ingress.TLS** | Ingress TLS<br>TLS-Terminierung am vorgeschalteten Ingress.<br>*Schlüsselverwaltung muss dokumentiert werden.* | Sicherer Software-Keystore. | Verbleibt zwingend im HSM, falls kein ASL Tunnel zum AuthS und zum HTTP Proxy existiert. |
+| **PrK.K8s.mTLS**<br>**C.K8s.mTLS** | Interne Mesh-Identitäten<br>Absicherung der microservice-internen Kommunikation (z. B. AuthS <-> PE). | K8s Service Mesh (z.B. Istio). | Verwaltung innerhalb der VAU (Zugriff strikt limitiert). |
+| **PuK.Client.Sig** | Öffentlicher Client Instance Key<br>Dient der Validierung der "Client Assertion" bei zukünftigen Logins. | Gespeichert in der PDP-Datenbank. | Gespeichert in der PDP-Datenbank. Muss vor unautorisierter Manipulation geschützt sein (Integritätsprüfung). |
+
+---
+
+### 9.2 ZETA Client Schlüssel (Nutzer-Seite)
+
+Diese Schlüssel verbleiben in der Verfügungsgewalt des Endnutzers (Smartphone / Primärsystem) bzw. der Institution.
+
+| Schlüssel-ID | Bezeichnung & Zweck | Speicherung / Verwendung |
+|--------------|---------------------|--------------------------|
+| **PrK.Client.Sig**<br>**PuK.Client.Sig** | Client Instance Key Pair<br>Langlebiges ECC-Schlüsselpaar zur Identifikation der Client-Installation. | PrK: Zwingend in Hardware (TPM, Secure Enclave, TEE) generiert und gespeichert. Kein Export möglich.<br>PuK: Wird bei der Registrierung (DCR) an den ZETA Guard übertragen. |
+| **PrK.DPoP.Sig**<br>**PuK.DPoP.Sig** | DPoP Schlüsselpaar<br>Kurzlebiger (Session-basierter) Schlüssel zum Signieren von Anfragen als Proof of Possession. | PrK: Wird für die Dauer der Session sicher lokal gehalten (RAM). Eine Verschlüsselung durch `PrK.Client.Sig` ist unzulässig.<br>PuK: Wird im HTTP-Header gesendet. |
+| **PrK.AK.Sig**<br>**PuK.AK.Sig** | Plattform Attestation Key<br>Zur Signatur des Client-Zustands. | PrK: Hardware-gebunden (TPM / Secure Enclave).<br>PuK: Wird bei der Registrierung (DCR) an den ZETA Guard übertragen. |
+| **PrK.EK.Sig**<br>**PuK.EK.Sig**<br>**C.EK.Sig** | TPM 2.0 Endorsement Keys<br>Wird bei der TPM Attestation verwendet. | PrK: Hardware-gebunden (TPM / Secure Enclave).<br>PuK / C: Wird bei der Registrierung (DCR) an den ZETA Guard übertragen. |
+| **PrK.SM(C)-B.Sig**<br>**C.SM(C)-B.Sig** | SMC-B Institutionsidentität<br>Zur Signatur des subject_token beim Token Exchange. | PrK: Verbleibt hardwaregebunden auf der Smartcard (SMC-B) oder im HSM-B.<br>C: Wird übermittelt und durch AuthS gegen TSL validiert. |
+
+---
+
+### 9.3 gematik verwaltete Schlüssel (TI)
+
+Diese Zertifikate und Schlüssel spannen den Vertrauensraum der TI 2.0 auf.
+
+| Schlüssel-ID | Bezeichnung & Zweck | Speicherung / Verteilung |
+|--------------|---------------------|--------------------------|
+| **PrK.TI-RootCA.Sig**<br>**C.TI-RootCA.Sig** | TI Root CA<br>Oberster Vertrauensanker der TI. | C: Lokal in Truststores hinterlegt.<br>PrK: Offline / Hochsicher bei der gematik. |
+| **PrK.TI-TSLSig**<br>**C.TI-TSL.Sig** | TSL Signer<br>Validierung der Signatur der Trust-Service Status List (TSL). | C: Im ZETA Guard zur TSL-Verifikation.<br>PrK: Bei der gematik. |
+| **PrK.TI-KompCA.Sig**<br>**C.TI-KompCA.Sig** | Komponenten PKI CA<br>Stellt die Zertifikate für die TI-Dienste aus. | C: Über die TSL als vertrauenswürdig verteilt. |
+| **PrK.TI-SMCB-CA.Sig**<br>**C.TI-SMCB-CA.Sig** | SMC-B CA<br>Stellt die Institutionszertifikate aus. | C: Über die TSL als vertrauenswürdig verteilt. |
+| **PrK.TI-FedMaster.Sig**<br>**PuK.TI-FedMaster.Sig** | Federation Master Signer<br>Zur Signatur der Entity Statements in der OIDC-Föderation. | PuK: Im ZETA Guard hinterlegt.<br>PrK: Bei der gematik. |
+| **PrK.ZETA-IK.Sig**<br>**C.TI-ZETA-IK.Sig** | Signaturzertifikat Ausführbare ZETA Images<br>Signatur der ausführbaren ZETA OCI Container. | C: Im Admission Controller validiert.<br>PrK: In gematik CI/CD-Pipeline. |
+| **PrK.ZETA-DK.Sig**<br>**C.TI-ZETA-DK.Sig** | Signaturzertifikat Daten-Images<br>Signatur von Datencontainern. | C: Im Admission Controller / ZETA Guard validiert.<br>PrK: In gematik CI/CD-Pipeline. |
+| **PrK.ZETA-PAK.Sig**<br>**C.TI-ZETA-PAK.Sig** | OPA Policy-Autor Signatur<br>Signaturzertifikat des Policy-Erstellers. | C: Im ZETA Guard (OPA Engine) konfiguriert.<br>PrK: Beim Datenbearbeiter. |
+| **PrK.ZETA-PFK.Sig**<br>**C.TI-ZETA-PFK.Sig** | OPA Policy-Freigeber Signatur<br>Zweitsignatur für OPA Bundles. | C: Im ZETA Guard (OPA Engine) konfiguriert.<br>PrK: Beim Freigeber. |
+| **PrK.K8s.IDP**<br>**C.K8s.IDP** | Kubernetes IDP (Workload Identity)<br>Zur Signatur von Subject Token. | PrK: Innerhalb der Kubernetes-Infrastruktur des Anbieters.<br>C: Innerhalb des gematik Workload Identity Pools. |
+
+---
+
+## 10. Versionierung, Performance & Verhaltensregeln
+
+### 10.1 Versionierung
+Die ZETA API folgt den Regeln von **Semantic Versioning 2.0.0 (SemVer)**. Major-Versionen werden über den URL-Pfad abgebildet (z. B. `/v1/`), während Minor- und Patch-Versionen über den Header `ZETA-API-Version` sowie das Discovery-Dokument ausgegeben werden.
+
+### 10.2 Performance- und Lastannahmen
+Die Bearbeitungszeiten müssen unter Last folgende Kriterien erfüllen:
+- **PEP HTTP Proxy Latenz**: Mittelwert ≤ 75 ms, 99%-Quantil ≤ 1 s.
+- **PDP /nonce Endpoint**: Mittelwert ≤ 33 ms, 99%-Quantil ≤ 500 ms.
+- **PDP /register & /token Endpoints**: Mittelwert ≤ 75 ms, 99%-Quantil ≤ 1 s.
+
+### 10.3 Client-Verhaltensregeln
+- **Rate Limits**: Clients MÜSSEN die Ratenbegrenzung beachten. Wird ein HTTP-Status `429` empfangen, sind erneute Anfragen mit einem **Exponential Backoff mit Jitter** auszuführen.
+- **Zertifikatsvalidierung**: Clients MÜSSEN alle Zertifikate bei jedem Verbindungsaufbau gegen die TSL prüfen. Gültigkeit und Widerrufsprüfung (vorzugsweise via **OCSP Stapling**) sind zwingend erforderlich.
+
+---
+
+## 11. Support und Kontaktinformationen
+
+Bei technischen Supportanfragen, Fehlerberichten oder Fragen zur Zertifizierung von ZETA-Clients kontaktieren Sie bitte den gematik ZETA Service-Desk:
+- **E-Mail-Support**: <support.zeta@gematik.de>
+- **Developer Forum**: <https://forum.ti-dienste.de/c/zeta-developer>
+- **Bugtracker**: <https://github.com/gematik/zeta/issues>
