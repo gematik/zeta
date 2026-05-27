@@ -1,0 +1,59 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: Registration Verify Request
+type: object
+description: >-
+  Payload für den POST /register/verify Request, um eine Registrierung
+  abzuschließen. Die Antwort auf die Challenge wird übermittelt.
+oneOf:
+  - $ref: "#/definitions/OtpVerifyRequest"
+  - $ref: "#/definitions/TpmVerifyRequest"
+discriminator:
+  propertyName: verify_type
+
+definitions:
+  # --- Gemeinsame Basis-Felder ---
+  BaseVerifyRequest:
+    type: object
+    required: [transaction_id]
+    properties:
+      transaction_id:
+        type: string
+        format: uuid
+        description: Die im 202 Accepted Request empfangene Transaktions-ID.
+
+  # --- TOFU / E-Mail OTP Fall ---
+  OtpVerifyRequest:
+    type: object
+    allOf:
+      - $ref: "#/definitions/BaseVerifyRequest"
+      - type: object
+        required: [verify_type, code]
+        properties:
+          verify_type:
+            type: string
+            const: email_otp
+          code:
+            type: string
+            description: Der vom Nutzer eingegebene Bestätigungscode (OTP).
+            minLength: 4
+            maxLength: 10
+            example: "123456"
+
+  # --- TPM MakeCredential Fall ---
+  TpmVerifyRequest:
+    type: object
+    allOf:
+      - $ref: "#/definitions/BaseVerifyRequest"
+      - type: object
+        required: [verify_type, tpm_decrypted_secret]
+        properties:
+          verify_type:
+            type: string
+            const: tpm_activation
+          tpm_decrypted_secret:
+            type: string
+            description: >-
+              Das entschlüsselte Geheimnis (Secret/Seed) im Base64-Format. 
+              Dies ist der Output des lokalen TPM2_ActivateCredential Befehls 
+              auf dem Client-Gerät. Der Server vergleicht diesen Wert mit 
+              dem ursprünglich generierten Klartext-Geheimnis.

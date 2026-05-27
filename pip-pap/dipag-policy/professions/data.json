@@ -1,3 +1,70 @@
 {
-  "allowed_professions": []
+  "allowed_professions": [
+    "1.2.276.0.76.4.49",
+    "1.2.276.0.76.4.50",
+    "1.2.276.0.76.4.51",
+    "1.2.276.0.76.4.54",
+    "1.2.276.0.76.4.59",
+    "1.2.276.0.76.4.270"
+  ],
+  "profession_to_role": {
+    "1.2.276.0.76.4.49":  "Rechnungsempfaenger",
+    "1.2.276.0.76.4.50":  "Rechnungsersteller",
+    "1.2.276.0.76.4.51":  "Rechnungsersteller",
+    "1.2.276.0.76.4.54":  "Rechnungsersteller",
+    "1.2.276.0.76.4.59":  "Kostentraeger",
+    "1.2.276.0.76.4.270": "Rechnungsersteller"
+  },
+  "role_to_scopes": {
+    "Rechnungsersteller": [
+      "insurantAccount.rs",
+      "invoiceDoc.c",
+      "invoiceDoc.r",
+      "practitionerAccount.crud"
+    ],
+    "Rechnungsempfaenger": [
+      "invoiceDoc.ruds",
+      "invoiceDoc.r",
+      "insurantAccount.crud",
+      "auditEvent.rs",
+      "permission.rud"
+    ],
+    "Rechnungseinreicher": [
+      "invoiceDoc.ruds",
+      "invoiceDoc.r",
+      "insurantAccount.crud",
+      "auditEvent.rs",
+      "permission.rud"
+    ],
+    "Kostentraeger": [
+      "invoiceDoc.r",
+      "insuranceAccount.crud"
+    ]
+  },
+  "nutzergruppen": {
+    "Versicherter": {
+      "professionOIDs": ["1.2.276.0.76.4.49"],
+      "roles": ["Rechnungsempfaenger", "Rechnungseinreicher"],
+      "comment": "oid_versicherter – gemSpec_OID Tab_PKI_402"
+    },
+    "Leistungserbringerinstitution": {
+      "professionOIDs": [
+        "1.2.276.0.76.4.50",
+        "1.2.276.0.76.4.51",
+        "1.2.276.0.76.4.54"
+      ],
+      "roles": ["Rechnungsersteller"],
+      "comment": "oid_praxis_arzt (50), oid_zahnarztpraxis (51), oid_oeffentliche_apotheke (54)"
+    },
+    "Abrechnungsdienstleister": {
+      "professionOIDs": ["1.2.276.0.76.4.270"],
+      "roles": ["Rechnungsersteller"],
+      "comment": "oid_abrechnungsdienstleister – gemSpec_OID GS-A_4443-11"
+    },
+    "Kostentraeger": {
+      "professionOIDs": ["1.2.276.0.76.4.59"],
+      "roles": ["Kostentraeger"],
+      "comment": "oid_kostentraeger – gemSpec_OID GS-A_4443-11"
+    }
+  }
 }

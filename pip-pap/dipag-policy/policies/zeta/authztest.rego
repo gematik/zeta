@@ -5,29 +5,15 @@ import future.keywords.in
 
 import data.policies.zeta.authz
 
-# Mock Data
+# Mock Data for Token TTLs
 mock_data = {
-    "audiences": {
-        "allowed_audiences": []
-    },
-    "professions": {
-        "allowed_professions": []
-    },
-    "products": {
-        "allowed_products": {
-            "dipag-client": ["0.1.0"]
-        }
-    },
     "token": {
         "access_token_ttl": 300,
-        "refresh_token_ttl": 86400,
-        "allowed_scopes": [
-            "dipag"
-        ]
+        "refresh_token_ttl": 86400
     }
 }
 
-# Base input that is valid
+# Base input that is valid (Rechnungsersteller with valid scope)
 base_input = {
     "user_info": {
         "professionOID": "1.2.276.0.76.4.50"
@@ -39,106 +25,85 @@ base_input = {
         }
     },
     "authorization_request": {
-        "scopes": ["dipag"],
+        "scopes": ["invoiceDoc.r"],
         "audience": ["https://example.com/dipag"]
     }
 }
 
-# Helper to evaluate decision with mocks
+# Helper to evaluate decision with mock token TTLs
 evaluate_decision(inp) := result if {
     result := authz.decision with input as inp
         with data.token as mock_data.token
 }
 
+# --- Success Path Tests ---
+
 test_allow_valid_request if {
     result := evaluate_decision(base_input)
     result.allow == true
+    result.ttl.access_token == 300
+    result.ttl.refresh_token == 86400
+}
+
+test_allow_valid_request_other_role if {
+    # 1.2.276.0.76.4.49 -> Rechnungsempfaenger, which allows invoiceDoc.ruds
+    inp := json.patch(base_input, [
+        {"op": "replace", "path": "/user_info/professionOID", "value": "1.2.276.0.76.4.49"},
+        {"op": "replace", "path": "/authorization_request/scopes", "value": ["invoiceDoc.ruds"]}
+    ])
+    result := evaluate_decision(inp)
+    result.allow == true
+}
+
+# --- Profession Tests ---
+
+test_deny_invalid_profession if {
+    inp := json.patch(base_input, [
+        {"op": "replace", "path": "/user_info/professionOID", "value": "1.2.3.4.5"}
+    ])
+    result := evaluate_decision(inp)
+    result.allow == false
+    result.reasons["User profession is not allowed for DiPag"]
+}
+
+test_deny_missing_profession if {
+    inp := json.remove(base_input, ["user_info/professionOID"])
+    result := evaluate_decision(inp)
+    result.allow == false
+    result.reasons["User profession is not allowed for DiPag"]
 }
 
 # --- Scope Tests ---
 
-test_deny_missing_scopes if {
-    input_missing_scopes := json.remove(base_input, ["authorization_request/scopes"])
-    result := evaluate_decision(input_missing_scopes)
+test_deny_unauthorized_scope_for_role if {
+    # Rechnungsersteller tries to request auditEvent.rs (which is only allowed for Rechnungsempfaenger/Rechnungseinreicher)
+    inp := json.patch(base_input, [
+        {"op": "replace", "path": "/authorization_request/scopes", "value": ["auditEvent.rs"]}
+    ])
+    result := evaluate_decision(inp)
     result.allow == false
-    result.reasons["One or more requested scopes are not allowed"]
+    result.reasons["Requested scopes do not match the role of the user's profession"]
+}
+
+test_deny_invalid_scope if {
+    # Requesting a scope that does not exist in any role
+    inp := json.patch(base_input, [
+        {"op": "replace", "path": "/authorization_request/scopes", "value": ["invalid_scope"]}
+    ])
+    result := evaluate_decision(inp)
+    result.allow == false
+    result.reasons["One or more requested scopes are not valid DiPag scopes"]
 }
 
 test_deny_empty_scopes if {
-    input_empty_scopes := json.patch(base_input, [{"op": "replace", "path": "/authorization_request/scopes", "value": []}])
-    result := evaluate_decision(input_empty_scopes)
+    inp := json.patch(base_input, [
+        {"op": "replace", "path": "/authorization_request/scopes", "value": []}
+    ])
+    result := evaluate_decision(inp)
     result.allow == false
-    result.reasons["One or more requested scopes are not allowed"]
+    # With empty scopes:
+    # 1. scopes_match_role fails -> "Requested scopes do not match the role of the user's profession"
+    # 2. scopes_are_valid fails -> "One or more requested scopes are not valid DiPag scopes"
+    result.reasons["Requested scopes do not match the role of the user's profession"]
+    result.reasons["One or more requested scopes are not valid DiPag scopes"]
 }
-
-test_deny_unauthorized_scope if {
-    input_bad_scope := json.patch(base_input, [{"op": "add", "path": "/authorization_request/scopes/-", "value": "invalid_scope"}])
-    result := evaluate_decision(input_bad_scope)
-    result.allow == false
-    result.reasons["One or more requested scopes are not allowed"]
-}
-
-# --- Audience Tests ---
-# Audience-Regel ist in der Policy deaktiviert (auskommentiert).
-
-#test_deny_missing_audience if {
-#    input_missing_audience := json.remove(base_input, ["authorization_request/audience"])
-#    result := evaluate_decision(input_missing_audience)
-#    result.allow == false
-#    result.reasons["One or more requested audiences are not allowed"]
-#}
-
-#test_deny_empty_audience if {
-#    input_empty_audience := json.patch(base_input, [{"op": "replace", "path": "/authorization_request/audience", "value": []}])
-#    result := evaluate_decision(input_empty_audience)
-#    result.allow == false
-#    result.reasons["One or more requested audiences are not allowed"]
-#}
-
-#test_deny_unauthorized_audience if {
-#    input_bad_audience := json.patch(base_input, [{"op": "add", "path": "/authorization_request/audience/-", "value": "https://invalid.com"}])
-#    result := evaluate_decision(input_bad_audience)
-#    result.allow == false
-#    result.reasons["One or more requested audiences are not allowed"]
-#}
-
-# --- Profession Tests ---
-# Profession-Regel ist in der Policy deaktiviert (auskommentiert).
-
-#test_deny_invalid_profession if {
-#    input_bad_prof := json.patch(base_input, [{"op": "replace", "path": "/user_info/professionOID", "value": "1.2.3.4.5"}])
-#    result := evaluate_decision(input_bad_prof)
-#    result.allow == false
-#    result.reasons["User profession is not allowed"]
-#}
-
-#test_deny_missing_user_info if {
-#    input_no_user_info := json.remove(base_input, ["user_info"])
-#    result := evaluate_decision(input_no_user_info)
-#    result.allow == false
-#    result.reasons["User profession is not allowed"]
-#}
-
-# --- Product/Version Tests ---
-# Product-Regel ist in der Policy deaktiviert (auskommentiert).
-
-#test_deny_invalid_product_id if {
-#    input_bad_prod := json.patch(base_input, [{"op": "replace", "path": "/client_assertion/posture/product_id", "value": "Invalid-Product"}])
-#    result := evaluate_decision(input_bad_prod)
-#    result.allow == false
-#    result.reasons["Client product or version is not allowed"]
-#}
-
-#test_deny_invalid_product_version if {
-#    input_bad_ver := json.patch(base_input, [{"op": "replace", "path": "/client_assertion/posture/product_version", "value": "9.9.9"}])
-#    result := evaluate_decision(input_bad_ver)
-#    result.allow == false
-#    result.reasons["Client product or version is not allowed"]
-#}
-
-#test_deny_missing_client_assertion if {
-#    input_no_client_assertion := json.remove(base_input, ["client_assertion"])
-#    result := evaluate_decision(input_no_client_assertion)
-#    result.allow == false
-#    result.reasons["Client product or version is not allowed"]
-#}

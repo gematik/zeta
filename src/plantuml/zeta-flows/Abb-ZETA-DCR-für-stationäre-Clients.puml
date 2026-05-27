@@ -1,4 +1,4 @@
-@startuml "dcr-with-key-binding"
+@startuml "Abb-ZETA-DCR-für-stationäre-Clients"
 !include ../puml-layout.txt
 
 
