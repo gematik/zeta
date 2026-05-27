@@ -1,0 +1,30 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: Registration Accepted Response (202)
+description: >-
+  Wird vom ZETA Guard zurückgegeben, wenn die kryptografische Attestierung 
+  erfolgreich war, aber eine Out-of-Band Verifikation (z.B. E-Mail OTP) 
+  aussteht, bevor die client_id vergeben wird.
+type: object
+required:
+  - transaction_id
+  - status
+properties:
+  transaction_id:
+    type: string
+    format: uuid
+    description: >-
+      Temporäre Transaktions-ID. Muss vom Client im /verify Request 
+      wieder mitgeschickt werden, um die Sitzung fortzusetzen.
+    example: "b71b12b6-5f81-420a-b1b7-b08e2f0a1c3e"
+  status:
+    type: string
+    enum: [pending_verification]
+    description: Der aktuelle Status der Registrierung.
+  message:
+    type: string
+    description: Ein für den Nutzer anzeigbarer Text (z.B. "E-Mail wurde gesendet").
+    example: "Bitte geben Sie den 6-stelligen Code ein, der an Ihre E-Mail gesendet wurde."
+  expires_in:
+    type: integer
+    description: Zeit in Sekunden, bis die transaction_id und das OTP ungültig werden.
+    example: 600
