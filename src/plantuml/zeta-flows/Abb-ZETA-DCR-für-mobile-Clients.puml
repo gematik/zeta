@@ -1,6 +1,7 @@
 @startuml "Abb-ZETA-DCR-für-mobile-Clients"
 !include ../puml-layout.txt
 
+actor User as "Nutzer"
 
 box "Device" DEVICE_COLOR
   box "App" PRIMAERSYSTEM_COLOR
@@ -46,6 +47,14 @@ else ZETA Attestation Token vorhanden (Fast-Path)
     AuthS -> AuthS: Extrahiere PuK.AK.Sig aus Token, verifiziere Besitznachweis
 end
 
-AuthS --> Client--: 201 Created {client_id}
+AuthS --> Client--: 201 Created {client_id, status="pending_attestation"}
+
+opt Mobile DCR: TOFU (Trust-On-First-Use) E-Mail-Bindung
+    AuthS -> User: E-Mail mit OTP-Bestätigungscode (Out-of-Band)
+    User -> Client: Gibt OTP-Bestätigungscode ein
+    Client -> AuthS++: POST /register/verify\n{client_id, code}
+    AuthS -> AuthS: Verifiziere OTP-Code & aktiviere Client
+    AuthS --> Client--: 200 OK
+end
 
 @enduml
