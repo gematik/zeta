@@ -16,7 +16,7 @@ box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
   end box
 end box
 
-alt Kein ZETA Guard Attestation Token
+alt Kein ZETA Guard Attestation Token vorhanden
     alt Hardware Attestation: Windows / Linux (TPM)
         Client++
         Client -> AuthS++: POST /register\n{attestation_type="tpm", PuK.EK.Enc, C.EK.Enc,\nPuK.AK.Sig, PuK.Client.Sig, signed_Hash_PuK.Client.Sig}
@@ -31,9 +31,6 @@ alt Kein ZETA Guard Attestation Token
 
         Client -> AuthS: POST /register/verify {Secret}
         AuthS -> AuthS: Secret korrekt? → PuK.Client.Sig hardware-gebunden ✓
-
-    else Software Attestation (Legacy OIDC DCR)
-        Client -> AuthS: POST /register\n{\n  "client_name": "myClient",\n  "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"],\n  "jwks": { "keys": [ PuK.Client.Sig ] },\n  "token_endpoint_auth_method": "private_key_jwt"\n}
     end
 
 else ZETA Attestation Token vorhanden

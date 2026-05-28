@@ -1,5 +1,63 @@
 # ZETA API v1.3.0
 
+- [ZETA API v1.3.0](#zeta-api-v130)
+  - [Dokumenten- und Versionsübersicht](#dokumenten--und-versionsübersicht)
+    - [Zuordnung zu API- und Implementierungsversionen](#zuordnung-zu-api--und-implementierungsversionen)
+    - [Docker-Image Referenzen](#docker-image-referenzen)
+      - [ZETA Guard Images](#zeta-guard-images)
+      - [Test Images](#test-images)
+  - [1. Einführung](#1-einführung)
+  - [2. Voraussetzungen \& Basiswissen (Trust Anchor, VSDM2)](#2-voraussetzungen--basiswissen-trust-anchor-vsdm2)
+  - [3. Discovery und Konfiguration](#3-discovery-und-konfiguration)
+    - [3.1 Ablauf](#31-ablauf)
+    - [3.2 Endpunkt-Spezifikationen](#32-endpunkt-spezifikationen)
+      - [3.2.1 GET /.well-known/oauth-protected-resource](#321-get-well-knownoauth-protected-resource)
+      - [3.2.2 GET /.well-known/oauth-authorization-server](#322-get-well-knownoauth-authorization-server)
+  - [4. Stationäre Clients (Windows, Linux, macOS)](#4-stationäre-clients-windows-linux-macos)
+    - [Quick Start: 5-Punkte-Checkliste für Entwickler](#quick-start-5-punkte-checkliste-für-entwickler)
+    - [4.1 Windows oder Linux Clients mit TPM Attestation](#41-windows-oder-linux-clients-mit-tpm-attestation)
+      - [4.1.1 Client Installation und Schlüsselgenerierung](#411-client-installation-und-schlüsselgenerierung)
+      - [4.1.2 Client Start und Baseline-Aktualisierung](#412-client-start-und-baseline-aktualisierung)
+      - [4.1.3 Vorbereitung der Client-Registrierung (Key Certification)](#413-vorbereitung-der-client-registrierung-key-certification)
+      - [4.1.4 Dynamic Client Registration (DCR)](#414-dynamic-client-registration-dcr)
+        - [4.1.2.1 Endpunkt-Spezifikationen für das Bootstrapping](#4121-endpunkt-spezifikationen-für-das-bootstrapping)
+          - [4.1.2.1.1 GET /nonce](#41211-get-nonce)
+          - [4.1.1.1.2 POST /register](#41112-post-register)
+        - [4.1.1.3 POST /register/verify](#4113-post-registerverify)
+    - [4.2. Attestation \& Posture-Erhebung](#42-attestation--posture-erhebung)
+    - [4.3. Authentifizierung \& Token Exchange](#43-authentifizierung--token-exchange)
+      - [4.3.1 POST /token (Token Exchange Request)](#431-post-token-token-exchange-request)
+    - [4.2 macOS Clients mit Apple App Attest Attestation](#42-macos-clients-mit-apple-app-attest-attestation)
+    - [4.3 Stationäre Clients mit rein Software-basierter Attestation](#43-stationäre-clients-mit-rein-software-basierter-attestation)
+  - [5. Mobile Clients (Android, iOS, iPadOS)](#5-mobile-clients-android-ios-ipados)
+    - [Quick Start: 5-Punkte-Checkliste für Entwickler](#quick-start-5-punkte-checkliste-für-entwickler-1)
+    - [5.1 iOS und iPadOS Clients mit Apple App Attest Attestation](#51-ios-und-ipados-clients-mit-apple-app-attest-attestation)
+      - [5.1.1 Trust Bootstrapping, Registrierung \& TOFU](#511-trust-bootstrapping-registrierung--tofu)
+        - [5.1.1.1 POST /register (Mobile Client)](#5111-post-register-mobile-client)
+        - [5.1.1.2 POST /register/verify (TOFU Verifikation)](#5112-post-registerverify-tofu-verifikation)
+        - [5.1.1.2. Attestation \& Posture-Erhebung](#5112-attestation--posture-erhebung)
+        - [5.1.1.3. Authentifizierung \& Autorisierung (OIDC Flow)](#5113-authentifizierung--autorisierung-oidc-flow)
+        - [5.1.3.1 POST /token (Authorization Code Exchange)](#5131-post-token-authorization-code-exchange)
+    - [5.2 Android Clients mit Android Key Attestation](#52-android-clients-mit-android-key-attestation)
+    - [5.3 Mobile Clients mit Software Attestation](#53-mobile-clients-mit-software-attestation)
+  - [6. Dienst-zu-Dienst Kommunikation (Backend-to-Backend)](#6-dienst-zu-dienst-kommunikation-backend-to-backend)
+    - [6.1 POST /token (Client Credentials \& Token Exchange)](#61-post-token-client-credentials--token-exchange)
+  - [7. Zugriff auf den Resource Server](#7-zugriff-auf-den-resource-server)
+    - [7.1. Option A: Zugriff mit ZETA/ASL (Tunnelverschlüsselung)](#71-option-a-zugriff-mit-zetaasl-tunnelverschlüsselung)
+    - [7.2. Option B: Direkter Zugriff ohne ZETA/ASL](#72-option-b-direkter-zugriff-ohne-zetaasl)
+  - [8. Fehlerbehandlung und Statuscodes (Zentrales Nachschlagewerk)](#8-fehlerbehandlung-und-statuscodes-zentrales-nachschlagewerk)
+    - [8.1 JSON Fehler-Schema](#81-json-fehler-schema)
+    - [8.2 API Fehler-Tabelle \& Troubleshooting](#82-api-fehler-tabelle--troubleshooting)
+  - [9. Schlüsselverwaltung](#9-schlüsselverwaltung)
+    - [9.1 ZETA Client Schlüssel (Nutzer-Seite)](#91-zeta-client-schlüssel-nutzer-seite)
+    - [9.2 gematik verwaltete Schlüssel (TI)](#92-gematik-verwaltete-schlüssel-ti)
+  - [10. Versionierung, Performance \& Verhaltensregeln](#10-versionierung-performance--verhaltensregeln)
+    - [10.1 Versionierung](#101-versionierung)
+    - [10.2 Performance- und Lastannahmen](#102-performance--und-lastannahmen)
+    - [10.3 Client-Verhaltensregeln](#103-client-verhaltensregeln)
+  - [11. Support und Kontaktinformationen](#11-support-und-kontaktinformationen)
+
+
 ## Dokumenten- und Versionsübersicht
 
 | Attribut                    | Wert                        |
@@ -227,19 +285,99 @@ Die TPM Attestation ermöglicht es dem Client, seine hardwaregebundene Identitä
 
 - *(01) Privilegierte ZAS-Installation:* Der ZAS wird mit administrativen Rechten (Root/Admin) installiert. Nur so kann er Messungen in TPM PCR-Register schreiben.
 - *(02) Unprivilegierte Client-Installation:* Der ZETA Client wird im Benutzerkontext des Primärsystems installiert.
-- *(03)–(04) IPC-Vertrauensbeziehung:* Zwischen ZAS (privilegiert) und ZETA Client (User Space) wird eine gegenseitig authentifizierte IPC-Verbindung aufgebaut, gesichert durch Code-Signatur-Prüfungen beider Seiten.
+- *(03)–(04) IPC-Vertrauensbeziehung:* Zwischen ZAS (privilegiert) und ZETA Client (User Space) wird eine gegenseitig authentifizierte IPC-Verbindung aufgebaut, z. B. gesichert durch Prozess- und Code-Signatur-Prüfungen beider Seiten.
 - *(05)–(06) Client Instance Key:* Das langlebige Signatur-Schlüsselpaar (`PrK.Client.Sig` / `PuK.Client.Sig`) wird über den OS- oder TPM-Provider erzeugt. Der öffentliche Schlüssel und das Handle werden dem Client übergeben.
 - *(07) Systemmessung:* Der ZAS misst die unveränderlichen Teile des Primärsystems.
 - *(08) Storage Root Key (SRK):* Im TPM wird ein SRK als lokaler Vertrauensanker erzeugt.
 - *(09)–(12) Attestation Key (AK):* Ein hardwaregebundener Attestierungsschlüssel (`PrK.AK.Sig` / `PuK.AK.Sig`) wird im TPM erzeugt und geladen. Das AK-Handle wird an den ZETA Client übergeben.
-- *(13) PCR-Erweiterung:* Die Messwerte der unveränderlichen Systemkomponenten werden in PCR 23 geschrieben und bilden die initiale Baseline.
-- *Fallback (14)–(15):* Ist kein TPM vorhanden oder kein PCR frei, erzeugt der ZETA Client das Schlüsselpaar im Software-Kontext (Software-Attestation).
+- *(13) PCR-Erweiterung:* Die Messwerte der unveränderlichen Systemkomponenten werden in ein freies TPM PCR (z.B. PCR 23) geschrieben und bilden die initiale Baseline. Wenn kein freies PCR auf dem Gerät existiert, dann kann die TPM Attestation nicht durchgeführt werden. In diesem Fall muss die [Software basierte Attestation](#43-stationäre-clients-mit-rein-software-basierter-attestation) durchgeführt werden.
 
+![Abbildung 2: Schlüsselgenerierung auf Windows und Linux mit TPM Attestation](../../../images/zeta-flows/Abb-ZETA-Schlüsselgenerierung-Windows-und-Linux-TPM-Att.svg)
 
-!![Abbildung 2: Schlüsselgenerierung auf Windows und Linux mit TPM Attestation](../../../images/zeta-flows/Abb-ZETA-Schlüsselgenerierung-Windows-und-Linux-TPM-Att.svg)
+#### 4.1.2 Client Start und Baseline-Aktualisierung
 
-#### 4.1.2 Trust Bootstrapping & Registrierung
+Bei jedem Systemboot und jedem Start des Primärsystems führt der ZAS eine erneute Integritätsmessung durch:
 
+- *(01) ZAS-Bootstart:* Der ZAS wird beim Booten als Systemdienst gestartet.
+- *(02)–(03) Initiale Messung:* Der ZAS misst unveränderliche Systemteile und erweitert PCR 23.
+- *(04)–(08) Client-Startmessung:* Sobald der ZAS den Start des Primärsystems erkennt, führt er eine zweite Messung durch und erweitert erneut PCR 23, um den aktuellen Systemzustand im TPM zu verankern.
+
+![Abbildung 3: Client Start mit TPM und ZAS](../../../images/zeta-flows/Abb-ZETA-Client-Start-mit-TPM-und-ZAS.svg)
+
+#### 4.1.3 Vorbereitung der Client-Registrierung (Key Certification)
+
+Vor der Registrierung beim ZETA Guard Authorization Server (AuthS) erbringt der Client im Zusammenspiel mit dem ZAS den Nachweis, dass sein Signaturschlüssel (`PuK.Client.Sig`) auf demselben physischen TPM-Chip existiert wie der Attestation Key (`AK`). Zusätzlich werden alle benötigten Daten für die Attestierung des Clients beim AuthS vorbereitet. Die Schritte im Detail:
+
+- *(01)–(03) Client-Key laden:* Der ZETA Client übergibt das Schlüssel-Handle und den SHA-256-Hash von `PuK.Client.Sig` an den ZAS. Der ZAS lädt den Client-Schlüssel in das TPM.
+- *(04)–(05) TPM2_Certify:* Das TPM führt eine `TPM2_Certify`-Operation durch: Es signiert mit `PrK.AK.Sig` kryptografisch, dass sich `PuK.Client.Sig` im selben TPM-Sicherheitschip befindet. Ergebnis sind `tpm2b_attest` (Zertifizierungsdaten) und `tpmt_signature` (Signatur).
+- *(06)–(14) EK und AK auslesen:* Der ZAS liest den öffentlichen Endorsement Key (`PuK.EK.Enc`), den öffentlichen AK (`PuK.AK.Sig`) und das herstellerseitige EK-Zertifikat (`C.EK.Enc`) aus dem TPM und übergibt alle Daten an den ZETA Client.
+
+![Abbildung 4: Vorbereitung per TPM Attestation Key](../../../images/zeta-flows/Abb-ZETA-TPM-Attestation-Key.svg)
+
+#### 4.1.4 Dynamic Client Registration (DCR)
+
+- **Verwendete Endpunkt-Pfade (Windows/Linux):** `POST /register` und `POST /register/verify`
+- *(01) POST /register:* Der ZETA Client sendet die Registrierungsanfrage gemäß Schema [dcr-request.yaml](../../../src/schemas/dcr-request.yaml) an den PDP AuthS. Der Body enthält `attestation_type: "tpm"`, `PuK.Client.Sig`, `PuK.AK.Sig`, `PuK.EK.Enc`, `C.EK.Enc` und `signed_hash_puk_client_sig`.
+- *(02)–(03) MakeCredential:* Der AuthS validiert die EK-Zertifikatskette gegen die Hersteller-CA. Zur Verifikation des Schlüsselbesitzes generiert er ein verschlüsseltes `CredentialBlob` per `TPM2_MakeCredential` (verschlüsselt mit `PuK.EK.Enc`, gebunden an `PuK.AK.Sig`) und antwortet mit `202 Accepted {CredentialBlob}`.
+- *(04)–(08) ActivateCredential:* Der ZETA Client leitet das `CredentialBlob` an den ZAS weiter. Der ZAS führt im TPM `TPM2_ActivateCredential` aus — dieser Befehl gelingt nur, wenn EK und AK im selben TPM vorhanden sind. Das entschlüsselte Secret wird an den Client zurückgegeben.
+- *(09)–(10) POST /register/verify:* Der Client sendet das Secret an den AuthS. Der AuthS verifiziert das Secret und schließt die Registrierung ab: `201 Created {client_id}` mit Status `pending_attestation`.
+
+![Abbildung 5: DCR für Windows oder Linux Clients mit TPM Attestation](../../../images/zeta-flows/Abb-ZETA-DCR-für-stationäre-Win-Linux-Clients.svg)
+
+#### 7.1.4 Dynamic Client Registration Endpoint
+
+Ermöglicht die Registrierung neuer Clients beim PDP AuthS. Die Registrierung verknüpft den Client Instance Key mit einem plattformspezifischen Attestierungsnachweis.
+
+- **Pfad:** `POST /register`
+- **Request-Schema:** [dcr-request.yaml](../../../src/schemas/dcr-request.yaml)
+
+##### 7.1.4.1 Anfrage-Beispiele
+
+**1. TPM Hardware Attestation (Windows / Linux):**
+
+```http
+POST /register HTTP/1.1
+Host: auth.example.com
+Content-Type: application/json
+
+{
+  "attestation_type": "tpm",
+  "client_name": "Praxis-PC-123",
+  "token_endpoint_auth_method": "private_key_jwt",
+  "grant_types": [
+    "urn:ietf:params:oauth:grant-type:token-exchange",
+    "refresh_token"
+  ],
+  "jwks": {
+    "keys": [
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "MKBJD5N2457sT_yP...",
+        "y": "89sDJNskd98sJDsd...",
+        "use": "sig",
+        "kid": "client-instance-key-1"
+      }
+    ]
+  },
+  "puk_client_sig": {
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "MKBJD5N2457sT_yP...",
+    "y": "89sDJNskd98sJDsd...",
+    "use": "sig",
+    "kid": "client-instance-key-1"
+  },
+  "puk_ek_enc": {
+    "kty": "RSA",
+    "n": "0vx7agoebGcQSuuPiLJ...",
+    "e": "AQAB"
+  },
+  "c_ek_enc": "MIIFvTCCA6WgAwIBAgITG3o...",
+  "puk_ak_sig": "AABtAFAAFAAAAAAA...",
+  "signed_hash_puk_client_sig": "MEQCIE7sYJ89sJDskd..."
+}
+```
 
 
 ##### 4.1.2.1 Endpunkt-Spezifikationen für das Bootstrapping
