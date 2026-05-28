@@ -1,4 +1,4 @@
-@startuml "Abb-ZETA-DCR-für-mobile-Clients"
+@startuml "Abb-ZETA-DCR-für-mobile-Apple-HW-Att-Clients"
 !include ../puml-layout.txt
 
 actor User as "Nutzer"

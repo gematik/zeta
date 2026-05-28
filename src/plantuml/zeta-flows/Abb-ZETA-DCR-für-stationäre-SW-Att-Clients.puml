@@ -1,4 +1,4 @@
-@startuml "Abb-ZETA-DCR-für-stationäre-Clients"
+@startuml "Abb-ZETA-DCR-für-stationäre-SW-Att-Clients"
 !include ../puml-layout.txt
 
 
