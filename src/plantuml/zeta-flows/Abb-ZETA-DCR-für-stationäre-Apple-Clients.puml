@@ -14,15 +14,11 @@ box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
   end box
 end box
 
+Client++
 alt Kein ZETA Guard Attestation Token
-    alt Hardware Attestation: macOS (Apple App Attest)
-        Client -> AuthS: POST /register\n{attestation_type="apple", PuK.AK.Sig, Apple_Attestation_Object,\nPuK.Client.Sig, signed_Hash_PuK.Client.Sig}
-        AuthS -> AuthS: Validiere Apple_Attestation_Object & signed_Hash_PuK.Client.Sig
-        note right of AuthS: AuthS verifiziert Apple App Attest Root CA und prüft,\ndass PuK.AK.Sig mit x5c[0] des Objekts übereinstimmt.
-
-    else Software Attestation (Legacy OIDC DCR)
-        Client -> AuthS: POST /register\n{\n  "client_name": "myClient",\n  "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"],\n  "jwks": { "keys": [ PuK.Client.Sig ] },\n  "token_endpoint_auth_method": "private_key_jwt"\n}
-    end
+  Client -> AuthS++: POST /register\n{attestation_type="apple", PuK.AK.Sig, Apple_Attestation_Object,\nPuK.Client.Sig, signed_Hash_PuK.Client.Sig}
+  AuthS -> AuthS: Validiere Apple_Attestation_Object & signed_Hash_PuK.Client.Sig
+  note right of AuthS: AuthS verifiziert Apple App Attest Root CA und prüft,\ndass PuK.AK.Sig mit x5c[0] des Objekts übereinstimmt.
 
 else ZETA Attestation Token vorhanden
     Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token",\nzeta_guard_attestation_token, PuK.Client.Sig,\nsigned_Hash_PuK.Client.Sig}
