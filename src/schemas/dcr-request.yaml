@@ -25,16 +25,14 @@ oneOf:
         type: array
         items: { type: string }
       jwks:
+        description: >-
+          Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
         type: object
         properties:
           keys:
             type: array
             items: { $ref: "#/definitions/jwk" }
         required: [keys]
-      puk_client_sig:
-        $ref: "#/definitions/jwk"
-        description: >-
-          Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
       puk_ek_enc:
         $ref: "#/definitions/jwk"
         description: >-
@@ -82,16 +80,14 @@ oneOf:
         type: array
         items: { type: string }
       jwks:
+        description: >-
+          Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
         type: object
         properties:
           keys:
             type: array
             items: { $ref: "#/definitions/jwk" }
         required: [keys]
-      puk_client_sig:
-        $ref: "#/definitions/jwk"
-        description: >-
-          Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
       apple_attestation_object:
         type: string
         description: >-
@@ -125,16 +121,14 @@ oneOf:
         type: array
         items: { type: string }
       jwks:
+        description: >-
+          Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
         type: object
         properties:
           keys:
             type: array
             items: { $ref: "#/definitions/jwk" }
         required: [keys]
-      puk_client_sig:
-        $ref: "#/definitions/jwk"
-        description: >-
-          Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
       android_key_attestation_certificate_chain:
         type: array
         description: >-
@@ -181,16 +175,14 @@ oneOf:
         type: array
         items: { type: string }
       jwks:
+        description: >-
+          Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
         type: object
         properties:
           keys:
             type: array
             items: { $ref: "#/definitions/jwk" }
         required: [keys]
-      puk_client_sig:
-        $ref: "#/definitions/jwk"
-        description: >-
-          Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
       zeta_attestation_token:
         type: string
         description: >-
@@ -221,6 +213,8 @@ oneOf:
         type: array
         items: { type: string }
       jwks:
+        description: >-
+          Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
         type: object
         properties:
           keys:

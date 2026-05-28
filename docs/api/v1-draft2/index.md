@@ -20,6 +20,8 @@
       - [4.1.2 Client Start und Baseline-Aktualisierung](#412-client-start-und-baseline-aktualisierung)
       - [4.1.3 Vorbereitung der Client-Registrierung (Key Certification)](#413-vorbereitung-der-client-registrierung-key-certification)
       - [4.1.4 Dynamic Client Registration (DCR)](#414-dynamic-client-registration-dcr)
+        - [4.1.4.1 Dynamic Client Registration Endpoint](#4141-dynamic-client-registration-endpoint)
+        - [7.1.4.1 Anfrage-Beispiele](#7141-anfrage-beispiele)
         - [4.1.2.1 Endpunkt-Spezifikationen für das Bootstrapping](#4121-endpunkt-spezifikationen-für-das-bootstrapping)
           - [4.1.2.1.1 GET /nonce](#41211-get-nonce)
           - [4.1.1.1.2 POST /register](#41112-post-register)
@@ -322,11 +324,11 @@ Vor der Registrierung beim ZETA Guard Authorization Server (AuthS) erbringt der 
 - *(04)–(08) ActivateCredential:* Der ZETA Client leitet das `CredentialBlob` an den ZAS weiter. Der ZAS führt im TPM `TPM2_ActivateCredential` aus — dieser Befehl gelingt nur, wenn EK und AK im selben TPM vorhanden sind. Das entschlüsselte Secret wird an den Client zurückgegeben.
 - *(09)–(10) POST /register/verify:* Der Client sendet das Secret an den AuthS. Der AuthS verifiziert das Secret und schließt die Registrierung ab: `201 Created {client_id}` mit Status `pending_attestation`.
 
-![Abbildung 5: DCR für Windows oder Linux Clients mit TPM Attestation](../../../images/zeta-flows/Abb-ZETA-DCR-für-stationäre-Win-Linux-Clients.svg)
+![Abbildung 5: DCR für Windows oder Linux Clients mit TPM Attestation](../../../images/zeta-flows/Abb-ZETA-DCR-für-stationäre-Win-Linux-Clients-TPM-Att.svg)
 
-#### 7.1.4 Dynamic Client Registration Endpoint
+##### 4.1.4.1 Dynamic Client Registration Endpoint
 
-Ermöglicht die Registrierung neuer Clients beim PDP AuthS. Die Registrierung verknüpft den Client Instance Key mit einem plattformspezifischen Attestierungsnachweis.
+Ermöglicht die Registrierung neuer Clients beim ZETA Guard AuthS. Die Registrierung verknüpft den Client Instance Key mit dem TPM Attestation Key (AK) und dem Endorsement Key (EK).
 
 - **Pfad:** `POST /register`
 - **Request-Schema:** [dcr-request.yaml](../../../src/schemas/dcr-request.yaml)
@@ -359,14 +361,6 @@ Content-Type: application/json
         "kid": "client-instance-key-1"
       }
     ]
-  },
-  "puk_client_sig": {
-    "kty": "EC",
-    "crv": "P-256",
-    "x": "MKBJD5N2457sT_yP...",
-    "y": "89sDJNskd98sJDsd...",
-    "use": "sig",
-    "kid": "client-instance-key-1"
   },
   "puk_ek_enc": {
     "kty": "RSA",
