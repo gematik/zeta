@@ -35,10 +35,10 @@ oneOf:
             items: { $ref: "#/definitions/jwk" }
         required: [keys]
       puk_ek_enc:
-        $ref: "#/definitions/jwk"
+        type: string
         description: >-
-          Öffentlicher Endorsement Key (EK) des TPM (RSA oder ECC).
-          Wird zur MakeCredential-Operation verwendet.
+          Öffentlicher Endorsement Key (EK) des TPM als Base64-kodierte 
+          TPM2B_PUBLIC Struktur. Wird zur MakeCredential-Operation verwendet.
       c_ek_enc:
         type: string
         description: >-
