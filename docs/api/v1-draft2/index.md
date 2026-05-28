@@ -225,6 +225,17 @@ Die TPM Attestation ermöglicht es dem Client, seine hardwaregebundene Identitä
 
 #### 4.1.1 Client Installation und Schlüsselgenerierung
 
+- *(01) Privilegierte ZAS-Installation:* Der ZAS wird mit administrativen Rechten (Root/Admin) installiert. Nur so kann er Messungen in TPM PCR-Register schreiben.
+- *(02) Unprivilegierte Client-Installation:* Der ZETA Client wird im Benutzerkontext des Primärsystems installiert.
+- *(03)–(04) IPC-Vertrauensbeziehung:* Zwischen ZAS (privilegiert) und ZETA Client (User Space) wird eine gegenseitig authentifizierte IPC-Verbindung aufgebaut, gesichert durch Code-Signatur-Prüfungen beider Seiten.
+- *(05)–(06) Client Instance Key:* Das langlebige Signatur-Schlüsselpaar (`PrK.Client.Sig` / `PuK.Client.Sig`) wird über den OS- oder TPM-Provider erzeugt. Der öffentliche Schlüssel und das Handle werden dem Client übergeben.
+- *(07) Systemmessung:* Der ZAS misst die unveränderlichen Teile des Primärsystems.
+- *(08) Storage Root Key (SRK):* Im TPM wird ein SRK als lokaler Vertrauensanker erzeugt.
+- *(09)–(12) Attestation Key (AK):* Ein hardwaregebundener Attestierungsschlüssel (`PrK.AK.Sig` / `PuK.AK.Sig`) wird im TPM erzeugt und geladen. Das AK-Handle wird an den ZETA Client übergeben.
+- *(13) PCR-Erweiterung:* Die Messwerte der unveränderlichen Systemkomponenten werden in PCR 23 geschrieben und bilden die initiale Baseline.
+- *Fallback (14)–(15):* Ist kein TPM vorhanden oder kein PCR frei, erzeugt der ZETA Client das Schlüsselpaar im Software-Kontext (Software-Attestation).
+
+
 !![Abbildung 2: Schlüsselgenerierung auf Windows und Linux mit TPM Attestation](../../../images/zeta-flows/Abb-ZETA-Schlüsselgenerierung-Windows-und-Linux-TPM-Att.svg)
 
 #### 4.1.2 Trust Bootstrapping & Registrierung
