@@ -43,6 +43,6 @@ else ZETA Attestation Token vorhanden
 end
 
 AuthS -> AuthS: Store Client Placeholder (state: pending_user_binding)
-AuthS --> Client--: 201 Created {client_id}
+AuthS --> Client--: 201 Created {client_id, status="pending_user_binding"}
 
 @enduml

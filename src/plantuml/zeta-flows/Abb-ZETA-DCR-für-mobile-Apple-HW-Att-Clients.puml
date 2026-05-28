@@ -3,7 +3,7 @@
 
 actor User as "Nutzer"
 
-box "Apple Device" DEVICE_COLOR
+box "mobile Apple Device" DEVICE_COLOR
   box "App" PRIMAERSYSTEM_COLOR
     participant Client as "ZETA Client" <<zeta>>
   end box

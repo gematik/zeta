@@ -1,0 +1,15 @@
+@startuml "Abb-ZETA-Schlüsselgenerierung-Windows-und-Linux"
+!include ../puml-layout.txt
+
+
+box "Device" DEVICE_COLOR
+  box "Primärsystem oder mobile App" PRIMAERSYSTEM_COLOR
+    participant Client as "ZETA Client" <<zeta>>
+  end box
+end box
+
+Client++
+Client --> Client: Installation (User Space)
+Client -> Client: Generiere PrK.Client.Sig,\nPuK.Client.Sig
+
+@enduml

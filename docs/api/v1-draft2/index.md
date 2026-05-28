@@ -33,7 +33,7 @@ Die oben genannten Komponenten werden als OCI-konforme Container Images in der Z
 
 Repository: [europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr](https://europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr)
 
-#### Produkt
+#### ZETA Guard Images
 
 - PEP (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/ngx_pep:1.3.0)
 - PDP (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/keycloak-zeta:1.3.0)
@@ -44,11 +44,11 @@ Repository: [europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr](https://
 - Postgres (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/postgres:17.9-standard-trixie)
 - Telemetry Gateway (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/zeta-telemetry-gateway:v0.151.0-release.3)
 
-#### Test
+#### Test Images
 
 - Tiger-Testsuite (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/tiger-testsuite:1.3.0)
 - Testfachdienst (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/testfachdienst:1.3.0)
-- HSM Simulator (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/hsm_sim:1.3.0)
+- HSM Proxy Simulator (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/hsm_sim:1.3.0)
 - Zeta-Tigerproxy (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/testproxy:1.3.0)
 - Zeta TLS Test Tool (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/zeta-tls-test-tool-service:1.3.0)
 - Cert Validation Mock (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/zeta-cert-validation-mock:1.3.0)
@@ -58,11 +58,12 @@ Repository: [europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr](https://
 
 ## 1. Einführung
 
-Diese API-Spezifikation beschreibt die Interaktion eines ZETA-Clients mit der ZETA Guard-Infrastruktur. Dabei werden stationäre Clients (z. B. Arbeitsplatz- oder Serversysteme), mobile Clients (z. B. mobile Endgeräte mit iOS oder Android Betriebssystemen) sowie die direkte Dienst-zu-Dienst (Backend-to-Backend) Kommunikation abgedeckt.
+Die ZETA API beschreibt die Interaktion eines ZETA-Clients mit der ZETA Guard-Infrastruktur. Dabei werden stationäre Clients (z. B. Arbeitsplatz- oder Serversysteme), mobile Clients (z. B. mobile Endgeräte mit iOS oder Android Betriebssystemen) sowie die direkte Dienst-zu-Dienst (Backend-to-Backend) Kommunikation abgedeckt.
 
 Unabhängig von der jeweiligen Client-Plattform stellt die ZETA API Mechanismen bereit, um:
+
 - Eine initiale Vertrauensbeziehung zwischen Client und ZETA-Infrastruktur aufzubauen (Trust Establishment via Dynamic Client Registration),
-- Den Sicherheits- und Integritätszustand eines Clients kryptografisch zu bewerten (Attestation & Posture-Erhebung unter Verwendung von TPM 2.0, Apple App Attest, Android Key Attestation oder Software-Fallback),
+- Den Sicherheits- und Integritätszustand eines Clients kryptografisch zu bewerten (Attestation & Posture-Erhebung unter Verwendung von TPM 2.0, Apple App Attest, Android Key Attestation und Play integrity Token oder Software-Fallback),
 - Den Zugriff auf ZETA-geschützte Dienste über Token-basierte Verfahren (OAuth 2.0 Token Exchange mit DPoP-Bindung und optionaler Verschlüsselung über den ZETA/ASL-Kanal) zu authentifizieren und zu autorisieren.
 
 ---
@@ -83,18 +84,25 @@ Bevor ein ZETA-Client erfolgreich mit einem Resource Server kommunizieren kann, 
 In dieser Phase ermittelt der ZETA-Client dynamisch die Endpunkte und Konfigurationen der ZETA Guard-Infrastruktur (PEP HTTP Proxy und PDP Authorization Server).
 
 ### 3.1 Ablauf
+
 Der Discovery-Ablauf ist für alle Client-Typen identisch und greift auf standardisierte `.well-known` Endpunkte zu (siehe auch [Abbildung 1: Ablauf Service Discovery](../../../images/zeta-flows/Abb-ZETA-Service-Discovery.svg)):
 
 1. Der Client sendet eine `GET`-Anfrage an den Well-Known-Endpunkt der geschützten Ressource (PEP).
 2. PEP antwortet mit Metadaten über unterstützte Token-Methoden und den zuständigen Authorization Server (PDP).
 3. Der Client fragt die detaillierten Authorization Server Metadaten (PDP) ab, um Endpunkte für Registrierung, Token-Bezug und Nonce-Generierung zu erhalten.
 
+![Abbildung 1: Ablauf Service Discovery](../../../images/zeta-flows/Abb-ZETA-Service-Discovery.svg)
+
+
 ### 3.2 Endpunkt-Spezifikationen
 
 #### 3.2.1 GET /.well-known/oauth-protected-resource
+
 Gibt die Konfigurationsdetails des PEP für eine geschützte Ressource zurück (gemäß RFC 9728).
 
 **Anfrage-Beispiel:**
+*Request-Schema:* *Keines (kein Request-Body)*
+
 ```http
 GET /.well-known/oauth-protected-resource HTTP/1.1
 Host: api.example.com
@@ -103,6 +111,7 @@ Accept: application/json
 
 **Antwort-Beispiel (200 OK):**
 *Response-Schema: [opr-well-known.yaml](../../../src/schemas/opr-well-known.yaml)*
+
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/json
@@ -143,6 +152,8 @@ ETag: "w/37b12-abc12345"
 Gibt Metadaten und unterstützte Endpunkte des PDP Authorization Servers zurück (gemäß RFC 8414).
 
 **Anfrage-Beispiel:**
+*Request-Schema:* *Keines (kein Request-Body)*
+
 ```http
 GET /.well-known/oauth-authorization-server HTTP/1.1
 Host: auth.example.com
@@ -151,6 +162,7 @@ Accept: application/json
 
 **Antwort-Beispiel (200 OK):**
 *Response-Schema: [as-well-known.yaml](../../../src/schemas/as-well-known.yaml)*
+
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/json
@@ -193,21 +205,35 @@ ETag: "w/98d41-xyz98765"
 ## 4. Stationäre Clients (Windows, Linux, macOS)
 
 ### Quick Start: 5-Punkte-Checkliste für Entwickler
+
 1. **[ ] Zertifikate laden**: Lokale TI-Vertrauensanker CA-Zertifikate (`roots.json`) einbinden und SMC-B-Institutionszertifikat auslesen.
 2. **[ ] Keys generieren**: Hardwaregebundene Client Instance Keys (`PrK.Client.Sig` / `PuK.Client.Sig`) erzeugen (TPM 2.0 via ZAS oder Secure Enclave via Native API).
-3. **[ ] DCR aufrufen**: Client bei PDP registrieren (`POST /register` und optionales Challenge-Handling bei TPM).
+3. **[ ] DCR aufrufen**: Client am ZETA Guard registrieren (`POST /register` und Challenge-Handling bei TPM Attestation).
 4. **[ ] Token abholen**: Mit DPoP-Proof und SMC-B Subject Token ein Access Token am `/token`-Endpunkt anfragen.
-5. **[ ] RS anfragen**: DPoP-gebundenes Access Token im Authorization-Header mitsenden und die geschützte API `/api/resource` anfragen.
+5. **[ ] RS anfragen**: DPoP-gebundenes Access Token im Authorization-Header mitsenden und die geschützte API des Resource Servers anfragen.
 
 ---
 
-### 4.1. Trust Bootstrapping & Registrierung
+### 4.1 Windows oder Linux Clients mit TPM Attestation
 
-Stationäre Clients etablieren eine hardwaregestützte Identität, um sich bei der ZETA Guard-Infrastruktur anzumelden. Unter Windows/Linux wird hierfür das TPM 2.0 mittels des ZETA Attestation Services (ZAS) angesprochen. macOS-Clients nutzen die Secure Enclave.
+Unter Windows und Linux basiert der Vertrauensaufbau auf dem Trusted Platform Module (TPM 2.0) und dem privilegierten Hintergrunddienst ZETA Attestation Service (ZAS).
 
-#### 4.1.1 Endpunkt-Spezifikationen für das Bootstrapping
+Stationäre Clients etablieren eine hardwaregestützte Identität, um sich bei der ZETA Guard-Infrastruktur anzumelden. Unter Windows/Linux wird hierfür das TPM 2.0 mittels des ZETA Attestation Services (ZAS) angesprochen.
+Die TPM Attestation ermöglicht es dem Client, seine hardwaregebundene Identität nachzuweisen und sich dadurch sicher bei der ZETA Guard-Infrastruktur zu registrieren. Hierzu nutzt der Client das Attestierungs-Schlüsselpaar (`PrK.AK.Sig` / `PuK.AK.Sig`) sowie das Client-Instanz-Schlüsselpaar (`PrK.Client.Sig` / `PuK.Client.Sig`). Beide Schlüsselpaare werden im TPM 2.0 erzeugt.
 
-##### 4.1.1.1 GET /nonce
+*Hinweis: eine Übersicht über die bei ZETA verwendeten Schlüssel ist in Kapitel [9. Schlüsselverwaltung](#9-schlüsselverwaltung) zu finden.*
+
+#### 4.1.1 Client Installation und Schlüsselgenerierung
+
+!![Abbildung 2: Schlüsselgenerierung auf Windows und Linux mit TPM Attestation](../../../images/zeta-flows/Abb-ZETA-Schlüsselgenerierung-Windows-und-Linux-TPM-Att.svg)
+
+#### 4.1.2 Trust Bootstrapping & Registrierung
+
+
+
+##### 4.1.2.1 Endpunkt-Spezifikationen für das Bootstrapping
+
+###### 4.1.2.1.1 GET /nonce
 Liefert einen kryptografischen Einmalwert, um Registrierungen und Attestierungen an eine aktuelle Sitzung zu binden (Schutz gegen Replay-Angriffe).
 
 **Anfrage-Beispiel:**
@@ -230,7 +256,7 @@ Content-Type: application/json
 
 ---
 
-##### 4.1.1.2 POST /register
+###### 4.1.1.1.2 POST /register
 Führt die Dynamic Client Registration (DCR) aus. Registriert den öffentlichen Signaturschlüssel (`PuK.Client.Sig`) gekoppelt mit dem Hardware-Attestierungsnachweis.
 
 **Anfrage-Beispiel 1: TPM Hardware Attestation (Windows / Linux)**
@@ -436,6 +462,11 @@ ZETA-API-Version: 1.3.0
 
 ---
 
+### 4.2 macOS Clients mit Apple App Attest Attestation
+
+### 4.3 Stationäre Clients mit rein Software-basierter Attestation
+
+
 ## 5. Mobile Clients (Android, iOS, iPadOS)
 
 ### Quick Start: 5-Punkte-Checkliste für Entwickler
@@ -447,11 +478,13 @@ ZETA-API-Version: 1.3.0
 
 ---
 
-### 5.1. Trust Bootstrapping, Registrierung & TOFU
+### 5.1 iOS und iPadOS Clients mit Apple App Attest Attestation
+
+#### 5.1.1 Trust Bootstrapping, Registrierung & TOFU
 
 Mobile Clients binden den Registrierungsprozess an eine interaktive Benutzeridentifizierung mittels **Trust-On-First-Use (TOFU)**.
 
-#### 5.1.1 POST /register (Mobile Client)
+##### 5.1.1.1 POST /register (Mobile Client)
 *Siehe auch [Abbildung 10: DCR für mobile Clients](../../../images/zeta-flows/Abb-ZETA-DCR-für-mobile-Clients.svg)*
 
 **Anfrage-Beispiel: Android Hardware Attestation**
@@ -505,7 +538,7 @@ Content-Type: application/json
 
 ---
 
-##### 5.1.2 POST /register/verify (TOFU Verifikation)
+##### 5.1.1.2 POST /register/verify (TOFU Verifikation)
 Bestätigt den OTP-Code, der an die E-Mail-Adresse des Benutzers geschickt wurde, um die Client-Registrierung zu aktivieren.
 
 **Anfrage-Beispiel:**
@@ -533,7 +566,7 @@ Content-Type: application/json
 
 ---
 
-### 5.2. Attestation & Posture-Erhebung
+##### 5.1.1.2. Attestation & Posture-Erhebung
 
 Mobile Clients erheben detaillierte Laufzeitparameter und Integritätsnachweise:
 - **Android**: Nutzt die **Android Key Attestation** sowie optional das Token der **Google Play Integrity API**.
@@ -541,11 +574,11 @@ Mobile Clients erheben detaillierte Laufzeitparameter und Integritätsnachweise:
 
 ---
 
-### 5.3. Authentifizierung & Autorisierung (OIDC Flow)
+##### 5.1.1.3. Authentifizierung & Autorisierung (OIDC Flow)
 
 Der Token-Bezug für mobile Benutzer erfolgt über den standardisierten **OpenID Connect (OIDC) Authorization Code Flow** unter Einbindung von **PKCE** (RFC 7636).
 
-#### 5.3.1 POST /token (Authorization Code Exchange)
+##### 5.1.3.1 POST /token (Authorization Code Exchange)
 Tauscht den Autorisierungscode der OIDC-Sitzung gegen die DPoP-gebundenen Token aus.
 
 **Anfrage-Beispiel:**
@@ -578,6 +611,10 @@ Content-Type: application/json
 ```
 
 ---
+
+### 5.2 Android Clients mit Android Key Attestation
+
+### 5.3 Mobile Clients mit Software Attestation
 
 ## 6. Dienst-zu-Dienst Kommunikation (Backend-to-Backend)
 
@@ -693,33 +730,11 @@ Sämtliche Fehler der ZETA Guard Endpunkte folgen dem JSON-Schema [zeta-error.ya
 
 ---
 
-## 9. Schlüsselverwaltung (Key Management)
+## 9. Schlüsselverwaltung
 
-Teil der Sicherheitsarchitektur von ZETA ist ein robustes Schlüsselmanagement. Um ein klares Verständnis der kryptografischen Architektur zu vermitteln, verwendet diese Spezifikation standardisierte **Schlüssel-IDs** nach folgendem Schema: `[Typ].[Komponente].[Zweck]` (z.B. `PrK.AuthS.Sig` für den privaten Signaturschlüssel des Authorization Servers).
+Um ein klares Verständnis der kryptografischen Architektur zu vermitteln, verwendet diese API **Schlüssel-IDs** nach folgendem Schema: `[Typ].[Komponente].[Zweck]` (z.B. `PrK.Client.Sig` für den privaten Signaturschlüssel des ZETA Clients).
 
-### 9.1 ZETA Guard Schlüssel (Anbieter-Seite)
-
-Diese Schlüssel werden vom Betreiber des TI 2.0-Dienstes (ZETA Guard) verwaltet. Bei Verarbeitung von Daten mit Schutzbedarf "sehr hoch" greifen strenge VAU- und HSM-Pflichten.
-
-*Hinweis: Schlüssel mit dem Vermerk "Die Schlüsselverwaltung muss dokumentiert werden", werden vom Anbieter des TI 2.0 Dienstes verwaltet. Die Schlüssel ohne Vermerk verwaltet ZETA Guard automatisch.*
-
-| Schlüssel-ID | Bezeichnung & Zweck | Speicherung / Betrieb OHNE VAU | Speicherung / Betrieb MIT VAU (Schutzbedarf "sehr hoch") |
-|--------------|---------------------|--------------------------------|----------------------------------------------------------|
-| **PrK.AuthS.Sig**<br>**PuK.AuthS.Sig** | AuthS Token-Signaturschlüssel<br>Signatur von Access- und Refresh-Token sowie Entity Statements. Der PuK wird im JWKS bereitgestellt.<br>*Schlüsselverwaltung muss dokumentiert werden.* | PrK: Sicherer Software-Keystore des AuthS. | PrK: Muss durch HSM geschützt sein (z.B. mittels KEK aus dem HSM gesichert). |
-| **PrK.AuthS.TLS**<br>**C.AuthS.TLS** | AuthS Internet-Identität (TLS)<br>Terminierung der externen TLS-Verbindung am Authorization Server.<br>*Schlüsselverwaltung muss dokumentiert werden.* | Sicherer Software-Keystore. | PrK: Verbleibt zwingend im HSM (via HSM-Proxy), falls kein ASL-Tunnel zum AuthS existiert. |
-| **SymK.DB.Enc** | Datenbank-Verschlüsselung<br>Verschlüsselung der Session-, Nutzer- und Client-Daten At-Rest im Authorization Server. | Sicherer Software-Keystore (z.B. K8s Secrets). | Muss durch HSM geschützt sein. Übergabe an AuthS darf nur an attestierte Instanzen erfolgen. |
-| **PrK.PEP.TLS**<br>**C.PEP.TLS** | PEP Internet-Identität (TLS)<br>Terminierung der externen TLS-Verbindung am HTTP Proxy.<br>*Schlüsselverwaltung muss dokumentiert werden.* | Sicherer Software-Keystore. | PrK: Verbleibt zwingend im HSM, falls kein ASL-Tunnel zum HTTP Proxy existiert. |
-| **PrK.PEP.Sig**<br>**C.PEP.Sig** | PEP Signatur-Identität<br>Zertifikat aus der Komponenten-PKI. Dient als Identität des PEP (für Signatur des ASL Master-Schlüssels).<br>*Schlüsselverwaltung muss dokumentiert werden.* | Sicherer Software-Keystore. | Privater Schlüssel verbleibt zwingend im HSM (Zugriff via HSM-Proxy). |
-| **PrK.PEP.ASL**<br>**PuK.PEP.ASL** | PEP ASL-Identität<br>Semi-statische Schlüsselpaare für den ZETA/ASL-Kanal (maximal 1 Monat gültig). | Im RAM des PEP. | Wird im PEP generiert, aber vom PrK.PEP.Sig im HSM beglaubigt. |
-| **SymK.PEP.ASL** | PEP ASL Session-Key<br>Abgeleiteter kurzlebiger Schlüssel für den eigentlichen ASL-Traffic. | Im RAM des PEP. | Wird im PEP generiert. |
-| **PrK.ZG.IDP**<br>**PuK.ZG.IDP** | IDP für die ZETA Guard Workload Identity<br>Zur Signatur von Subject Token für gematik-Dienste (SIEM, Telemetrie) und Backend-to-Backend.<br>*Schlüsselverwaltung muss dokumentiert werden.* | Innerhalb der Kubernetes-Infrastruktur des Anbieters. | Wenn langlebiger Schlüssel, dann wird der private Schlüssel im HSM gespeichert. |
-| **PrK.Ingress.TLS**<br>**C.Ingress.TLS** | Ingress TLS<br>TLS-Terminierung am vorgeschalteten Ingress.<br>*Schlüsselverwaltung muss dokumentiert werden.* | Sicherer Software-Keystore. | Verbleibt zwingend im HSM, falls kein ASL Tunnel zum AuthS und zum HTTP Proxy existiert. |
-| **PrK.K8s.mTLS**<br>**C.K8s.mTLS** | Interne Mesh-Identitäten<br>Absicherung der microservice-internen Kommunikation (z. B. AuthS <-> PE). | K8s Service Mesh (z.B. Istio). | Verwaltung innerhalb der VAU (Zugriff strikt limitiert). |
-| **PuK.Client.Sig** | Öffentlicher Client Instance Key<br>Dient der Validierung der "Client Assertion" bei zukünftigen Logins. | Gespeichert in der PDP-Datenbank. | Gespeichert in der PDP-Datenbank. Muss vor unautorisierter Manipulation geschützt sein (Integritätsprüfung). |
-
----
-
-### 9.2 ZETA Client Schlüssel (Nutzer-Seite)
+### 9.1 ZETA Client Schlüssel (Nutzer-Seite)
 
 Diese Schlüssel verbleiben in der Verfügungsgewalt des Endnutzers (Smartphone / Primärsystem) bzw. der Institution.
 
@@ -733,22 +748,16 @@ Diese Schlüssel verbleiben in der Verfügungsgewalt des Endnutzers (Smartphone 
 
 ---
 
-### 9.3 gematik verwaltete Schlüssel (TI)
+### 9.2 gematik verwaltete Schlüssel (TI)
 
 Diese Zertifikate und Schlüssel spannen den Vertrauensraum der TI 2.0 auf.
 
 | Schlüssel-ID | Bezeichnung & Zweck | Speicherung / Verteilung |
 |--------------|---------------------|--------------------------|
 | **PrK.TI-RootCA.Sig**<br>**C.TI-RootCA.Sig** | TI Root CA<br>Oberster Vertrauensanker der TI. | C: Lokal in Truststores hinterlegt.<br>PrK: Offline / Hochsicher bei der gematik. |
-| **PrK.TI-TSLSig**<br>**C.TI-TSL.Sig** | TSL Signer<br>Validierung der Signatur der Trust-Service Status List (TSL). | C: Im ZETA Guard zur TSL-Verifikation.<br>PrK: Bei der gematik. |
 | **PrK.TI-KompCA.Sig**<br>**C.TI-KompCA.Sig** | Komponenten PKI CA<br>Stellt die Zertifikate für die TI-Dienste aus. | C: Über die TSL als vertrauenswürdig verteilt. |
 | **PrK.TI-SMCB-CA.Sig**<br>**C.TI-SMCB-CA.Sig** | SMC-B CA<br>Stellt die Institutionszertifikate aus. | C: Über die TSL als vertrauenswürdig verteilt. |
 | **PrK.TI-FedMaster.Sig**<br>**PuK.TI-FedMaster.Sig** | Federation Master Signer<br>Zur Signatur der Entity Statements in der OIDC-Föderation. | PuK: Im ZETA Guard hinterlegt.<br>PrK: Bei der gematik. |
-| **PrK.ZETA-IK.Sig**<br>**C.TI-ZETA-IK.Sig** | Signaturzertifikat Ausführbare ZETA Images<br>Signatur der ausführbaren ZETA OCI Container. | C: Im Admission Controller validiert.<br>PrK: In gematik CI/CD-Pipeline. |
-| **PrK.ZETA-DK.Sig**<br>**C.TI-ZETA-DK.Sig** | Signaturzertifikat Daten-Images<br>Signatur von Datencontainern. | C: Im Admission Controller / ZETA Guard validiert.<br>PrK: In gematik CI/CD-Pipeline. |
-| **PrK.ZETA-PAK.Sig**<br>**C.TI-ZETA-PAK.Sig** | OPA Policy-Autor Signatur<br>Signaturzertifikat des Policy-Erstellers. | C: Im ZETA Guard (OPA Engine) konfiguriert.<br>PrK: Beim Datenbearbeiter. |
-| **PrK.ZETA-PFK.Sig**<br>**C.TI-ZETA-PFK.Sig** | OPA Policy-Freigeber Signatur<br>Zweitsignatur für OPA Bundles. | C: Im ZETA Guard (OPA Engine) konfiguriert.<br>PrK: Beim Freigeber. |
-| **PrK.K8s.IDP**<br>**C.K8s.IDP** | Kubernetes IDP (Workload Identity)<br>Zur Signatur von Subject Token. | PrK: Innerhalb der Kubernetes-Infrastruktur des Anbieters.<br>C: Innerhalb des gematik Workload Identity Pools. |
 
 ---
 
