@@ -10,7 +10,8 @@ oneOf:
   - title: TPM Attestation
     required:
       - attestation_type
-      - puk_client_sig
+      - client_name
+      - jwks
       - puk_ek_enc
       - c_ek_enc
       - puk_ak_sig
@@ -41,11 +42,11 @@ oneOf:
       c_ek_enc:
         type: string
         description: >-
-          Zertifikat des Endorsement Key (EK) des TPM.
+          Zertifikat des Endorsement Key (EK) des TPM im DER Format Base64-kodiert.
       puk_ak_sig:
         type: string
         description: >-
-          Öffentlicher Attestation Key (AK) des TPM (TPM2B_PUBLIC Struktur).
+          Öffentlicher Attestation Key (AK) des TPM (Base64-kodierte TPM2B_PUBLIC-Bytes).
           Wird vom AuthS zur Verifikation der TPM-Quote und von
           signed_hash_puk_client_sig verwendet.
       signed_hash_puk_client_sig:
@@ -64,7 +65,8 @@ oneOf:
   - title: Apple Attestation
     required:
       - attestation_type
-      - puk_client_sig
+      - client_name
+      - jwks
       - apple_attestation_object
     description: >-
       Für iOS, iPadOS und macOS identisch. Die Apple App Attest API
@@ -107,8 +109,8 @@ oneOf:
   - title: Android Attestation
     required:
       - attestation_type
-      - puk_client_sig
-      - puk_ak_sig
+      - client_name
+      - jwks
       - android_key_attestation_certificate_chain
       - signed_hash_puk_client_sig
     properties:
@@ -163,7 +165,8 @@ oneOf:
   - title: ZETA Attestation Token
     required:
       - attestation_type
-      - puk_client_sig
+      - client_name
+      - jwks
       - zeta_attestation_token
     properties:
       attestation_type:
