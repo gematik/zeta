@@ -24,19 +24,50 @@
         - [4.1.4.2 Dynamic Client Registration Response](#4142-dynamic-client-registration-response)
         - [4.1.4.3 Registration Verification Request](#4143-registration-verification-request)
         - [4.1.4.4 Registration Verification Response](#4144-registration-verification-response)
+      - [4.1.5 Vorbereitung des Token Exchange (Client Assertion \& Subject Token)](#415-vorbereitung-des-token-exchange-client-assertion--subject-token)
+      - [4.1.6 Token Exchange (POST /token)](#416-token-exchange-post-token)
+        - [4.1.6.1 Token Exchange Request](#4161-token-exchange-request)
+        - [4.1.6.2 Token Exchange Response](#4162-token-exchange-response)
     - [4.2 macOS Clients mit Apple App Attest Attestation](#42-macos-clients-mit-apple-app-attest-attestation)
+      - [4.2.1 Client Installation und Schlüsselgenerierung](#421-client-installation-und-schlüsselgenerierung)
+      - [4.2.2 Dynamic Client Registration (DCR)](#422-dynamic-client-registration-dcr)
+        - [4.2.2.1 Dynamic Client Registration Request](#4221-dynamic-client-registration-request)
+        - [4.2.2.2 Dynamic Client Registration Response](#4222-dynamic-client-registration-response)
+      - [4.2.3 Vorbereitung des Token Exchange (Client Assertion \& Subject Token)](#423-vorbereitung-des-token-exchange-client-assertion--subject-token)
+      - [4.2.4 Token Exchange (POST /token)](#424-token-exchange-post-token)
     - [4.3 Stationäre Clients mit rein Software-basierter Attestation](#43-stationäre-clients-mit-rein-software-basierter-attestation)
+      - [4.3.1 Client Installation und Schlüsselgenerierung](#431-client-installation-und-schlüsselgenerierung)
+      - [4.3.2 Dynamic Client Registration (DCR)](#432-dynamic-client-registration-dcr)
+        - [4.3.2.1 Dynamic Client Registration Request](#4321-dynamic-client-registration-request)
+        - [4.3.2.2 Dynamic Client Registration Response](#4322-dynamic-client-registration-response)
+      - [4.3.3 Vorbereitung des Token Exchange (Client Assertion \& Subject Token)](#433-vorbereitung-des-token-exchange-client-assertion--subject-token)
+      - [4.3.4 Token Exchange (POST /token)](#434-token-exchange-post-token)
   - [5. Mobile Clients (Android, iOS, iPadOS)](#5-mobile-clients-android-ios-ipados)
     - [Quick Start: 5-Punkte-Checkliste für Entwickler](#quick-start-5-punkte-checkliste-für-entwickler-1)
     - [5.1 iOS und iPadOS Clients mit Apple App Attest Attestation](#51-ios-und-ipados-clients-mit-apple-app-attest-attestation)
-      - [5.1.1 Trust Bootstrapping, Registrierung \& TOFU](#511-trust-bootstrapping-registrierung--tofu)
-        - [5.1.1.1 POST /register (Mobile Client)](#5111-post-register-mobile-client)
-        - [5.1.1.2 POST /register/verify (TOFU Verifikation)](#5112-post-registerverify-tofu-verifikation)
-        - [5.1.1.2. Attestation \& Posture-Erhebung](#5112-attestation--posture-erhebung)
-        - [5.1.1.3. Authentifizierung \& Autorisierung (OIDC Flow)](#5113-authentifizierung--autorisierung-oidc-flow)
-        - [5.1.3.1 POST /token (Authorization Code Exchange)](#5131-post-token-authorization-code-exchange)
+      - [5.1.1 Client Installation und Schlüsselgenerierung](#511-client-installation-und-schlüsselgenerierung)
+      - [5.1.2 Dynamic Client Registration (DCR) mit TOFU](#512-dynamic-client-registration-dcr-mit-tofu)
+        - [5.1.2.1 Dynamic Client Registration Request](#5121-dynamic-client-registration-request)
+        - [5.1.2.2 Dynamic Client Registration Response (202 Accepted — OTP Trigger)](#5122-dynamic-client-registration-response-202-accepted--otp-trigger)
+        - [5.1.2.3 Registration Verification Request (TOFU)](#5123-registration-verification-request-tofu)
+        - [5.1.2.4 Registration Verification Response](#5124-registration-verification-response)
+      - [5.1.3 Authentifizierung \& Autorisierung (OIDC Flow)](#513-authentifizierung--autorisierung-oidc-flow)
     - [5.2 Android Clients mit Android Key Attestation](#52-android-clients-mit-android-key-attestation)
+      - [5.2.1 Client Installation und Schlüsselgenerierung](#521-client-installation-und-schlüsselgenerierung)
+      - [5.2.2 Dynamic Client Registration (DCR) mit TOFU](#522-dynamic-client-registration-dcr-mit-tofu)
+        - [5.2.2.1 Dynamic Client Registration Request](#5221-dynamic-client-registration-request)
+        - [5.2.2.2 Dynamic Client Registration Response (202 Accepted — OTP Trigger)](#5222-dynamic-client-registration-response-202-accepted--otp-trigger)
+        - [5.2.2.3 Registration Verification Request (TOFU)](#5223-registration-verification-request-tofu)
+        - [5.2.2.4 Registration Verification Response](#5224-registration-verification-response)
+      - [5.2.3 Authentifizierung \& Autorisierung (OIDC Flow)](#523-authentifizierung--autorisierung-oidc-flow)
     - [5.3 Mobile Clients mit Software Attestation](#53-mobile-clients-mit-software-attestation)
+      - [5.3.1 Client Installation und Schlüsselgenerierung](#531-client-installation-und-schlüsselgenerierung)
+      - [5.3.2 Dynamic Client Registration (DCR) mit TOFU](#532-dynamic-client-registration-dcr-mit-tofu)
+        - [5.3.2.1 Dynamic Client Registration Request](#5321-dynamic-client-registration-request)
+        - [5.3.2.2 Dynamic Client Registration Response (202 Accepted — OTP Trigger)](#5322-dynamic-client-registration-response-202-accepted--otp-trigger)
+        - [5.3.2.3 Registration Verification Request (TOFU)](#5323-registration-verification-request-tofu)
+        - [5.3.2.4 Registration Verification Response](#5324-registration-verification-response)
+      - [5.3.3 Authentifizierung \& Autorisierung (OIDC Flow)](#533-authentifizierung--autorisierung-oidc-flow)
   - [6. Dienst-zu-Dienst Kommunikation (Backend-to-Backend)](#6-dienst-zu-dienst-kommunikation-backend-to-backend)
     - [6.1 POST /token (Client Credentials \& Token Exchange)](#61-post-token-client-credentials--token-exchange)
   - [7. Zugriff auf den Resource Server](#7-zugriff-auf-den-resource-server)
@@ -426,161 +457,633 @@ Content-Type: application/json
 
 
 
+#### 4.1.5 Vorbereitung des Token Exchange (Client Assertion & Subject Token)
+
+Nach erfolgreicher Registrierung bereitet der Client die Authentifizierung am Token-Endpunkt vor. Hierbei werden drei wesentliche Artefakte erstellt: das **Subject Token** (signiert durch die SMC-B), die **Attestation Evidence** (TPM Quote) und die **Client Assertion** (signiert mit `PrK.Client.Sig`).
+
+- *(01) Nonce abholen:* Der Client ruft `GET /nonce` am AuthS auf, um eine frische Nonce für Replay-Schutz zu erhalten.
+- *(02) DPoP Key Pair:* Der Client generiert ein kurzlebiges DPoP-Schlüsselpaar (`PrK.DPoP.Sig` / `PuK.DPoP.Sig`) für die Token-Session.
+- *(03) Subject Token erstellen:* Der Client erstellt das Subject Token (JWT) mit der eingebetteten Nonce. Dieses Token wird mit der SMC-B signiert.
+- *(04)–(07) SMC-B Signatur:* Das Subject Token wird über den Konnektor/TI-Gateway an die SM(C)-B weitergeleitet und dort signiert.
+- *(08)–(12) TPM Evidence:* Der Client fordert über den ZAS die Attestation Evidence an: `TPM2_Quote` über PCR [7, 23] mit der Nonce, signiert mit `PrK.AK.Sig`, sowie das zugehörige `TPM2_EventLog`.
+- *(13) Client-Statement:* Der Client generiert das `client-statement` mit OS- und Primärsystem-Daten sowie der Evidence.
+- *(14) Client Assertion:* Abschließend wird die Client Assertion als JWT erstellt und mit `PrK.Client.Sig` signiert.
+
+![Abbildung 6: Vorbereitung Token Exchange für Windows/Linux mit TPM Attestation](../../../images/zeta-flows/Abb-ZETA-Vorbereitung-Token-Exchange-Win-Linux-TPM-Att.svg)
+
+#### 4.1.6 Token Exchange (POST /token)
+
+Der Token Exchange ist der zentrale Schritt zur Erlangung eines DPoP-gebundenen Access Tokens. Der Client sendet die vorbereiteten Artefakte an den `/token`-Endpunkt des Authorization Servers.
+
+- *(01) DPoP Proof:* Der Client erstellt einen DPoP Proof mit der Nonce des AuthS.
+- *(02) POST /token:* Der Client sendet die Anfrage mit `client_assertion` (JWT, signiert mit `PrK.Client.Sig`), `subject_token` (SMC-B signiert, inkl. Nonce) und `DPoP`-Header.
+- *(03) Validierung:* Der AuthS validiert Client Assertion, DPoP Proof, Subject Token, Nonce, Key-Bindings aus der DCR und den Sperrstatus (OCSP) der SM(C)-B.
+- *(04) TPM Attestation Prüfung:* Verifizierung der Hardware-Signatur (Quote) gegen die extrahierte Nonce mit PCR-Replay via Event Log.
+- *(05) Policy Engine:* Bei erfolgreicher Validierung wird der Policy Engine Input erstellt und an die OPA Policy Engine übermittelt (`POST /v1/data/authz`).
+- *(06) Token-Erstellung:* Bei positiver Policy Decision erstellt der AuthS Access Token, Refresh Token und (bei Hardware Attestation) das `zg_att_token`.
+
+![Abbildung 7: Token Exchange mit Attestation](../../../images/zeta-flows/Abb-ZETA-Token-Exchange-Subject-Token.svg)
+
+##### 4.1.6.1 Token Exchange Request
+
+- **Pfad:** gemäß [OAuth-Authorization-Server Well-known](../../../src/schemas/as-well-known.yaml) Discovery (z. B. `/token`)
+
+```http
+POST /token HTTP/1.1
+Host: auth.example.com
+Content-Type: application/x-www-form-urlencoded
+DPoP: eyJhbGciOiJFUzI1NiIsInR5cCI6ImRwb3Arand0IiwiandrIjp7Imt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoiZDN...
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+&subject_token=eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiIxLTIzNDU2Nzg5MDEyMyIsInN1YiI6...
+&subject_token_type=urn:ietf:params:oauth:token-type:jwt
+&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+&client_assertion=eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImNsaWVudC1rZXktdHBtLTAwMSJ9.eyJpc3MiOiJ6ZXRhLWNsaWVudC1kZXNrdG9wLTEiLCJzdWIiOiJ6ZXRhLWNsaWVudC1kZXNrdG9wLTEiLCJhdWQiOiJodHRwczovL2F1dGguZXhhbXBsZS5jb20vdG9rZW4iLCJjbGllbnRfc3RhdGVtZW50Ijp7fX0.signature
+```
+
+##### 4.1.6.2 Token Exchange Response
+
+**Antwort-Beispiel (200 OK) — Hardware Attestation:**
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "access_token": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImF0K2p3dCIsImtpZCI6ImFzLXNpZ25pbmcta2V5LTEifQ...",
+  "token_type": "DPoP",
+  "expires_in": 3600,
+  "refresh_token": "rt-desktop-8a7b6c5d4e3f2a1b",
+  "zg_att_token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS5jb20iLCJhdHRfdHlwZSI6InRwbSJ9.signature"
+}
+```
+
+**Antwort-Beispiel (403 Forbidden) — Policy Deny:**
+
+```http
+HTTP/1.1 403 Forbidden
+Content-Type: application/json
+
+{
+  "error": "access_denied",
+  "error_description": "Policy evaluation denied access",
+  "reasons": ["pcr_mismatch", "baseline_outdated"]
+}
+```
+
 ---
 
 ### 4.2 macOS Clients mit Apple App Attest Attestation
 
+Unter macOS basiert der Vertrauensaufbau auf der **Secure Enclave** und dem **Apple App Attest Framework** (DeviceCheck). Das ZETA Client Primärsystem nutzt native macOS-APIs, um hardwaregebundene Schlüssel zu erzeugen und kryptografische Nachweise über die Geräteintegrität zu liefern.
+
+#### 4.2.1 Client Installation und Schlüsselgenerierung
+
+- *(01) Installation:* Der ZETA Client wird im User Space installiert.
+- *(02)–(04) Client Instance Key:* Das langlebige Signatur-Schlüsselpaar (`PrK.Client.Sig` / `PuK.Client.Sig`) wird über `SecKeyCreateRandomKey` in der Secure Enclave erzeugt. Der private Schlüssel verlässt die Hardware nie; der Client erhält eine Key-Referenz (`keyId`).
+- *Fallback:* Ist keine Secure Enclave verfügbar (z. B. in virtualisierten Umgebungen), wird auf softwarebasierte Schlüsselgenerierung zurückgefallen (siehe [4.3 Software-basierte Attestation](#43-stationäre-clients-mit-rein-software-basierter-attestation)).
+
+![Abbildung 8: Schlüsselgenerierung auf macOS](../../../images/zeta-flows/Abb-ZETA-Schlüsselgenerierung-macOS.svg)
+
+#### 4.2.2 Dynamic Client Registration (DCR)
+
+Die Registrierung für macOS Clients nutzt das `Apple Attestation Object`, um die Bindung des Client-Schlüssels an die Secure Enclave nachzuweisen.
+
+- **Verwendete Endpunkt-Pfade:** `POST /register`
+- *(01) POST /register:* Der Client sendet die Registrierungsanfrage mit `attestation_type: "apple"`, `PuK.AK.Sig`, dem `Apple_Attestation_Object` (CBOR-kodiert), `PuK.Client.Sig` und `signed_Hash_PuK.Client.Sig`.
+- *(02) Validierung:* Der AuthS verifiziert das Apple Attestation Object gegen die Apple App Attest Root CA und prüft, dass `PuK.AK.Sig` mit dem Blatt-Zertifikat (`x5c[0]`) des Objekts übereinstimmt.
+- *(03) Alternativ — ZETA Attestation Token:* Liegt bereits ein gültiges `zg_att_token` aus einer früheren Attestierung vor, kann dieses anstelle des Apple Attestation Objects vorgelegt werden (Fast-Path).
+- *(04) Registrierung:* Der AuthS speichert den Client mit Status `pending_user_binding` und antwortet mit `201 Created {client_id}`.
+
+![Abbildung 9: DCR für stationäre Apple Clients](../../../images/zeta-flows/Abb-ZETA-DCR-für-stationäre-Apple-Clients.svg)
+
+##### 4.2.2.1 Dynamic Client Registration Request
+
+- **Pfad:** gemäß [OAuth-Authorization-Server Well-known](../../../src/schemas/as-well-known.yaml) Discovery (z. B. `/register`)
+*Request-Schema:* [dcr-request.yaml](../../../src/schemas/dcr-request.yaml) (Variante: Apple Attestation)
+
+```http
+POST /register HTTP/1.1
+Host: auth.example.com
+Content-Type: application/json
+```
+
+```json
+{
+  "attestation_type": "apple",
+  "client_name": "ZETA macOS Praxisclient v2.1",
+  "token_endpoint_auth_method": "private_key_jwt",
+  "grant_types": [
+    "urn:ietf:params:oauth:grant-type:token-exchange",
+    "refresh_token"
+  ],
+  "jwks": {
+    "keys": [
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "dGhpcyBpcyBhIHRlc3Qga2V5IGZvciBkb2N1bWVudGF0aW9u",
+        "y": "ZXhhbXBsZSBwdWJsaWMga2V5IHkgY29vcmRpbmF0ZQ",
+        "use": "sig",
+        "kid": "client-key-se-001"
+      }
+    ]
+  },
+  "apple_attestation_object": "o2NmbXRxYXBwbGUtYXBwYXR0ZXN0Z2F0dFN0bXS...<Base64-kodiertes CBOR Attestation Object>...=="
+}
+```
+
+##### 4.2.2.2 Dynamic Client Registration Response
+
+**Antwort-Beispiel (201 Created):**
+
+```http
+HTTP/1.1 201 Created
+Content-Type: application/json
+```
+
+```json
+{
+  "client_id": "zeta-client-macos-a1b2c3",
+  "status": "pending_user_binding",
+  "client_id_issued_at": 1748520000
+}
+```
+
+#### 4.2.3 Vorbereitung des Token Exchange (Client Assertion & Subject Token)
+
+Die Vorbereitung für macOS unterscheidet sich in der Evidence-Erhebung: Statt eines TPM Quotes wird eine **Apple App Attest Assertion** generiert.
+
+- *(01) Nonce abholen:* Der Client ruft `GET /nonce` am AuthS auf.
+- *(02) DPoP Key Pair:* Kurzlebiges DPoP-Schlüsselpaar generieren.
+- *(03) Subject Token:* Erstellen und über den Konnektor/TI-Gateway mit der SM(C)-B signieren.
+- *(04)–(07) SMC-B Signatur:* Wie bei Windows/Linux.
+- *(08) Posture-Erhebung:* macOS-spezifische Posture-Daten ermitteln (SIP-Status, Gatekeeper, OS-Version, Secure Boot).
+- *(09) clientDataHash:* Berechnung von `Hash(Nonce + Posture-Daten)`.
+- *(10)–(12) App Attest Assertion:* Über `DCAppAttest.generateAssertion(keyId: Handle_PrK.AK.Sig, clientDataHash)` wird in der Secure Enclave eine Hardware-Signatur über den `clientDataHash` erstellt. Ergebnis ist die `dc_assertion` (CBOR: Signatur + authenticatorData mit Counter).
+- *(13) Client-Statement:* Evidence = `dc_assertion` + Posture-Daten im Klartext.
+- *(14) Client Assertion:* JWT signiert mit `PrK.Client.Sig`.
+
+![Abbildung 10: Vorbereitung Token Exchange für macOS mit Apple Attestation](../../../images/zeta-flows/Abb-ZETA-Vorbereitung-Token-Exchange-Apple-Att.svg)
+
+#### 4.2.4 Token Exchange (POST /token)
+
+Der Token Exchange erfolgt analog zu Kapitel [4.1.6 Token Exchange](#416-token-exchange-post-token). Der AuthS unterscheidet anhand des Attestation-Typs die Validierungslogik:
+
+- Bei **Apple Attestation** prüft der AuthS die Signaturen der `dc_assertion` und den Counter (Replay-Schutz) anstelle des TPM Quotes.
+- Die Policy Engine Evaluation, Token-Erstellung und Response-Formate sind identisch.
+
+Siehe [Abbildung 7: Token Exchange mit Attestation](#416-token-exchange-post-token) — der Ablauf ist für alle stationären Client-Typen einheitlich.
+
+---
+
 ### 4.3 Stationäre Clients mit rein Software-basierter Attestation
 
+Die rein software-basierte Attestation dient als **Fallback**, wenn kein TPM 2.0 (Windows/Linux) und keine Secure Enclave (macOS) verfügbar sind. In diesem Fall erfolgt die Registrierung ohne hardware-gebundenen Nachweis. Der AuthS gewährt entsprechend ein niedrigeres Vertrauensniveau.
+
+#### 4.3.1 Client Installation und Schlüsselgenerierung
+
+- *(01) Installation:* Der ZETA Client wird im User Space installiert.
+- *(02) Client Instance Key:* Das Schlüsselpaar (`PrK.Client.Sig` / `PuK.Client.Sig`) wird rein softwarebasiert generiert (z. B. über die OS-Kryptobibliothek). Der private Schlüssel wird im Dateisystem oder Keychain gespeichert — eine Hardware-Bindung besteht nicht.
+
+![Abbildung 11: Schlüsselgenerierung bei Software-basierter Attestation](../../../images/zeta-flows/Abb-ZETA-Schlüsselgenerierung-SW-Att.svg)
+
+#### 4.3.2 Dynamic Client Registration (DCR)
+
+Die Registrierung bei Software-basierter Attestation erfordert kein Challenge-Response-Verfahren und kein Attestation Object. Der Client übermittelt lediglich seinen öffentlichen Schlüssel.
+
+- **Verwendete Endpunkt-Pfade:** `POST /register`
+- *(01) POST /register:* Der Client sendet `client_name`, `grant_types`, `jwks` (mit `PuK.Client.Sig`) und `token_endpoint_auth_method`.
+- *(02) Registrierung:* Der AuthS speichert den Client mit Status `pending_user_binding` und antwortet mit `201 Created {client_id}`.
+
+![Abbildung 12: DCR für stationäre Software-Attestation Clients](../../../images/zeta-flows/Abb-ZETA-DCR-für-stationäre-SW-Att-Clients.svg)
+
+##### 4.3.2.1 Dynamic Client Registration Request
+
+- **Pfad:** gemäß [OAuth-Authorization-Server Well-known](../../../src/schemas/as-well-known.yaml) Discovery (z. B. `/register`)
+*Request-Schema:* [dcr-request.yaml](../../../src/schemas/dcr-request.yaml) (Variante: Legacy / Software Attestation)
+
+```http
+POST /register HTTP/1.1
+Host: auth.example.com
+Content-Type: application/json
+```
+
+```json
+{
+  "client_name": "ZETA Fallback Client v1.0",
+  "token_endpoint_auth_method": "private_key_jwt",
+  "grant_types": [
+    "urn:ietf:params:oauth:grant-type:token-exchange",
+    "refresh_token"
+  ],
+  "jwks": {
+    "keys": [
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "c29mdHdhcmUgYXR0ZXN0YXRpb24gZXhhbXBsZSBrZXk",
+        "y": "ZmFsbGJhY2sgcHVibGljIGtleSB5IGNvb3JkaW5hdGU",
+        "use": "sig",
+        "kid": "client-key-sw-001"
+      }
+    ]
+  }
+}
+```
+
+##### 4.3.2.2 Dynamic Client Registration Response
+
+**Antwort-Beispiel (201 Created):**
+
+```http
+HTTP/1.1 201 Created
+Content-Type: application/json
+```
+
+```json
+{
+  "client_id": "zeta-client-sw-fallback-x9y8z7",
+  "status": "pending_user_binding",
+  "client_id_issued_at": 1748520000
+}
+```
+
+#### 4.3.3 Vorbereitung des Token Exchange (Client Assertion & Subject Token)
+
+Die Vorbereitung bei Software-basierter Attestation ist vereinfacht, da keine Hardware-Evidence erhoben wird.
+
+- *(01) Nonce abholen:* Der Client ruft `GET /nonce` am AuthS auf.
+- *(02) DPoP Key Pair:* Kurzlebiges DPoP-Schlüsselpaar generieren.
+- *(03) Subject Token:* Erstellen und über den Konnektor/TI-Gateway mit der SM(C)-B signieren.
+- *(04)–(07) SMC-B Signatur:* Wie bei Windows/Linux und macOS.
+- *(08) Client-Statement:* Generierung mit OS- und Primärsystem-Daten (ohne kryptografische Evidence).
+- *(09) Client Assertion:* JWT signiert mit `PrK.Client.Sig`.
+
+![Abbildung 13: Vorbereitung Token Exchange bei Software-basierter Attestation](../../../images/zeta-flows/Abb-ZETA-Vorbereitung-Token-Exchange-SW-Att.svg)
+
+#### 4.3.4 Token Exchange (POST /token)
+
+Der Token Exchange erfolgt analog zu Kapitel [4.1.6 Token Exchange](#416-token-exchange-post-token). Der AuthS erkennt am fehlenden Hardware-Nachweis den Attestation-Typ `software`:
+
+- Es erfolgt **keine** Hardware-Signaturprüfung (kein TPM Quote, keine App Attest Assertion).
+- Die Policy Engine wird mit entsprechend niedrigerem Vertrauensniveau aufgerufen.
+- Bei positiver Policy Decision antwortet der AuthS mit Access Token und Refresh Token, jedoch **ohne** `zg_att_token`.
+
+Siehe [Abbildung 7: Token Exchange mit Attestation](#416-token-exchange-post-token) — der Ablauf ist für alle stationären Client-Typen einheitlich (Pfad "Software Attestation (Fallback)").
+
+---
 
 ## 5. Mobile Clients (Android, iOS, iPadOS)
 
 ### Quick Start: 5-Punkte-Checkliste für Entwickler
 1. **[ ] Zertifikate laden**: Mobile OS-Vertrauensanker und optionale Client-Zertifikate initialisieren.
 2. **[ ] Keys generieren**: Hardwarebasierten Client Instance Key (`PuK.Client.Sig`) im TEE / StrongBox (Android) bzw. in der Secure Enclave (iOS) erstellen.
-3. **[ ] DCR aufrufen**: Registrierung absenden (`POST /register`), um den Status `pending_user_binding` zu erlangen.
-4. **[ ] Token abholen**: Führe die interaktive Nutzerbindung per OTP (TOFU) aus, hole die Autorisierung ein und fordere das Token an (`POST /token`).
+3. **[ ] DCR aufrufen**: Registrierung absenden (`POST /register`) mit TOFU-OTP-Verifikation, um den Status `pending_attestation` zu erlangen.
+4. **[ ] Nutzer authentifizieren**: Authentifizierung per OIDC Authorization Code Flow (wird in einer späteren Version dieses Dokuments ergänzt).
 5. **[ ] RS anfragen**: DPoP-gebundenes Token im Header mitsenden und die Ziel-API `/api/resource` aufrufen.
 
 ---
 
 ### 5.1 iOS und iPadOS Clients mit Apple App Attest Attestation
 
-#### 5.1.1 Trust Bootstrapping, Registrierung & TOFU
+iOS- und iPadOS-Clients nutzen die **Secure Enclave** und das **Apple App Attest Framework** zur hardwaregebundenen Schlüsselerzeugung und Attestierung. Die Registrierung wird durch ein interaktives **Trust-On-First-Use (TOFU)** OTP-Verfahren abgesichert.
 
-Mobile Clients binden den Registrierungsprozess an eine interaktive Benutzeridentifizierung mittels **Trust-On-First-Use (TOFU)**.
+#### 5.1.1 Client Installation und Schlüsselgenerierung
 
-##### 5.1.1.1 POST /register (Mobile Client)
-*Siehe auch [Abbildung 10: DCR für mobile Clients](../../../images/zeta-flows/Abb-ZETA-DCR-für-mobile-Clients.svg)*
+Die Schlüsselgenerierung unter iOS/iPadOS ist identisch mit macOS (siehe [4.2.1 Schlüsselgenerierung macOS](#421-client-installation-und-schlüsselgenerierung)) — das Apple DeviceCheck-Framework nutzt auf allen Apple-Plattformen dieselbe API (`SecKeyCreateRandomKey` für die Secure Enclave).
 
-**Anfrage-Beispiel: Android Hardware Attestation**
+![Abbildung 14: Schlüsselgenerierung auf macOS/iOS/iPadOS](../../../images/zeta-flows/Abb-ZETA-Schlüsselgenerierung-macOS.svg)
+
+#### 5.1.2 Dynamic Client Registration (DCR) mit TOFU
+
+Mobile Clients binden den Registrierungsprozess an eine interaktive Benutzeridentifizierung mittels **Trust-On-First-Use (TOFU)**. Der Nutzer bestätigt seine Identität durch Eingabe eines per E-Mail zugestellten OTP-Codes.
+
+- *(01) POST /register:* Der Client sendet die Registrierungsanfrage mit `attestation_type: "apple"`, dem `Apple_Attestation_Object` und `PuK.Client.Sig`.
+- *(02) Validierung:* Der AuthS verifiziert das Apple Attestation Object gegen die Apple App Attest Root CA und extrahiert `Hash(PuK.Client.Sig)` aus dem Objekt zum Abgleich mit dem Payload.
+- *(03) OTP-Generierung:* Der AuthS generiert ein OTP und eine `transaction_id`, speichert den Request im temporären Cache und sendet den OTP-Bestätigungscode per E-Mail (Out-of-Band) an den Nutzer.
+- *(04) 202 Accepted:* Der AuthS antwortet mit `{transaction_id, message="OTP sent"}` — zu diesem Zeitpunkt existiert noch keine `client_id`.
+- *(05) OTP-Eingabe:* Der Nutzer gibt den OTP-Code in der App ein.
+- *(06) POST /register/verify:* Der Client sendet `{transaction_id, code}` zur Verifikation.
+- *(07) 201 Created:* Bei korrektem OTP wird die Registrierung abgeschlossen mit `{client_id, status="pending_attestation"}`.
+
+![Abbildung 15: DCR für mobile Apple Clients mit Hardware Attestation](../../../images/zeta-flows/Abb-ZETA-DCR-für-mobile-Apple-HW-Att-Clients.svg)
+
+##### 5.1.2.1 Dynamic Client Registration Request
+
+- **Pfad:** gemäß [OAuth-Authorization-Server Well-known](../../../src/schemas/as-well-known.yaml) Discovery (z. B. `/register`)
+*Request-Schema:* [dcr-request.yaml](../../../src/schemas/dcr-request.yaml) (Variante: Apple Attestation)
+
 ```http
 POST /register HTTP/1.1
 Host: auth.example.com
 Content-Type: application/json
+```
 
+```json
 {
-  "attestation_type": "android",
-  "client_name": "Tablet-Praxishelfer",
+  "attestation_type": "apple",
+  "client_name": "Praxis-App iOS v3.0",
   "token_endpoint_auth_method": "private_key_jwt",
   "grant_types": [
     "urn:ietf:params:oauth:grant-type:token-exchange",
     "refresh_token"
   ],
-  "puk_client_sig": {
-    "kty": "EC",
-    "crv": "P-256",
-    "x": "h82Jdsa8s98Jsd...",
-    "y": "d7sJSD9s82Jskd...",
-    "use": "sig",
-    "kid": "android-instance-key-1"
+  "jwks": {
+    "keys": [
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "aW9zIHNlY3VyZSBlbmNsYXZlIGV4YW1wbGUga2V5",
+        "y": "bW9iaWxlIGNsaWVudCBwdWJsaWMga2V5IGNvb3Jk",
+        "use": "sig",
+        "kid": "ios-instance-key-1"
+      }
+    ]
   },
-  "android_key_attestation_certificate_chain": [
-    "MIIFzDCCA7SgAwIBAgIR...",
-    "MIIFvTCCA6WgAwIBAgIT..."
-  ],
-  "puk_ak_sig": {
-    "kty": "EC",
-    "crv": "P-256",
-    "x": "k92Jdsia92Nskd...",
-    "y": "m2Nskdis92Jskd..."
-  },
-  "signed_hash_puk_client_sig": "MEQCID7sNsjdi9Nskd...",
-  "play_integrity_token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6..."
+  "apple_attestation_object": "o2NmbXRxYXBwbGUtYXBwYXR0ZXN0Z2F0dFN0bXS...<Base64-kodiertes CBOR>...=="
 }
 ```
 
-**Antwort-Beispiel (202 Accepted bei TOFU OTP Trigger):**
+##### 5.1.2.2 Dynamic Client Registration Response (202 Accepted — OTP Trigger)
+
 ```http
 HTTP/1.1 202 Accepted
 Content-Type: application/json
+```
 
+```json
 {
-  "transaction_id": "tx-mobile-12345",
-  "verification_method": "email_otp",
+  "transaction_id": "tx-ios-98765",
+  "message": "OTP sent",
   "expires_in": 300
 }
 ```
 
----
+##### 5.1.2.3 Registration Verification Request (TOFU)
 
-##### 5.1.1.2 POST /register/verify (TOFU Verifikation)
-Bestätigt den OTP-Code, der an die E-Mail-Adresse des Benutzers geschickt wurde, um die Client-Registrierung zu aktivieren.
+- **Pfad:** `/register/verify`
 
-**Anfrage-Beispiel:**
 ```http
 POST /register/verify HTTP/1.1
 Host: auth.example.com
 Content-Type: application/json
+```
 
+```json
 {
-  "transaction_id": "tx-mobile-12345",
-  "otp_code": "872419"
+  "transaction_id": "tx-ios-98765",
+  "code": "483921"
 }
 ```
 
-**Antwort-Beispiel (201 Created):**
+##### 5.1.2.4 Registration Verification Response
+
 ```http
 HTTP/1.1 201 Created
 Content-Type: application/json
+```
 
+```json
 {
-  "client_id": "zeta-client-mobile-abc",
-  "status": "pending_attestation"
+  "client_id": "zeta-client-ios-d4e5f6",
+  "status": "pending_attestation",
+  "client_id_issued_at": 1748520000
 }
 ```
 
----
-
-##### 5.1.1.2. Attestation & Posture-Erhebung
-
-Mobile Clients erheben detaillierte Laufzeitparameter und Integritätsnachweise:
-- **Android**: Nutzt die **Android Key Attestation** sowie optional das Token der **Google Play Integrity API**.
-- **iOS / iPadOS**: Verwendet das native **DeviceCheck** bzw. **App Attest Framework**, um ein CBOR-kodiertes *Apple Attestation Object* an den `/nonce`-Wert gebunden zu erzeugen.
-
----
-
-##### 5.1.1.3. Authentifizierung & Autorisierung (OIDC Flow)
+#### 5.1.3 Authentifizierung & Autorisierung (OIDC Flow)
 
 Der Token-Bezug für mobile Benutzer erfolgt über den standardisierten **OpenID Connect (OIDC) Authorization Code Flow** unter Einbindung von **PKCE** (RFC 7636).
 
-##### 5.1.3.1 POST /token (Authorization Code Exchange)
-Tauscht den Autorisierungscode der OIDC-Sitzung gegen die DPoP-gebundenen Token aus.
-
-**Anfrage-Beispiel:**
-```http
-POST /token HTTP/1.1
-Host: auth.example.com
-Content-Type: application/x-www-form-urlencoded
-DPoP: eyJhbGciOiJFUzI1NiIsInR5cCI6ImRwb3Arand0IiwiandrIjp7...
-
-grant_type=authorization_code
-&code=SplxlOBeZQQYbYS6WxSbIA
-&redirect_uri=https://client.example.com/callback
-&code_verifier=dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk
-&client_id=zeta-client-mobile-abc
-&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
-&client_assertion=eyJhbGciOiJFUzI1NiJ9.eyJpc3MiOiJ6ZXRhLWNsaWVudC1tb2JpbGUtYWJjIiwiYXR0ZXN0YXRpb25fcG9zdHVyZSI6eyJvc192ZXJzaW9uIjoiMTUuMiIsImphaWxicmVha19mcmVlIjp0cnVlfX0.signature
-```
-
-**Antwort-Beispiel (200 OK):**
-```http
-HTTP/1.1 200 OK
-Content-Type: application/json
-
-{
-  "access_token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVC...",
-  "token_type": "DPoP",
-  "expires_in": 3600,
-  "refresh_token": "rt-mobile-77612dhasda"
-}
-```
+> **Hinweis:** Der detaillierte OIDC-Ablauf für mobile Clients wird in einer späteren Version dieses Dokuments ergänzt.
 
 ---
 
 ### 5.2 Android Clients mit Android Key Attestation
 
+Android-Clients nutzen den **Android Keystore** mit **TEE (Trusted Execution Environment)** oder **StrongBox** zur hardwaregebundenen Schlüsselerzeugung. Zusätzlich kann die **Google Play Integrity API** zur App-Integritätsprüfung eingesetzt werden.
+
+#### 5.2.1 Client Installation und Schlüsselgenerierung
+
+- *(01) Client Instance Key:* Das Schlüsselpaar (`PrK.Client.Sig` / `PuK.Client.Sig`) wird über `KeyStore.generateKey` im TEE/StrongBox erzeugt.
+- *(02) Hash berechnen:* `hash_puk_client_sig = SHA-256(PuK.Client.Sig)`.
+- *(03) Attestation Key:* Ein dedizierter Attestation Key (`PrK.AK.Sig` / `PuK.AK.Sig`) wird mit `AttestationChallenge = hash_puk_client_sig` erzeugt. Android liefert dabei automatisch die `android_key_attestation_certificate_chain`.
+- *(04) Besitznachweis:* Der Client signiert `hash_puk_client_sig` mit `PrK.AK.Sig` → `signed_hash_puk_client_sig`.
+- *(05) Play Integrity (optional):* Über `requestIntegrityToken(nonce = hash_puk_client_sig)` wird ein Geräte- und App-Integritätstoken eingeholt.
+
+![Abbildung 16: Schlüsselgenerierung auf Android](../../../images/zeta-flows/Abb-ZETA-Schlüsselgenerierung-Android.svg)
+
+#### 5.2.2 Dynamic Client Registration (DCR) mit TOFU
+
+Auch Android-Clients durchlaufen den TOFU-Prozess mit OTP-Verifikation.
+
+- *(01) POST /register:* Der Client sendet `attestation_type: "android"`, `PuK.AK.Sig`, `android_key_attestation_certificate_chain`, `PuK.Client.Sig`, `signed_hash_puk_client_sig` und optional `play_integrity_token`.
+- *(02) Validierung:* Der AuthS validiert die Zertifikatskette gegen die Google Hardware Attestation Root CA, prüft `signed_hash_puk_client_sig` und wertet optional die Play Integrity Verdicts aus.
+- *(03)–(07) TOFU OTP:* Identischer Ablauf wie bei Apple-Clients (OTP-Generierung, E-Mail-Versand, Nutzer-Eingabe, Verifikation).
+
+![Abbildung 17: DCR für mobile Android Clients mit Hardware Attestation](../../../images/zeta-flows/Abb-ZETA-DCR-für-mobile-Android-HW-Att-Clients.svg)
+
+##### 5.2.2.1 Dynamic Client Registration Request
+
+- **Pfad:** gemäß [OAuth-Authorization-Server Well-known](../../../src/schemas/as-well-known.yaml) Discovery (z. B. `/register`)
+*Request-Schema:* [dcr-request.yaml](../../../src/schemas/dcr-request.yaml) (Variante: Android Attestation)
+
+```http
+POST /register HTTP/1.1
+Host: auth.example.com
+Content-Type: application/json
+```
+
+```json
+{
+  "attestation_type": "android",
+  "client_name": "Tablet-Praxishelfer v2.0",
+  "token_endpoint_auth_method": "private_key_jwt",
+  "grant_types": [
+    "urn:ietf:params:oauth:grant-type:token-exchange",
+    "refresh_token"
+  ],
+  "jwks": {
+    "keys": [
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "h82Jdsa8s98JsdK2ls9Djsa82ndS1ksd",
+        "y": "d7sJSD9s82JskdP2ksld92JsdkaL3msd",
+        "use": "sig",
+        "kid": "android-instance-key-1"
+      }
+    ]
+  },
+  "android_key_attestation_certificate_chain": [
+    "MIIFzDCCA7SgAwIBAgIR...<Blatt-Zertifikat (C.AK.Sig)>...",
+    "MIIFvTCCA6WgAwIBAgIT...<Intermediate CA>...",
+    "MIIDuzCCAqOgAwIBAgIG...<Google HW Attestation Root CA>..."
+  ],
+  "signed_hash_puk_client_sig": "MEQCID7sNsjdi9Nskd...<Base64url ECDSA Signatur>...",
+  "play_integrity_token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6...<Base64 Token>..."
+}
+```
+
+##### 5.2.2.2 Dynamic Client Registration Response (202 Accepted — OTP Trigger)
+
+```http
+HTTP/1.1 202 Accepted
+Content-Type: application/json
+```
+
+```json
+{
+  "transaction_id": "tx-android-54321",
+  "message": "OTP sent",
+  "expires_in": 300
+}
+```
+
+##### 5.2.2.3 Registration Verification Request (TOFU)
+
+```http
+POST /register/verify HTTP/1.1
+Host: auth.example.com
+Content-Type: application/json
+```
+
+```json
+{
+  "transaction_id": "tx-android-54321",
+  "code": "729184"
+}
+```
+
+##### 5.2.2.4 Registration Verification Response
+
+```http
+HTTP/1.1 201 Created
+Content-Type: application/json
+```
+
+```json
+{
+  "client_id": "zeta-client-android-g7h8i9",
+  "status": "pending_attestation",
+  "client_id_issued_at": 1748520000
+}
+```
+
+#### 5.2.3 Authentifizierung & Autorisierung (OIDC Flow)
+
+Der Token-Bezug für mobile Benutzer erfolgt über den standardisierten **OpenID Connect (OIDC) Authorization Code Flow** unter Einbindung von **PKCE** (RFC 7636).
+
+> **Hinweis:** Der detaillierte OIDC-Ablauf für mobile Clients wird in einer späteren Version dieses Dokuments ergänzt.
+
+---
+
 ### 5.3 Mobile Clients mit Software Attestation
+
+Mobile Clients ohne verfügbare Hardware-Sicherheitsmodule (kein TEE/StrongBox auf Android, keine Secure Enclave auf iOS) können den Software-Attestation-Fallback nutzen. Das Vertrauensniveau ist entsprechend niedriger.
+
+#### 5.3.1 Client Installation und Schlüsselgenerierung
+
+Die Schlüsselgenerierung erfolgt rein softwarebasiert, identisch zu stationären Clients (siehe [4.3.1 Schlüsselgenerierung SW-Att](#431-client-installation-und-schlüsselgenerierung)).
+
+![Abbildung 18: Schlüsselgenerierung bei Software-basierter Attestation](../../../images/zeta-flows/Abb-ZETA-Schlüsselgenerierung-SW-Att.svg)
+
+#### 5.3.2 Dynamic Client Registration (DCR) mit TOFU
+
+Die Registrierung erfolgt wie bei der stationären Software-Attestation, ergänzt um den TOFU-OTP-Prozess.
+
+- *(01) POST /register:* Der Client sendet `client_name`, `grant_types`, `jwks` (mit `PuK.Client.Sig`) und `token_endpoint_auth_method` — ohne Attestation-spezifische Felder.
+- *(02)–(06) TOFU OTP:* Identischer Ablauf wie bei den Hardware-Attestation-Varianten (OTP-Generierung, E-Mail-Versand, Nutzer-Eingabe, Verifikation).
+
+![Abbildung 19: DCR für mobile Clients mit Software Attestation](../../../images/zeta-flows/Abb-ZETA-DCR-für-mobile-SW-Att-Clients.svg)
+
+##### 5.3.2.1 Dynamic Client Registration Request
+
+- **Pfad:** gemäß [OAuth-Authorization-Server Well-known](../../../src/schemas/as-well-known.yaml) Discovery (z. B. `/register`)
+*Request-Schema:* [dcr-request.yaml](../../../src/schemas/dcr-request.yaml) (Variante: Legacy / Software Attestation)
+
+```http
+POST /register HTTP/1.1
+Host: auth.example.com
+Content-Type: application/json
+```
+
+```json
+{
+  "client_name": "ZETA Mobile Fallback v1.0",
+  "token_endpoint_auth_method": "private_key_jwt",
+  "grant_types": [
+    "urn:ietf:params:oauth:grant-type:token-exchange",
+    "refresh_token"
+  ],
+  "jwks": {
+    "keys": [
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "bW9iaWxlIHNvZnR3YXJlIGF0dGVzdGF0aW9uIGtleQ",
+        "y": "ZmFsbGJhY2sgbW9iaWxlIGtleSB5IGNvb3JkaW5hdGU",
+        "use": "sig",
+        "kid": "mobile-sw-key-001"
+      }
+    ]
+  }
+}
+```
+
+##### 5.3.2.2 Dynamic Client Registration Response (202 Accepted — OTP Trigger)
+
+```http
+HTTP/1.1 202 Accepted
+Content-Type: application/json
+```
+
+```json
+{
+  "transaction_id": "tx-mobile-sw-11111",
+  "message": "OTP sent",
+  "expires_in": 300
+}
+```
+
+##### 5.3.2.3 Registration Verification Request (TOFU)
+
+```http
+POST /register/verify HTTP/1.1
+Host: auth.example.com
+Content-Type: application/json
+```
+
+```json
+{
+  "transaction_id": "tx-mobile-sw-11111",
+  "code": "591037"
+}
+```
+
+##### 5.3.2.4 Registration Verification Response
+
+```http
+HTTP/1.1 201 Created
+Content-Type: application/json
+```
+
+```json
+{
+  "client_id": "zeta-client-mobile-sw-j0k1l2",
+  "status": "pending_attestation",
+  "client_id_issued_at": 1748520000
+}
+```
+
+#### 5.3.3 Authentifizierung & Autorisierung (OIDC Flow)
+
+Der Token-Bezug für mobile Benutzer erfolgt über den standardisierten **OpenID Connect (OIDC) Authorization Code Flow** unter Einbindung von **PKCE** (RFC 7636).
+
+> **Hinweis:** Der detaillierte OIDC-Ablauf für mobile Clients wird in einer späteren Version dieses Dokuments ergänzt.
+
+---
 
 ## 6. Dienst-zu-Dienst Kommunikation (Backend-to-Backend)
 
