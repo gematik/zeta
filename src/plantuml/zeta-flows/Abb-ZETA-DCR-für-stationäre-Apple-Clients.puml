@@ -20,9 +20,6 @@ alt Kein ZETA Guard Attestation Token
     AuthS -> AuthS: Validiere Apple_Attestation_Object
     note right of AuthS: AuthS verifiziert Apple App Attest Root CA.\nExtrahiert Hash(PuK.Client.Sig) aus Objekt\nund vergleicht ihn mit dem Payload.
 
-    AuthS -> AuthS: Store Client Placeholder (state: pending_user_binding)
-
-
 else ZETA Attestation Token vorhanden
     Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token",\nzeta_guard_attestation_token, PuK.Client.Sig,\nsigned_Hash_PuK.Client.Sig}
     AuthS -> AuthS: Prüfe Token-Signatur & Vertrauensstellung
