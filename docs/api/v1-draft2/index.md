@@ -1,95 +1,5 @@
 # ZETA API v1.3.0
 
-- [ZETA API v1.3.0](#zeta-api-v130)
-  - [Dokumenten- und Versionsübersicht](#dokumenten--und-versionsübersicht)
-    - [Zuordnung zu API- und Implementierungsversionen](#zuordnung-zu-api--und-implementierungsversionen)
-    - [Docker-Image Referenzen](#docker-image-referenzen)
-      - [ZETA Guard Images](#zeta-guard-images)
-      - [Test Images](#test-images)
-  - [1. Einführung](#1-einführung)
-  - [2. Voraussetzungen \& Basiswissen (Trust Anchor, VSDM2)](#2-voraussetzungen--basiswissen-trust-anchor-vsdm2)
-  - [3. Discovery und Konfiguration](#3-discovery-und-konfiguration)
-    - [3.1 Ablauf](#31-ablauf)
-    - [3.2 Endpunkt-Spezifikationen](#32-endpunkt-spezifikationen)
-      - [3.2.1 GET /.well-known/oauth-protected-resource](#321-get-well-knownoauth-protected-resource)
-      - [3.2.2 GET /.well-known/oauth-authorization-server](#322-get-well-knownoauth-authorization-server)
-  - [4. Stationäre Clients (Windows, Linux, macOS)](#4-stationäre-clients-windows-linux-macos)
-    - [Quick Start: Welches Kapitel betrifft mich?](#quick-start-welches-kapitel-betrifft-mich)
-      - [Endpunkt-Übersicht (Stationäre Clients)](#endpunkt-übersicht-stationäre-clients)
-      - [Token-Lebenszyklus](#token-lebenszyklus)
-    - [4.1 Windows oder Linux Clients mit TPM Attestation](#41-windows-oder-linux-clients-mit-tpm-attestation)
-      - [4.1.1 Client Installation und Schlüsselgenerierung](#411-client-installation-und-schlüsselgenerierung)
-      - [4.1.2 Client Start und Baseline-Aktualisierung](#412-client-start-und-baseline-aktualisierung)
-      - [4.1.3 Vorbereitung der Client-Registrierung (Key Certification)](#413-vorbereitung-der-client-registrierung-key-certification)
-      - [4.1.4 Dynamic Client Registration (DCR)](#414-dynamic-client-registration-dcr)
-        - [4.1.4.1 Dynamic Client Registration Request](#4141-dynamic-client-registration-request)
-        - [4.1.4.2 Dynamic Client Registration Response](#4142-dynamic-client-registration-response)
-        - [4.1.4.3 Registration Verification Request](#4143-registration-verification-request)
-        - [4.1.4.4 Registration Verification Response](#4144-registration-verification-response)
-      - [4.1.5 Vorbereitung des Token Exchange (Client Assertion \& Subject Token)](#415-vorbereitung-des-token-exchange-client-assertion--subject-token)
-      - [4.1.6 Token Exchange (POST /token)](#416-token-exchange-post-token)
-        - [4.1.6.1 Token Exchange Request](#4161-token-exchange-request)
-        - [4.1.6.2 Token Exchange Response](#4162-token-exchange-response)
-    - [4.2 macOS Clients mit Apple App Attest Attestation](#42-macos-clients-mit-apple-app-attest-attestation)
-      - [4.2.1 Client Installation und Schlüsselgenerierung](#421-client-installation-und-schlüsselgenerierung)
-      - [4.2.2 Dynamic Client Registration (DCR)](#422-dynamic-client-registration-dcr)
-        - [4.2.2.1 Dynamic Client Registration Request](#4221-dynamic-client-registration-request)
-        - [4.2.2.2 Dynamic Client Registration Response](#4222-dynamic-client-registration-response)
-      - [4.2.3 Vorbereitung des Token Exchange (Client Assertion \& Subject Token)](#423-vorbereitung-des-token-exchange-client-assertion--subject-token)
-      - [4.2.4 Token Exchange (POST /token)](#424-token-exchange-post-token)
-    - [4.3 Stationäre Clients mit rein Software-basierter Attestation](#43-stationäre-clients-mit-rein-software-basierter-attestation)
-      - [4.3.1 Client Installation und Schlüsselgenerierung](#431-client-installation-und-schlüsselgenerierung)
-      - [4.3.2 Dynamic Client Registration (DCR)](#432-dynamic-client-registration-dcr)
-        - [4.3.2.1 Dynamic Client Registration Request](#4321-dynamic-client-registration-request)
-        - [4.3.2.2 Dynamic Client Registration Response](#4322-dynamic-client-registration-response)
-      - [4.3.3 Vorbereitung des Token Exchange (Client Assertion \& Subject Token)](#433-vorbereitung-des-token-exchange-client-assertion--subject-token)
-      - [4.3.4 Token Exchange (POST /token)](#434-token-exchange-post-token)
-      - [4.3.5 Praxisbeispiel: Vollständiger Flow per cURL (Software Attestation)](#435-praxisbeispiel-vollständiger-flow-per-curl-software-attestation)
-  - [5. Mobile Clients (Android, iOS, iPadOS)](#5-mobile-clients-android-ios-ipados)
-    - [Quick Start: Welches Kapitel betrifft mich?](#quick-start-welches-kapitel-betrifft-mich-1)
-    - [5.1 iOS und iPadOS Clients mit Apple App Attest Attestation](#51-ios-und-ipados-clients-mit-apple-app-attest-attestation)
-      - [5.1.1 Client Installation und Schlüsselgenerierung](#511-client-installation-und-schlüsselgenerierung)
-      - [5.1.2 Dynamic Client Registration (DCR) mit TOFU](#512-dynamic-client-registration-dcr-mit-tofu)
-        - [5.1.2.1 Dynamic Client Registration Request](#5121-dynamic-client-registration-request)
-        - [5.1.2.2 Dynamic Client Registration Response (202 Accepted — OTP Trigger)](#5122-dynamic-client-registration-response-202-accepted--otp-trigger)
-        - [5.1.2.3 Registration Verification Request (TOFU)](#5123-registration-verification-request-tofu)
-        - [5.1.2.4 Registration Verification Response](#5124-registration-verification-response)
-      - [5.1.3 Authentifizierung \& Autorisierung (OIDC Flow)](#513-authentifizierung--autorisierung-oidc-flow)
-    - [5.2 Android Clients mit Android Key Attestation](#52-android-clients-mit-android-key-attestation)
-      - [5.2.1 Client Installation und Schlüsselgenerierung](#521-client-installation-und-schlüsselgenerierung)
-      - [5.2.2 Dynamic Client Registration (DCR) mit TOFU](#522-dynamic-client-registration-dcr-mit-tofu)
-        - [5.2.2.1 Dynamic Client Registration Request](#5221-dynamic-client-registration-request)
-        - [5.2.2.2 Dynamic Client Registration Response (202 Accepted — OTP Trigger)](#5222-dynamic-client-registration-response-202-accepted--otp-trigger)
-        - [5.2.2.3 Registration Verification Request (TOFU)](#5223-registration-verification-request-tofu)
-        - [5.2.2.4 Registration Verification Response](#5224-registration-verification-response)
-      - [5.2.3 Authentifizierung \& Autorisierung (OIDC Flow)](#523-authentifizierung--autorisierung-oidc-flow)
-    - [5.3 Mobile Clients mit Software Attestation](#53-mobile-clients-mit-software-attestation)
-      - [5.3.1 Client Installation und Schlüsselgenerierung](#531-client-installation-und-schlüsselgenerierung)
-      - [5.3.2 Dynamic Client Registration (DCR) mit TOFU](#532-dynamic-client-registration-dcr-mit-tofu)
-        - [5.3.2.1 Dynamic Client Registration Request](#5321-dynamic-client-registration-request)
-        - [5.3.2.2 Dynamic Client Registration Response (202 Accepted — OTP Trigger)](#5322-dynamic-client-registration-response-202-accepted--otp-trigger)
-        - [5.3.2.3 Registration Verification Request (TOFU)](#5323-registration-verification-request-tofu)
-        - [5.3.2.4 Registration Verification Response](#5324-registration-verification-response)
-      - [5.3.3 Authentifizierung \& Autorisierung (OIDC Flow)](#533-authentifizierung--autorisierung-oidc-flow)
-  - [6. Dienst-zu-Dienst Kommunikation (Backend-to-Backend)](#6-dienst-zu-dienst-kommunikation-backend-to-backend)
-    - [6.1 POST /token (Client Credentials \& Token Exchange)](#61-post-token-client-credentials--token-exchange)
-  - [7. Zugriff auf den Resource Server](#7-zugriff-auf-den-resource-server)
-    - [7.1. Option A: Zugriff mit ZETA/ASL (Tunnelverschlüsselung)](#71-option-a-zugriff-mit-zetaasl-tunnelverschlüsselung)
-    - [7.2. Option B: Direkter Zugriff ohne ZETA/ASL](#72-option-b-direkter-zugriff-ohne-zetaasl)
-  - [8. Fehlerbehandlung und Statuscodes (Zentrales Nachschlagewerk)](#8-fehlerbehandlung-und-statuscodes-zentrales-nachschlagewerk)
-    - [8.1 JSON Fehler-Schema](#81-json-fehler-schema)
-    - [8.2 API Fehler-Tabelle \& Troubleshooting](#82-api-fehler-tabelle--troubleshooting)
-  - [9. Schlüsselverwaltung](#9-schlüsselverwaltung)
-    - [9.1 ZETA Client Schlüssel (Nutzer-Seite)](#91-zeta-client-schlüssel-nutzer-seite)
-    - [9.2 gematik verwaltete Schlüssel (TI)](#92-gematik-verwaltete-schlüssel-ti)
-  - [10. Versionierung, Performance \& Verhaltensregeln](#10-versionierung-performance--verhaltensregeln)
-    - [10.1 Versionierung](#101-versionierung)
-    - [10.2 Performance- und Lastannahmen](#102-performance--und-lastannahmen)
-    - [10.3 Client-Verhaltensregeln](#103-client-verhaltensregeln)
-  - [11. Support und Kontaktinformationen](#11-support-und-kontaktinformationen)
-  - [Glossar](#glossar)
-
-
 ## Dokumenten- und Versionsübersicht
 
 | Attribut                    | Wert                        |
@@ -97,52 +7,41 @@
 | Dokumenttitel               | ZETA API v1.3.0             |
 | Dokumentversion             | 1.3.0                       |
 | Stand                       | 2026-05-27                  |
-| Status                      | Final Draft                 |
+| Status                      | Draft                 |
 | Verantwortlich              | gematik                     |
 | Gültigkeitsbereich          | ZETA Guard API              |
 | Spezifikationsgrundlage     | gemSpec_ZETA, Version 1.3.1 |
-
-### Zuordnung zu API- und Implementierungsversionen
-
-Dieses Dokument beschreibt die Schnittstellen und Abläufe der **ZETA API Version v1.3.0**. Die beschriebenen Inhalte beziehen sich auf die folgenden Implementierungsversionen:
-
-| Komponente                     | Artefakt / Image                     | Version | Beschreibung                             |
-|--------------------------------|--------------------------------------|---------|------------------------------------------|
-| ZETA Guard (PEP)               | zeta-guard-pep                       | 1.3.0   | Policy Enforcement Point (HTTP Proxy)    |
-| ZETA Guard (PDP)               | zeta-guard-pdp                       | 1.3.0   | Authorization Server / Policy Decision   |
-| ZETA Client SDK                | zeta-sdk                             | 1.3.0   | Clientbibliothek zur Integration         |
-| Helm Charts                    | zeta-helm-charts                     | 1.3.0   | Helm Charts                              |
-| Terraform                      | zeta-guard-terraform                 | 0.3.0   | Terraform                                |
-| Provisioning Processor         | zeta-guard-provisioning-processor    | 1.3.0   | Provisioning Processor                   |
 
 ---
 
 ### Docker-Image Referenzen
 
-Die oben genannten Komponenten werden als OCI-konforme Container Images in der ZETA Artifact Registry bereitgestellt.  
+Die ZETA Komponenten werden als OCI-konforme Container Images in der ZETA Artifact Registry bereitgestellt.  
 
-Repository: [europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr](https://europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr)
+Repository DCR: [europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr](https://europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr)
+
+Repository HELM: [europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-helm](https://europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-helm)
 
 #### ZETA Guard Images
 
-- PEP (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/ngx_pep:1.3.0)
-- PDP (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/keycloak-zeta:1.3.0)
-- Provisioning Processor (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/provisioning-processor:1.3.0)
-- Nginx Ingress (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/nginx-ingress:1.3.0)
-- Nginx-Prometheus-Exporter (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/nginx-prometheus-exporter:1.5.1-zeta2)
-- Open Policy Agent (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/opa:1.14.1-static)
-- Postgres (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/postgres:17.9-standard-trixie)
-- Telemetry Gateway (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/zeta-telemetry-gateway:v0.151.0-release.3)
+- PEP (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/ngx_pep)
+- PDP (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/keycloak-zeta)
+- Provisioning Processor (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/provisioning-processor)
+- Nginx Ingress (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/nginx-ingress)
+- Nginx-Prometheus-Exporter (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/nginx-prometheus-exporter)
+- Open Policy Agent (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/opa)
+- Postgres (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/postgres)
+- Telemetry Gateway (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/zeta-telemetry-gateway)
 
 #### Test Images
 
-- Tiger-Testsuite (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/tiger-testsuite:1.3.0)
-- Testfachdienst (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/testfachdienst:1.3.0)
-- HSM Proxy Simulator (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/hsm_sim:1.3.0)
-- Zeta-Tigerproxy (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/testproxy:1.3.0)
-- Zeta TLS Test Tool (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/zeta-tls-test-tool-service:1.3.0)
-- Cert Validation Mock (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/zeta-cert-validation-mock:1.3.0)
-- PoPP Token Generator (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/popp-token-generator:1.3.0)
+- Tiger-Testsuite (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/tiger-testsuite)
+- Testfachdienst (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/testfachdienst)
+- HSM Proxy Simulator (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/hsm_sim)
+- Zeta-Tigerproxy (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/testproxy)
+- Zeta TLS Test Tool (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/zeta-tls-test-tool-service)
+- Cert Validation Mock (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/zeta-cert-validation-mock)
+- PoPP Token Generator (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/popp-token-generator)
 
 ---
 
@@ -182,7 +81,6 @@ Der Discovery-Ablauf ist für alle Client-Typen identisch und greift auf standar
 3. Der Client fragt die detaillierten Authorization Server Metadaten (PDP) ab, um Endpunkte für Registrierung, Token-Bezug und Nonce-Generierung zu erhalten.
 
 ![Abbildung 1: Ablauf Service Discovery](../../../images/zeta-flows/Abb-ZETA-Service-Discovery.svg)
-
 
 ### 3.2 Endpunkt-Spezifikationen
 
@@ -239,6 +137,7 @@ ETag: "w/37b12-abc12345"
 ---
 
 #### 3.2.2 GET /.well-known/oauth-authorization-server
+
 Gibt Metadaten und unterstützte Endpunkte des PDP Authorization Servers zurück (gemäß RFC 8414).
 
 **Anfrage-Beispiel:**
@@ -1213,9 +1112,11 @@ Der Token-Bezug für mobile Benutzer erfolgt über den standardisierten **OpenID
 Für die sichere Maschine-zu-Maschine Interaktion zwischen Backends wird die **Workload Identity Federation** etabliert. Ein Backend-Dienst authentifiziert sich mit einem signierten JWT (ausgestellt durch den eigenen PDP/Kubernetes IDP) am token_endpoint des Ziel-Dienstes.
 
 ### 6.1 POST /token (Client Credentials & Token Exchange)
+
 *Siehe auch [Abbildung 20: Dienst-zu-Dienst Kommunikation](../../../images/zeta-flows/Abb-ZETA-Dienst-zu-Dienst-Kommunikation.svg)*
 
 **Anfrage-Beispiel:**
+
 ```http
 POST /token HTTP/1.1
 Host: auth-target.example.com
@@ -1228,6 +1129,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 ```
 
 **Antwort-Beispiel (200 OK):**
+
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/json
@@ -1246,11 +1148,13 @@ Content-Type: application/json
 Nach erfolgreichem Erhalt der Access-Token sendet der ZETA-Client Anfragen an den Fachdienst (Resource Server).
 
 ### 7.1. Option A: Zugriff mit ZETA/ASL (Tunnelverschlüsselung)
+
 *Siehe auch [Abbildung 21: Zugriff auf RS mit ASL](../../../images/zeta-flows/Abb-ZETA-Zugriff-auf-RS-mit-ASL.svg)*
 
 Erfordert der Fachdienst eine dedizierte Verschlüsselung (ASL), baut der Client einen verschlüsselten Tunnel auf. Der Client sendet die verschlüsselten Fachdaten per HTTP `POST` an den Endpoint `/ASL` des PEP Proxys.
 
 **Anfrage-Beispiel:**
+
 ```http
 POST /ASL HTTP/1.1
 Host: api.example.com
@@ -1264,11 +1168,13 @@ DPoP: eyJhbGciOiJFUzI1NiIsInR5cCI6ImRwb3Arand0IiwiandrIjp7...
 ---
 
 ### 7.2. Option B: Direkter Zugriff ohne ZETA/ASL
+
 *Siehe auch [Abbildung 22: Zugriff auf RS ohne ASL](../../../images/zeta-flows/Abb-ZETA-Zugriff-auf-RS-ohne-ASL.svg)*
 
 Der Client sendet den Request direkt an den PEP mit dem Access Token im `Authorization`-Header (DPoP-gebunden) und dem DPoP-Proof im `DPoP`-Header.
 
 **Anfrage-Beispiel:**
+
 ```http
 GET /api/resource HTTP/1.1
 Host: api.example.com
@@ -1279,10 +1185,12 @@ Accept: application/json
 
 **Weiterleitung an den Resource Server:**
 Der PEP HTTP Proxy validiert Token und Signaturen und hängt die entschlüsselten/validierten Metadaten als Custom Header an die interne Backend-Anfrage an:
+
 - `zeta-user-info` (Base64URL-kodiertes JSON mapping zu [zeta-user-info.yaml](../../../src/schemas/zeta-user-info.yaml))
 - `zeta-client-data` (Base64URL-kodiertes JSON mapping zu [client-data.yaml](../../../src/schemas/client-data.yaml))
 
 **Entschlüsseltes Beispiel für `zeta-user-info`:**
+
 ```json
 {
   "identifier": "1-234567890123",
@@ -1299,7 +1207,9 @@ Der PEP HTTP Proxy validiert Token und Signaturen und hängt die entschlüsselte
 Dieses Kapitel dient Entwicklern als zentrales Nachschlagewerk zur Analyse und schnellen Behebung von Fehlern bei der ZETA API-Integration.
 
 ### 8.1 JSON Fehler-Schema
+
 Sämtliche Fehler der ZETA Guard Endpunkte folgen dem JSON-Schema [zeta-error.yaml](../../../src/schemas/zeta-error.yaml):
+
 ```json
 {
   "error": "Fehler-Identifikationsstring (z.B. invalid_request)",
@@ -1356,15 +1266,19 @@ Diese Zertifikate und Schlüssel werden im ZETA Kontext verwendet. Sie sind Best
 ## 10. Versionierung, Performance & Verhaltensregeln
 
 ### 10.1 Versionierung
+
 Die ZETA API folgt den Regeln von **Semantic Versioning 2.0.0 (SemVer)**. Major-Versionen werden über den URL-Pfad abgebildet (z. B. `/v1/`), während Minor- und Patch-Versionen über das Discovery-Dokument ausgegeben werden.
 
 ### 10.2 Performance- und Lastannahmen
+
 Die Bearbeitungszeiten müssen unter Last folgende Kriterien erfüllen:
+
 - **PEP HTTP Proxy Latenz**: Mittelwert ≤ 75 ms, 99%-Quantil ≤ 1 s.
 - **PDP /nonce Endpoint**: Mittelwert ≤ 33 ms, 99%-Quantil ≤ 500 ms.
 - **PDP /register & /token Endpoints**: Mittelwert ≤ 75 ms, 99%-Quantil ≤ 1 s.
 
 ### 10.3 Client-Verhaltensregeln
+
 - **Rate Limits**: Clients MÜSSEN die Ratenbegrenzung beachten. Wird ein HTTP-Status `429` empfangen, sind erneute Anfragen mit einem **Exponential Backoff mit Jitter** auszuführen.
 
 ---
