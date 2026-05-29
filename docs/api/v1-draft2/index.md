@@ -1342,7 +1342,7 @@ Diese Schlüssel verbleiben in der Verfügungsgewalt des Endnutzers (Smartphone 
 
 ### 9.2 gematik verwaltete Schlüssel (TI)
 
-Diese Zertifikate und Schlüssel spannen den Vertrauensraum der TI 2.0 auf.
+Diese Zertifikate und Schlüssel werden im ZETA Kontext verwendet. Sie sind Bestandteil der Telematikinfrastruktur (TI).
 
 | Schlüssel-ID | Bezeichnung & Zweck | Speicherung / Verteilung |
 |--------------|---------------------|--------------------------|
@@ -1356,7 +1356,7 @@ Diese Zertifikate und Schlüssel spannen den Vertrauensraum der TI 2.0 auf.
 ## 10. Versionierung, Performance & Verhaltensregeln
 
 ### 10.1 Versionierung
-Die ZETA API folgt den Regeln von **Semantic Versioning 2.0.0 (SemVer)**. Major-Versionen werden über den URL-Pfad abgebildet (z. B. `/v1/`), während Minor- und Patch-Versionen über den Header `ZETA-API-Version` sowie das Discovery-Dokument ausgegeben werden.
+Die ZETA API folgt den Regeln von **Semantic Versioning 2.0.0 (SemVer)**. Major-Versionen werden über den URL-Pfad abgebildet (z. B. `/v1/`), während Minor- und Patch-Versionen über das Discovery-Dokument ausgegeben werden.
 
 ### 10.2 Performance- und Lastannahmen
 Die Bearbeitungszeiten müssen unter Last folgende Kriterien erfüllen:
@@ -1366,16 +1366,12 @@ Die Bearbeitungszeiten müssen unter Last folgende Kriterien erfüllen:
 
 ### 10.3 Client-Verhaltensregeln
 - **Rate Limits**: Clients MÜSSEN die Ratenbegrenzung beachten. Wird ein HTTP-Status `429` empfangen, sind erneute Anfragen mit einem **Exponential Backoff mit Jitter** auszuführen.
-- **Zertifikatsvalidierung**: Clients MÜSSEN alle Zertifikate bei jedem Verbindungsaufbau gegen die TSL prüfen. Gültigkeit und Widerrufsprüfung (vorzugsweise via **OCSP Stapling**) sind zwingend erforderlich.
 
 ---
 
 ## 11. Support und Kontaktinformationen
 
-Bei technischen Supportanfragen, Fehlerberichten oder Fragen zur Zertifizierung von ZETA-Clients kontaktieren Sie bitte den gematik ZETA Service-Desk:
-- **E-Mail-Support**: <support.zeta@gematik.de>
-- **Developer Forum**: <https://forum.ti-dienste.de/c/zeta-developer>
-- **Bugtracker**: <https://github.com/gematik/zeta/issues>
+Bitte beachten Sie das [CONTRIBUTING.md](../../CONTRIBUTING.md) für Informationen zum Support und zu Kontaktmöglichkeiten.
 
 ---
 
