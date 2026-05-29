@@ -14,7 +14,9 @@
       - [3.2.1 GET /.well-known/oauth-protected-resource](#321-get-well-knownoauth-protected-resource)
       - [3.2.2 GET /.well-known/oauth-authorization-server](#322-get-well-knownoauth-authorization-server)
   - [4. Stationäre Clients (Windows, Linux, macOS)](#4-stationäre-clients-windows-linux-macos)
-    - [Quick Start: 5-Punkte-Checkliste für Entwickler](#quick-start-5-punkte-checkliste-für-entwickler)
+    - [Quick Start: Welches Kapitel betrifft mich?](#quick-start-welches-kapitel-betrifft-mich)
+      - [Endpunkt-Übersicht (Stationäre Clients)](#endpunkt-übersicht-stationäre-clients)
+      - [Token-Lebenszyklus](#token-lebenszyklus)
     - [4.1 Windows oder Linux Clients mit TPM Attestation](#41-windows-oder-linux-clients-mit-tpm-attestation)
       - [4.1.1 Client Installation und Schlüsselgenerierung](#411-client-installation-und-schlüsselgenerierung)
       - [4.1.2 Client Start und Baseline-Aktualisierung](#412-client-start-und-baseline-aktualisierung)
@@ -42,8 +44,9 @@
         - [4.3.2.2 Dynamic Client Registration Response](#4322-dynamic-client-registration-response)
       - [4.3.3 Vorbereitung des Token Exchange (Client Assertion \& Subject Token)](#433-vorbereitung-des-token-exchange-client-assertion--subject-token)
       - [4.3.4 Token Exchange (POST /token)](#434-token-exchange-post-token)
+      - [4.3.5 Praxisbeispiel: Vollständiger Flow per cURL (Software Attestation)](#435-praxisbeispiel-vollständiger-flow-per-curl-software-attestation)
   - [5. Mobile Clients (Android, iOS, iPadOS)](#5-mobile-clients-android-ios-ipados)
-    - [Quick Start: 5-Punkte-Checkliste für Entwickler](#quick-start-5-punkte-checkliste-für-entwickler-1)
+    - [Quick Start: Welches Kapitel betrifft mich?](#quick-start-welches-kapitel-betrifft-mich-1)
     - [5.1 iOS und iPadOS Clients mit Apple App Attest Attestation](#51-ios-und-ipados-clients-mit-apple-app-attest-attestation)
       - [5.1.1 Client Installation und Schlüsselgenerierung](#511-client-installation-und-schlüsselgenerierung)
       - [5.1.2 Dynamic Client Registration (DCR) mit TOFU](#512-dynamic-client-registration-dcr-mit-tofu)
@@ -84,6 +87,7 @@
     - [10.2 Performance- und Lastannahmen](#102-performance--und-lastannahmen)
     - [10.3 Client-Verhaltensregeln](#103-client-verhaltensregeln)
   - [11. Support und Kontaktinformationen](#11-support-und-kontaktinformationen)
+  - [Glossar](#glossar)
 
 
 ## Dokumenten- und Versionsübersicht
@@ -290,21 +294,57 @@ ETag: "w/98d41-xyz98765"
 
 ## 4. Stationäre Clients (Windows, Linux, macOS)
 
-### Quick Start: 5-Punkte-Checkliste für Entwickler
+Die folgende Abbildung zeigt den Attestierungsablauf im Überblick und die Unterschiede je nach Betriebssystem:
 
-1. **[ ] Zertifikate laden**: Lokale TI-Vertrauensanker CA-Zertifikate (`roots.json`) einbinden und SMC-B-Institutionszertifikat auslesen.
-2. **[ ] Keys generieren**: Hardwaregebundene Client Instance Keys (`PrK.Client.Sig` / `PuK.Client.Sig`) erzeugen (TPM 2.0 via ZAS oder Secure Enclave via Native API).
-3. **[ ] DCR aufrufen**: Client am ZETA Guard registrieren (`POST /register` und Challenge-Handling bei TPM Attestation).
-4. **[ ] Token abholen**: Mit DPoP-Proof und SMC-B Subject Token ein Access Token am `/token`-Endpunkt anfragen.
-5. **[ ] RS anfragen**: DPoP-gebundenes Access Token im Authorization-Header mitsenden und die geschützte API des Resource Servers anfragen.
+![Abbildung: Attestierungsablauf nach Betriebssystem (Übersicht)](../../../images/zeta-flows/Abb-ZETA-Attestierungsablauf-nach-Betriebssystem.svg)
+
+### Quick Start: Welches Kapitel betrifft mich?
+
+| Ihr Client-Szenario | Attestation-Typ | Kapitel | Status |
+|---------------------|-----------------|---------|--------|
+| Windows / Linux **mit** TPM 2.0 | TPM Hardware Attestation | [4.1](#41-windows-oder-linux-clients-mit-tpm-attestation) | Preview |
+| macOS **mit** Secure Enclave | Apple App Attest | [4.2](#42-macos-clients-mit-apple-app-attest-attestation) | Preview |
+| Stationär **ohne** Hardware-Sicherheit | Software Attestation | [4.3](#43-stationäre-clients-mit-rein-software-basierter-attestation) | **Unterstützt** |
+
+**Integrations-Checkliste (alle stationären Clients):**
+
+1. **[ ] Discovery**: FQDN des Resource Servers → `GET /.well-known/oauth-protected-resource` → PDP-Metadaten laden ([Kapitel 3](#3-discovery-und-konfiguration))
+2. **[ ] Zertifikate laden**: Lokale TI-Vertrauensanker CA-Zertifikate (`roots.json`) einbinden und SMC-B-Institutionszertifikat auslesen.
+3. **[ ] Keys generieren**: Client Instance Key (`PrK.Client.Sig` / `PuK.Client.Sig`) erzeugen — plattformabhängig (TPM, Secure Enclave oder Software).
+4. **[ ] DCR aufrufen**: Client am ZETA Guard registrieren (`POST /register`). Je nach Attestation-Typ mit Challenge-Handling (TPM), Attestation Object (Apple) oder nur JWK.
+5. **[ ] Token abholen**: Nonce abrufen (`GET /nonce`) → Subject Token mit SM(C)-B signieren → Client Assertion erstellen → `POST /token` mit DPoP-Proof.
+6. **[ ] RS anfragen**: DPoP-gebundenes Access Token im `Authorization`-Header mitsenden und die geschützte API des Resource Servers anfragen ([Kapitel 7](#7-zugriff-auf-den-resource-server)).
+
+*Hinweis: Eine Übersicht der verwendeten Schlüssel ist in [Kapitel 9](#9-schlüsselverwaltung) zu finden.*
+
+#### Endpunkt-Übersicht (Stationäre Clients)
+
+| Endpunkt | Methode | Zweck | Relevant für |
+|----------|---------|-------|--------------|
+| `/.well-known/oauth-protected-resource` | GET | PEP-Metadaten und AuthS-Verweis abrufen | Alle Client-Typen |
+| `/.well-known/oauth-authorization-server` | GET | PDP-Endpunkte und Konfiguration abrufen | Alle Client-Typen |
+| `/register` | POST | Client-Registrierung starten (DCR) | Alle Client-Typen |
+| `/register/verify` | POST | TPM ActivateCredential-Secret übermitteln | Nur TPM (4.1) |
+| `/nonce` | GET | Frische Nonce für Token Exchange abrufen | Alle Client-Typen |
+| `/token` | POST | Access Token per Token Exchange beziehen | Alle Client-Typen |
+
+#### Token-Lebenszyklus
+
+| Token | Typische Gültigkeit | Erneuerung | Bindung |
+|-------|-----------|------------|---------|
+| **Access Token** | 300 s (5 min) | Über Refresh Token oder neuen Token Exchange | DPoP-gebunden (an `PuK.DPoP.Sig`) |
+| **Refresh Token** | 86 400 s (24 h) | Einmalig einlösbar (Rotation bei Nutzung) | An `client_id` gebunden |
+| **DPoP Proof** | Einmalig verwendbar | Jeder Request benötigt neuen Proof | An HTTP-Methode + URI gebunden |
+| **ZETA Guard Attestation Token** (`zg_att_token`) | Unbegrenzt | Neuer Token Exchange mit Hardware Attestation | An `PuK.AK.Sig` gebunden |
+| **Nonce** | 300 s (5 min) | Neuer `GET /nonce` Aufruf | Einmalig verwendbar |
 
 ---
 
 ### 4.1 Windows oder Linux Clients mit TPM Attestation
 
-Unter Windows und Linux basiert der Vertrauensaufbau auf dem Trusted Platform Module (TPM 2.0) und dem privilegierten Hintergrunddienst ZETA Attestation Service (ZAS).
+> **Preview** — Dieses Kapitel beschreibt den geplanten Ablauf für TPM-basierte Hardware Attestation. Die Implementierung ist noch nicht abgeschlossen. Änderungen an Endpunkten, Payloads und Abläufen sind vorbehalten.
 
-Stationäre Clients etablieren eine hardwaregestützte Identität, um sich bei der ZETA Guard-Infrastruktur anzumelden. Unter Windows/Linux wird hierfür das TPM 2.0 mittels des ZETA Attestation Services (ZAS) angesprochen.
+Unter Windows und Linux basiert der Vertrauensaufbau auf dem Trusted Platform Module (TPM 2.0) und dem privilegierten Hintergrunddienst ZETA Attestation Service (ZAS).
 Die TPM Attestation ermöglicht es dem Client, seine hardwaregebundene Identität nachzuweisen und sich dadurch sicher bei der ZETA Guard-Infrastruktur zu registrieren. Hierzu nutzt der Client das Attestierungs-Schlüsselpaar (`PrK.AK.Sig` / `PuK.AK.Sig`) sowie das Client-Instanz-Schlüsselpaar (`PrK.Client.Sig` / `PuK.Client.Sig`). Beide Schlüsselpaare werden im TPM 2.0 erzeugt.
 
 *Hinweis: eine Übersicht über die bei ZETA verwendeten Schlüssel ist in Kapitel [9. Schlüsselverwaltung](#9-schlüsselverwaltung) zu finden.*
@@ -354,6 +394,8 @@ Die Dynamic Client Registration ermöglicht die Registrierung neuer Clients beim
 
 ![Abbildung 5: DCR für Windows oder Linux Clients mit TPM Attestation](../../../images/zeta-flows/Abb-ZETA-DCR-für-stationäre-Win-Linux-Clients-TPM-Att.svg)
 
+*Bei Fehlern (z. B. `409 Conflict` bei doppeltem Key, `400 Invalid Request`) siehe [8.2 API Fehler-Tabelle & Troubleshooting](#82-api-fehler-tabelle--troubleshooting).*
+
 ##### 4.1.4.1 Dynamic Client Registration Request
 
 - **Pfad:** gemäß [OAuth-Authorization-Server Well-known](../../../src/schemas/as-well-known.yaml) Discovery (z. B. `/register`)
@@ -371,7 +413,7 @@ Content-Type: application/json
   "client_name": "ZETA Secure Desktop Agent v1.2",
   "token_endpoint_auth_method": "private_key_jwt",
   "grant_types": [
-    "authorization_code",
+    "urn:ietf:params:oauth:grant-type:token-exchange",
     "refresh_token"
   ],
   "jwks": {
@@ -435,27 +477,22 @@ Content-Type: application/json
 
 ##### 4.1.4.4 Registration Verification Response
 
-**Antwort-Beispiel (202 Accepted):**
+**Antwort-Beispiel (201 Created):**
 *Response-Schema:* gemäß OIDC DCR Response
 
 ```http
-HTTP/1.1 202 Accepted
+HTTP/1.1 201 Created
 Content-Type: application/json
 ```
 
 ```json
 {
-  "transaction_id": "c2257dd9-835f-4f87-80c6-91b41851c4e2",
-  "status": "pending_verification",
-  "expires_in": 600,
-  "challenge_type": "tpm_activation",
-  "tpm_credential_blob": "MIIDEzCCAvugAwIBAgIGAXxPq...",
-  "tpm_encrypted_secret": "AwEE..."
+  "client_id": "zeta-client-desktop-tpm-a1b2c3",
+  "status": "pending_attestation",
+  "client_id_issued_at": 1748520000,
+  "token_endpoint_auth_method": "private_key_jwt"
 }
 ```
-
-
-
 
 #### 4.1.5 Vorbereitung des Token Exchange (Client Assertion & Subject Token)
 
@@ -531,9 +568,13 @@ Content-Type: application/json
 }
 ```
 
+*Bei Fehlern siehe [8.2 API Fehler-Tabelle & Troubleshooting](#82-api-fehler-tabelle--troubleshooting).*
+
 ---
 
 ### 4.2 macOS Clients mit Apple App Attest Attestation
+
+> **Preview** — Dieses Kapitel beschreibt den geplanten Ablauf für Apple App Attest-basierte Attestation auf macOS. Die Implementierung ist noch nicht abgeschlossen. Änderungen an Endpunkten, Payloads und Abläufen sind vorbehalten.
 
 Unter macOS basiert der Vertrauensaufbau auf der **Secure Enclave** und dem **Apple App Attest Framework** (DeviceCheck). Das ZETA Client Primärsystem nutzt native macOS-APIs, um hardwaregebundene Schlüssel zu erzeugen und kryptografische Nachweise über die Geräteintegrität zu liefern.
 
@@ -732,16 +773,98 @@ Der Token Exchange erfolgt analog zu Kapitel [4.1.6 Token Exchange](#416-token-e
 
 Siehe [Abbildung 7: Token Exchange mit Attestation](#416-token-exchange-post-token) — der Ablauf ist für alle stationären Client-Typen einheitlich (Pfad "Software Attestation (Fallback)").
 
+#### 4.3.5 Praxisbeispiel: Vollständiger Flow per cURL (Software Attestation)
+
+Die folgenden cURL-Befehle zeigen den aktuell unterstützten Software-Attestation-Flow Ende-zu-Ende. Ersetzen Sie die Platzhalter (`$AUTH_SERVER`, `$CLIENT_ID`, etc.) durch Ihre konkreten Werte.
+
+**Schritt 1 — Discovery:**
+
+```bash
+# PEP-Metadaten abrufen
+curl -s https://$RESOURCE_SERVER/.well-known/oauth-protected-resource | jq .
+
+# PDP-Metadaten abrufen
+curl -s https://$AUTH_SERVER/.well-known/oauth-authorization-server | jq .
+```
+
+**Schritt 2 — Client-Registrierung (DCR):**
+
+```bash
+curl -X POST https://$AUTH_SERVER/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_name": "Mein Primärsystem v1.0",
+    "token_endpoint_auth_method": "private_key_jwt",
+    "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"],
+    "jwks": {
+      "keys": [{
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "'$PUK_CLIENT_X'",
+        "y": "'$PUK_CLIENT_Y'",
+        "use": "sig",
+        "kid": "'$CLIENT_KEY_ID'"
+      }]
+    }
+  }'
+# → 201 Created mit client_id
+```
+
+**Schritt 3 — Nonce abrufen:**
+
+```bash
+NONCE=$(curl -s https://$AUTH_SERVER/nonce | jq -r '.nonce')
+```
+
+**Schritt 4 — Token Exchange:**
+
+```bash
+# Voraussetzungen: $CLIENT_ASSERTION_JWT und $SUBJECT_TOKEN_JWT
+# müssen zuvor programmatisch erstellt und signiert werden.
+# Der DPoP-Proof ($DPOP_PROOF) wird mit dem kurzlebigen DPoP-Key signiert.
+
+curl -X POST https://$AUTH_SERVER/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -H "DPoP: $DPOP_PROOF" \
+  -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange\
+&subject_token=$SUBJECT_TOKEN_JWT\
+&subject_token_type=urn:ietf:params:oauth:token-type:jwt\
+&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer\
+&client_assertion=$CLIENT_ASSERTION_JWT"
+# → 200 OK mit access_token, refresh_token
+```
+
+**Schritt 5 — Resource Server anfragen:**
+
+```bash
+curl -X GET https://$RESOURCE_SERVER/api/resource \
+  -H "Authorization: DPoP $ACCESS_TOKEN" \
+  -H "DPoP: $DPOP_PROOF_FOR_RS"
+```
+
+*Bei Fehlern in jedem Schritt siehe [8.2 API Fehler-Tabelle & Troubleshooting](#82-api-fehler-tabelle--troubleshooting).*
+
 ---
 
 ## 5. Mobile Clients (Android, iOS, iPadOS)
 
-### Quick Start: 5-Punkte-Checkliste für Entwickler
-1. **[ ] Zertifikate laden**: Mobile OS-Vertrauensanker und optionale Client-Zertifikate initialisieren.
-2. **[ ] Keys generieren**: Hardwarebasierten Client Instance Key (`PuK.Client.Sig`) im TEE / StrongBox (Android) bzw. in der Secure Enclave (iOS) erstellen.
-3. **[ ] DCR aufrufen**: Registrierung absenden (`POST /register`) mit TOFU-OTP-Verifikation, um den Status `pending_attestation` zu erlangen.
-4. **[ ] Nutzer authentifizieren**: Authentifizierung per OIDC Authorization Code Flow (wird in einer späteren Version dieses Dokuments ergänzt).
-5. **[ ] RS anfragen**: DPoP-gebundenes Token im Header mitsenden und die Ziel-API `/api/resource` aufrufen.
+> **Preview** — Dieses Kapitel beschreibt den geplanten Ablauf für mobile Clients. Die Implementierung ist noch nicht abgeschlossen. Änderungen an Endpunkten, Payloads und Abläufen sind vorbehalten. Die hier beschriebenen Abläufe umfassen ausschließlich die Dynamic Client Registration (DCR). Die Authentifizierung der Nutzer erfolgt per OIDC und wird in einer späteren Version ergänzt.
+
+### Quick Start: Welches Kapitel betrifft mich?
+
+| Ihr Client-Szenario | Attestation-Typ | Kapitel | Status |
+|---------------------|-----------------|---------|--------|
+| iOS / iPadOS **mit** Secure Enclave | Apple App Attest | [5.1](#51-ios-und-ipados-clients-mit-apple-app-attest-attestation) | Preview |
+| Android **mit** TEE / StrongBox | Android Key Attestation | [5.2](#52-android-clients-mit-android-key-attestation) | Preview |
+| Mobil **ohne** Hardware-Sicherheit | Software Attestation | [5.3](#53-mobile-clients-mit-software-attestation) | Preview |
+
+**Integrations-Checkliste (alle mobilen Clients):**
+
+1. **[ ] Discovery**: FQDN des Resource Servers → PDP-Metadaten laden ([Kapitel 3](#3-discovery-und-konfiguration))
+2. **[ ] Keys generieren**: Client Instance Key (`PuK.Client.Sig`) im TEE / StrongBox (Android) bzw. in der Secure Enclave (iOS) erstellen.
+3. **[ ] DCR aufrufen**: Registrierung absenden (`POST /register`) → TOFU-OTP per E-Mail empfangen → `POST /register/verify` mit OTP-Code.
+4. **[ ] Nutzer authentifizieren**: OIDC Authorization Code Flow mit PKCE *(wird in späterer Version ergänzt)*.
+5. **[ ] RS anfragen**: DPoP-gebundenes Token im Header mitsenden und die Ziel-API aufrufen ([Kapitel 7](#7-zugriff-auf-den-resource-server)).
 
 ---
 
@@ -1090,7 +1213,7 @@ Der Token-Bezug für mobile Benutzer erfolgt über den standardisierten **OpenID
 Für die sichere Maschine-zu-Maschine Interaktion zwischen Backends wird die **Workload Identity Federation** etabliert. Ein Backend-Dienst authentifiziert sich mit einem signierten JWT (ausgestellt durch den eigenen PDP/Kubernetes IDP) am token_endpoint des Ziel-Dienstes.
 
 ### 6.1 POST /token (Client Credentials & Token Exchange)
-*Siehe auch [Abbildung 16: Dienst-zu-Dienst Kommunikation](../../../images/zeta-flows/Abb-ZETA-Dienst-zu-Dienst-Kommunikation.svg)*
+*Siehe auch [Abbildung 20: Dienst-zu-Dienst Kommunikation](../../../images/zeta-flows/Abb-ZETA-Dienst-zu-Dienst-Kommunikation.svg)*
 
 **Anfrage-Beispiel:**
 ```http
@@ -1123,7 +1246,7 @@ Content-Type: application/json
 Nach erfolgreichem Erhalt der Access-Token sendet der ZETA-Client Anfragen an den Fachdienst (Resource Server).
 
 ### 7.1. Option A: Zugriff mit ZETA/ASL (Tunnelverschlüsselung)
-*Siehe auch [Abbildung 14: Zugriff auf RS mit ASL](../../../images/zeta-flows/Abb-ZETA-Zugriff-auf-RS-mit-ASL.svg)*
+*Siehe auch [Abbildung 21: Zugriff auf RS mit ASL](../../../images/zeta-flows/Abb-ZETA-Zugriff-auf-RS-mit-ASL.svg)*
 
 Erfordert der Fachdienst eine dedizierte Verschlüsselung (ASL), baut der Client einen verschlüsselten Tunnel auf. Der Client sendet die verschlüsselten Fachdaten per HTTP `POST` an den Endpoint `/ASL` des PEP Proxys.
 
@@ -1141,7 +1264,7 @@ DPoP: eyJhbGciOiJFUzI1NiIsInR5cCI6ImRwb3Arand0IiwiandrIjp7...
 ---
 
 ### 7.2. Option B: Direkter Zugriff ohne ZETA/ASL
-*Siehe auch [Abbildung 15: Zugriff auf RS ohne ASL](../../../images/zeta-flows/Abb-ZETA-Zugriff-auf-RS-ohne-ASL.svg)*
+*Siehe auch [Abbildung 22: Zugriff auf RS ohne ASL](../../../images/zeta-flows/Abb-ZETA-Zugriff-auf-RS-ohne-ASL.svg)*
 
 Der Client sendet den Request direkt an den PEP mit dem Access Token im `Authorization`-Header (DPoP-gebunden) und dem DPoP-Proof im `DPoP`-Header.
 
@@ -1253,3 +1376,33 @@ Bei technischen Supportanfragen, Fehlerberichten oder Fragen zur Zertifizierung 
 - **E-Mail-Support**: <support.zeta@gematik.de>
 - **Developer Forum**: <https://forum.ti-dienste.de/c/zeta-developer>
 - **Bugtracker**: <https://github.com/gematik/zeta/issues>
+
+---
+
+## Glossar
+
+| Abkürzung | Bedeutung | Beschreibung |
+|-----------|-----------|--------------|
+| **AK** | Attestation Key | Hardwaregebundener Schlüssel zur Signatur von Attestation Evidence (TPM Quote bzw. Apple App Attest Assertion). |
+| **ASL** | Application-layer Security Link | Zusätzliche Verschlüsselungsschicht zwischen Client und Resource Server (JWE-basiert). |
+| **AuthS** | Authorization Server | Der PDP in seiner Rolle als OAuth 2.0 Authorization Server (Token-Ausstellung, DCR). |
+| **DCR** | Dynamic Client Registration | Registrierungsprozess, bei dem ein Client seine Identität beim ZETA Guard etabliert (RFC 7591). |
+| **DPoP** | Demonstrating Proof-of-Possession | Mechanismus zur Bindung von Access Tokens an einen kryptografischen Schlüssel (RFC 9449). |
+| **EK** | Endorsement Key | Herstellerseitig erzeugter, nicht-exportierbarer TPM-Schlüssel zur Identifikation des Chips. |
+| **FQDN** | Fully Qualified Domain Name | Vollqualifizierter Domänenname des geschützten Resource Servers. |
+| **IPC** | Inter-Process Communication | Kommunikationskanal zwischen ZAS (privilegiert) und ZETA Client (User Space). |
+| **OPA** | Open Policy Agent | Policy Engine im PDP zur Auswertung von Autorisierungsregeln. |
+| **OTP** | One-Time Password | Einmal-Passwort für die TOFU-Verifizierung bei mobilen Clients. |
+| **PCR** | Platform Configuration Register | TPM-Register, in die Integritätsmessungen geschrieben werden. |
+| **PDP** | Policy Decision Point | Zentrale Entscheidungskomponente im ZETA Guard (Authorization Server + Policy Engine). |
+| **PEP** | Policy Enforcement Point | HTTP Reverse Proxy, der Zugriffsentscheidungen des PDP durchsetzt. |
+| **PKCE** | Proof Key for Code Exchange | Erweiterung des OAuth Authorization Code Flow gegen Code-Interception (RFC 7636). |
+| **PoPP** | Proof of Patient Presence | Token zum Nachweis der Anwesenheit eines Versicherten (VSDM2-Kontext). |
+| **SE** | Secure Enclave | Apple-Hardware-Sicherheitsmodul zur Schlüsselgenerierung und -speicherung. |
+| **SMC-B** | Security Module Card Typ B | Smartcard mit dem Institutionszertifikat des Leistungserbringers. |
+| **SRK** | Storage Root Key | Lokaler Vertrauensanker im TPM, unter dem weitere Schlüssel hierarchisch erzeugt werden. |
+| **TEE** | Trusted Execution Environment | Hardware-isolierte Ausführungsumgebung auf Android-Geräten. |
+| **TOFU** | Trust-On-First-Use | Vertrauensmodell, bei dem der Nutzer beim ersten Kontakt seine Identität per OTP bestätigt. |
+| **TPM** | Trusted Platform Module | Hardware-Sicherheitschip (Version 2.0) zur Schlüsselverwaltung und Integritätsmessung. |
+| **TSL** | Trust-service Status List | Liste vertrauenswürdiger CA-Zertifikate in der TI-Infrastruktur. |
+| **ZAS** | ZETA Attestation Service | Privilegierter Hintergrunddienst auf Windows/Linux, der das TPM anspricht und Messungen durchführt. |
