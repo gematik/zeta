@@ -20,8 +20,10 @@
       - [4.1.2 Client Start und Baseline-Aktualisierung](#412-client-start-und-baseline-aktualisierung)
       - [4.1.3 Vorbereitung der Client-Registrierung (Key Certification)](#413-vorbereitung-der-client-registrierung-key-certification)
       - [4.1.4 Dynamic Client Registration (DCR)](#414-dynamic-client-registration-dcr)
-        - [4.1.4.1 Dynamic Client Registration Endpoint](#4141-dynamic-client-registration-endpoint)
-        - [7.1.4.1 Anfrage-Beispiele](#7141-anfrage-beispiele)
+        - [4.1.4.1 Dynamic Client Registration Request](#4141-dynamic-client-registration-request)
+        - [4.1.4.2 Dynamic Client Registration Response](#4142-dynamic-client-registration-response)
+        - [4.1.4.3 Registration Verification Request](#4143-registration-verification-request)
+        - [4.1.4.4 Registration Verification Response](#4144-registration-verification-response)
         - [4.1.2.1 Endpunkt-Spezifikationen für das Bootstrapping](#4121-endpunkt-spezifikationen-für-das-bootstrapping)
           - [4.1.2.1.1 GET /nonce](#41211-get-nonce)
           - [4.1.1.1.2 POST /register](#41112-post-register)
@@ -318,6 +320,8 @@ Vor der Registrierung beim ZETA Guard Authorization Server (AuthS) erbringt der 
 
 #### 4.1.4 Dynamic Client Registration (DCR)
 
+Die Dynamic Client Registration ermöglicht die Registrierung neuer Clients beim ZETA Guard AuthS. Die Registrierung verknüpft den Client Instance Key mit dem TPM Attestation Key (AK) und dem Endorsement Key (EK). Mit dem Client Instance Key wird die Client assertion signiert, mit der sich der Client am /token Endpoint des ZETA Guard authentifiziert.
+
 - **Verwendete Endpunkt-Pfade (Windows/Linux):** `POST /register` und `POST /register/verify`
 - *(01) POST /register:* Der ZETA Client sendet die Registrierungsanfrage gemäß Schema [dcr-request.yaml](../../../src/schemas/dcr-request.yaml) an den PDP AuthS. Der Body enthält `attestation_type: "tpm"`, `PuK.Client.Sig`, `PuK.AK.Sig`, `PuK.EK.Enc`, `C.EK.Enc` und `signed_hash_puk_client_sig`.
 - *(02)–(03) MakeCredential:* Der AuthS validiert die EK-Zertifikatskette gegen die Hersteller-CA. Zur Verifikation des Schlüsselbesitzes generiert er ein verschlüsseltes `CredentialBlob` per `TPM2_MakeCredential` (verschlüsselt mit `PuK.EK.Enc`, gebunden an `PuK.AK.Sig`) und antwortet mit `202 Accepted {CredentialBlob}`.
@@ -326,28 +330,24 @@ Vor der Registrierung beim ZETA Guard Authorization Server (AuthS) erbringt der 
 
 ![Abbildung 5: DCR für Windows oder Linux Clients mit TPM Attestation](../../../images/zeta-flows/Abb-ZETA-DCR-für-stationäre-Win-Linux-Clients-TPM-Att.svg)
 
-##### 4.1.4.1 Dynamic Client Registration Endpoint
+##### 4.1.4.1 Dynamic Client Registration Request
 
-Ermöglicht die Registrierung neuer Clients beim ZETA Guard AuthS. Die Registrierung verknüpft den Client Instance Key mit dem TPM Attestation Key (AK) und dem Endorsement Key (EK).
-
-- **Pfad:** `POST /register`
-- **Request-Schema:** [dcr-request.yaml](../../../src/schemas/dcr-request.yaml)
-
-##### 7.1.4.1 Anfrage-Beispiele
-
-**1. TPM Hardware Attestation (Windows / Linux):**
+- **Pfad:** gemäß [OAuth-Authorization-Server Well-known](../../../src/schemas/as-well-known.yaml) Discovery (z. B. `/register`)
+*Request-Schema:* [dcr-request.yaml](../../../src/schemas/dcr-request.yaml)
 
 ```http
 POST /register HTTP/1.1
 Host: auth.example.com
 Content-Type: application/json
+```
 
+```json
 {
   "attestation_type": "tpm",
-  "client_name": "Praxis-PC-123",
+  "client_name": "ZETA Secure Desktop Agent v1.2",
   "token_endpoint_auth_method": "private_key_jwt",
   "grant_types": [
-    "urn:ietf:params:oauth:grant-type:token-exchange",
+    "authorization_code",
     "refresh_token"
   ],
   "jwks": {
@@ -355,21 +355,78 @@ Content-Type: application/json
       {
         "kty": "EC",
         "crv": "P-256",
-        "x": "MKBJD5N2457sT_yP...",
-        "y": "89sDJNskd98sJDsd...",
+        "x": "usWxHK2PmfnHKwXPS54m0kTcGJ90UiglWiGahtagnv8",
+        "y": "IBOL-C3BttVivg-lSreASfpEcgHQ4Bgv_9ZWeA-mBik",
         "use": "sig",
-        "kid": "client-instance-key-1"
+        "kid": "client-key-tpm-001"
       }
     ]
   },
-  "puk_ek_enc": {
-    "kty": "RSA",
-    "n": "0vx7agoebGcQSuuPiLJ...",
-    "e": "AQAB"
-  },
-  "c_ek_enc": "MIIFvTCCA6WgAwIBAgITG3o...",
-  "puk_ak_sig": "AABtAFAAFAAAAAAA...",
-  "signed_hash_puk_client_sig": "MEQCIE7sYJ89sJDskd..."
+  "puk_ek_enc": "AEIA...<hier Base64 kodierte TPM2B_PUBLIC Struktur des EK>...AABB",
+  "c_ek_enc": "MIICzjCCAjagAwIBAgIGAXxP...<hier Base64 kodierte DER X.509 Zertifikat>...z3k=",
+  "puk_ak_sig": "AE4A...<hier Base64 kodierte TPM2B_PUBLIC Struktur des AK>...ZZXX",
+  "signed_hash_puk_client_sig": "MEQCIFz...<hier Base64url kodierte ECDSA Signatur>...A5Y_"
+}
+```
+
+##### 4.1.4.2 Dynamic Client Registration Response
+
+**Antwort-Beispiel (202 Accepted):**
+*Response-Schema:* [dcr-response-202.yaml](../../../src/schemas/dcr-response-202.yaml)
+
+```http
+HTTP/1.1 202 Accepted
+Content-Type: application/json
+```
+
+```json
+{
+  "transaction_id": "c2257dd9-835f-4f87-80c6-91b41851c4e2",
+  "status": "pending_verification",
+  "expires_in": 600,
+  "challenge_type": "tpm_activation",
+  "tpm_credential_blob": "MIIDEzCCAvugAwIBAgIGAXxPq...",
+  "tpm_encrypted_secret": "AwEE..."
+}
+```
+
+##### 4.1.4.3 Registration Verification Request
+
+- **Pfad:** Der erste Teil des Pfades wird gemäß [OAuth-Authorization-Server Well-known](../../../src/schemas/as-well-known.yaml) Discovery ermittelt (z. B. `/register`). Der zweite Teil ist fest `/verify` (z. B. `/register/verify`).
+*Request-Schema:* [verify-request.yaml](../../../src/schemas/verify-request.yaml)
+
+```http
+POST /register/verify HTTP/1.1
+Host: auth.example.com
+Content-Type: application/json
+```
+
+```json
+{
+  "transaction_id": "a43b2c19-1234-4e56-b789-0123456789ab",
+  "verify_type": "tpm_activation",
+  "tpm_decrypted_secret": "v2OZW+H/tF7W4u5S/Z8E9HlUaX9aC1gL5vXo4p3YQfI="
+}
+```
+
+##### 4.1.4.4 Registration Verification Response
+
+**Antwort-Beispiel (202 Accepted):**
+*Response-Schema:* gemäß OIDC DCR Response
+
+```http
+HTTP/1.1 202 Accepted
+Content-Type: application/json
+```
+
+```json
+{
+  "transaction_id": "c2257dd9-835f-4f87-80c6-91b41851c4e2",
+  "status": "pending_verification",
+  "expires_in": 600,
+  "challenge_type": "tpm_activation",
+  "tpm_credential_blob": "MIIDEzCCAvugAwIBAgIGAXxPq...",
+  "tpm_encrypted_secret": "AwEE..."
 }
 ```
 
