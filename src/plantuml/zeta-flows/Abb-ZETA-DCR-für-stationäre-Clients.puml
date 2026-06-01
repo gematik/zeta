@@ -39,7 +39,6 @@ alt Kein ZETA Guard Attestation Token
 
     else Software Attestation (Legacy OIDC DCR)
         Client -> AuthS: POST /register\n{\n  "client_name": "myClient",\n  "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"],\n  "jwks": { "keys": [ PuK.Client.Sig ] },\n  "token_endpoint_auth_method": "private_key_jwt"\n}
-        AuthS -> AuthS: Store Client Placeholder (state: pending_attestation)
     end
 
 else ZETA Attestation Token vorhanden
@@ -48,6 +47,7 @@ else ZETA Attestation Token vorhanden
     AuthS -> AuthS: Extrahiere PuK.AK.Sig aus Token, prüfe signed_Hash_PuK.Client.Sig
 end
 
+AuthS -> AuthS: Store Client Placeholder (state: pending_user_binding)
 AuthS --> Client--: 201 Created {client_id}
 
 @enduml

@@ -1,7 +1,6 @@
 @startuml "Abb-ZETA-Zugriff-auf-RS-ohne-ASL"
 !include ../puml-layout.txt
 
-
 Actor User
 box "Primärsystem" PRIMAERSYSTEM_COLOR
   participant FC as "Fach-Client" <<provider>>
