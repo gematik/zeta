@@ -2,15 +2,15 @@
 
 ## Dokumenten- und Versionsübersicht
 
-|                             |                             |
-|-----------------------------|-----------------------------|
-| Dokumenttitel               | ZETA API v1.3.1             |
-| Dokumentversion             | 1.3.1                       |
-| Stand                       | 01.06.2026                  |
-| Status                      | Draft                       |
-| Verantwortlich              | gematik                     |
-| Gültigkeitsbereich          | ZETA Guard API              |
-| Spezifikationsgrundlage     | gemSpec_ZETA, Version 1.3.1 |
+|                               |                               |
+| ----------------------------- | ----------------------------- |
+| Dokumenttitel                 | ZETA API v1.3.1               |
+| Dokumentversion               | 1.3.1                         |
+| Stand                         | 01.06.2026                    |
+| Status                        | Draft                         |
+| Verantwortlich                | gematik                       |
+| Gültigkeitsbereich            | ZETA Guard API                |
+| Spezifikationsgrundlage       | gemSpec_ZETA, Version 1.3.1   |
 
 ---
 
@@ -221,17 +221,15 @@ Die folgende Abbildung zeigt den Attestierungsablauf im Überblick und die Unter
 ### Quick Start: Welches Kapitel betrifft mich?
 
 | Ihr Client-Szenario | Attestation-Typ | Kapitel | Status |
-|---------------------|-----------------|---------|--------|
+| --------------------- | ----------------- | --------- | -------- |
 | Windows / Linux **mit** TPM 2.0 | TPM Hardware Attestation | [4.1](#41-windows-oder-linux-clients-mit-tpm-attestation) | Preview |
 | macOS **mit** Secure Enclave | Apple App Attest | [4.2](#42-macos-clients-mit-apple-app-attest-attestation) | Preview |
 | Stationär **ohne** Hardware-Sicherheit | Software Attestation | [4.3](#43-stationäre-clients-mit-rein-software-basierter-attestation) | **Unterstützt** |
 
-
-
 #### Endpunkt-Übersicht (Stationäre Clients)
 
 | Endpunkt | Methode | Zweck | Relevant für |
-|----------|---------|-------|--------------|
+| ---------- | --------- | ------- | -------------- |
 | `/.well-known/oauth-protected-resource` | GET | PEP-Metadaten und AuthS-Verweis abrufen | Alle Client-Typen |
 | `/.well-known/oauth-authorization-server` | GET | PDP-Endpunkte und Konfiguration abrufen | Alle Client-Typen |
 | `/register` | POST | Client-Registrierung starten (DCR) | Alle Client-Typen |
@@ -242,7 +240,7 @@ Die folgende Abbildung zeigt den Attestierungsablauf im Überblick und die Unter
 #### Token-Lebenszyklus
 
 | Token | Typische Gültigkeit | Erneuerung | Bindung |
-|-------|-----------|------------|---------|
+| ------- | ----------- | ------------ | --------- |
 | **Access Token** | 300 s (5 min) | Über Refresh Token oder neuen Token Exchange | DPoP-gebunden (an `PuK.DPoP.Sig`) |
 | **Refresh Token** | 86 400 s (24 h) | Einmalig einlösbar (Rotation bei Nutzung) | An `client_id` gebunden |
 | **DPoP Proof** | Einmalig verwendbar | Jeder Request benötigt neuen Proof | An HTTP-Methode + URI gebunden |
@@ -764,7 +762,7 @@ curl -X GET https://$RESOURCE_SERVER/api/resource \
 ### Quick Start: Welches Kapitel betrifft mich?
 
 | Ihr Client-Szenario | Attestation-Typ | Kapitel | Status |
-|---------------------|-----------------|---------|--------|
+| --------------------- | ----------------- | --------- | -------- |
 | iOS / iPadOS **mit** Secure Enclave | Apple App Attest | [5.1](#51-ios-und-ipados-clients-mit-apple-app-attest-attestation) | Preview |
 | Android **mit** TEE / StrongBox | Android Key Attestation | [5.2](#52-android-clients-mit-android-key-attestation) | Preview |
 | Mobil **ohne** Hardware-Sicherheit | Software Attestation | [5.3](#53-mobile-clients-mit-software-attestation) | Preview |
@@ -1233,7 +1231,7 @@ Sämtliche Fehler der ZETA Guard Endpunkte folgen dem JSON-Schema [zeta-error.ya
 ### 8.2 API Fehler-Tabelle & Troubleshooting
 
 | HTTP Status | Fehler-Code (`error`) | Mögliche Ursache | Troubleshooting-Schritte |
-|-------------|-----------------------|------------------|--------------------------|
+| ------------- | ----------------------- | ------------------ | -------------------------- |
 | **400** | `invalid_request` | Der DPoP-Proof oder das HTTP-Format ist ungültig. | 1. Gültigkeit des `DPoP`-Headers prüfen (z.B. Zeitstempel, URI).<br>2. Parameter im URL-kodierten Request-Body validieren. |
 | **401** | `invalid_client` | Die Signatur der Client Assertion ist ungültig oder der Client Instance Key unbekannt. | 1. DCR-Registrierungsstatus des Clients prüfen.<br>2. Verwendeten Signaturalgorithmus und Schlüssel verifizieren. |
 | **403** | `access_denied` | Attestierungsprüfung fehlgeschlagen; PCR-Werte weichen von Baseline ab. | 1. TPM PCRs prüfen (Integrität von ZAS/System).<br>2. Sicherstellen, dass keine unerlaubte Kernel-Modifikation vorliegt. |
@@ -1253,7 +1251,7 @@ Um ein klares Verständnis der kryptografischen Architektur zu vermitteln, verwe
 Diese Schlüssel verbleiben in der Verfügungsgewalt des Endnutzers (Smartphone / Primärsystem) bzw. der Institution.
 
 | Schlüssel-ID | Bezeichnung & Zweck | Speicherung / Verwendung |
-|--------------|---------------------|--------------------------|
+| -------------- | --------------------- | -------------------------- |
 | **PrK.Client.Sig**<br>**PuK.Client.Sig** | Client Instance Key Pair<br>Langlebiges ECC-Schlüsselpaar zur Identifikation der Client-Installation. | PrK: Zwingend in Hardware (TPM, Secure Enclave, TEE) generiert und gespeichert. Kein Export möglich.<br>PuK: Wird bei der Registrierung (DCR) an den ZETA Guard übertragen. |
 | **PrK.DPoP.Sig**<br>**PuK.DPoP.Sig** | DPoP Schlüsselpaar<br>Kurzlebiger (Session-basierter) Schlüssel zum Signieren von Anfragen als Proof of Possession. | PrK: Wird für die Dauer der Session sicher lokal gehalten (RAM). Eine Verschlüsselung durch `PrK.Client.Sig` ist unzulässig.<br>PuK: Wird im HTTP-Header gesendet. |
 | **PrK.AK.Sig**<br>**PuK.AK.Sig** | Plattform Attestation Key<br>Zur Signatur des Client-Zustands. | PrK: Hardware-gebunden (TPM / Secure Enclave).<br>PuK: Wird bei der Registrierung (DCR) an den ZETA Guard übertragen. |
@@ -1267,7 +1265,7 @@ Diese Schlüssel verbleiben in der Verfügungsgewalt des Endnutzers (Smartphone 
 Diese Zertifikate und Schlüssel werden im ZETA Kontext verwendet. Sie sind Bestandteil der Telematikinfrastruktur (TI).
 
 | Schlüssel-ID | Bezeichnung & Zweck | Speicherung / Verteilung |
-|--------------|---------------------|--------------------------|
+| -------------- | --------------------- | -------------------------- |
 | **PrK.TI-RootCA.Sig**<br>**C.TI-RootCA.Sig** | TI Root CA<br>Oberster Vertrauensanker der TI. | C: Lokal in Truststores hinterlegt.<br>PrK: Offline / Hochsicher bei der gematik. |
 | **PrK.TI-KompCA.Sig**<br>**C.TI-KompCA.Sig** | Komponenten PKI CA<br>Stellt die Zertifikate für die TI-Dienste aus. | C: Über die TSL als vertrauenswürdig verteilt. |
 | **PrK.TI-SMCB-CA.Sig**<br>**C.TI-SMCB-CA.Sig** | SMC-B CA<br>Stellt die Institutionszertifikate aus. | C: Über die TSL als vertrauenswürdig verteilt. |
@@ -1304,7 +1302,7 @@ Bitte beachten Sie das [CONTRIBUTING.md](../../CONTRIBUTING.md) für Information
 ## Glossar
 
 | Abkürzung | Bedeutung | Beschreibung |
-|-----------|-----------|--------------|
+| ----------- | ----------- | -------------- |
 | **AK** | Attestation Key | Hardwaregebundener Schlüssel zur Signatur von Attestation Evidence (TPM Quote bzw. Apple App Attest Assertion). |
 | **ASL** | Application-layer Security Link | Zusätzliche Verschlüsselungsschicht zwischen Client und Resource Server (JWE-basiert). |
 | **AuthS** | Authorization Server | Der PDP in seiner Rolle als OAuth 2.0 Authorization Server (Token-Ausstellung, DCR). |
