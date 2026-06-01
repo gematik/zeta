@@ -2,12 +2,12 @@
 
 ## Dokumenten- und Versionsübersicht
 
-| Attribut                    | Wert                        |
+|                             |                             |
 |-----------------------------|-----------------------------|
 | Dokumenttitel               | ZETA API v1.3.0             |
 | Dokumentversion             | 1.3.0                       |
-| Stand                       | 2026-05-27                  |
-| Status                      | Draft                 |
+| Stand                       | 01.06.2026                  |
+| Status                      | Draft                       |
 | Verantwortlich              | gematik                     |
 | Gültigkeitsbereich          | ZETA Guard API              |
 | Spezifikationsgrundlage     | gemSpec_ZETA, Version 1.3.1 |
@@ -17,6 +17,9 @@
 ### Docker-Image Referenzen
 
 Die ZETA Komponenten werden als OCI-konforme Container Images in der ZETA Artifact Registry bereitgestellt.  
+
+<details>
+<summary>Details anzeigen</summary>
 
 Repository DCR: [europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr](https://europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr)
 
@@ -43,6 +46,8 @@ Repository HELM: [europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-helm](ht
 - Cert Validation Mock (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/zeta-cert-validation-mock)
 - PoPP Token Generator (europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-dcr/popp-token-generator)
 
+</details>
+
 ---
 
 ## 1. Einführung
@@ -65,6 +70,22 @@ Bevor ein ZETA-Client erfolgreich mit einem Resource Server kommunizieren kann, 
 2. **Trust Anchor Informationen (`roots.json`)**: Die Datei [roots.json](https://download.tsl.ti-dienste.de/ECC/ROOT-CA/roots.json) dient dem Client als lokaler Vertrauensanker, um die Vertrauenskette beim Aufbau einer ZETA/ASL-Verbindung zu validieren. Diese Datei muss wöchentlich aktualisiert werden.
 3. **Konnektor und SMC-B**: Bei stationären Clients im Leistungserbringer-Umfeld wird zur Authentifizierung der Institution ein SMC-B-Institutionszertifikat sowie die Schnittstelle des Konnektors oder TI-Gateways benötigt.
 4. **VSDM2 (Versichertenstammdatenmanagement 2.0)**: Für fachspezifische Anfragen an einen VSDM2-Resource-Server muss ein gültiges **PoPP-Token** (Proof of Patient Presence) im HTTP-Header `PoPP` an den ZETA-Client übergeben und an die PDP übermittelt werden.
+
+### Ablauf Übersicht (alle stationären Clients)
+
+- [ ] Discovery: FQDN des Resource Servers → `GET /.well-known/oauth-protected-resource` → PDP-Metadaten laden ([Kapitel 3](#3-discovery-und-konfiguration))
+
+- [ ] Zertifikate laden: Lokale TI-Vertrauensanker-CA-Zertifikate (`roots.json`) einbinden und SMC-B-Institutionszertifikat auslesen.
+
+- [ ] Keys generieren: Client Instance Key (`PrK.Client.Sig` / `PuK.Client.Sig`) erzeugen — plattformabhängig (TPM, Secure Enclave oder Software).
+
+- [ ] DCR aufrufen: Client am ZETA Guard registrieren (`POST /register`). Je nach Attestation-Typ mit Challenge-Handling (TPM), Attestation Object (Apple) oder nur JWK.
+
+- [ ] Token abholen: Nonce abrufen (`GET /nonce`) → Subject Token mit SM(C)-B signieren → Client Assertion erstellen → `POST /token` mit DPoP-Proof.
+
+- [ ] RS anfragen: DPoP-gebundenes Access Token im `Authorization`-Header mitsenden und die geschützte API des Resource Servers anfragen ([Kapitel 7](#7-zugriff-auf-den-resource-server)).
+
+*Hinweis: Eine Übersicht der verwendeten Schlüssel ist in [Kapitel 9](#9-schlüsselverwaltung) zu finden.*
 
 ---
 
@@ -205,16 +226,7 @@ Die folgende Abbildung zeigt den Attestierungsablauf im Überblick und die Unter
 | macOS **mit** Secure Enclave | Apple App Attest | [4.2](#42-macos-clients-mit-apple-app-attest-attestation) | Preview |
 | Stationär **ohne** Hardware-Sicherheit | Software Attestation | [4.3](#43-stationäre-clients-mit-rein-software-basierter-attestation) | **Unterstützt** |
 
-**Integrations-Checkliste (alle stationären Clients):**
 
-1. **[ ] Discovery**: FQDN des Resource Servers → `GET /.well-known/oauth-protected-resource` → PDP-Metadaten laden ([Kapitel 3](#3-discovery-und-konfiguration))
-2. **[ ] Zertifikate laden**: Lokale TI-Vertrauensanker CA-Zertifikate (`roots.json`) einbinden und SMC-B-Institutionszertifikat auslesen.
-3. **[ ] Keys generieren**: Client Instance Key (`PrK.Client.Sig` / `PuK.Client.Sig`) erzeugen — plattformabhängig (TPM, Secure Enclave oder Software).
-4. **[ ] DCR aufrufen**: Client am ZETA Guard registrieren (`POST /register`). Je nach Attestation-Typ mit Challenge-Handling (TPM), Attestation Object (Apple) oder nur JWK.
-5. **[ ] Token abholen**: Nonce abrufen (`GET /nonce`) → Subject Token mit SM(C)-B signieren → Client Assertion erstellen → `POST /token` mit DPoP-Proof.
-6. **[ ] RS anfragen**: DPoP-gebundenes Access Token im `Authorization`-Header mitsenden und die geschützte API des Resource Servers anfragen ([Kapitel 7](#7-zugriff-auf-den-resource-server)).
-
-*Hinweis: Eine Übersicht der verwendeten Schlüssel ist in [Kapitel 9](#9-schlüsselverwaltung) zu finden.*
 
 #### Endpunkt-Übersicht (Stationäre Clients)
 
@@ -1149,7 +1161,7 @@ Nach erfolgreichem Erhalt der Access-Token sendet der ZETA-Client Anfragen an de
 
 ### 7.1. Option A: Zugriff mit ZETA/ASL (Tunnelverschlüsselung)
 
-*Siehe auch [Abbildung 21: Zugriff auf RS mit ASL](../../../images/zeta-flows/Abb-ZETA-Zugriff-auf-RS-mit-ASL.svg)*
+![Abbildung 21: Zugriff auf RS mit ASL](../../../images/zeta-flows/Abb-ZETA-Zugriff-auf-RS-mit-ASL.svg)*
 
 Erfordert der Fachdienst eine dedizierte Verschlüsselung (ASL), baut der Client einen verschlüsselten Tunnel auf. Der Client sendet die verschlüsselten Fachdaten per HTTP `POST` an den Endpoint `/ASL` des PEP Proxys.
 
@@ -1169,7 +1181,7 @@ DPoP: eyJhbGciOiJFUzI1NiIsInR5cCI6ImRwb3Arand0IiwiandrIjp7...
 
 ### 7.2. Option B: Direkter Zugriff ohne ZETA/ASL
 
-*Siehe auch [Abbildung 22: Zugriff auf RS ohne ASL](../../../images/zeta-flows/Abb-ZETA-Zugriff-auf-RS-ohne-ASL.svg)*
+*![Abbildung 22: Zugriff auf RS ohne ASL](../../../images/zeta-flows/Abb-ZETA-Zugriff-auf-RS-ohne-ASL.svg)*
 
 Der Client sendet den Request direkt an den PEP mit dem Access Token im `Authorization`-Header (DPoP-gebunden) und dem DPoP-Proof im `DPoP`-Header.
 
