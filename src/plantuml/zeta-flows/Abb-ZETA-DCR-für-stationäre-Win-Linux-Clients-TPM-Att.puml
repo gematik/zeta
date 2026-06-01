@@ -1,0 +1,43 @@
+@startuml "Abb-ZETA-DCR-für-stationäre-Win-Linux-Clients-TPM-Att"
+!include ../puml-layout.txt
+
+
+box "Device" DEVICE_COLOR
+  participant "TPM" as TPM LEI_COMPONENT_COLOR
+  participant ZAS as "ZAS" <<zeta>>
+  box "Primärsystem" PRIMAERSYSTEM_COLOR
+    participant Client as "ZETA Client" <<zeta>>
+  end box
+end box
+
+box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
+  box "ZETA Guard" ZETA_GUARD_COLOR
+    participant AuthS as "PDP\nAuthorization Server" <<zeta>>
+  end box
+end box
+
+alt Kein ZETA Guard Attestation Token vorhanden
+    Client++
+    Client -> AuthS++: POST /register\n{attestation_type="tpm", PuK.EK.Enc, C.EK.Enc,\nPuK.AK.Sig, PuK.Client.Sig, signed_Hash_PuK.Client.Sig}
+    AuthS -> AuthS: Validiere C.EK.Enc-Chain & signed_Hash_PuK.Client.Sig
+    AuthS -> AuthS: CredentialBlob = MakeCredential(...);\n(TPM 2.0 Commands, Section 12.5)
+    AuthS --> Client: 202 Accepted {CredentialBlob}
+
+    Client -> ZAS++: Activate(CredentialBlob)
+    ZAS -> TPM++: TPM2_ActivateCredential\n(CredentialBlob)
+    TPM --> ZAS--: Secret
+    ZAS --> Client--: Secret
+
+    Client -> AuthS: POST /register/verify {Secret}
+    AuthS -> AuthS: Secret korrekt? → PuK.Client.Sig hardware-gebunden ✓
+
+else ZETA Attestation Token vorhanden
+    Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token",\nzeta_guard_attestation_token, PuK.Client.Sig,\nsigned_Hash_PuK.Client.Sig}
+    AuthS -> AuthS: Prüfe Token-Signatur & Vertrauensstellung
+    AuthS -> AuthS: Extrahiere PuK.AK.Sig aus Token, prüfe signed_Hash_PuK.Client.Sig
+end
+
+AuthS -> AuthS: Store Client Placeholder (state: pending_user_binding)
+AuthS --> Client--: 201 Created {client_id, status="pending_user_binding"}
+
+@enduml

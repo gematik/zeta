@@ -1,0 +1,32 @@
+@startuml "Abb-ZETA-DCR-für-stationäre-Apple-Clients"
+!include ../puml-layout.txt
+
+
+box "Device" DEVICE_COLOR
+  box "Primärsystem" PRIMAERSYSTEM_COLOR
+    participant Client as "ZETA Client" <<zeta>>
+  end box
+end box
+
+box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
+  box "ZETA Guard" ZETA_GUARD_COLOR
+    participant AuthS as "PDP\nAuthorization Server" <<zeta>>
+  end box
+end box
+
+Client++
+alt Kein ZETA Guard Attestation Token
+    Client -> AuthS++: POST /register\n{attestation_type="apple", Apple_Attestation_Object, PuK.Client.Sig}
+    AuthS -> AuthS: Validiere Apple_Attestation_Object
+    note right of AuthS: AuthS verifiziert Apple App Attest Root CA.\nExtrahiert Hash(PuK.Client.Sig) aus Objekt\nund vergleicht ihn mit dem Payload.
+
+else ZETA Attestation Token vorhanden
+    Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token",\nzeta_guard_attestation_token, PuK.Client.Sig,\nsigned_Hash_PuK.Client.Sig}
+    AuthS -> AuthS: Prüfe Token-Signatur & Vertrauensstellung
+    AuthS -> AuthS: Extrahiere PuK.AK.Sig aus Token, prüfe signed_Hash_PuK.Client.Sig
+end
+
+AuthS -> AuthS: Store Client Placeholder (state: pending_user_binding)
+AuthS --> Client--: 201 Created {client_id, status="pending_user_binding"}
+
+@enduml

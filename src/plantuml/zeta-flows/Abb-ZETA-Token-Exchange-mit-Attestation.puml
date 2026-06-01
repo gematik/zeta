@@ -31,7 +31,7 @@ Client -> Client : Create DPoP Key Pair (PrK.DPoP.Sig, PuK.DPoP.Sig)
 note right: Session-based Key Pair for DPoP binding.
 
 Client -> Client : Create DPoP Proof (with Nonce from AuthS)
-Client -> AuthS++: POST /token dpop: dpop_proof\n{client_assertion (JWT, PrK.Client.Sig signiert),\nsubject_token (SMC-B signiert, inkl. Nonce),\n[Evidence]}
+Client -> AuthS++: POST /token dpop: dpop_proof\n{client_assertion (JWT, PrK.Client.Sig signiert),\nsubject_token (SMC-B signiert, inkl. Nonce)}
 
 AuthS -> AuthS: Validate Request (Client Assertion, DPoP Proof,\nSubject Token, Nonce and Key bindings from DCR,\nSperrstatus (OCSP) der SM(C)-B)
 alt TPM Attestation (Windows / Linux)
