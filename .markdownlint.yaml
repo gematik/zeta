@@ -9,4 +9,4 @@ MD024: false
 MD033: false
 # MD060 - Table column style
 MD060: 
-  any
+  style: any
