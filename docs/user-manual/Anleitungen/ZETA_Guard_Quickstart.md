@@ -209,7 +209,7 @@ namespace = "zeta-demo"      # Namespace, in dem Zeta-Guard deployt wurde
 
 Im lokalen Modus wird diese Datei nicht benötigt (sie wird leer generiert).
 
-##### Die PDP-Konfiguration wird über eine stage-spezifische Datei gesteuert:
+##### Die PDP-Konfiguration wird über eine stage-spezifische Datei gesteuert
 
 ```hcl
 insecure_tls = true                          # Aktivieren bei selbst signierten Zertifikaten (optional, Default ist false)
@@ -316,12 +316,12 @@ der [values-demo.yaml](https://github.com/gematik/zeta-guard-helm/blob/main/char
 die folgenden Direktiven
 auf die Konfiguration des PDP abzustimmen:
 
-* `pep_issuer`
+- `pep_issuer`
 
   Die Realm URL des PDP. Sollte z.B. wie folgt aussehen:
   `https://public-name-of-keycloak-here/auth/realms/zeta-guard`
 
-* `proxy_pass`
+- `proxy_pass`
 
   Das abzusichernde Ziel.
   In

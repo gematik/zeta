@@ -62,11 +62,11 @@ EXIT_CODE=0
 # 1) Link-Check
 # ---------------------------------------------------------------------------
 if command -v lychee >/dev/null 2>&1; then
-  log "Link-Check mit lychee ..."
+  log "Link-Check ..."
   LYCHEE_CONFIG="${SCRIPT_DIR}/lychee.toml"
-  LYCHEE_ARGS=()
+  LYCHEE_ARGS=(--no-progress)
   [[ -f "$LYCHEE_CONFIG" ]] && LYCHEE_ARGS+=(--config "$LYCHEE_CONFIG")
-  if lychee "${LYCHEE_ARGS[@]}" "${TARGETS[@]}"; then
+  if lychee "${LYCHEE_ARGS[@]}" "${TARGETS[@]}" >/dev/null 2> >(grep -E '^\s*\[(ERROR|WARN)\]|Error:' >&2); then
     ok "Alle Links erreichbar."
   else
     err "Defekte Links gefunden."
@@ -88,7 +88,7 @@ fi
 # ---------------------------------------------------------------------------
 # 2) Referenzierte Bilder & relative Pfade prüfen
 # ---------------------------------------------------------------------------
-log "Prüfe referenzierte lokale Dateien (Bilder, Includes) ..."
+log "Prüfe lokale Referenzen ..."
 LOCAL_FAIL=0
 for f in "${TARGETS[@]}"; do
   dir=$(dirname "$f")
@@ -118,29 +118,33 @@ fi
 # ---------------------------------------------------------------------------
 if command -v markdownlint-cli2 >/dev/null 2>&1; then
   log "Markdown-Lint ..."
-  if markdownlint-cli2 "${TARGETS[@]}"; then
+  LINT_OUT=$(markdownlint-cli2 "${TARGETS[@]}" 2>&1) || LINT_RC=$?
+  if [[ ${LINT_RC:-0} -eq 0 ]]; then
     ok "Lint OK."
   else
-    err "Lint-Verstöße gefunden."
+    err "Lint-Verstöße gefunden:"
+    echo "$LINT_OUT" | grep -E ':[0-9]+(:[0-9]+)?\s+(MD[0-9]+|error)' || echo "$LINT_OUT"
     EXIT_CODE=1
   fi
 else
-  warn "markdownlint-cli2 nicht installiert – Lint übersprungen (npm i -g markdownlint-cli2)."
+  warn "markdownlint-cli2 nicht installiert – Lint übersprungen."
 fi
 
 # ---------------------------------------------------------------------------
 # 4) Rechtschreibung
 # ---------------------------------------------------------------------------
 if command -v cspell >/dev/null 2>&1; then
-  log "Rechtschreibprüfung mit cspell ..."
-  if cspell --no-progress --config "$CSPELL_CONFIG" "${TARGETS[@]}"; then
+  log "Rechtschreibprüfung ..."
+  CSPELL_OUT=$(cspell --no-progress --no-summary --quiet --config "$CSPELL_CONFIG" "${TARGETS[@]}" 2>&1 \
+                | grep -v 'Unsupported NodeJS version' || true)
+  if [[ -z "$CSPELL_OUT" ]]; then
     ok "Keine Rechtschreibfehler."
   else
-    warn "Mögliche Rechtschreibfehler gefunden."
-    # Rechtschreibung nur als Warnung, kein Exit-Fehler
+    warn "Mögliche Rechtschreibfehler:"
+    echo "$CSPELL_OUT"
   fi
 else
-  warn "cspell nicht installiert – Rechtschreibprüfung übersprungen (npm i -g cspell @cspell/dict-de-de)."
+  warn "cspell nicht installiert – Rechtschreibprüfung übersprungen."
 fi
 
 echo
