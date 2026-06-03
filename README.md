@@ -1,4 +1,5 @@
-<img align="right" width="250" height="47" src="images/Gematik_Logo_Flag.png"/> <br/>
+<!-- markdownlint-disable-next-line MD041 -->
+<img align="right" width="250" height="47" alt="gematik Logo" src="images/Gematik_Logo_Flag.png"/>
 
 # Zero Trust Access (ZETA)
 
