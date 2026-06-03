@@ -44,7 +44,7 @@ exclude = [
 ]
 
 # Anker (Fragment) prüfen, wenn lokale Datei existiert
-include_fragments = "anchor-only"
+include_fragments = true
 
 # Verbose-Logging-Level
 verbose = "info"
