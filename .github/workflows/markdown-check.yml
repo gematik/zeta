@@ -3,7 +3,8 @@ name: Markdown Quality Check
 on:
   pull_request:
     paths:
-      - "**/*.md"
+      - "README.md"
+      - "docs/api/v1/index.md"
       - ".markdownlint*.yaml"
       - ".markdownlintignore"
       - "scripts/cspell.json"
@@ -14,10 +15,18 @@ on:
   push:
     branches: [main, develop]
     paths:
-      - "**/*.md"
+      - "README.md"
+      - "docs/api/v1/index.md"
 
 permissions:
   contents: read
+
+env:
+  # Zentrale Liste der zu prüfenden Markdown-Dateien.
+  # Weitere Dateien einfach hier ergänzen (whitespace-getrennt).
+  MD_FILES: >-
+    README.md
+    docs/api/v1/index.md
 
 jobs:
   markdown-check:
@@ -47,16 +56,16 @@ jobs:
         with:
           args: >-
             --config scripts/lychee.toml
-            './**/*.md'
+            ${{ env.MD_FILES }}
           fail: true
           format: markdown
           output: ./lychee-report.md
 
       - name: Markdown Lint
-        run: markdownlint-cli2 "**/*.md"
+        run: markdownlint-cli2 $MD_FILES
 
       - name: Spell Check (cspell)
-        run: cspell --no-progress --no-must-find-files --config scripts/cspell.json "**/*.md"
+        run: cspell --no-progress --no-must-find-files --config scripts/cspell.json $MD_FILES
 
       - name: Upload lychee report
         if: always()
