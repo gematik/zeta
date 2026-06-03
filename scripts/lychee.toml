@@ -43,8 +43,5 @@ exclude = [
   '^mailto:',
 ]
 
-# Anker (Fragment) prüfen, wenn lokale Datei existiert
-include_fragments = true
-
-# Verbose-Logging-Level
-verbose = "info"
+# Logging-Level (error, warn, info, debug)
+verbose = "warn"
