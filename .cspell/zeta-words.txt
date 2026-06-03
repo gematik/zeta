@@ -79,6 +79,7 @@ Multitenancy
 Subresource
 
 # --- TI und ZETA spezifische Begriffe ---
+ANFTI
 Autorisierungsregeln
 europe
 Hauptrepository
@@ -87,6 +88,8 @@ jwks
 Komponentendokumentation
 Konnektor
 Konnektors
+kubeconform
+kubeval
 Leistungserbringerinstitutionen
 nginx
 popp

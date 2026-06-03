@@ -7,21 +7,22 @@ Dieses Dokument beschreibt, wie du Änderungen vorschlagen und Pull Requests ein
 
 ## Inhaltsverzeichnis
 
-- [Inhaltsverzeichnis](#inhaltsverzeichnis)
-- [Verhaltenskodex](#verhaltenskodex)
-- [Fehler melden und Feature-Anfragen](#fehler-melden-und-feature-anfragen)
-- [Jira-Pflicht für Pull Requests](#jira-pflicht-für-pull-requests)
-  - [Warum?](#warum)
-  - [So geht's](#so-gehts)
-  - [Namenskonvention](#namenskonvention)
-  - [Beispiel](#beispiel)
-- [Pull Requests einreichen](#pull-requests-einreichen)
-  - [PR-Checkliste](#pr-checkliste)
-- [Branch-Konventionen](#branch-konventionen)
-- [Commit-Konventionen](#commit-konventionen)
-- [Code-Qualität](#code-qualität)
-- [Sicherheitslücken melden](#sicherheitslücken-melden)
-- [Lizenz](#lizenz)
+- [Contributing to ZETA](#contributing-to-zeta)
+  - [Inhaltsverzeichnis](#inhaltsverzeichnis)
+  - [Verhaltenskodex](#verhaltenskodex)
+  - [Fehler melden und Feature-Anfragen](#fehler-melden-und-feature-anfragen)
+  - [Jira-Pflicht für Pull Requests](#jira-pflicht-für-pull-requests)
+    - [Warum?](#warum)
+    - [So geht's](#so-gehts)
+    - [Namenskonvention](#namenskonvention)
+    - [Beispiel](#beispiel)
+  - [Pull Requests einreichen](#pull-requests-einreichen)
+    - [PR-Checkliste](#pr-checkliste)
+  - [Branch-Konventionen](#branch-konventionen)
+  - [Commit-Konventionen](#commit-konventionen)
+  - [Code-Qualität](#code-qualität)
+  - [Sicherheitslücken melden](#sicherheitslücken-melden)
+  - [Lizenz](#lizenz)
 
 ---
 
@@ -63,7 +64,7 @@ Die interne Nachverfolgung, Planung und Priorisierung aller Arbeiten am ZETA-Pro
 
 ### Beispiel
 
-```
+``` yaml
 Titel:       [ANFTI2-456] PEP: Authentifizierungs-Header wird bei Redirect nicht weitergeleitet
 Beschreibung:
   Jira: https://jira.gematik.de/browse/ANFTI2-456
@@ -73,8 +74,6 @@ Beschreibung:
 ```
 
 PRs **ohne gültige ANFTI2-Ticket-Referenz** werden kommentiert und bis zur Nachlieferung der Referenz nicht weiterbearbeitet.
-
-
 
 ## Pull Requests einreichen
 
@@ -106,7 +105,7 @@ Bevor du deinen PR einreichst, vergewissere dich:
 
 Branches sollen nach folgendem Muster benannt werden:
 
-```
+``` yaml
 <typ>/ANFTI2-<ticket-nr>-<kurze-beschreibung-mit-bindestrichen>
 ```
 
@@ -129,7 +128,7 @@ Beispiel: `feature/ANFTI2-123-pep-header-forwarding`
 
 Wir orientieren uns an [Conventional Commits](https://www.conventionalcommits.org/):
 
-```
+``` yaml
 <typ>(optionaler-scope): ANFTI2-<nr> kurze Beschreibung
 
 Optionaler längerer Erläuterungstext.
@@ -137,7 +136,7 @@ Optionaler längerer Erläuterungstext.
 
 Beispiele:
 
-```
+``` yaml
 feat(pep): ANFTI2-123 add mTLS header forwarding on redirect
 fix(pdp): ANFTI2-456 correct OPA policy evaluation for empty claims
 docs: ANFTI2-789 update deployment guide for GKE
