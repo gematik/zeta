@@ -7,6 +7,7 @@ on:
       - ".markdownlint*.yaml"
       - ".markdownlintignore"
       - "scripts/cspell.json"
+      - "scripts/lychee.toml"
       - ".cspell/**"
       - "scripts/check-markdown.sh"
       - ".github/workflows/markdown-check.yml"
@@ -41,16 +42,11 @@ jobs:
           # cspell: deutsches Wörterbuch global verlinken
           cspell link add @cspell/dict-de-de || true
 
-      - name: Install lychee (link checker)
+      - name: Link Check (lychee)
         uses: lycheeverse/lychee-action@v2
         with:
           args: >-
-            --no-progress
-            --max-concurrency 8
-            --exclude-path tmp
-            --exclude-path .venv
-            --exclude-path zeta-guard-provisioning
-            --exclude-path zeta-guard-prv-signing-key
+            --config scripts/lychee.toml
             './**/*.md'
           fail: true
           format: markdown

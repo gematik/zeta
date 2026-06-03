@@ -160,7 +160,7 @@ Dokumente:
 
 Apache License, Version 2.0
 
-See the [LICENSE](LICENSE) for the specific language governing permissions and limitations under the License
+See the [LICENSE](../../LICENSE.md) for the specific language governing permissions and limitations under the License
 
 ### Additional Notes and Disclaimer from gematik GmbH
 

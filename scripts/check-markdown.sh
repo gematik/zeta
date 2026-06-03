@@ -63,7 +63,10 @@ EXIT_CODE=0
 # ---------------------------------------------------------------------------
 if command -v lychee >/dev/null 2>&1; then
   log "Link-Check mit lychee ..."
-  if lychee --no-progress --max-concurrency 8 "${TARGETS[@]}"; then
+  LYCHEE_CONFIG="${SCRIPT_DIR}/lychee.toml"
+  LYCHEE_ARGS=()
+  [[ -f "$LYCHEE_CONFIG" ]] && LYCHEE_ARGS+=(--config "$LYCHEE_CONFIG")
+  if lychee "${LYCHEE_ARGS[@]}" "${TARGETS[@]}"; then
     ok "Alle Links erreichbar."
   else
     err "Defekte Links gefunden."

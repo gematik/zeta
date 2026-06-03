@@ -9,7 +9,6 @@ Beim aktuellen Stand handelt sich um einen finalen Stand für die Stufe 1, bei d
 
 Wir freuen uns über Feedback und Contributions! Bitte beachtet dabei unsere [Contributing Guidelines](./CONTRIBUTING.md).
 
-* [ZETA Dokumentation](https://gematik.github.io/zeta/)
 * [Implementierungsleitfaden für Primärsysteme](https://gemspec.gematik.de/docs/gemILF/gemILF_ZETA_API/latest/)
 * [ZETA Produkthandbuch](./docs/user-manual/README.md)
 * ZETA Guard GitHub-Repositories
@@ -30,7 +29,7 @@ Wir freuen uns über Feedback und Contributions! Bitte beachtet dabei unsere [Co
 
 Apache License, Version 2.0
 
-See the [LICENSE](./LICENSE) for the specific language governing permissions and limitations under the License
+See the [LICENSE](./LICENSE.md) for the specific language governing permissions and limitations under the License
 
 ## Additional Notes and Disclaimer from gematik GmbH
 
