@@ -1,0 +1,50 @@
+# lychee link checker configuration
+# Doku: https://github.com/lycheeverse/lychee/blob/master/lychee.example.toml
+
+# Maximalverhalten
+max_concurrency = 8
+no_progress = true
+
+# Cache, damit wiederholte Läufe schnell sind (in CI per Action separat gehandhabt)
+cache = false
+
+# Ein paar Sekunden Timeout reichen für gesunde Hosts
+timeout = 20
+max_retries = 2
+
+# Akzeptierte Status-Codes (200 OK, 206 Partial, 429 Too-Many-Requests temporär ok)
+accept = ["200..=299", "429"]
+
+# Pfade, in denen NICHT nach Markdown gesucht werden soll
+exclude_path = [
+  "tmp",
+  ".venv",
+  "node_modules",
+  "zeta-guard-provisioning",
+  "zeta-guard-provisioning-popp",
+  "zeta-guard-prv-signing-key",
+]
+
+# URLs, die wir bewusst NICHT prüfen (Beispiel-/Platzhalter-Hosts, lokale Dev-URLs).
+# Reguläre Ausdrücke.
+exclude = [
+  # RFC 2606 / 6761 Beispieldomains
+  '^https?://([a-z0-9.-]+\.)?example\.(com|net|org)(/|$)',
+  # Projektinterne Platzhalter
+  '^https?://([a-z0-9.-]+\.)?example\.com(/|$)',
+  '^https?://testfachdienst(/|$)',
+  '^https?://fachdienst\.host\.example\.com',
+  # Localhost / private IPs
+  '^https?://localhost(:\d+)?(/|$)',
+  '^https?://127\.0\.0\.1(:\d+)?(/|$)',
+  '^https?://0\.0\.0\.0(:\d+)?(/|$)',
+  '^https?://(10|192\.168|172\.(1[6-9]|2\d|3[0-1]))\.',
+  # mailto-Links nicht prüfen
+  '^mailto:',
+]
+
+# Anker (Fragment) prüfen, wenn lokale Datei existiert
+include_fragments = true
+
+# Verbose-Logging-Level
+verbose = "info"

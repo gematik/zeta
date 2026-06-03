@@ -14,6 +14,7 @@ Zielgruppe: Tester und Entwickler
 
 > [!NOTE]
 > Für diese Anleitung werden folgende Dateien/Keys/Tokens benötigt:
+> - Self signed Zertifikate für TLS Tests: authserver-tls.crt.pem authserver-tls.key.pem
 > - pdp-keystore.b64: Base-64 kodierter Keystore mit SMCB-Zertifikat,
     Trust-Chain und privatem Schlüssel. Entsprechende SM(C)-B Zertifikate
     können über die Gematik bezogen werden: https://fachportal.gematik.de/shop/testkarten
@@ -26,6 +27,26 @@ Zielgruppe: Tester und Entwickler
 > - Docker Desktop (mit aktivierter WSL-Integration) ist vorab installiert
     (https://docs.docker.com/desktop/install/windows-install/). In WSL sollte
     ``docker info`` ohne Fehlermeldung laufen.
+
+## Inhaltsverzeichnis
+
+- [Anleitung für Windows Rechner](#anleitung-für-windows-rechner)
+  - [Schritt 0: WSL 2 installieren](#schritt-0-wsl-2-installieren)
+  - [Schritt 1: Linux aktualisieren](#schritt-1-linux-aktualisieren)
+  - [Schritt 2: Benötigte Tools installieren](#schritt-2-benötigte-tools-installieren)
+- [Schritt 3: zeta-kind.local als localhost (127.0.0.1) in der wsl auflösen](#schritt-3-zeta-kindlocal-als-localhost-127001-in-der-wsl-auflösen)
+- [Schritt 4: IP-Adresse ermitteln und Windows bekanntgeben](#schritt-4-ip-adresse-ermitteln-und-windows-bekanntgeben)
+- [Schritt 5: Cluster konfigurieren und starten](#schritt-5-cluster-konfigurieren-und-starten)
+  - [Schritt 5.1: Repository clonen](#schritt-51-repository-clonen)
+  - [Schritt 5.2: Keystore und Passwort setzen](#schritt-52-keystore-und-passwort-setzen)
+  - [Schritt 5.3 Cluster bauen](#schritt-53-cluster-bauen)
+  - [Schritt 5.4: Docker Secret für die Registry erstellen](#schritt-54-docker-secret-für-die-registry-erstellen)
+  - [Schritt 5.5: Komponenten aus der Registry ziehen](#schritt-55-komponenten-aus-der-registry-ziehen)
+  - [Schritt 5.6: Cluster-Status prüfen](#schritt-56-cluster-status-prüfen)
+- [Schritt 6: Deployment verifizieren](#schritt-6-deployment-verifizieren)
+- [Schritt 7: Hilfe](#schritt-7-hilfe)
+  - [Schritt 7.1: Reset](#schritt-71-reset)
+  - [Schritt 7.1: Reset der Tiger Testsuite](#schritt-71-reset-der-tiger-testsuite-1)
 
 ## Anleitung für Windows Rechner
 
@@ -61,7 +82,7 @@ wsl.exe -d Ubuntu
 
 ### Schritt 1: Linux aktualisieren
 
-In der Ubuntu-Shell folgendes eingeben:
+In der Ubuntu-Shell Folgendes eingeben:
 
 ```shell
 sudo apt-get update && sudo apt-get dist-upgrade
@@ -267,7 +288,7 @@ nslookup host.docker.internal
 ```
 
 > [!NOTE]
-> Die IP Adresse ändert sich bei Wechsel von WLAN / Netzwerk. 
+> Die IP Adresse ändert sich bei Wechsel von WLAN / Netzwerk.
 > Ggf. die IP Adresse des Rechners im lokalen Netzwerk verwenden.
 
 Die Ausgabe sieht ähnlich zu dem Folgenden aus:
@@ -330,6 +351,14 @@ git clone $GIT_URL
 
 
 ### Schritt 5.2: Keystore und Passwort setzen
+
+Erstellung eines Base-64 kodierter Keystore mit SMCB-Zertifikat
+
+```shell
+printf "password: " && read -rs pw && printf "\n" && printf "%s" "$pw" > pdp-keystore-pass
+base64 -w0 ../path/to/smcb-certificates.p12 > pdp-keystore.b64 # or
+# or base64 -w0 -i ../path/to/smcb-certificates.p12 -o pdp-keystore.b64
+```
 
 Den SM(C)-B Keystore und das zugehörige Passwort in einem Verzeichnis parallel zum
 zeta-guard-helm Verzeichnis ablegen und entpacken.
@@ -407,7 +436,7 @@ kubectl get ns zeta-local --show-labels
 > Delete/Create und der Kontext in Schritt 5.6 zusammenpassen.
 > Falls ein anderer Name verwendet wird, Befehle entsprechend anpassen.
 
-### Schritt 5.4: Docker Secret für die Registry erstellen
+### Schritt 5.4: Docker Secret für die Registry und TLS Zertifikat erstellen
 
 In der Ubuntu-Shell folgendes eingeben, dabei docker password (...) und docker
 email (username@domain) im Aufruf anpassen:
@@ -420,6 +449,9 @@ kubectl create secret docker-registry gitlab-registry-credentials-zeta-group \
   --docker-email=username@domain -n zeta-local
 kubectl -n zeta-local create secret generic opa-bearer \
   --from-literal=token="$(cat /pfad/zum/token-username):$(cat /pfad/zum/token)"
+kubectl -n zeta-local create secret tls authserver-tls \
+  --cert=../keystore/authserver-tls.crt.pem \
+  --key=../keystore/authserver-tls.key.pem
 ```
 
 > [!NOTE]

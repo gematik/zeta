@@ -13,6 +13,14 @@ Zielgruppe: Tester und Entwickler
 
 ---
 
+## Inhaltsverzeichnis
+
+- [Überblick](#überblick)
+- [Wichtige Parameter](#wichtige-parameter)
+- [Option 1: Docker-Image lokal bauen und mit `@smoke` gegen Ihren Host starten](#option-1-docker-image-lokal-bauen-und-mit-smoke-gegen-ihren-host-starten)
+- [Option 2: Fertiges Docker-Image direkt in der GitLab-Pipeline nutzen](#option-2-fertiges-docker-image-direkt-in-der-gitlab-pipeline-nutzen)
+- [Option 3: Repository klonen und lokal per Maven oder IntelliJ starten (optional mit Tiger-UI)](#option-3-repository-klonen-und-lokal-per-maven-oder-intellij-starten-optional-mit-tiger-ui)
+
 ## Überblick
 
 Für einen schnellen End-to-End-Lauf stehen drei Wege bereit - wählen Sie die

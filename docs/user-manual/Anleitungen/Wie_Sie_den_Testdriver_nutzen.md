@@ -14,7 +14,11 @@ Zielgruppe: Tester und Entwickler
 
 ---
 
-[TOC]
+## Inhaltsverzeichnis
+
+- [Überblick](#überblick)
+- [Ausführen des Containers](#ausführen-des-containers)
+- [Nutzen des Testdrivers](#nutzen-des-testdrivers)
 
 ## Überblick
 

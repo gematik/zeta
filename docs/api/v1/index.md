@@ -95,7 +95,7 @@ In dieser Phase ermittelt der ZETA-Client dynamisch die Endpunkte und Konfigurat
 
 ### 3.1 Ablauf
 
-Der Discovery-Ablauf ist für alle Client-Typen identisch und greift auf standardisierte `.well-known` Endpunkte zu (siehe auch [Abbildung 1: Ablauf Service Discovery](../../../images/zeta-flows/Abb-ZETA-Service-Discovery.svg)):
+Der Discovery-Ablauf ist für alle Client-Typen identisch und greift auf standardisierte `.well-known` Endpunkte zu:
 
 1. Der Client sendet eine `GET`-Anfrage an den Well-Known-Endpunkt der geschützten Ressource (PEP).
 2. PEP antwortet mit Metadaten über unterstützte Token-Methoden und den zuständigen Authorization Server (PDP).
@@ -347,7 +347,7 @@ Content-Type: application/json
 ##### 4.1.4.2 Dynamic Client Registration Response
 
 **Antwort-Beispiel (202 Accepted):**
-*Response-Schema:* [dcr-response-202.yaml](../../../src/schemas/dcr-response-202.yaml)
+*Response-Schema:* [register-response-202.yaml](../../../src/schemas/register-response-202.yaml)
 
 ```http
 HTTP/1.1 202 Accepted
@@ -1295,7 +1295,7 @@ Die Bearbeitungszeiten müssen unter Last folgende Kriterien erfüllen:
 
 ## 11. Support und Kontaktinformationen
 
-Bitte beachten Sie das [CONTRIBUTING.md](../../CONTRIBUTING.md) für Informationen zum Support und zu Kontaktmöglichkeiten.
+Bitte beachten Sie das [CONTRIBUTING.md](../../../CONTRIBUTING.md) für Informationen zum Support und zu Kontaktmöglichkeiten.
 
 ---
 

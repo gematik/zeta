@@ -1,0 +1,8 @@
+# Pfade, die markdownlint-cli2 ignorieren soll
+node_modules/
+.venv/
+tmp/
+**/tmp/**
+zeta-guard-provisioning/
+zeta-guard-provisioning-popp/
+zeta-guard-prv-signing-key/

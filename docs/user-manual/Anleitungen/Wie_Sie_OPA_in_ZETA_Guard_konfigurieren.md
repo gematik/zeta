@@ -8,22 +8,38 @@ Diese Anleitung erklärt kurz, wie OPA in ZETA Guard eingebunden ist, wie Sie OP
 
 Die Anleitung enthält zudem Hinweise zur Signaturprüfung der Bundles, Schema‑Validierungen, Verifikation/Tests und Troubleshooting.
 
+## Inhaltsverzeichnis
+
+- [Überblick](#überblick)
+- [Aktivieren](#aktivieren)
+- [Policy-Quellen](#policy-quellen)
+  - [1 Fest verdrahtete Policy (policyRego)](#1-fest-verdrahtete-policy-policyrego)
+  - [2 Bundle aus GitLab (SecretRef, Basic)](#2-bundle-aus-gitlab-secretref-basic)
+  - [3 Bundle aus Google Artifact Registry (workloadIdentityFederation)](#3-bundle-aus-google-artifact-registry-workloadidentityfederation)
+- [Signaturprüfung (Bundles)](#signaturprüfung-bundles)
+- [Schema-Validierungen](#schema-validierungen)
+- [Verifikation und Tests](#verifikation-und-tests)
+- [Troubleshooting](#troubleshooting)
+
 ## Überblick
 
-- OPA läuft als Deployment im zeta‑guard Helm‑Chart und wird beim Ausstellen von Tokens durch Authserver (PDP) konsultiert.
+- OPA läuft im zeta‑guard Helm‑Chart als aktive Instanz (`opa`) und Simulations‑Instanz (`opa-simulation`) und wird beim Ausstellen von Tokens durch Authserver (PDP) konsultiert.
 - Zwei Betriebsarten:
   - Inline‑Policy: Rego‑Policy wird als ConfigMap gemountet (Standard, einfache Demo/Tests).
   - Bundle‑Modus: Policy+Data werden als OCI‑Bundle aus einer Registry geladen.
-- Entscheidungspfad: Aufrufer nutzen `POST /v1/data/zeta/authz/decision` mit `{ "input": { ... } }` und erhalten `{ allow, ttl }` zurück.
+- Entscheidungspfad: Aufrufer nutzen `POST /v1/data/policies/zeta/authz/decision` mit `{ "input": { ... } }` und erhalten `{ allow, ttl }` zurück.
 
 ## Aktivieren
 
 - Inline‑Policy (Standard): `zeta-guard.opa.bundle.enabled: false`
 - Bundle‑Modus: `zeta-guard.opa.bundle.enabled: true` (Registry + Auth konfigurieren)
+- Simulation ist standardmäßig aktiv: `zeta-guard.opa.simulation.enabled: true`
+- Die Simulations‑Instanz kann ein eigenes Bundle nutzen:
+  `zeta-guard.opa.simulation.bundle.resource`; sonst wird automatisch `<opa.bundle.resource>-sim` verwendet.
 
 ## Policy‑Quellen
 
-### 1) Fest verdrahtete Policy (policyRego)
+### 1 Fest verdrahtete Policy (policyRego)
 
 Werte (Beispiel):
 
@@ -43,7 +59,7 @@ zeta-guard:
       }
 ```
 
-### 2) Bundle aus GitLab (SecretRef, Basic)
+### 2 Bundle aus GitLab (SecretRef, Basic)
 
 Voraussetzung: Secret im Namespace mit Basic‑Credentials (Deploy‑Token o. ä.):
 
@@ -70,7 +86,7 @@ zeta-guard:
         enabled: false
 ```
 
-### 3) Bundle aus Google Artifact Registry (workloadIdentityFederation)
+### 3 Bundle aus Google Artifact Registry (workloadIdentityFederation)
 
 workloadIdentityFederation ohne statische Token. Ein CronJob nimmt das KSA‑JWT, tauscht es beim STS und impersoniert die Ziel‑GSA. Der resultierende Access Token wird als Datei in ein Secret geschrieben; OPA liest ihn von dort.
 
@@ -89,7 +105,7 @@ zeta-guard:
       enabled: true
       serviceName: <gar-service-name>
       url: https://<region>-docker.pkg.dev
-      resource: <region>-docker.pkg.dev/<PROJECT>/<REPO>/<IMAGE>:<TAG>
+      resource: <region>-docker.pkg.dev/<PROJECT>/<REPO>/<IMAGE>@<DIGEST>
       credentials:
         secretRef:
           name: ""   # kein Basic in workloadIdentityFederation‑Modus
@@ -118,6 +134,7 @@ zeta-guard:
 - Standardmäßig aktiviert im Chart: `zeta-guard.opa.bundle.verification.enabled: true`.
 - Registry‑agnostisch: Signaturprüfung funktioniert mit jeder OCI‑Registry (z. B. GitLab, GAR). Entscheidend ist, dass das Bundle signiert ist und OPA den passenden Public Key kennt.
 - Wenn aktiviert, verlangt das Schema `verification.keyId` und `verification.publicKey` (PEM). Ohne passende Signatur schlägt OPA fehl.
+- `verification.scope` (optional): Wenn das Bundle beim Signieren mit einem Scope versehen wurde, muss dieser Wert hier exakt übereinstimmen (z. B. `read`). Andernfalls meldet OPA einen „scope mismatch"-Fehler. Wenn das Bundle ohne Scope signiert wurde, dieses Feld leer lassen (Standard) — dann prüft OPA den Scope nicht.
 - Empfehlung:
   - Verifikation aktiviert lassen (Default). Wenn das Bundle (noch) nicht signiert ist, entweder Signatur + Schlüssel konfigurieren oder vorübergehend `verification.enabled: false` setzen.
 
@@ -133,7 +150,7 @@ zeta-guard:
 - OPA‑Status/Logs:
   - Port‑Forward: `kubectl -n <ns> port-forward svc/opa 8181:8181`
   - Bundle‑Status: `curl -sS http://localhost:8181/status | jq .`
-  - Entscheidungen: `curl -sS -H 'Content-Type: application/json' -d '{"input":{}}' http://localhost:8181/v1/data/zeta/authz/decision`
+  - Entscheidungen: `curl -sS -H 'Content-Type: application/json' -d '{"input":{}}' http://localhost:8181/v1/data/policies/zeta/authz/decision`
 - workloadIdentityFederation‑Token prüfen:
   ```bash
   kubectl -n <ns> get secret opa-gcp-token -o jsonpath='{.data.token}' | base64 -d | sed -n '1p'
