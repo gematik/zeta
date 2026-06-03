@@ -10,7 +10,7 @@ Beim aktuellen Stand handelt sich um einen funktional vollständigen Stand, bei 
 Wir freuen uns über Feedback und Contributions! Bitte beachtet dabei unsere [Contributing Guidelines](./CONTRIBUTING.md).
 
 * [ZETA Dokumentation](https://gematik.github.io/zeta/)
-* [Implementierungsleitfaden für Primärsysteme](https://gematik.github.io/zeta/docs/api/v1)
+* [Implementierungsleitfaden für Primärsysteme](https://gemspec.gematik.de/docs/gemILF/gemILF_ZETA_API/latest/)
 * [ZETA Produkthandbuch](./docs/user-manual/README.md)
 * ZETA Guard GitHub-Repositories
     * [Helm Charts](https://github.com/gematik/zeta-guard-helm)
