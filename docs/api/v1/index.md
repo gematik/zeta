@@ -1,11 +1,11 @@
-# ZETA API v1.3.1-1
+# ZETA API v1.3.1-2
 
 ## Dokumenten- und Versionsübersicht
 
 |                               |                               |
 | ----------------------------- | ----------------------------- |
-| Dokumenttitel                 | ZETA API v1.3.1-1             |
-| Dokumentversion               | 1.3.1-1                       |
+| Dokumenttitel                 | ZETA API v1.3.1-2             |
+| Dokumentversion               | 1.3.1-2                       |
 | Stand                         | 03.06.2026                    |
 | Status                        | Draft                         |
 | Verantwortlich                | gematik                       |
