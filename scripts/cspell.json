@@ -1,0 +1,55 @@
+{
+  "$schema": "https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json",
+  "version": "0.2",
+  "language": "en,de-DE",
+  "dictionaries": [
+    "en_US",
+    "de-DE",
+    "softwareTerms",
+    "html",
+    "bash",
+    "filetypes",
+    "misc",
+    "companies",
+    "zeta-project"
+  ],
+  "dictionaryDefinitions": [
+    {
+      "name": "zeta-project",
+      "path": "../.cspell/zeta-words.txt",
+      "addWords": true
+    }
+  ],
+  "ignorePaths": [
+    "**/node_modules/**",
+    "**/.venv/**",
+    "**/.git/**",
+    "**/tmp/**",
+    "**/*.svg",
+    "**/*.drawio",
+    "**/*.puml",
+    "**/*.cab",
+    "**/*.xml",
+    "**/*.json",
+    "**/*.yaml",
+    "**/*.yml",
+    "zeta-guard-provisioning*/**",
+    "zeta-guard-prv-signing-key/**",
+    "src/**",
+    "examples/**",
+    "images/**",
+    "pip-pap/**"
+  ],
+  "ignoreRegExpList": [
+    "Email",
+    "Urls",
+    "HexValues",
+    "Base64",
+    "CStyleHexValue",
+    "/\\b[0-9a-fA-F]{8,}\\b/g",
+    "/`[^`]+`/g",
+    "/```[\\s\\S]*?```/g"
+  ],
+  "allowCompoundWords": true,
+  "minWordLength": 4
+}
