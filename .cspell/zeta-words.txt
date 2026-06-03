@@ -81,15 +81,19 @@ Subresource
 # --- TI und ZETA spezifische Begriffe ---
 Autorisierungsregeln
 europe
+Hauptrepository
 Institutionszertifikat
 jwks
+Komponentendokumentation
 Konnektor
 Konnektors
+Leistungserbringerinstitutionen
 nginx
 popp
 postgres
 prometheus
 Registrierungsprozess
+Schnittstellenberschreibungen
 tpmt
 Versichertenstammdatenmanagement
 
