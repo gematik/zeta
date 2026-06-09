@@ -1,0 +1,76 @@
+name: Markdown Quality Check
+
+on:
+  pull_request:
+    paths:
+      - "README.md"
+      - "docs/api/v1/index.md"
+      - ".markdownlint*.yaml"
+      - ".markdownlintignore"
+      - "scripts/cspell.json"
+      - "scripts/lychee.toml"
+      - ".cspell/**"
+      - "scripts/check-markdown.sh"
+      - ".github/workflows/markdown-check.yml"
+  push:
+    branches: [main, develop]
+    paths:
+      - "README.md"
+      - "docs/api/v1/index.md"
+
+permissions:
+  contents: read
+
+env:
+  # Zentrale Liste der zu prüfenden Markdown-Dateien.
+  # Weitere Dateien einfach hier ergänzen (whitespace-getrennt).
+  MD_FILES: >-
+    README.md
+    docs/api/v1/index.md
+
+jobs:
+  markdown-check:
+    name: Lint, Spelling & Links
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install tools
+        run: |
+          npm install -g \
+            markdownlint-cli2 \
+            cspell \
+            @cspell/dict-de-de
+          # cspell: deutsches Wörterbuch global verlinken
+          cspell link add @cspell/dict-de-de || true
+
+      - name: Link Check (lychee)
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --config scripts/lychee.toml
+            ${{ env.MD_FILES }}
+          fail: true
+          format: markdown
+          output: ./lychee-report.md
+
+      - name: Markdown Lint
+        run: markdownlint-cli2 $MD_FILES
+
+      - name: Spell Check (cspell)
+        run: cspell --no-progress --no-must-find-files --config scripts/cspell.json $MD_FILES
+
+      - name: Upload lychee report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lychee-report
+          path: lychee-report.md
+          if-no-files-found: ignore

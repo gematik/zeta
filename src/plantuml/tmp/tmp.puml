@@ -1,0 +1,250 @@
+@startuml rats-zeta-tpm-attestation
+' ============================================================
+' RATS Remote Attestation (RFC 9334) integrated into ZETA
+' Roles:
+'   Attester        = ZETA Attestation Service (ZAS)
+'   Verifier        = ZETA Guard AuthS (PDP Authorization Server)
+'   Relying Party   = ZETA Guard AuthS (PDP Authorization Server)
+'   Endorser        = OPA Policy Engine (PAP/PIP)
+'   ZETA Client     = Intermediary between ZAS and AuthS
+' ============================================================
+
+!theme plain
+skinparam sequenceMessageAlign center
+skinparam sequenceGroupBorderColor #666
+skinparam sequenceGroupBackgroundColor #F8F8F8
+skinparam noteBorderColor #999
+skinparam noteBackgroundColor #FFFDE7
+skinparam participantBackgroundColor #E3F2FD
+skinparam participantBorderColor #1565C0
+skinparam lifelineBorderColor #90A4AE
+
+title RATS TPM Attestation in ZETA (RFC 9334)\nAttester=ZAS | Verifier/RP=AuthS | Endorser=OPA
+
+' ============================================================
+' Participants
+' ============================================================
+
+box "Primärsystem / Client Environment" #EDE7F6
+    participant TPM as tpm #D1C4E9
+    participant "ZETA Attestation\nService (ZAS)\n[Attester]" as zas #B39DDB
+    participant "ZETA Client\n[Initiator]" as client #9575CD
+end box
+
+box "ZETA Guard" #E8F5E9
+    participant "AuthS\n[Verifier + Relying Party]" as auths #66BB6A
+    participant "OPA Policy Engine\n[Endorser]" as opa #43A047
+end box
+
+box "TPM Manufacturer" #FFF3E0
+    participant "Hersteller CA\n[EK Trust Anchor]" as mfr #FFA726
+end box
+
+' ============================================================
+' Phase 0: Boot / Primärsystem-Start (Attester-seitig)
+' ============================================================
+
+== Phase 0: Primärsystem-Start — Integrity Measurement (RFC 9334: §4 Attesting Environment) ==
+
+note over tpm
+  TPM initialisiert:
+  PCR 0–7: BIOS/UEFI
+  PCR 8–15: Boot Chain
+  PCR 23: Application-spezifisch
+end note
+
+tpm -> tpm : PCR 0–15 werden durch\nBoot-Prozess befüllt\n(BIOS, Bootloader, OS)
+
+zas -> tpm : TPM2_HashSequenceStart /\nTPM2_SequenceUpdate\n(Primärsystem-Dateien messen)
+tpm -> tpm : **PCR 23 Extend**\n(Hash der Primärsystem-Komponenten)
+tpm --> zas : PCR 23 Extend Confirmation
+
+note right of zas #FFFDE7
+  **RATS: Evidence Generation (RFC 9334 §3.3)**
+  ZAS erzeugt im Hintergrund:
+  - AK (Attestation Key, TPM-resident)
+  - EK liegt fest im TPM (Hersteller)
+  ZAS ist bereit für Attestation-Requests
+end note
+
+' ============================================================
+' Phase 1: DCR — EK und AK beim AuthS registrieren
+' ============================================================
+
+== Phase 1: OAuth Dynamic Client Registration (DCR) — EK & AK Registrierung ==
+
+note over client, auths #E3F2FD
+  **RATS: Endorsement Provisioning (RFC 9334 §3.2)**
+  EK-Zertifikat = vom Hersteller signiertes Endorsement → Vertrauensanker
+  AK-PublicKey  = wird im MakeCredential-Protokoll an EK gebunden
+end note
+
+client -> zas : Anfrage: EK-Zertifikat, AK-PublicKey
+zas -> tpm : TPM2_ReadPublic(EK)\nTPM2_ReadPublic(AK)
+tpm --> zas : EK_PublicKey, AK_PublicKey
+zas --> client : ek_certificate_chain[ ]\n(Blatt bis Root)\nak_public_key (PEM)
+
+client -> auths : **POST /register (DCR)**\n{\n  software_statement (JWT, SM(C)-B signiert),\n  client_instance_key (DPoP/Assertion Key),\n  ek_certificate (Blatt),\n  ek_certificate_chain[ ],\n  ak_public_key\n}
+
+auths -> mfr : EK-Zertifikatskette validieren\n(OCSP / CRL)
+mfr --> auths : Validation OK ✓
+
+note right of auths #FFFDE7
+  **RATS: Verifier prüft Endorsement (RFC 9334 §3.4)**
+  AuthS führt MakeCredential aus:
+  credentialBlob = Encrypt(
+    EK_PublicKey,
+    nonce,
+    Hash(AK_PublicKey)  ← AK-Name
+  )
+end note
+
+auths -> auths : **MakeCredential**\n(EK_PubKey, nonce, AK-Name)\n→ credentialBlob, encryptedSecret
+
+auths --> client : {\n  credentialBlob,\n  encryptedSecret\n}
+
+client -> zas : credentialBlob, encryptedSecret
+zas -> tpm : **TPM2_ActivateCredential**\n(credentialBlob, encryptedSecret)
+note right of tpm #FFFDE7
+  TPM prüft intern:
+  1. EK-PrivKey entschlüsselt Secret
+  2. AK-Name muss übereinstimmen
+  Nur wenn BEIDE im selben TPM → Secret freigegeben
+end note
+tpm --> zas : secret (nonce)
+zas --> client : secret
+
+client -> auths : **POST /register (Bestätigung)**\n{ secret }
+
+auths -> auths : secret == gespeicherte nonce?\n→ **AK ist TPM-gebunden ✓**\nclient_id ↔ AK ↔ EK registriert
+
+auths --> client : **201 Created**\n{ client_id }
+
+note over auths #E8F5E9
+  AuthS speichert dauerhaft:
+  client_id ↔ client_instance_key ↔ ak_public_key ↔ ek_certificate
+  EK-Chain wird **nicht** bei jedem Request erneut übermittelt
+end note
+
+' ============================================================
+' Phase 2: Token-Anfrage mit TPM-Attestation
+' ============================================================
+
+== Phase 2: Token Exchange mit TPM Remote Attestation (RFC 9334: Passport Model) ==
+
+note over client, auths #E3F2FD
+  **RATS Passport Model (RFC 9334 §5.1)**
+  1. Client holt Attestation Result vom Verifier (AuthS)
+  2. AuthS als Relying Party nutzt sein eigenes Attestation Result
+  (Verifier == Relying Party in ZETA)
+end note
+
+client -> auths : **POST /nonce**\n{ client_id }
+auths --> client : nonce (Freshness, Replay-Schutz)
+
+client -> zas : **gRPC: AttestationRequest**\n{ nonce, pcr_selection }
+
+note right of zas
+  ZAS fordert TPM Quote an
+  mit der Nonce des AuthS
+end note
+
+zas -> tpm : **TPM2_Quote**\n(pcr_selection=[0..7, 23], nonce)
+tpm --> zas : tpm_quote\n(PCR-Werte + nonce, signiert mit AK-PrivKey)
+zas -> tpm : TPM2_GetEventLog()
+tpm --> zas : tpm_event_log
+
+note right of zas #FFFDE7
+  **RATS: Evidence (RFC 9334 §3.3)**
+  Evidence enthält:
+  - tpm_quote: PCR-Snapshot + Nonce, AK-signiert
+  - tpm_event_log: Replay-Grundlage
+  - ak_public_key: zur Signaturverifikation
+  - Posture-Daten (OS, Version, Arch, ...)
+end note
+
+zas --> client : **AttestationResponse**\n{\n  ak_public_key,\n  tpm_quote,\n  tpm_event_log,\n  posture (os, os_version, arch,\n           product_id, product_version)\n}
+
+client -> auths : **POST /token** (RFC 8693 Token Exchange)\n{\n  grant_type: urn:ietf:params:oauth:grant-type:token-exchange,\n  client_assertion (JWT, signiert mit client_instance_key),\n  dpop_proof,\n  subject_token (SMC-B / GesundheitsID),\n  ak_public_key,\n  tpm_quote,\n  tpm_event_log,\n  posture\n}
+
+' ============================================================
+' Phase 3: Verifikation im AuthS (Verifier-Logik)
+' ============================================================
+
+== Phase 3: Attestation Verification im AuthS (RFC 9334 §3.4 Verifier) ==
+
+auths -> auths : 1. client_assertion verifizieren\n   (client_instance_key aus DCR)
+
+auths -> auths : 2. ak_public_key == registrierter AK?\n   (aus DCR gebunden)
+
+auths -> auths : 3. **tpm_quote verifizieren**\n   - Signatur mit AK_PublicKey prüfen\n   - Nonce in Quote == gesendete Nonce?
+
+auths -> auths : 4. **Event Log Replay**\n   PCR-Werte in Quote ==\n   Hash-Replay über tpm_event_log?
+
+auths -> auths : 5. Posture-Daten extrahieren\n   (PCR 23, OS-Version, Product-ID, ...)
+
+note right of auths #FFFDE7
+  **RATS: Appraisal Policy Application (RFC 9334 §3.4)**
+  AuthS hat rohe Evidence geprüft.
+  Jetzt: Attestation Result erzeugen
+  via OPA Policy Engine (Endorser)
+end note
+
+auths -> opa : **OPA Policy Query**\n{\n  pcr_values: { pcr23: "...", ... },\n  posture: { os_version, product_version, ... },\n  client_id,\n  ak_bound: true\n}
+
+note right of opa #FFFDE7
+  **RATS: Endorser (RFC 9334 §3.2)**
+  OPA prüft gegen:
+  - Referenzwerte für PCR 23\n    (gemeldete Hashes des Herstellers)
+  - Erlaubte OS-Versionen
+  - Erlaubte Produktversionen
+  - Policy: client_id zugelassen?
+end note
+
+opa -> opa : Referenzwerte laden\n(PIP/PAP Repository)
+opa --> auths : **Policy Decision**\n{\n  attestation_result: "pass" | "fail",\n  trust_level: "affirming" | "warning" | "contraindicated",\n  claims: { pcr23_valid, os_ok, version_ok }\n}
+
+alt Attestation Result: pass
+    auths -> auths : **Attestation Result = PASS**\n(RFC 9334: affirming)
+    auths --> client : **200 OK**\n{\n  access_token (JWT),\n  token_type: "DPoP",\n  expires_in,\n  attestation_result: "affirming"\n}
+else Attestation Result: fail
+    auths --> client : **403 Forbidden**\n{\n  error: "access_denied",\n  error_description: "attestation_failed",\n  attestation_result: "contraindicated"\n}
+end
+
+' ============================================================
+' Phase 4: Resource Access
+' ============================================================
+
+== Phase 4: Resource Access (Relying Party konsumiert Attestation Result) ==
+
+note over client, auths #E3F2FD
+  **RATS: Relying Party (RFC 9334 §3.5)**
+  AuthS ist gleichzeitig Relying Party:
+  Das Attestation Result ist bereits im Access Token eingebettet.
+  Der PEP (HTTP Proxy) prüft das Token und gewährt Zugriff.
+end note
+
+client -> auths : **HTTP Request + Authorization: DPoP <access_token>**\n(via PEP HTTP Proxy)
+auths -> auths : Token validieren\n(Signatur, Expiry,\nAttestation Result im Token)
+auths --> client : **200 OK — Resource Access granted**
+
+' ============================================================
+' Legend
+' ============================================================
+
+legend right
+  **RATS RFC 9334 Rollenverteilung in ZETA**
+  |= RFC 9334 Rolle      |= ZETA Komponente               |
+  | Attesting Environment | TPM (Hardware)                 |
+  | Attester              | ZETA Attestation Service (ZAS) |
+  | Verifier              | ZETA Guard AuthS               |
+  | Relying Party         | ZETA Guard AuthS               |
+  | Endorser              | OPA Policy Engine (PAP/PIP)    |
+  | Conveyance            | ZETA Client (Intermediary)     |
+
+  **RATS Modell:** Passport Model (RFC 9334 §5.1)
+  **AK-Bindung:** MakeCredential / ActivateCredential (TPM 2.0)
+  **EK-Registrierung:** einmalig bei DCR (kein Overhead pro Request)
+endlegend
+
+@enduml

@@ -1,0 +1,57 @@
+@startuml "Abb-ZETA-Zugriff-auf-RS-mit-ASL"
+!include ../puml-layout.txt
+
+
+Actor User
+box "Primärsystem" PRIMAERSYSTEM_COLOR
+  participant FC as "Fach-Client" <<provider>>
+  participant Client as "ZETA Client" <<zeta>>
+end box
+
+box "Anbieter" PROVIDER_COLOR
+  box "ZETA Guard" ZETA_GUARD_COLOR
+    participant HP as "PEP\nHTTP Proxy" <<zeta>>
+  end box
+  participant RS as "Resource\nServer" <<provider>>
+end box
+
+User -> FC ++ : User wants to\naccess resource\non Resource Server
+FC -> Client ++ : GET /resource
+
+note over Client, HP: **Vorbedingung:**\nDer ZETA Client hat ein gültiges Access Token für den Zugriff auf den Resource Server.
+
+Client -> Client: Create DPoP Proof for RS
+
+alt ZETA/ASL terminates at PEP
+  Client -> HP++: ZETA/ASL Verbindungsaufbau
+  HP --> Client
+  Client -> HP: POST /ASL (outer request)\n\
+    Body (inner request): GET /resource\n\
+      Authorization: DPoP <Access Token for RS> DPoP: <DPoP Proof for RS>
+  HP -> HP: Terminate ZETA/ASL
+  HP -> HP: Verify Access Token and DPoP Proof for RS
+  HP -> RS ++ : forward GET /resource
+  RS -> RS: Create Response
+  RS --> HP -- : 200 OK, Response
+  HP -> HP: create ZETA/ASL encrypted Response
+else ZETA/ASL terminates at Resource Server
+  Client -> Client: Create DPoP Proof for ZETA/ASL
+  Client -> HP : ZETA/ASL Verbindungsaufbau
+  HP --> Client
+  Client -> HP: POST /ASL (outer request)\n\
+    Authorization: DPoP <Access Token for ZETA/ASL> DPoP: <DPoP Proof for ZETA/ASL>\n\
+    Body (ASL encrypted inner request): GET /resource\n\
+      Authorization: DPoP <Access Token for RS> DPoP: <DPoP Proof for RS>
+  HP -> HP: verify Access Token and DPoP Proof for ZETA/ASL
+  HP -> RS ++: forward POST /ASL
+  RS -> RS: Terminate ZETA/ASL
+  RS -> RS: Verify Access Token and\nDPoP Proof for RS
+  RS -> RS: Create ZETA/ASL encrypted Response
+  RS --> HP -- : 200 OK, ZETA/ASL encrypted Response
+end
+HP --> Client -- : 200 OK, ZETA/ASL encrypted Response
+Client -> Client: decrypt Response
+Client --> FC -- : 200 OK, Response
+FC --> User -- : Response
+
+@enduml

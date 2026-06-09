@@ -1,0 +1,107 @@
+@startuml "token-exchange-with-client-assertion-jwt-auth"
+autonumber "(00)"
+skinparam defaultFontSize 10
+skinparam defaultFontName Helvetica
+skinparam DefaultMonospacedFontName Courier
+skinparam lengthAdjust none
+skinparam sequenceReferenceBackgroundColor White
+skinparam SequenceReferenceFontSize 12
+/'skinparam SequenceReferenceFontStyle bold
+'/
+
+!pragma teoz true
+
+box "LEI" #GhostWhite
+  box "Primärsystem" #Lavender
+    box "ZETA Client" #SandyBrown
+      participant Client as "ZETA\nClient"
+    end box
+    participant ZAS as "ZETA Attestation Service\n(Admin rights)"
+    participant TPM as "TPM"
+  end box
+  participant Konnektor as "Konnektor or\nTI-Gateway"
+  participant SMB as "SM(C)-B"
+end box
+
+box "Anbieter" #TECHNOLOGY
+  box "ZETA Guard" #SandyBrown
+    participant AuthS as "PDP\nAuthorization Server"
+    participant PDPDB as "PDP\nDatabase"
+    participant PE as "PDP\nPolicy Engine"
+  end box
+end box
+
+Client ++
+Client -> AuthS ++ : GET /nonce
+AuthS --> Client --: return 200 OK new-nonce: nonce
+
+' === START: TOKEN EXCHANGE SECTION ===
+alt Initial SM(C)-B Token Exchangewith Attestation
+  Client -> Client : Create DPoP Key Pair (for Token Exchange)
+  note right: Session-based Key Pair for DPoP binding.
+
+  Client -> Client: Calculate attestation_challenge
+  note right: The attestation_challenge is a cryptographic hash of the PuK.Client.Sig and a nonce.\nIt is used to bind the attestation to the client instance.\nattestation_challenge = HASH(JWK Thumbprint ofPuK.Client.Sig + nonce)
+  
+  ' === START: ATTESTATION SECTION ===
+  alt ZETA Attestation Service available
+    Client -> ZAS ++ : Get Attestation with `attestation_challenge`
+    note right of Client #red
+      Der TPM Attestation Flow wird aktuell überarbeitet und in einer Folgeversion nachgeliefert
+    end note
+    ZAS --> Client --: Return Attestation\n(Quote, EventLog, CertChain)
+    Client -> Client: Create client_statement\nwith posture-tpm
+    Client -> Client : Create Client Assertion JWT (with TPM Attestation, sig by Client_Instance_Private_Key)
+  else Fallback: Software-basierte Attestierung
+    Client -> Client: Create client_statement\nwith posture-software
+    Client -> Client : Create Client Assertion JWT (with SW Attestation, sig by Client_Instance_Private_Key)
+  end alt
+  ' === END: ATTESTATION SECTION ===
+
+  ' === START: SM(C)-B ID Token Creation ===
+  Client -> Client : Create "SM(C)-B ID Token" (JWT, with Bindigs for nonce, client_key, dpop_key)
+
+  Client -> Konnektor ++ : externalAuthenticate (JWT-hash)
+  Konnektor -> SMB ++ : sign (hash)
+  SMB --> Konnektor -- : Signature
+  Konnektor --> Client -- : JWT-signature
+  Client -> Client : Add JWT-Signature to SM(C)-B ID Token
+
+  Client -> Client : Create DPoP Proof JWT for Token Exchange
+  ' === END: SM(C)-B ID Token Creation ===
+
+  Client -> AuthS ++ : POST /token (RFC 8693) DPoP: <signed_dpop_jwt>
+  AuthS -> AuthS : Validate Request (Client Assertion, Attestation,\nDPoP Proof, Subject Token and Key bindings)
+
+else Refresh Token use (without Attestation)
+  Client -> Client : Create Client Assertion JWT without Attestation
+
+  Client -> Client : Create DPoP Proof JWT for Token Exchange
+
+  Client -> AuthS: POST /token DPoP: <signed_dpop_jwt>
+  AuthS -> AuthS : Validate Request (Client Assertion,\nDPoP Proof, Refresh Token)
+  AuthS -> AuthS: Invalidate Refresh token
+  AuthS -> PDPDB ++ : Get Client Data, Session Data, User Data
+  PDPDB --> AuthS --: Client Data, Session Data, User Data
+end alt
+' === END: TOKEN EXCHANGE SECTION ===
+
+'  === START: VALIDATION SECTION ===
+alt Validations Successful
+  AuthS -> PE ++ : POST /v1/data/authz, body\n{  "input": {...}}
+  PE --> AuthS --: 200 OK
+  alt Policy Decision allowed
+    AuthS -> AuthS : Generate AS Access Token (AT)\nand Refresh Token (RT)
+    AuthS -> PDPDB ++ : Update Client, Session and User Data
+    PDPDB --> AuthS --: updated
+    AuthS --> Client: 200 OK, new tokens
+  else Policy Decision denied
+    AuthS --> Client: 403 Forbidden
+  end alt
+else Validation Failed
+  AuthS --> Client -- : 400 Bad Request
+end alt
+' === END: VALIDATION SECTION ===
+
+Client --
+@enduml

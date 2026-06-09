@@ -1,0 +1,22 @@
+@startuml "Abb-ZETA-DCR-für-stationäre-SW-Att-Clients"
+!include ../puml-layout.txt
+
+
+box "Device" DEVICE_COLOR
+  box "Primärsystem" PRIMAERSYSTEM_COLOR
+    participant Client as "ZETA Client" <<zeta>>
+  end box
+end box
+
+box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
+  box "ZETA Guard" ZETA_GUARD_COLOR
+    participant AuthS as "PDP\nAuthorization Server" <<zeta>>
+  end box
+end box
+
+Client++
+Client -> AuthS++: POST /register\n{\n  "client_name": "myClient",\n  "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"],\n  "jwks": { "keys": [ PuK.Client.Sig ] },\n  "token_endpoint_auth_method": "private_key_jwt"\n}
+AuthS -> AuthS: Store Client Placeholder (state: pending_user_binding)
+AuthS --> Client--: 201 Created {client_id, status="pending_user_binding"}
+
+@enduml

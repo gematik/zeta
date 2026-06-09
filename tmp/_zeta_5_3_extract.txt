@@ -1,0 +1,998 @@
+
+
+========== PDF PAGE INDEX 36 ==========
+Schlüssel-IDBezeichnung & Zweck Speicherung / Verteilung
+PrK.TI-RootCA.Sig
+C.TI-RootCA.Sig
+TI Root CA
+Oberster Vertrauensanker der TI. Alle Zertifikate im
+System leiten sich hiervon ab.
+C: Lokal in Truststores hinterlegt. Wird mit dem ZETA Guard
+Provisioning OCI Image in den ZETA Guard geladen.
+PrK: Offline/Hochsicher bei der gematik.
+PrK.TI-TSLSig
+C.TI-TSL.Sig
+TSL Signer
+Zertifikat zur Validierung der Signatur der Trust-
+Service Status List (TSL), welche die aktuell gültigen
+CAs definiert.
+C: Im ZETA Guard (über lokales Artifact Registry) zur TSL-
+Verifikation.
+PrK: Bei der gematik.
+PrK.TI-KompCA.Sig
+C.TI-KompCA.Sig
+Komponenten PKI CA
+Sub-CA der Root CA. Stellt die Zertifikate für die TI-
+Dienste (PEP, AuthS) aus.
+C: Über die TSL als vertrauenswürdig verteilt.
+PrK.TI-SMCB-
+CA.Sig
+C.TI-SMCB-CA.Sig
+SMC-B CA
+Sub-CA der Root CA. Stellt die Institutionszertifikate
+für Leistungserbringer aus.
+C: Über die TSL als vertrauenswürdig verteilt (zur Prüfung
+im ZETA Guard).
+PrK.TI-
+FedMaster.Sig
+PuK.TI-
+FedMaster.Sig
+Federation Master Signer
+Zur Signatur der Entity Statements (Trustmarks) in
+der OIDC-Föderation.
+PuK: Im ZETA Guard hinterlegt, um die Föderations-
+Zugehörigkeit anderer AuthS zu prüfen.
+PrK: Bei der gematik.
+PrK.ZETA-IK.Sig
+C.TI-ZETA-IK.Sig
+Signaturzertifikat Ausführbare ZETA Images
+Signatur der ausführbaren ZETA OCI Container
+(PEP, AuthS, OPA, etc.).
+C: Im Admission Controller validiert (Signaturkette bis zur
+Root CA).
+PrK: In gematik CI/CD-Pipeline.
+PrK.ZETA-DK.Sig
+C.TI-ZETA-DK.Sig 
+Signaturzertifikat Daten-Images
+Signatur von Datencontainern (z.B.
+Konfigurationsdaten, Provisioning-Daten).
+C: Im Admission Controller / durch ZETA Guard validiert.
+PrK: In gematik CI/CD-Pipeline.
+PrK.ZETA-PAK.Sig
+C.TI-ZETA-PAK.Sig 
+OPA Policy-Autor Signatur
+Signaturzertifikat des Policy-Erstellers für OPA
+Bundles.
+C: Im ZETA Guard (OPA Engine) zur Signaturprüfung
+konfiguriert.
+PrK: Beim Datenbearbeiter.
+PrK.ZETA-PFK.Sig
+C.TI-ZETA-PFK.Sig 
+OPA Policy-Freigeber Signatur
+Zweitsignatur (4-Augen-Prinzip) für OPA Bundles.
+C: Im ZETA Guard (OPA Engine) konfiguriert.
+PrK: Beim Freigeber.
+PrK.K8s.IDP
+C.K8s.IDP
+Kubernetes IDP (Workload Identity)
+Zur Signatur von Subject Token für die
+Kommunikation mit gematik-Diensten (SIEM,
+Telemetrie).
+PrK: Innerhalb der Kubernetes-Infrastruktur des Anbieters.
+C: Innerhalb des gematik Workload Identity Pools
+Tabelle 6: Tab-Gematik-Keys
+5.3 ZETA Abläufe
+Dieses Kapitel spezifiziert die dynamischen Kommunikations- und Prozessabläufe innerhalb der ZETA-Architektur. Um
+die Interaktionen zwischen dem ZETA Client, dem ZETA Attestation Service (ZAS), dem ZETA Guard (Authorization
+Server) und dem Resource Server nachvollziehbar darzustellen, sind die Unterkapitel chronologisch anhand des
+Lebenszyklus einer Client-Instanz strukturiert.
+Die Beschreibung folgt dem Weg von stationären und mobilen Clients von der initialen Bereitstellung (Installation und
+Start) über die netzwerktechnische Ermittlung der benötigten Endpunkte (Service Discovery) bis hin zur initialen
+Schlüsselbindung und Registrierung (Dynamic Client Registration). Darauf aufbauend wird detailliert dargestellt, wie der
+Client unter fortlaufendem Nachweis seiner Systemintegrität (Attestierung) Access Tokens bezieht und diese für den
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.3.0.pdf Spezifikation Seite 37 von 132
+Version: 1.3.0 © gematik - öffentlich Stand: 17.04.2026
+
+
+========== PDF PAGE INDEX 37 ==========
+sicheren Zugriff auf geschützte Fach-dienste (Resource Server) nutzt. Den Abschluss bilden die Prozesse zur Session-
+Erneuerung sowie die Besonderheiten bei der Dienst-zu-Dienst-Kommunikation.
+5.3.1 Abläufe für stationäre Clients
+Dieses Unterkapitel beschreibt die spezifischen ZETA-Abläufe für stationäre Endgeräte (Primärsysteme). Im Zentrum
+steht dabei der Nachweis der Systemintegrität, welcher primär hardwaregestützt über ein Trusted Platform Module (TPM)
+oder eine Secure Enclave erfolgt. Für Systeme ohne entsprechende Hardware-Voraussetzungen wird eine Software-
+Attestierung (SW Attestation) als Fallback unterstützt. Auf Basis dieser Attestierung erfolgt die Autorisierung beim ZETA
+Guard nach OAuth Token Exchange Grant, um die sichere Ausstellung und den Austausch von Access Tokens für den
+Zugriff auf geschützte Ressourcen zu regeln.
+Abbildung 3: Attestierungsablauf nach Betriebssystem gibt einen vereinfachten Überblick über die ganzheitlichen
+Prozesspfad über die verschiedenen Betriebssystemvarianten und dient als Leitfaden für die folgenden
+Detailbeschreibungen.
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.3.0.pdf Spezifikation Seite 38 von 132
+Version: 1.3.0 © gematik - öffentlich Stand: 17.04.2026
+
+
+========== PDF PAGE INDEX 38 ==========
+Abbildung 3 : Abb-Attestierungsablauf-nach-Betriebssystem
+Der Ablauf kann wie folgt zusammengefasst werden.
+Initialisierung1.
+Installation des Clients und Generierung eines Client-Schlüsselpaares
+Aufbau einer initialen System-Baseline (Messwerte, Schlüsselmaterial)
+Hardware-abhängiger Attestierungspfad2.
+Windows / Linux
+Primär: TPM-basierte Attestierung durch den ZETA Attestation Service (ZAS)
+Fallback: Software-basierte Attestierung ohne TPM
+macOS
+Primär: Secure Enclave + Apple App Attest / DeviceCheck
+Fallback: Software-basierte Attestierung
+Vorbereitung der Registrierung3.
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.3.0.pdf Spezifikation Seite 39 von 132
+Version: 1.3.0 © gematik - öffentlich Stand: 17.04.2026
+
+
+========== PDF PAGE INDEX 39 ==========
+Bereitstellung der attestierungsrelevanten Schlüssel und Nachweise
+Plattform-spezifische Attestierungsobjekte:
+TPM: EK-, AK- und Client-Schlüssel + Zertifikate
+macOS: Apple Attestation Object
+Software: ausschließlich Client-Schlüssel
+Client-Registrierung beim ZETA Guard4.
+Durchführung eines Dynamic Client Registration (DCR)
+Ablauf abhängig vom Attestierungstyp:
+TPM (Windows/Linux)
+Secure Enclave (macOS)
+Software (Fallback)
+Laufende Attestierung und Authentifizierung5.
+Regelmäßige Erhebung von Zustandsdaten (Evidence)
+Token-Abruf über OAuth Token Exchange
+optionales Attestation Token bei hardwaregestützter Vertrauensbildung
+5.3.1.1 Client Installation und Schlüsselgenerierung
+Nach der Installation werden beim ersten Start des Primärsystems die Schlüssel generiert, die vom ZETA Client als
+Identitäts-Nachweis gegenüber ZETA Guard Instanzen verwendet werden.
+Das Ergebnis des Prozesses ist eine initiale Baseline des Clientsystems, die – abhängig vom gewählten
+Attestierungsmodus – aus hardwareoder softwaregebundenen Schlüsseln sowie initial erhobenen Zustandsund
+Messinformationen besteht. Diese Baseline bildet die Grundlage für alle weiteren Schritte des Attestierungslebenszyklus.
+5.3.1.1.1 Schlüsselgenerierung auf Windows und Linux Systemen
+Die Installation des Primärsystems (inkl. ZETA Client) erfolgt in der Regel ohne Admin Rechte. Um Zugriff auf die TPM
+Funktionen zu erhalten, ist jedoch eine Komponente erforderlich, die unter Admin-Rechten ausgeführt wird. Dafür wird
+der ZETA Attestation Service (ZAS) verwendet. Zwischen ZAS und ZETA Client muss eine Vertrauensbeziehung
+bestehen, damit nicht beliebige Clients vom ZAS Attestation-Daten anfragen können und damit der ZETA Client nicht mit
+einem kompromittierten ZAS kommuniziert.
+Das folgende Sequenzdiagramm beschreibt den Prozess der Schlüsselgenerierung und Attestierung auf Windows und
+Linux Betriebssystemen. Der Ablauf gliedert sich in einen primären, hardwaregestützten Pfad über das TPM und einen
+Software-Attestation Fallback-Pfad.
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.3.0.pdf Spezifikation Seite 40 von 132
+Version: 1.3.0 © gematik - öffentlich Stand: 17.04.2026
+
+
+========== PDF PAGE INDEX 40 ==========
+Abbildung 4 : Abb-ZETA-Schlüsselgenerierung-Windows-und-Linux
+Die Schritte (01)-(13) werden nur durchgeführt, wenn auf dem Clientsystem ein TPM vorhanden ist und das Primärsystem
+ein ZETA Attestation Service beinhaltet.
+(01) Privilegierte Installation: Der ZETA Attestation Service wird mit administrativen Rechten installiert, damit
+Messungen des Primärsystems in ein TPM Register geschrieben werden können.
+(02) Die Installation des Primärsystems (mit Ausnahme des ZAS) erfolgt ohne Admin Rechte.
+(03)-(04) Um eine exklusive und sichere Vertrauensbeziehung zwischen dem ZAS (läuft privilegiert als
+Root/Admin) und dem Primärsystem (läuft im User Space) herzustellen, müssen Betriebssystem-Mechanismen
+(IPC-Sicherheit) mit kryptographischer Bindung kombiniert werden. Da beide Komponenten vom selben Hersteller
+stammen, können zudem Code-Signatur-Prüfungen genutzt werden.
+(05) Erzeugung eines ClientSignaturschlüsselpaares: Auf Windowsoder LinuxSystemen wird ein ClientSignat
+urschlüsselpaar über einen Betriebssystemoder TPMProvider erzeugt.
+(06) Übergabe von Schlüsselmaterial: Die öffentlichen Schlüsselanteile sowie zugehörige SchlüsselHandles
+werden dem ZETA Client bereitgestellt.
+(07) Messung des Primärsystems: Der Zustand des Primärsystems wird gemessen. Die Messwerte KÖNNEN
+optional mit herstellerseitig bereitgestellten Referenzwerten verglichen werden.
+(08) Erzeugung einer Storage Root Key (SRK): Eine Storage Root Key wird innerhalb des TPM als
+Vertrauensanker erzeugt.
+(09) Erzeugung des Attestierungsschlüssels (AK): Ein Attestierungsschlüssel wird erzeugt und fest an das TPM
+gebunden.
+(10) Bereitstellung der öffentlichen AKAnteile: Die öffentlichen Anteile des Attestierungsschlüssels werden
+exportiert.
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.3.0.pdf Spezifikation Seite 41 von 132
+Version: 1.3.0 © gematik - öffentlich Stand: 17.04.2026
+
+
+========== PDF PAGE INDEX 41 ==========
+(11) Laden des Attestierungsschlüssels: Der Attestierungsschlüssel wird in das TPM geladen und aktiviert.
+(12) Übergabe des AKHandles: Der ZETA Client erhält einen Handle zur Referenzierung des Attestierungsschlüs
+sels.
+(13) Erweiterung von PCRRegistern: Die ermittelten Messwerte werden in geeignete Platform Configuration
+Registers (PCRs) erweitert. Vor der Erweiterung prüft der ZAS, ob die jeweiligen PCRRegister bereits belegt sind.
+Nur wenn ein PCR frei ist, kann der ZAS das TPM verwenden. Wenn kein PCR frei ist, muss die Fallback
+Alternative ohne TPM Nutzung verwendet werden. In den weiteren Schritten ist dann nur die Software-Attestation
+nutzbar.
+Die Schritte (14)–(15) stellen eine Fallback Alternative zu den TPMspezifischen Schritten dar.
+(14) Die Installation des Primärsystems erfolgt ohne Admin Rechte.
+(15) Der ZETA Client erzeugt das ClientSignaturschlüsselpaar lokal im SoftwareKontext.
+5.3.1.1.2 Schlüsselgenerierung auf macOS Systemen
+Das folgende Sequenzdiagramm beschreibt den Prozess der Schlüsselgenerierung bei Apple-Betriebssystemen. Der
+Ablauf gliedert sich in einen primären, hardwaregestützten Pfad über die Secure Enclave und einen Software-Attestation
+Fallback-Pfad. 
+Abbildung 5 Abb-ZETA-Schlüsselgenerierung-macOS
+(01) Das Primärsystem oder die App wird auf dem Endgerät installiert und im User Space des Betriebssystems
+initialisiert.
+Der primäre Pfad wird durchlaufen, wenn das Endgerät über eine Secure Enclave verfügt und die Apple DeviceCheck /
+App Attest APIs unterstützt.
+(02): Der ZETA Client fordert das Betriebssystem (OS) über die API SecKeyCreateRandomKey auf, ein neues
+Schlüsselpaar für die Client-Signatur (PrK.Client.Sig, PuK.Client.Sig) zu generieren. Die Parameter erzwingen die
+Speicherung in der Secure Enclave (SE).
+(03): Das OS leitet den Befehl zur Schlüsselgenerierung an die hardwarebasierte Secure Enclave weiter.
+(04): Die Secure Enclave generiert das Schlüsselpaar und gibt eine eindeutige Schlüsselreferenz (keyId für den privaten
+Schlüssel PrK.Client.Sig) an das OS zurück. Der private Schlüssel verlässt die SE dabei nicht.
+(05): Das OS reicht diese keyId an den ZETA Client durch.
+(06) Der alternative Pfad. Der ZETA Client erzeugt das ClientSignaturschlüsselpaar lokal im SoftwareKontext.
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.3.0.pdf Spezifikation Seite 42 von 132
+Version: 1.3.0 © gematik - öffentlich Stand: 17.04.2026
+
+
+========== PDF PAGE INDEX 42 ==========
+5.3.1.2 Client Start mit TPM und ZAS
+Wenn unter Windows oder Linux ein TPM 2.0 und der ZAS verfügbar sind, dann wird nach dem Booten und bei jedem
+Start des Primärsystems eine Messung durch den ZAS durchgeführt. Die Messung wird im weiteren Verlauf bei der
+Remote Attestierung im ZETA Guard mit einem vom Hersteller vorgegebenen Wert verglichen.
+Abbildung 6 Abb-ZETA-Client-Start-mit-TPM-und-ZAS
+(01) Der ZAS wird während des Starts des Betriebssystems als Service gestartet.
+(02)-(03) Der ZAS führt eine Messung der unveränderlichen Teile des Primärsystems durch und trägt sie in ein TPM PCR
+ein.
+(04) Durch ein kontinuierliches Monitoring prüft der ZAS, ob das Primärsystem gestartet wurde.
+(05)-(08) Wenn ein Start des Primärsystems erkannt wurde, führt der ZAS eine Messung der unveränderlichen Teile des
+Primärsystems durch und trägt sie in ein TPM PCR ein.
+5.3.1.3 Service Discovery
+Das folgende Sequenzdiagramm beschreibt den sogenannten Discovery-Prozess (Metadaten-Abruf) eines ZETA Clients
+in der TI 2.0 Architektur. Bevor der Client Zugriffs-Tokens anfordern kann, muss er dynamisch herausfinden, welcher
+Autorisierungsserver für eine bestimmte Ressource zuständig ist, welche Konfiguration für den Zugriff verwendet werden
+muss (z. B. ZETA/ASL Nutzung) und welche Endpunkte und Konfigurationen der TI 2.0 Dienst nutzt.
+Dieser Prozess basiert auf etablierten IETF/OAuth-Standards (RFCs) und teilt sich in zwei aufeinanderfolgende Abfragen
+auf.
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.3.0.pdf Spezifikation Seite 43 von 132
+Version: 1.3.0 © gematik - öffentlich Stand: 17.04.2026
+
+
+========== PDF PAGE INDEX 43 ==========
+Abbildung 7 Abb-ZETA-Service-Discovery
+(01) Der ZETA Client sendet einen HTTP GET Request an den PEP HTTP Proxy. Der Proxy agiert hier als Stellvertreter
+für die eigentliche Fachanwendung (Resource Server / RS-FQDN). Der Pfad /.well-known/oauth-protected-resource ist
+standardisiert und dient exakt diesem Zweck.
+(02) Antwort des Proxys: Der PEP Proxy antwortet mit 200 OK und liefert ein JSON-Dokument zurück. Gemäß RFC 9728
+(OAuth 2.0 Protected Resource Metadata) enthält dieses Dokument Metadaten über die Ressource. Die für den Client
+wichtigste Information darin ist der Issuer (die URL) des Autorisierungsservers (PDP), der diese spezielle Ressource
+schützt. Das Schema für das OAuth Protected Resource Well-known JSON Dokument ist in [opr-well-known.yaml]
+festgelegt.
+Nachdem der Client nun weiß, mit wem er für die Authentifizierung sprechen muss, fragt er diesen Server nach seinen
+Fähigkeiten und Endpunkten.
+(03) Der ZETA Client sendet nun einen GET Request an den in Schritt (02) ermittelten PDP Authorization Server. Er fragt
+den standardisierten Pfad /.well-known/oauth-authorization-server ab.
+(04) Der Authorization Server antwortet mit 200 OK und einem weiteren JSON-Dokument. Nach RFC 8414 (OAuth 2.0
+Authorization Server Metadata) enthält dieses Dokument die vollständige Konfiguration des Servers. Dazu gehören z.B.
+die URLs für den Token-Endpoint (um Tokens anzufordern), den Registration-Endpoint (DCR), unterstützte
+Verschlüsselungsalgorithmen, Scopes und die URL zu den öffentlichen Schlüsseln (JWKS) des Servers. Das Schema für
+das OAuth Authorization Server Well-known JSON Dokument ist in [as-well-known.yaml] festgelegt.
+(05) Update Configuration: Der ZETA Client verarbeitet die empfangenen JSON-Dokumente aus Schritt (02) und (04)
+lokal. Er aktualisiert seine interne Konfiguration mit den abgerufenen Endpunkten und Parametern.
+A_29374 - ZETA, Ablauf Service Discovery
+Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-Service-Discovery
+unterstützen. [<= ]
+5.3.1.4 Vorbereitung der Client-Registrierung beim ZETA Guard
+Wenn ein ZAS und TPM oder eine Secure Enclave verwendet werden, dann müssen Schlüssel für die Attestierung beim
+Authorization Server bekannt gemacht werden, um die Attestierung dort verifizieren zu können.
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.3.0.pdf Spezifikation Seite 44 von 132
+Version: 1.3.0 © gematik - öffentlich Stand: 17.04.2026
+
+
+========== PDF PAGE INDEX 44 ==========
+5.3.1.4.1 ZAS und TPM
+Der folgende Ablauf zeigt die erforderlichen Schritte, um alle benötigten Schlüssel für die Verifikation per TPM Attestation
+einzusammeln.
+Abbildung 8 Abb-ZETA-TPM-Attestation-Key
+(01)-(03) Das TPM hat nur wenig Speicher. Daher werden anwendungsspezifische Schlüssel außerhalb des TPM als
+PCP_KEY_BLOB gespeichert. Die Schlüssel können dennoch nur im TPM verwendet werden. Vor der Verwendung
+müssen die Schlüssel in das TPM geladen werden.
+(04)-(05) Es wird ein TPM2 Attest erzeugt, das das Schlüsselpaar PrK.Client.Sig und PuK.Client.Sig als TPM-Schlüssel
+bestätigt.
+(06)-(14) Aus dem TPM werden der PuK.AK.Sig und der Puk.EK.Enc Schlüssel sowie das C.EK.Enc Zertifikat
+ausgelesen und an den ZETA Client übergeben.
+5.3.1.4.2 Secure Enclave
+Abbildung 9 Abb-ZETA-SE-Attestation-Key
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.3.0.pdf Spezifikation Seite 45 von 132
+Version: 1.3.0 © gematik - öffentlich Stand: 17.04.2026
+
+
+========== PDF PAGE INDEX 45 ==========
+(01)-(11) Der Ablauf zeigt, wie ein Apple Attestation Object erzeugt wird, das den Hash des PuK.Client.Sig enthält.
+5.3.1.5 Client-Registrierung
+Das folgende Sequenzdiagramm beschreibt den Registrierungsprozess eines ZETA Clients bei einem ZETA Guard
+Authorization Server. Der Ablauf unterscheidet sich grundlegend danach, ob bereits ein ZETA Guard Attestation Token
+vorhanden ist oder nicht. Dies wird durch den äußeren alt-Block dargestellt. Für eine bessere Übersichtlichkeit sind nicht
+alle erforderlichen Parameter des DCR Requests dargestellt (siehe [dcr-request.yaml] für detaillierte Informationen). 
+Abbildung 10 Abb-ZETA-DCR-für-stationäre-Clients
+Wenn der Client noch kein Token besitzt, muss er seine Vertrauenswürdigkeit durch eine Attestierung nachweisen.
+Hierfür gibt es drei Unterfälle (innerer alt-Block), abhängig von der genutzten Hardware/Software.
+(01)–(10) Hardware-Attestation: Windows / Linux (TPM)
+Der ZETA Client sendet einen POST /register Request an den PDP Authorization Server mit folgenden Parametern:
+attestation_type = "tpm"
+PuK.EK.Enc, C.EK.Enc
+PuK.AK.Sig
+PuK.Client.Sig
+signed_Hash_PuK.Client.Sig
+Der Authorization Server validiert die Zertifikatskette von C.EK.Enc sowie signed_Hash_PuK.Client.Sig. Anschließ
+end erzeugt er ein CredentialBlob gemäß dem TPM 2.0 Befehl MakeCredential (vgl. TCG TPM Library Part 3,
+Section 12.5) und antwortet mit 202 Accepted {CredentialBlob}.
+Der ZETA Client leitet das CredentialBlob an den ZAS weiter. Der ZAS führt TPM2_ActivateCredential aus und
+erhält das entschlüsselte Secret. Das Secret wird an den Authorization Server via POST /register/verify
+{Secret} übermittelt. Nach erfolgreicher Prüfung gelten PuK.Client.Sig und PuK.AK.Sig als hardware-gebunden.
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.3.0.pdf Spezifikation Seite 46 von 132
+Version: 1.3.0 © gematik - öffentlich Stand: 17.04.2026
+
+
+========== PDF PAGE INDEX 46 ==========
+(11)–(12) Hardware-Attestation: macOS (Secure Enclave)
+Der ZETA Client sendet POST /register insbesondere mit:
+attestation_type = "apple"
+PuK.AK.Sig
+Apple_Attestation_Object
+PuK.Client.Sig
+signed_Hash_PuK.Client.Sig
+Der Authorization Server validiert das Apple_Attestation_Object und signed_Hash_PuK.Client.Sig. Dabei
+wird sichergestellt, dass PuK.AK.Sig identisch mit dem Schlüssel aus x5c[0] des Attestation-Objekts ist und die Apple
+Root CA-Kette gültig ist. Der Wert von signed_Hash_PuK.Client.Sig enthält die Signatur des Hashes von
+PuK.Client.Sig mit dem eigenen privaten Client-Schlüssel (PrK.Client.Sig). Der Hash_PuK.Client.Sig ist im
+Apple Attestation Object enthalten.
+(13)–(14) Software-Attestation (Legacy OIDC DCR)
+Im Software-Attestation-Pfad sendet der ZETA Client einen Standard-OIDC-DCR-Request:
+POST /register
+{
+"client_name":"<Name des Clients>",
+"grant_types":[
+"urn:ietf:params:oauth:grant-type:token-exchange",
+"refresh_token"
+],
+"jwks":{"keys":[ PuK.Client.Sig ]},
+"token_endpoint_auth_method":"private_key_jwt"
+}
+Der Authorization Server legt den Client-Eintrag mit dem Status pending_attestation an.
+Vorbedingung: ZETA Guard Attestation Token vorhanden
+Verfügt der ZETA Client über ein gültiges ZETA Guard Attestation Token aus einer vorherigen Authentifizierung, kann die
+erneute Registrierung beschleunigt erfolgen:
+POST /register
+{
+ attestation_type = "fast_path"
+ ZETA Guard Attestation Token
+ PuK.Client.Sig
+ signed_Hash_PuK.Client.Sig
+}
+Der Authorization Server prüft die Token-Signatur, die Vertrauensstellung sowie signed_Hash_PuK.Client.Sig anha
+nd des im Token enthaltenen PuK.AK.Sig.
+Abschluss der Registrierung
+Nach erfolgreichem Durchlauf eines der obigen Pfade antwortet der Authorization Server mit 201 Created
+{client_id}.
+A_29375 - ZETA, Ablauf Dynamic Client Registration
+Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-DCR-für-stationäre-Clients unte
+rstützen. [<= ]
+Hinweis: Ein ZETA Client muss nur die für das eigene Betriebssystem passende Variante des Dynamic Client
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.3.0.pdf Spezifikation Seite 47 von 132
+Version: 1.3.0 © gematik - öffentlich Stand: 17.04.2026
+
+
+========== PDF PAGE INDEX 47 ==========
+Registration Flows implementieren.
+5.3.1.6 Authentifizierung
+Die Authentifizierung für Primärsysteme erfolgt per OAuth Token Exchange mit einem SM(C)-B signiertem Subject
+Token. Eine erfolgreiche Authentifizierung führt auch zu einem Abschluss der Client-Registrierung, da die Clients
+grundsätzlich einem Nutzer zugeordnet werden.
+ZETA Guard prüft nicht nur, ob der Nutzer für den Zugriff berechtigt ist, sondern auch ob der Client Zugriff erhalten darf.
+Daher muss der ZETA Client neben dem Subject Token auch ein Client Assertion JWT erstellen und mit dem Schlüssel
+PrK.Client.Sig signieren. Das Client Assertion JWT dient zur Authentifizierung des Clients gegenüber dem ZETA Guard
+Authorization Server und enthält im client_statement die Attestation Daten des Clients (siehe [client-assertion-
+jwt.yaml].
+5.3.1.6.1 Client Statement mit ZAS und TPM Attestation
+Das folgende Sequenzdiagramm beschreibt den Prozess zur Erhebung von Integritäts- und Zustandsdaten
+(Evidence/Posture) eines Gerätes durch einen ZETA Client mit ZAS und TPM. Dieser Prozess dient dazu, dem ZETA
+Guard kryptografisch abzusichern, in welchem Sicherheitszustand sich der Client aktuell befindet.
+Im Schema [client-statement.yaml] sind die Daten, die bei der Attestierung verwendet werden, festgelegt.
+Der Ablauf beginnt mit der Einholung einer kryptografischen Herausforderung (Nonce) und teilt sich danach auf, je
+nachdem, welche Hardware-Sicherheitsfeatures das Gerät bietet.
+Abbildung 11 Abb-ZETA-Client-Statement-mit-TPM-Attestation
+(01) Der ZETA Client sendet einen Request (GET /nonce) an den PDP Authorization Server (ZETA Guard), um eine
+Nonce (eine einmalige Zufallszahl) anzufordern. Dies schützt den späteren Prozess vor Replay-Attacken.
+(02) Der Server generiert die Nonce und sendet sie an den Client zurück.
+(03) Der ZETA Client beauftragt den ZAS mit der Erhebung der Nachweise (GetEvidence) und übergibt dabei die
+erhaltene Nonce.
+(04)-(05) Der ZAS fordert vom TPM ein sogenanntes Quote an (TPM2_Quote). Dabei fordert er die Signierung
+bestimmter Platform Configuration Registers (hier PCR=[7,23], welche typischerweise Boot-State und Application-State
+repräsentieren) an. In diesen Aufruf fließen die Nonce (zur Sicherstellung der Aktualität) und das Handle des privaten
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.3.0.pdf Spezifikation Seite 48 von 132
+Version: 1.3.0 © gematik - öffentlich Stand: 17.04.2026
+
+
+========== PDF PAGE INDEX 48 ==========
+Attestation Keys (Handle_PrK.AK.Sig) ein.
+(06)-(07) Zusätzlich ruft der ZAS das TCG Event Log (TPM2_GetEventLog()) vom System ab. Das Log enthält die
+detaillierte Historie, wie die Werte in den PCRs zustande gekommen sind.
+(08) Der ZAS bündelt das Quote und das Event Log zu einer Evidence und sendet diese an den ZETA Client
+zurück.
+(09) Der ZETA Client generiert das client_statement, in dem Daten über das Primärsystem, das Betriebssystem und
+die Evidence Daten enthalten sind.
+(10) Software-Attestation: Der ZETA Client sammelt die OS- und Primärsystem-Daten selbst und packt sie in ein client
+_statement. In diesem Fall findet keine kryptografische Signatur durch ein TPM statt.
+5.3.1.6.2 Client Statement mit Apple AppAttest
+Das folgende Sequenzdiagramm beschreibt detailliert den Prozess zur Erhebung von Integritäts- und Zustandsdaten
+(Evidence) auf einem macOS-Gerät durch einen ZETA Client. Es zeigt den korrigierten, architektonisch sauberen Ablauf
+unter Verwendung der Apple App Attest (bzw. DeviceCheck) API in Verbindung mit der Secure Enclave.
+Im Schema [client-statement.yaml] sind die Daten, die bei der Attestierung verwendet werden, festgelegt.
+Der Ablauf ist in eine initiale Phase und eine Fallunterscheidung (Attestierungs-Methode) gegliedert.
+Abbildung 12 Abb-ZETA-Client-Statement-mit-Apple-AppAttest
+(01)-(02): Der Prozess startet damit, dass der ZETA Client eine kryptografische Zufallszahl (Nonce) beim PDP
+Authorization Server (ZETA Guard) anfordert (GET /nonce). Der Server generiert diese und sendet sie an den Client
+zurück. Diese Nonce stellt sicher, dass die später erzeugte Signatur frisch ist und schützt vor Replay-Attacken.
+(03)-(04) Posture-Erhebung: Der ZETA Client fordert das Betriebssystem (OS) auf, die aktuellen Sicherheitszustände
+(Posture) des Systems auszulesen. Dazu gehören Parameter wie der Status der System Integrity Protection (SIP),
+Gatekeeper, die OS-Version und Secure Boot. Das OS liefert diese Daten im Klartext an den ZETA Client zurück.
+(05) Hash-Berechnung: Der ZETA Client nimmt die vom Server empfangene Nonce und die im Klartext vorliegenden
+Posture-Daten, fügt sie zusammen und berechnet daraus einen Hash-Wert (clientDataHash = Hash(Nonce + Posture-
+Daten)).
+(06) Der ZETA Client ruft die native Apple-API DCAppAttest.generateAssertion(...) auf. Als Parameter übergibt er eine
+Referenz auf den hardware-gebundenen privaten Attestation Key (Handle_PrK.AK.Sig) und den zuvor berechneten
+clientDataHash.
+(07)-(08) Hardware-Signatur: Das OS reicht diese Anfrage an die isolierte Secure Enclave weiter. Die Secure Enclave
+signiert ausschließlich den übergebenen Hash-Wert mit dem privaten Schlüssel. Sie generiert zudem Authenticator-Daten
+(welche einen Zähler / Counter gegen das Klonen von Schlüsseln enthalten) und gibt Signatur + Counter an das OS
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.3.0.pdf Spezifikation Seite 49 von 132
+Version: 1.3.0 © gematik - öffentlich Stand: 17.04.2026
+
+
+========== PDF PAGE INDEX 49 ==========
+zurück.
+(09) Rückgabe der Assertion: Das OS formatiert die Daten der Secure Enclave in ein standardisiertes CBOR-Objekt
+(dc_assertion) und gibt dieses an den ZETA Client zurück.
+(10) Evidence bündeln: Der ZETA Client generiert nun das finale client_statement (die Evidence).
+Hinweis: Der ZETA Guard benötigt die Klartextdaten, um den Hash zusammen mit der Nonce selbst nachzubilden. Nur
+wenn der nachgebildete Hash mit dem in der Signatur übereinstimmt, ist der Nachweis gültig.
+(11) Software-Attestation: Der ZETA Client sammelt die OS- und Primärsystem-Daten selbst und packt sie in ein client
+_statement. In diesem Fall findet keine kryptografische Signatur durch eine Secure Enclave statt.
+5.3.1.6.3 Token Exchange mit Attestation
+Das folgende Sequenzdiagramm beschreibt den zentralen OAuth Token Exchange Authentifizierungs- und
+Autorisierungsprozess eines ZETA Clients am ZETA Guard Authorization Server. Der Prozess verknüpft die Nutzer-
+/Institutions-Authentifizierung (mittels SM(C)-B) mit der Client-Authentifizierung (Client Assertion & Evidence) und bindet
+die resultierenden Tokens kryptografisch an die aktuelle Sitzung (DPoP).
+Das Subject Token zur Authentifizierung der Institution ist nach Schema [subject-token-smb.yaml] festgelegt. Die Client
+Assertion zur Authentifizierung des Clients ist in [client-assertion-jwt.yaml] festgelegt.
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.3.0.pdf Spezifikation Seite 50 von 132
+Version: 1.3.0 © gematik - öffentlich Stand: 17.04.2026
+
+
+========== PDF PAGE INDEX 50 ==========
+Abbildung 13 Abb-ZETA-Token-Exchange-mit-Attestation
+Das Diagramm ist in mehrere logische Phasen und (verschachtelte) Fallunterscheidungen (alt-Blöcke) unterteilt.
+Phase 1: Vorbereitung der Tokens und Schlüssel (Schritte 01 - 05)
+(01 - 03) Subject Token Erstellung: Der ZETA Client generiert zunächst ein subject_token. Um die Identität des Nutzers
+bzw. der Institution (z.B. einer Arztpraxis in der Telematikinfrastruktur) nachzuweisen, wird dieses Token an die lokale
+Smartcard/Sicherheitsmodul (SM(C)-B) gesendet, dort signiert und an den Client zurückgegeben.
+(04) DPoP Key Pair: Der Client generiert ein temporäres, sitzungsbasiertes Schlüsselpaar (PrK.DPoP.Sig,
+PuK.DPoP.Sig). Dieses dient dem Demonstrating Proof-of-Possession (DPoP) – einem Mechanismus, der verhindert,
+dass gestohlene Access Tokens von Angreifern genutzt werden können.
+(05) DPoP Proof: Der Client erstellt mit dem privaten DPoP-Schlüssel und einer vom Server stammenden Nonce einen
+DPoP Proof.
+Phase 2: Der Token-Request (Schritt 06)
+(06) POST /token: Der ZETA Client sendet die eigentliche Anfrage an den PDP Authorization Server. Dieser Request
+enthält ein umfassendes Sicherheitspaket:
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.3.0.pdf Spezifikation Seite 51 von 132
+Version: 1.3.0 © gematik - öffentlich Stand: 17.04.2026
+
+
+========== PDF PAGE INDEX 51 ==========
+Im Header (dpop): Den in (05) erstellten dpop_proof.
+client_assertion: Ein JWT, signiert mit dem privaten Client-Schlüssel (PrK.Client.Sig), um den Client selbst zu
+authentifizieren.
+subject_token: Das von der SMC-B signierte Token inkl. Nonce aus Schritt (03).
+[Evidence]: Optional/Bedingt mitgeschickte Integritäts- und Zustandsdaten des Geräts (wie in den vorherigen
+Diagrammen ermittelt).
+Phase 3: Validierung durch den ZETA Guard (Schritte 07 - 09)
+(07) Basis-Validierung: Der Authorization Server prüft die Client Assertion, den DPoP Proof, das Subject Token, die
+Nonces und gleicht ab, ob die Schlüssel zu der vorherigen Registrierung (DCR) passen.
+Hardware-Attestierungsprüfung (Innerer alt-Block): Falls Evidence mitgeliefert wurde, wird diese hardware-spezifisch
+geprüft:
+(08) [TPM Attestation (Windows / Linux)]: Die TPM-Hardware-Signatur (Quote) wird verifiziert und die Systemzustände
+(PCRs) werden anhand des Event Logs nachvollzogen.
+(09) [macOS Attestation (Secure Enclave)]: Die Apple App Attest Signaturen werden geprüft und der Counter
+ausgelesen, um Replay-Attacken (Wiederholungsangriffe) zu verhindern.
+Phase 4: Policy-Entscheidung und Response (Schritte 10 - 18)
+Ab hier spaltet sich der Ablauf je nach Erfolg der Validierung auf (äußerer alt-Block):
+Fall A: [Validation successful] (Schritte 10 - 16)
+Wenn die technische und kryptografische Validierung (07-09) erfolgreich war, muss inhaltlich über den Zugriff
+entschieden werden.
+(10 - 11): Der Authorization Server bereitet die validierten Daten auf (Policy Engine Input) und sendet sie via POST
+/v1/data/authz an die PDP Policy Engine.
+(12): Die Policy Engine evaluiert die Zugriffsregeln und liefert eine Entscheidung (Policy Decision) zurück.
+Unterfall A1: [Policy Decision allow] (Schritte 13 - 16)
+Die Policy Engine erlaubt den Zugriff.
+(13): Der Server erstellt die Standard-OIDC-Tokens (Access Token, Refresh Token). Diese sind durch den Request an
+den DPoP-Schlüssel gebunden.
+Unterscheidung nach Attestierungs-Level (Innerster alt-Block):
+(14 - 15) [Hardware Attestation (TPM / SE)]: Wenn das Gerät seinen Zustand erfolgreich durch Hardware (TPM/Secure
+Enclave) bewiesen hat, generiert der Server zusätzlich ein ZETA Guard Attestation Token (zg_att_token). Er antwortet
+mit 200 OK und liefert Access Token, Refresh Token und das zg_att_token an den Client.
+(16) [Software Attestation (Fallback)]: Wenn das Gerät nur auf Software-Basis attestiert wurde, erhält der Client zwar
+Zugriff (200 OK), bekommt aber nur das Access Token und das Refresh Token (kein Attestation Token).
+Unterfall A2: [Policy Decision deny] (Schritt 17)
+(17): Wenn die Policy Engine den Zugriff verweigert (z.B. weil der Gerätezustand nicht den Sicherheitsrichtlinien
+entspricht, obwohl die Signaturen gültig sind), antwortet der Server dem Client mit 403 Forbidden.
+Fall B: [Validation fehlerhaft] (Schritt 18)
+(18): Wenn bereits die technische Prüfung in Schritt (07) bis (09) fehlschlägt (z.B. ungültige Signatur der SMC-B, DPoP-
+Proof falsch, Attestation manipuliert), bricht der Server sofort ab und antwortet dem ZETA Client mit 403 Forbidden. Die
+Policy Engine wird in diesem Fall gar nicht erst befragt.
+A_29376 - ZETA, Ablauf Token Exchange mit Attestation
+Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-Token-Exchange-mit-
+Attestation unterstützen. [<= ]
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.3.0.pdf Spezifikation Seite 52 von 132
+Version: 1.3.0 © gematik - öffentlich Stand: 17.04.2026
+
+
+========== PDF PAGE INDEX 52 ==========
+5.3.1.6.4 Token Exchange mit Refresh Token
+Das folgende Sequenzdiagramm beschreibt den Refresh-Token-Prozess (Token Renewal) eines ZETA Clients am ZETA
+Guard Authorization Server. Es zeigt, wie ein Client, der bereits eine Sitzung etabliert hat, mit einem gültigen Refresh
+Token neue Zugriffs-Token (Access Tokens) anfordert, ohne den vollständigen (und zeitaufwendigen) Hardware-
+Attestierungs- und Smartcard-Signaturprozess erneut durchlaufen zu müssen.
+Abbildung 14 Abb-ZETA-Token-Exchange-mit-Refresh-Token
+Das Diagramm gliedert sich in die Vorbereitung der Anfrage, die Validierung durch den Server und die finale
+Autorisierungsentscheidung.
+Phase 1: Vorbereitung und Token-Request (Schritte 01 - 03)
+(01) DPoP Proof: Der ZETA Client erstellt einen DPoP Proof (Demonstrating Proof-of-Possession). Bemerkenswert ist
+hier der Hinweis (without Nonce): Um einen zusätzlichen Netzwerk-Roundtrip zu sparen, wird beim Refresh oft zunächst
+auf eine frische Nonce des Servers verzichtet.
+(02) Client Assertion: Der Client erstellt ein JWT (JSON Web Token) zur eigenen Authentifizierung (Client Assertion). Hier
+geschieht dies explizit (without Attestation), da der Gerätezustand bei einem bloßen Refresh nicht zwingend neu
+aufwendig hardware-attestiert wird.
+(03) POST /token: Der Client sendet die Anfrage an den PDP Authorization Server. Dieser Request enthält im Header
+den dpop_proof und im Payload die signierte client_assertion sowie das bisherige refresh_token.
+Phase 2: Validierung durch den ZETA Guard (Schritte 04 - 06)
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.3.0.pdf Spezifikation Seite 53 von 132
+Version: 1.3.0 © gematik - öffentlich Stand: 17.04.2026
+
+
+========== PDF PAGE INDEX 53 ==========
+(04) Basis-Validierung: Der Server prüft die kryptografische Gültigkeit der Client Assertion, des DPoP Proofs und
+verifiziert, ob das eingereichte Refresh Token gültig und dem Client zugeordnet ist.
+(05) Token Invalidation: Der Server invalidiert das eingereichte Refresh Token. Dies implementiert das Konzept der
+Refresh Token Rotation – ein Refresh Token kann nur exakt einmal benutzt werden. Bei einem erneuten Versuch würde
+dies als Diebstahl-Indikator gewertet.
+Phase 3: Policy-Entscheidung und Response (Schritte 07 - 12)
+Der weitere Ablauf spaltet sich auf (äußerer alt-Block), je nachdem, ob die technische Validierung in Phase 2 erfolgreich
+war.
+Fall A: [Validation successful] (Schritte 07 - 11)
+Wenn die Token gültig sind und die SMC-B nicht gesperrt ist, wird die inhaltliche Autorisierung geprüft.
+(06 - 07): Der Authorization Server bereitet die Daten auf (Policy Engine Input) und befragt via POST /v1/data/authz die
+PDP Policy Engine.
+(08): Die Policy Engine liefert ihre Entscheidung (Policy Decision) zurück.
+Unterfall A1: [Policy Decision allow] (Schritt 10)
+(09): Die Policy Engine erlaubt die Verlängerung der Sitzung. Der Server antwortet dem Client mit 200 OK und stellt ein
+brandneues Paar aus Access Token und einem neuen Refresh Token aus.
+Unterfall A2: [Policy Decision deny] (Schritt 11)
+(10): Verweigert die Policy Engine den Zugriff (z.B. weil sich übergeordnete Zugriffsregeln geändert haben), antwortet der
+Server mit 403 Forbidden. Der Client muss sich dann ggf. komplett neu authentifizieren.
+Fall B: [Validation fehlerhaft] (Schritt 12)
+(11): Schlägt bereits die technische Prüfung (Schritte 04-06) fehl – beispielsweise weil das Refresh Token abgelaufen ist,
+der DPoP-Proof falsch ist oder die SMC-B zwischenzeitlich gesperrt wurde – bricht der Server den Vorgang ab. Die
+Policy Engine wird nicht befragt und der Client erhält sofort ein 403 Forbidden. Die Sitzung ist damit beendet.
+A_29377 - ZETA, Ablauf Token Exchange mit Refresh Token
+Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-Token-Exchange-mit-Refresh-
+Token unterstützen. [<= ]
+5.3.1.7 Zugriff auf den Resource Server
+Voraussetzung für den Zugriff auf eine geschützte Ressource (Resource Server) durch einen Client in der ZETA-
+Architektur ist, dass der vorgeschaltete Authentifizierungs- und Autorisierungsprozess bereits erfolgreich war und der
+ZETA Client über ein gültiges Access Token verfügt.
+Durch die Auswertung des OAuth Protected Resource Well-known JSON Dokuments kann der ZETA Client erkennen, ob
+eine ZETA/ASL Verbindung aufgebaut werden muss und welche Token benötigt werden.
+5.3.1.7.1 Zugriff auf den Resource Server mit ZETA/ASL
+Das folgende Diagramm zeigt, wie eine Anfrage vom Fach-Client über den ZETA Client zum Resource Server geleitet
+wird.
+Das Hauptmerkmal dieses Diagramms ist die Nutzung des ZETA/ASL (Application Security Layer), welcher eine
+zusätzliche Verschlüsselungsschicht auf Applikationsebene darstellt. Das Diagramm zeigt in einem großen alt-Block zwei
+unterschiedliche Architektur-Ansätze, je nachdem, wo dieser verschlüsselte Tunnel endet (terminiert). Je nach Einstellung
+im OAuth Protected Resource Well-known JSON Dokument wird der Tunnel entweder am ZETA Guard HTTP Proxy oder
+am Resource Server terminiert.
+Vorbedingung: Der ZETA Client hat bereits erfolgreich den Authentifizierungsprozess durchlaufen und besitzt ein gültiges
+Access Token für den Resource Server und ggf. für den ASL Tunnel.
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.3.0.pdf Spezifikation Seite 54 von 132
+Version: 1.3.0 © gematik - öffentlich Stand: 17.04.2026
+
+
+========== PDF PAGE INDEX 54 ==========
+Abbildung 15 Abb-ZETA-Zugriff-auf-RS-mit-ASL
+(01)-(02): Der Nutzer (User) möchte auf eine Ressource zugreifen. Das Primärsystem (Fach-Client) sendet eine normale,
+unverschlüsselte HTTP-Anfrage (GET /resource) an den lokalen ZETA Client.
+(03): Der ZETA Client erstellt einen kryptografischen DPoP-Proof (Demonstrating Proof-of-Possession), der an die URL
+des Resource Servers gebunden ist, um das Access Token vor Diebstahl/Replay zu schützen.
+Fall A: [ZETA/ASL terminates at PEP]
+In diesem Szenario dient ASL als sicherer Tunnel zwischen dem lokalen Client und dem Netzübergang (PEP) des
+Anbieters. Im internen Netz des Anbieters (vom PEP zum Resource Server) fließen die Daten nur mit TLS verschlüsselt.
+(04)-(05): Es wird ein ZETA/ASL-Verbindungsaufbau zwischen dem ZETA Client und dem PEP HTTP Proxy initiiert.
+(06): Der ZETA Client verpackt die eigentliche Anfrage. Er sendet einen "äußeren" Request (POST /ASL) an den PEP. Im
+verschlüsselten Body (inner request) liegt der eigentliche GET /resource-Aufruf, zusammen mit dem Access Token und
+dem in (03) generierten DPoP-Proof.
+(07): Der PEP terminiert den ASL-Tunnel. Das bedeutet, er entschlüsselt den Body.
+(08): Der PEP verifiziert nun das entpackte Access Token und den DPoP-Proof.
+(09): Ist die Prüfung erfolgreich, leitet der PEP den ursprünglichen Klartext-Request (GET /resource) an den eigentlichen
+Resource Server weiter.
+(10 - 11): Der Resource Server verarbeitet die Anfrage und sendet die Response an den PEP zurück.
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.3.0.pdf Spezifikation Seite 55 von 132
+Version: 1.3.0 © gematik - öffentlich Stand: 17.04.2026
+
+
+========== PDF PAGE INDEX 55 ==========
+(12): Der PEP verschlüsselt diese Antwort wieder mit ASL, um sie für den sicheren Rückweg über das Internet
+vorzubereiten.
+Fall B: [ZETA/ASL terminates at Resource Server]
+In diesem hochsicheren Szenario wird der Payload Ende-zu-Ende verschlüsselt. Der PEP agiert nur als Router und kann
+den Inhalt der Fachnachricht nicht mitlesen.
+(13): Der ZETA Client muss hier einen zweiten DPoP-Proof generieren. Einer ist für den Resource Server (für die
+Fachdaten), der neue ist für den PEP (um überhaupt den ASL-Endpunkt nutzen zu dürfen).
+(14)-(15): Ein ZETA/ASL-Verbindungsaufbau findet logisch zwischen dem ZETA Client und dem Resource Server statt.
+(16): Der Request (POST /ASL) ist komplexer verschachtelt:
+Auf der äußeren Ebene (für den PEP sichtbar) liegen ein Access Token und ein DPoP-Proof, die nur für den Zugang zum
+ASL-Endpunkt berechtigen.
+Der verschlüsselte Body enthält den eigentlichen Request (GET /resource) samt eigenen Autorisierungsdaten (Access
+Token und DPoP-Proof für den RS).
+(17)-(18): Der PEP prüft nur die äußeren Header. Da er den Body nicht entschlüsseln kann, leitet er den POST /ASL
+Request ungesehen an den Resource Server weiter.
+(19): Erst der Resource Server terminiert den ASL-Tunnel und entschlüsselt die Nachricht.
+(20): Der Resource Server prüft nun die inneren Header (Access Token und DPoP-Proof für die Ressource).
+(21): Er verarbeitet die Anfrage, erzeugt die Antwort und verschlüsselt diese direkt wieder in eine ASL-Response.
+(22)-(23): Unabhängig davon, ob der PEP oder der Resource Server die ASL-Verschlüsselung der Antwort übernommen
+hat, empfängt der ZETA Client nun die verschlüsselte ASL-Response.
+(24): Der ZETA Client entschlüsselt die Antwort lokal.
+(25): Er reicht die Response im Klartext an den Fach-Client weiter.
+(26): Der Fach-Client stellt dem User die angeforderten Daten dar.
+A_29380 - ZETA, Ablauf Zugriff auf den RS mit ZETA/ASL
+Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-Zugriff-auf-RS-mit-ASL unterstü
+tzen. [<= ]
+5.3.1.7.2 Zugriff auf den Resource Server ohne ZETA/ASL
+Das folgende Sequenzdiagramm beschreibt den direkten Zugriff auf eine geschützte Ressource (Resource Server) durch
+einen Client in der ZETA-Architektur.
+Er zeigt das Routing über den PEP, bei dem die Absicherung primär über tokenbasierte HTTP-Header (Authorization,
+DPoP) erfolgt, ohne dass ein zusätzlicher ASL-Verschlüsselungstunnel aufgebaut wird.
+Vorbedingung: Der ZETA Client hat im Vorfeld bereits erfolgreich einen Authentifizierungsprozess durchlaufen und
+verfügt über ein gültiges Access Token für den entsprechenden Resource Server.
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.3.0.pdf Spezifikation Seite 56 von 132
+Version: 1.3.0 © gematik - öffentlich Stand: 17.04.2026
+
+
+========== PDF PAGE INDEX 56 ==========
+Abbildung 16 Abb-ZETA-Zugriff-auf-RS-ohne-ASL
+(01): Der Endnutzer (User) möchte auf eine bestimmte Ressource zugreifen und interagiert dafür mit seiner
+Fachanwendung (Fach-Client, z. B. ein Praxisverwaltungssystem).
+(02): Der Fach-Client sendet eine reguläre, ungesicherte HTTP-Anfrage (GET /resource) an den lokal installierten ZETA
+Client. Der Fach-Client selbst muss sich nicht um die komplexe ZETA-Kryptografie kümmern.
+(03): Der ZETA Client bereitet die Anfrage vor. Er erstellt einen DPoP Proof (Demonstrating Proof-of-Possession). Dies
+ist eine kryptografische Signatur, die beweist, dass der Client im Besitz des privaten Schlüssels ist, an den das Access
+Token gebunden wurde. Dieser Proof wird speziell für die Ziel-URL des Resource Servers (RS) generiert (Schutz vor
+Replay-Attacken).
+(04): Der ZETA Client leitet den GET /resource Request an den PEP HTTP Proxy (den ZETA Guard des Anbieters)
+weiter. Dabei fügt er zwei Sicherheits-Header hinzu:
+Authorization: DPoP ...: Enthält das eigentliche Access Token.
+DPoP: ...: Enthält den in Schritt 03 generierten DPoP-Token (Proof).
+(05): Der PEP HTTP Proxy empfängt die Anfrage und verifiziert die Gültigkeit des Access Tokens und des DPoP Proofs.
+(06): Verläuft die Prüfung erfolgreich, leitet der PEP den Request in das interne Netz an den eigentlichen Resource
+Server weiter. Um dem Resource Server mitzuteilen, wer anfragt, fügt der PEP verifizierte Kontextdaten (Identität,
+Berechtigungen) in Form von ZETA headers as JSON an die Anfrage an.
+(07): Der Resource Server verarbeitet die nun vollständig autorisierte Anfrage und stellt die angeforderten Daten bereit
+(provide resource access).
+(08): Der Resource Server antwortet dem PEP mit einer Response.
+(09): Der PEP HTTP Proxy leitet diese Antwort transparent an den ZETA Client zurück.
+(10): Der ZETA Client reicht die Response an den Fach-Client durch.
+(11): Der Fach-Client nimmt die Daten entgegen und präsentiert die Ressource dem User.
+A_29381 - ZETA, Ablauf Zugriff auf den RS ohne ZETA/ASL
+Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-Zugriff-auf-RS-ohne-ASL unter
+stützen. [<= ]
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.3.0.pdf Spezifikation Seite 57 von 132
+Version: 1.3.0 © gematik - öffentlich Stand: 17.04.2026
+
+
+========== PDF PAGE INDEX 57 ==========
+5.3.2 Abläufe für mobile Clients
+In diesem Unterkapitel werden die Kommunikations- und Attestierungsprozesse für mobile ZETA Clients (z. B. auf Basis
+von Android oder iOS) detailliert. Aufgrund der Architektur mobiler Betriebssysteme werden für den Integritätsnachweis
+plattformspezifische Mechanismen wie die Android Key and ID Attestation oder die Secure Enclave von Apple genutzt.
+Als Fallback-Lösung ist eine Software-Attestierung vorgesehen, falls hardwarebasierte Nachweise nicht erbracht werden
+können. Im Unterschied zu stationären Systemen erfordert das mobile Umfeld in der Regel eine interaktive
+Nutzerauthentisierung. Daher erfolgt die Autorisierung hier standardisiert über OpenID Connect (OIDC) in Verbindung mit
+dem OAuth Authorization Code Flow.
+Im Unterschied zu stationären Clients basieren mobile Clients auf plattformintegrierten Sicherheitsmechanismen und
+erfordern in der Regel eine interaktive Nutzerauthentisierung. Während bei stationären Clients TPM/ZAS im Fokus steht,
+erfolgt der Integritätsnachweis bei mobilen Clients über plattformabhängige Attestierungsverfahren. Die Autorisierung
+erfolgt über den OIDC Authorization Code Flow in Kombination mit OAuth 2.0.
+Der Lebenszyklus eines mobilen Clients gliedert sich analog zu stationären Clients in folgende Phasen:
+Installation und Initialisierung1.
+Schlüsselgenerierung2.
+Service Discovery3.
+Key Preparation und Attestation4.
+Dynamic Client Registration (DCR)5.
+Authentifizierung (OIDC Flow)6.
+Token Exchange und Zugriff7.
+Session-Erneuerung8.
+Hardware-Attestation SOLL bevorzugt eingesetzt werden und Software-Attestation dient als Fallback-Mechanismus.
+ 
+5.3.2.1 Initialisierung und Schlüsselgenerierung
+Nach der Installation der mobilen Anwendung wird beim ersten Start ein initialer Satz kryptografischer Schlüssel erzeugt,
+der als langlebige Identität der Client-Instanz dient.
+Im Gegensatz zu stationären Clients erfolgt die Schlüsselgenerierung vollständig innerhalb der durch das mobile
+Betriebssystem bereitgestellten Sicherheitsmechanismen.
+5.3.2.1.1 Android TEE oder Strongbox
+Das Sequenzdiagramm zeigt den grundlegenden Prozess der kryptografischen Schlüsselgenerierung und Hardware-
+Attestierung auf einem Android-Gerät. Es veranschaulicht das Zusammenspiel zwischen der App (mit ZETA Client), dem
+Betriebssystem (Android OS) und dem isolierten Hardware-Sicherheitsmodul (TEE / StrongBox).  Es nutzt ein Zwei-
+Schlüssel-Modell (beide in der Hardware verankert) und integriert die externe Google Play Integrity API.
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.3.0.pdf Spezifikation Seite 58 von 132
+Version: 1.3.0 © gematik - öffentlich Stand: 17.04.2026
+
+
+========== PDF PAGE INDEX 58 ==========
+Abbildung 17 Abb-ZETA-Schlüsselgenerierung-Android
+Phase 1: Client Instance Key Pair (PrK.Client.Sig; PuK.Client.Sig)
+In dieser Phase wird der Schlüssel, mit dem der Client später Authentifizierungen (Client Assertions) durchführt.
+(01): Der ZETA Client bittet das Android OS über den KeyStore, einen neuen primären Schlüssel (Alias_Client_Sig) zu
+generieren.
+(02)-(03): Das OS reicht den Befehl an die sichere Hardware (TEE / StrongBox) weiter. Dort wird das Schlüsselpaar
+erzeugt. Eine entscheidende Neuerung ist hier dokumentiert: (Schlüssel verbleibt in HW). Der private Teil wird niemals in
+den Speicher des Betriebssystems oder der App kopiert.
+(04): Der Client erhält lediglich eine Referenz (den Alias) auf diesen Schlüssel zurück.
+(05): Der Client berechnet lokal den SHA-256 Hashwert über den öffentlichen Teil dieses neuen Schlüssels
+(hash_puk_client_sig). Dieser Hash dient in den folgenden Phasen als Bindeglied.
+Phase 2: Hardware-Attestierung (Attestation Key)
+Hier wird der Hardware-Beweis (die Urkunde) erstellt, dass Phase 1 wirklich in einer StrongBox stattgefunden hat.
+(06): Der Client fordert die Generierung eines zweiten Schlüssels an (den Attestation Key, Alias_AK). Dabei übergibt er
+den soeben berechneten Hash als AttestationChallenge.
+(07)-(08): Die TEE / StrongBox erzeugt das AK-Schlüsselpaar und eine X.509-Zertifikatskette. Die Challenge (der Hash)
+wird dabei kryptografisch und unveränderlich in das Zertifikat des öffentlichen AK (PuK.AK.Sig) eingewoben.
+(09): Die fertige Zertifikatskette (android_key_attestation_certificate_chain) wird an den Client ausgeliefert.
+Phase 3: Expliziter Besitznachweis (Proof of Possession)
+Hier beweist das Gerät aktiv, dass es den privaten Attestation Key besitzt.
+(10)-(11): Der Client ruft die Signier-Funktion auf und lässt den Hash des Client-Schlüssels (hash_puk_client_sig) mit
+dem privaten Attestation Key (PrK.AK.Sig) in der Hardware signieren.
+(12)-(13): Die fertige ECDSA-Signatur (signed_hash_puk_client_sig) verlässt die Hardware und wird dem Client
+übergeben.
+(Zusatzinfo: Durch Phase 2 und 3 kann der Server später verifizieren, dass der Arbeits-Schlüssel unabdingbar mit genau
+dieser Hardware verknüpft ist, analog zum Apple-Ablauf).
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.3.0.pdf Spezifikation Seite 59 von 132
+Version: 1.3.0 © gematik - öffentlich Stand: 17.04.2026
+
+
+========== PDF PAGE INDEX 59 ==========
+Phase 4: Play Integrity API (Optional, empfohlen)
+In der letzten Phase wird der Laufzeit-Zustand des Geräts und der App geprüft.
+(14): Der Client kontaktiert die externe Google Play Integrity API. Er fordert ein Integritäts-Token an. Ein essenzielles
+Sicherheitsdetail: Als nonce (Einmalwert gegen Replay-Angriffe) übergibt er den Hash des Client-Schlüssels. Dadurch
+wird das Integritäts-Urteil von Google kryptografisch fest an den Schlüssel aus Phase 1 gebunden.
+(15): Google liefert das base64-kodierte play_integrity_token an die App zurück.
+5.3.2.1.2 Apple Secure Enclave
+Das Sequenzdiagramm beschreibt die initiale Generierung des Client Key Pair durch eine ZETA Client App auf einem
+Apple-Gerät. Der Vorgang ist für mobile und stationäre Clients identisch (iOS, iPadOS, macOS).
+Abbildung 18 Abb-ZETA-Schlüsselgenerierung-macOS
+Hauptweg: [Secure Enclave]
+(02): Die App nutzt die native Apple-API (z. B. CryptoKit oder Security Framework), um über die Funktion
+SecKeyCreateRandomKey ein neues Schlüsselpaar anzufordern. Dabei wird explizit gefordert, dass die Schlüssel
+(PrK.Client.Sig, PuK.Client.Sig) in der Secure Enclave (SE) generiert werden sollen.
+(03): Das Betriebssystem leitet den Befehl an den isolierten Hardware-Chip (Secure Enclave) weiter, welcher das
+Schlüsselpaar generiert.
+(04 - 05): Der private Schlüssel verlässt die Secure Enclave nicht. Das OS erhält lediglich eine Referenz (keyId) und
+reicht diese an die App weiter. Die App kann den Schlüssel nun für Signaturen nutzen, ihn aber nicht auslesen.
+Fallback-Weg: [Fallback]
+(06): Sollte die Secure Enclave nicht verfügbar sein, generiert die App das Schlüsselpaar in Software (im lokalen
+Arbeitsspeicher). Dieser Weg bietet keinen Hardware-Schutz.
+5.3.2.2 Service Descovery
+Die Service Discovery ist identisch für stationäre und mobile Clients. Siehe 5.3.1.3 - Service Discovery.
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.3.0.pdf Spezifikation Seite 60 von 132
+Version: 1.3.0 © gematik - öffentlich Stand: 17.04.2026
+
+
+========== PDF PAGE INDEX 60 ==========
+5.3.2.3 Plattformabhängige Attestierung
+5.3.2.3.1 Android
+Auf Android-Geräten erfolgt die Attestierung über plattformspezifische Sicherheitsmechanismen, die eine Bindung
+zwischen Anwendung, Schlüsselmaterial und Gerät herstellen.
+Der Ablauf gliedert sich wie folgt:
+(01) Anforderung einer Nonce
+Der ZETA Client fordert beim Authorization Server eine Nonce an, um die Aktualität der Attestation sicherzustellen.
+(02) Ermittlung von Gerätezustandsdaten
+Der ZETA Client sammelt relevante Posture-Informationen:
+OS-Version und Security Patch Level
+Hersteller und Gerätemodell
+Boot-Status und Verified Boot
+App-Signaturinformationen
+(03) Erstellung des Attestierungsnachweises
+Der Client nutzt eine der folgenden APIs:
+Android Key Attestation
+Android ID Attestation
+optional: Play Integrity API
+Dabei wird ein kryptografisch signierter Nachweis erstellt, der belegt:
+das Schlüsselpaar ist hardwaregebunden
+das Gerät befindet sich in einem vertrauenswürdigen Zustand
+die Anwendung ist nicht manipuliert
+(04) Übermittlung der Attestierungsdaten
+Die generierten Attestierungsartefakte werden in ein Client Statement eingebettet und an den ZETA Guard übermittelt.
+(05) Validierung im ZETA Guard
+Der Authorization Server validiert:
+Zertifikatskette des Attestierungsschlüssels
+Integrität der Daten
+Bindung zwischen Schlüssel und Gerät
+Dieser Nachweis stellt einen hardwaregestützten Integritätsbeweis dar und ermöglicht eine hohe Vertrauensstufe für den
+Client.
+ 
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.3.0.pdf Spezifikation Seite 61 von 132
+Version: 1.3.0 © gematik - öffentlich Stand: 17.04.2026
+
+
+========== PDF PAGE INDEX 61 ==========
+5.3.2.3.2 Apple
+Für Apple-basierte Geräte erfolgt die Attestation durch die Secure Enclave in Kombination mit Apple App Attest oder
+DeviceCheck.
+Der Ablauf ist wie folgt:
+(01) Nonce-Anforderung
+Der ZETA Client fordert eine Nonce vom Authorization Server an.
+(02) Erhebung von Posture-Daten
+Der Client liest relevante Systemzustände aus:
+Betriebssystemversion
+Geräteklasse und Modell
+Sicherheitsmechanismen (z. B. Secure Boot, SIP)
+(03) Hash-Bildung
+Der ZETA Client kombiniert:
+Nonce
+Posture-Daten
+zu einem Hashwert (clientDataHash).
+(04) Signatur durch Secure Enclave
+Der Client ruft die Apple API (z. B. DCAppAttest.generateAssertion) auf.
+Der Hash wird an die Secure Enclave übergeben
+Die Secure Enclave signiert den Hash mit dem privaten Schlüssel
+Zusätzlich wird ein Counter erzeugt
+(05) Erstellung des Attestation Objects
+Das Betriebssystem erstellt ein standardisiertes Objekt (Assertion), welches enthält:
+Signatur
+Zertifikatskette
+Authenticator-Daten
+(06) Übermittlung an den ZETA Guard
+Der ZETA Client überträgt das Attestation Object zusammen mit den Klartextdaten.
+(07) Validierung
+Der Authorization Server:
+validiert die Apple Zertifikatskette
+rekonstruiert den Hash
+prüft die Signatur und den Counter
+Auch hier wird sichergestellt, dass App, Gerät und Schlüssel unverändert und authentisch sind.
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.3.0.pdf Spezifikation Seite 62 von 132
+Version: 1.3.0 © gematik - öffentlich Stand: 17.04.2026
+
+
+========== PDF PAGE INDEX 62 ==========
+5.3.2.3.3 Software Attestierung (Fallback)
+Falls keine hardwaregestützte Attestierung möglich ist, wird eine softwarebasierte Attestierung durchgeführt.
+Dies betrifft insbesondere:
+ältere Geräte
+Emulatoren oder spezielle Umgebungen
+Geräte ohne verfügbare Attestation-APIs
+Der Ablauf ist wie folgt:
+(01) Generierung des Client-Schlüssels
+Das Schlüsselpaar wird im Software-Kontext erzeugt.
+(02) Erhebung von Basisinformationen
+Der ZETA Client sammelt einfache Kontextdaten:
+Betriebssystem und Version
+Architektur
+Produkt- und Versionsinformationen
+(03) Erstellung einer Challenge-basierten Signatur
+Der Client signiert eine vom Server bereitgestellte Nonce mit PrK.Client.Sig.
+(04) Erstellung des Client Statements
+Die erhobenen Daten und die Signatur werden in ein Client Statement integriert.
+(05) Übermittlung an den Authorization Server
+Der Client sendet den Nachweis im Rahmen der Registrierung.
+(06) Bewertung im ZETA Guard
+Der Server kann lediglich prüfen:
+Besitz des privaten Schlüssels
+Konsistenz der Daten
+Eine hardwarebasierte Vertrauensbindung besteht nicht.
+Der Resultierende Sicherheitsgrad ist daher geringer.
+Die finale Zugriffserlaubnis erfolgt nur unter zusätzlicher Policy-Prüfung.
+5.3.2.4 Client Registrierung und Authentifizierung
+Das Sequenzdiagramm zeigt den Prozess der Dynamic Client Registration (DCR) für mobile ZETA Clients. Es vereint die
+kryptografische Hardware-Attestierung mit der nutzerzentrierten E-Mail-Verifikation (TOFU – Trust On First Use).
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.3.0.pdf Spezifikation Seite 63 von 132
+Version: 1.3.0 © gematik - öffentlich Stand: 17.04.2026
+
+
+========== PDF PAGE INDEX 63 ==========
+Abbildung 19 Abb-ZETA-DCR-für-mobile-Clients
+Der Ablauf ist in zwei große Hauptpfade unterteilt (äußerer alt-Block):
+Pfad 1: [Kein ZETA Guard Attestation Token] (Initiale Registrierung)
+Wenn das Gerät noch unbekannt ist, muss es registriert werden. Dies geschieht nun in zwei aufeinanderfolgenden
+Phasen:
+Phase 1.1: Kryptografische Attestierung (Schritte 01 - 10)
+Der Client sendet den POST /register Request. Der Server validiert die Anfrage basierend auf dem Betriebssystem
+(innerer alt-Block):
+Apple: Prüfung des Apple_Attestation_Object gegen die Apple Root CA.
+Android: Prüfung der Zertifikatskette, des Signatur-Hashes und (optional, aber abgebildet) Entschlüsselung und
+Auswertung des play_integrity_token von Google.
+Software (Fallback): Eine rein softwarebasierte Registrierung.
+Phase 1.2: TOFU E-Mail-Bindung (Schritte 11 - 16)
+Anstatt sofort eine client_id zu vergeben, fordert der Server nun den menschlichen Vertrauensbeweis ein:
+(11): Der AuthS generiert ein Einmalpasswort (OTP) sowie eine temporäre transaction_id. Die bisher verifizierten
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.3.0.pdf Spezifikation Seite 64 von 132
+Version: 1.3.0 © gematik - öffentlich Stand: 17.04.2026
+
+
+========== PDF PAGE INDEX 64 ==========
+Registrierungsdaten werden unter dieser ID in einem temporären Cache zwischengespeichert.
+(12): Das OTP wird Out-of-Band (per E-Mail) an den Nutzer gesendet.
+(13): Der AuthS antwortet dem Client mit einem 202 Accepted, der transaction_id und der Aufforderung, das OTP
+einzugeben (siehe Schema [register-response-202.yaml]).
+(14 - 15): Der Nutzer tippt das OTP in die App ein. Die App sendet einen POST /register/verify Request, der die
+transaction_id und den code enthält (siehe [verify-request.yaml]).
+(16): Der Server verifiziert den Code gegen den Cache.
+Pfad 2: [ZETA Attestation Token vorhanden (Fast-Path)] (Schritte 17 - 19)
+Wenn der Client bereits ein Hardware-Ticket (ZETA Attestation Token) besitzt (z. B. bei einer Schlüsselrotation), nutzt er
+den Fast-Path.
+(17 - 19): Der Client sendet POST /register mit dem Token. Der Server validiert die Signatur des Tokens und prüft den
+Besitznachweis (Signatur/Assertion). Da das Gerät bereits früher erfolgreich verifiziert wurde, entfällt in diesem Pfad die
+erneute TOFU-E-Mail-Prüfung.
+Abschluss (Schritt 20)
+(20): Wenn entweder die TOFU-Verifikation (Pfad 1) oder der Fast-Path (Pfad 2) erfolgreich war, schließt der AuthS die
+Registrierung ab und antwortet mit 201 Created und vergibt die client_id.
+ 
+5.3.3 Dienst zu Dienst Kommunikation
+Dieses Unterkapitel widmet sich der maschinellen, nicht-interaktiven Kommunikation zwischen Backend-Diensten
+innerhalb der ZETA-Architektur. Um Backend-Workloads sicher zu authentisieren und zu autorisieren, wird das Konzept
+der Workload Identity Federation eingesetzt. In diesem Szenario übernimmt der ZETA Guard (Authorization Server) eine
+Doppelrolle: Er agiert als Identity Provider (IDP) für den anfragenden Dienst und fungiert als Security Token Service
+(STS) bei dem aufgerufenen (zweiten) Dienst. Die Grundlage für diese Vertrauensstellung bildet die Policy Engine,
+welche den zentralen Pool der registrierten und vertrauenswürdigen Identity Provider verwaltet und bei der Token-
+Ausstellung die Einhaltung der geltenden Zugriffsrichtlinien sicherstellt.
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.3.0.pdf Spezifikation Seite 65 von 132
+Version: 1.3.0 © gematik - öffentlich Stand: 17.04.2026
+
+
+========== PDF PAGE INDEX 65 ==========
+Abbildung 20 Abb-ZETA-Dienst-zu-Dienst-Kommunikation
+5.3.4 Überblick über den Attestierungslebenszyklus
+<< 5.3.4 bis 5.3.12 muss entfernt werden >> Der Attestierungsprozess eines ZETA Clients ist kein singulärer Vorgang,
+sondern ein mehrphasiger Lebenszyklus, der sich über die gesamte Nutzungsdauer eines Clientsystems erstreckt. Ziel
+dieses Lebenszyklus ist es, zu jedem relevanten Zeitpunkt eine bewertbare und nachvollziehbare Vertrauensgrundlage
+für den ZETA Client bereitzustellen.
+Der Lebenszyklus beginnt mit der erstmaligen Installation und Registrierung des ZETA Clients und setzt sich über
+wiederholte ClientStarts, die Vorbereitung und Bindung kryptografischer Schlüssel, die Erhebung von
+Attestierungsnachweisen sowie den Tokenaustausch mit ZETAKomponenten fort. Dabei gilt:
+Die initiale BaselineEtablierung schafft einen ersten, definierten Referenzzustand.
+Nachfolgende Schritte bauen inkrementell auf bereits etablierten Vertrauensankern auf.
+Attestierungsinformationen können sowohl direkt (z.B. bei einem Tokenaustausch) als auch indirekt (z.B. über
+gebundene Schlüssel oder DCRArtefakte) in Entscheidungen einfließen.
+Der Prozess ist so ausgelegt, dass er sowohl:
+hardwarebasierte Sicherheitsfunktionen (z.B. TPM, Secure Enclave) bevorzugt nutzt,
+als auch softwarebasierte Verfahren unterstützt, sofern dies erforderlich ist.
+Die Tabelle 8 Tab_gemSpec_ZETA_Client_Attestierungsprozess gibt einen Überblick über die Phasen des Attestierungs
+und Registrierungsprozesses und ordnet diese den jeweiligen Unterkapiteln und Ablaufdiagrammen zu. 
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.3.0.pdf Spezifikation Seite 66 von 132
+Version: 1.3.0 © gematik - öffentlich Stand: 17.04.2026

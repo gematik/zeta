@@ -7,3 +7,6 @@ MD013: false
 MD024: false
 # MD033 - Inline HTML
 MD033: false
+# MD060 - Table column style
+MD060: 
+  style: any

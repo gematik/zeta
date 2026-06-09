@@ -6,7 +6,12 @@ Dieses Dokument beschreibt die Inhalte des zeta-sdk repositories.
 Es enthält neben dem eigentlichen SDK, d.h. der Kernfunktionalität des ZETA-Clients, auch verschiedene Test-Clients,
 im Sinne eines Monorepos.
 
-[[_TOC_]]
+## Inhaltsverzeichnis
+
+- [Verzeichnisse](#verzeichnisse)
+  - [Fachliche Verzeichnisse](#fachliche-verzeichnisse)
+  - [Technische Verzeichnisse](#technische-verzeichnisse)
+  - [Strukture der Module](#strukture-der-module)
 
 ## Verzeichnisse
 
@@ -54,7 +59,7 @@ plattformspezifische Unterverzeichnisse vorhanden.
 
 Hier ein Beispiel für das Netzwerk-Modul:
 
-![Netzwerk-Modul](../assets/images/depl_sc/sdk-modul-beispiel.png)
+![Netzwerk-Modul](../assets/images/sdk-modul-beispiel.png)
 
 Die verschiedenen Verzeichnisse beinhalten gemeinsamen Code - mindestens die API des Moduls,
 sowie die ggf. plattformspezifischen Implementierungen der Module.

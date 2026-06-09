@@ -1,0 +1,50 @@
+@startuml "Abb-ZETA-DCR-für-mobile-Apple-HW-Att-Clients"
+!include ../puml-layout.txt
+
+actor User as "Nutzer"
+
+box "mobile Apple Device" DEVICE_COLOR
+  box "App" PRIMAERSYSTEM_COLOR
+    participant Client as "ZETA Client" <<zeta>>
+  end box
+end box
+
+box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
+  box "ZETA Guard" ZETA_GUARD_COLOR
+    participant AuthS as "PDP\nAuthorization Server" <<zeta>>
+  end box
+end box
+
+Client++
+alt Kein ZETA Attestation Token vorhanden
+    
+    Client -> AuthS++: POST /register\n{attestation_type="apple", Apple_Attestation_Object, PuK.Client.Sig}
+    AuthS -> AuthS: Validiere Apple_Attestation_Object
+    note right of AuthS: AuthS verifiziert Apple App Attest Root CA.\nExtrahiert Hash(PuK.Client.Sig) aus Objekt\nund vergleicht ihn mit dem Payload.
+
+    AuthS -> AuthS: Store Client Placeholder (state: pending_user_binding)
+
+    ' Trust On First Use (TOFU)
+    AuthS -> AuthS: Generiere OTP & transaction_id\nSpeichere Request im temporären Cache
+    AuthS -> User: E-Mail mit OTP-Bestätigungscode (Out-of-Band)
+    
+    ' Server antwortet mit 202, noch KEINE client_id!
+    AuthS --> Client--: 202 Accepted {transaction_id, message="OTP sent"}
+
+    ' Warte auf Nutzer-Eingabe
+    User -> Client: Gibt OTP-Bestätigungscode ein
+    
+    ' Verifikation mit der temporären ID
+    Client -> AuthS++: POST /register/verify\n{transaction_id, code}
+    AuthS -> AuthS: Verifiziere OTP-Code gegen Cache
+
+
+else ZETA Attestation Token vorhanden (Fast-Path)
+    Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token",\nzeta_guard_attestation_token, PuK.Client.Sig,\nBesitznachweis (Signatur/Assertion)}
+    AuthS -> AuthS: Prüfe Token-Signatur & Vertrauensstellung
+    AuthS -> AuthS: Extrahiere PuK.AK.Sig aus Token, verifiziere Besitznachweis
+end
+
+AuthS --> Client--: 201 Created {client_id, status="pending_user_binding"}
+
+@enduml

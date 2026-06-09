@@ -1,0 +1,6 @@
+{
+  "client_id": "cid-example-12345",
+  "product_id": "gematik-example-client-v1",
+  "product_version": "1.0.0",
+  "platform": "linux"
+}

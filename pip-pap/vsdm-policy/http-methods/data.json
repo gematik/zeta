@@ -1,0 +1,6 @@
+{
+  "allowed_http_methods": [
+    "GET",
+    "POST"
+  ]
+}

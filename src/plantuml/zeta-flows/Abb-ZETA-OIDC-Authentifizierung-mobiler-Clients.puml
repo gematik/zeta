@@ -1,0 +1,71 @@
+@startuml "Abb-ZETA-OIDC-Authentifizierung-mobiler-Clients"
+!include ../puml-layout.txt
+autonumber stop
+
+
+' Übersichtsdiagramm: Authentifizierung mobiler Clients (OIDC Authorization Code Flow mit PAR und PKCE)
+' Die Detailschritte sind in den referenzierten Teildiagrammen beschrieben.
+
+actor User as "Nutzer\n(Versicherter)"
+
+box "Mobile App" DEVICE_COLOR
+  participant FC as "Fach-Client" <<provider>>
+  participant Client as "ZETA Client" <<zeta>>
+end box
+
+box "Authenticator" LEI_COMPONENT_COLOR
+  participant AM as "Authenticator-Modul\n(sektoraler IDP)"
+end box
+
+box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
+  box "ZETA Guard" ZETA_GUARD_COLOR
+    participant AuthS as "PDP\nAuthorization Server\n(OIDC Relying Party)" <<zeta>>
+    participant OPA as "PDP\nPolicy Engine" <<zeta>>
+  end box
+end box
+
+box "TI-Föderation" #EAF2FF
+  participant IDP as "Sektoraler IDP\n(PAR- / Auth- /\nToken-Endpunkt)"
+  participant FM as "Federation\nMaster"
+end box
+
+note over FC, AuthS
+  **Vorbedingungen:**
+  - Service Discovery ist abgeschlossen (Abb-ZETA-Service-Discovery), der ZETA Client kennt die Endpunkte des PDP Authorization Server.
+  - Der ZETA Client wurde per Dynamic Client Registration registriert (Abb-ZETA-DCR-für-mobile-Clients) und besitzt PrK.Client.Sig / PuK.Client.Sig.
+  - Der PDP Authorization Server ist als Relying Party (Fachdienst) beim Federation Master registriert.
+  - App-Link / Universal-Link für ZETA Client und Authenticator-Modul sind im Betriebssystem registriert.
+end note
+
+User -> FC ++ : Wählt sektoralen IDP (idp_iss)\nund startet Zugriff auf den Fachdienst
+FC -> FC: Erstellt vollständigen\nfachlichen HTTPS-Request\n(inkl. Header)
+FC -> Client ++ : Beauftragt Verarbeitung des\nfachlichen Requests (inkl. idp_iss)
+
+note over Client, AuthS: Der ZETA Client benötigt für den Zugriff ein gültiges Access Token und führt dazu die OIDC-Authentifizierung aus.
+
+ref over Client, FM
+  **(A)** Authorization Request mit PAR
+  siehe **Abb-ZETA-OIDC-Authorization-Request-mit-PAR**
+end ref
+
+ref over User, IDP
+  **(B)** Nutzerauthentisierung am sektoralen IDP
+  siehe **Abb-ZETA-OIDC-Nutzerauthentisierung**
+end ref
+
+ref over Client, IDP
+  **(C)** Token-Bezug und Ausstellung der ZETA Token
+  siehe **Abb-ZETA-OIDC-Token-Bezug**
+end ref
+
+note over Client, AuthS: Der ZETA Client besitzt nun ein DPoP-gebundenes Access Token.
+
+ref over Client, AuthS
+  Zugriff auf den Resource Server mit dem Access Token
+  siehe **Abb-ZETA-Zugriff-auf-RS-mit-ASL** / **Abb-ZETA-Zugriff-auf-RS-ohne-ASL**
+end ref
+
+Client --> FC -- : Fachliche Response
+FC --> User -- : Ergebnis anzeigen
+
+@enduml

@@ -1,56 +1,48 @@
 {
   "version": "1.0",
   "client_registration_data": {
-    "name": "Praxis-PC-01",
     "client_id": "cid-win-tpm-abcde",
+    "product_id": "gematik-light-client-win-v1",
+    "product_version": "1.0.0",
     "platform": "windows",
-    "manufacturer_id": "lenovo-corp",
-    "manufacturer_name": "Lenovo",
-    "owner_mail": "praxis@example.com",
+    "posture_type": "tpm",
     "registration_timestamp": 1678888000,
-    "platform_product_id": {
-      "package_family_name": "GematikDesktopSuite_123456789"
-    }
-  },
-  "client_assertion": {
-    "sub": "cid-win-tpm-abcde",
-    "platform": "windows",
-    "posture": {
-      "platform_product_id": {
-        "package_family_name": "GematikDesktopSuite_123456789"
-      },
-      "product_id": "gematik-desktop-suite-win-v3",
-      "product_version": "3.5.0",
+    "attestation_timestamp": 1678888010,
+    "device_info": {
       "os": "Windows 11 Pro",
-      "os_version": "10.0.22621",
-      "arch": "x86_64",
-      "tpm_attestation_key": "base64-encoded-tpm-attestation-key...",
-      "tpm_quote": "base64-encoded-tpm-quote...",
-      "tpm_event_log": "base64-encoded-tpm-event-log...",
-      "tpm_ek_certificate_chain": [
-        "base64-encoded-ek-cert-1...",
-        "base64-encoded-ek-cert-2..."
-      ]
+      "os_version": "10.0.22621"
     },
-    "attestation_timestamp": 1678888010
+    "attestation_result": {
+      "tpm": {
+        "arch": "x86_64",
+        "pcrs": {
+          "7": "3d458cfe55cc03ea1f443f1562beec8df51c75e14a9fcf9a7234a13f198e7969",
+          "23": "0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "quote_verified": true
+      }
+    }
   },
   "user_info": {
     "identifier": "Y555666777",
-    "professionOID": "1.2.276.0.76.4.49"
+    "professionOID": "1.2.276.0.76.4.50"
   },
   "delegation_context": null,
   "authorization_request": {
     "scopes": [
-      "openid",
-      "urn:telematik:epas"
+      "test_scope_read"
     ],
     "audience": [
-      "https://epa-resource.de/api/v1"
+      "https://example.com/testresource"
     ],
+    "country_code": "DE",
+    "http_method": "GET",
     "ip_address": "192.0.2.88",
+    "previous_ip_address": "192.0.2.88",
     "grant_type": "authorization_code",
     "amr": [
       "smartcard"
-    ]
+    ],
+    "acr": "loa3"
   }
 }

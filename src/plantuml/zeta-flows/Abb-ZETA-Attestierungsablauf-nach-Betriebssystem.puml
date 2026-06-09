@@ -1,0 +1,139 @@
+@startuml "Abb-ZETA-Attestierungsablauf-nach-Betriebssystem"
+!include ../puml-layout.txt
+
+!pragma teoz true
+
+title Überblick Attestierungsabläufe nach Betriebssystem
+
+box "Device" DEVICE_COLOR
+  box "Primärsystem" PRIMAERSYSTEM_COLOR
+    participant Client as "ZETA Client" <<zeta>>
+  end box
+  participant ZAS as "ZETA Attestation Service" <<zeta>>
+end box
+
+box "ZETA Guard" ZETA_GUARD_COLOR
+  participant AuthS as "Authorization Server" <<zeta>>
+end box
+
+== Einstieg ==
+
+Client -> Client: Installation & Start\nSchlüsselgenerierung
+
+== Betriebssystem-abhängige Schritte ==
+
+alt Windows / Linux
+
+    group Windows / Linux Pfad
+
+        alt TPM + ZAS verfügbar
+            Client -> ZAS: Initialisierung
+
+            note right of ZAS
+              TPM Setup:
+              - SRK erstellen
+              - Attestation Key (AK)
+              - PCR Konfiguration
+            end note
+
+            ZAS --> Client: Schlüssel + Handles
+
+            Client -> ZAS: GetEvidence (Nonce)
+
+            note right of ZAS
+              Evidence-Erzeugung:
+              - TPM Quote
+              - Event Log
+            end note
+
+            ZAS --> Client: Evidence
+
+            Client -> AuthS: Registrierung (TPM Attestation)
+
+            note right of AuthS
+              Validierung:
+              - TPM Nachweis prüfen
+            end note
+
+        else Software Fallback
+
+            note right of Client
+              Software-Modus:
+              - Schlüsselpaar erzeugen
+              - Posture erfassen
+            end note
+
+            Client -> AuthS: Registrierung (Software)
+
+            note right of AuthS
+              Basisvalidierung
+            end note
+
+        end
+
+    end group
+
+else macOS
+
+    group macOS Pfad
+
+        alt Secure Enclave verfügbar
+
+            note right of Client
+              Secure Enclave:
+              - Schlüssel generieren
+              - App Attest Assertion
+              - Nonce + Posture
+            end note
+
+            Client -> AuthS: Registrierung (Apple Attestation)
+
+            note right of AuthS
+              Validierung:
+              - Attestation Object prüfen
+            end note
+
+        else Software Fallback
+
+            note right of Client
+              Software-Modus:
+              - Schlüsselpaar erzeugen
+              - Posture erfassen
+            end note
+
+            Client -> AuthS: Registrierung (Software)
+
+            note right of AuthS
+              Basisvalidierung
+            end note
+
+        end
+
+    end group
+
+end
+
+== Gemeinsame Schritte ==
+
+Client -> AuthS: Token Exchange\n(client_assertion + Evidence)
+
+alt Hardware Attestation
+
+    note right of AuthS
+      Erweiterte Prüfung :
+      - TPM oder Secure Enclave
+    end note
+
+    AuthS --> Client: Access Token + zg_att_token
+
+else Software Attestation
+
+    note right of AuthS
+      Basisprüfung
+    end note
+
+    AuthS --> Client: Access Token
+
+end
+
+@enduml

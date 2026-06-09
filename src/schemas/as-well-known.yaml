@@ -20,6 +20,10 @@ properties:
     type: string
     format: uri
     description: "The URL of the nonce endpoint."
+  registration_endpoint:
+    type: string
+    format: uri
+    description: "The URL of the client registration endpoint."
   openid_providers_endpoint:
     type: string
     format: uri
@@ -41,6 +45,11 @@ properties:
       enum:
         - code
         - token
+        - id_token
+        - token id_token
+        - code id_token
+        - code token id_token
+        - code token
   response_modes_supported:
     type: array
     description: "The response modes supported by the authorization server."
@@ -65,50 +74,17 @@ properties:
     type: string
     format: uri
     description: "A URL to the service documentation."
-  ui_locales_supported:
-    type: array
-    description: "The UI locales supported by the authorization server."
-    items:
-      type: string
   code_challenge_methods_supported:
     type: array
     description: "The code challenge methods supported for PKCE."
     items:
       type: string
 
-  # --- API Versioning ---
-  api_versions_supported:
-    type: array
-    description: >-
-      A JSON array listing the supported API versions for this protected resource.
-    items:
-      type: object
-      properties:
-        major_version:
-          type: integer
-          description: The major version number of the API.
-        version:
-          type: string
-          description: The full, stable Semantic Versioning (SemVer) compliant string for this API version.
-        status:
-          type: string
-          description: The release status of this API version.
-          enum: [stable, beta, alpha, deprecated, retired]
-        documentation_uri:
-          type: string
-          format: uri
-          description: >-
-            URL of the documentation specific to this API version.
-      required:
-        - major_version
-        - version
-        - status
-
 required:
   - issuer
   - authorization_endpoint
   - nonce_endpoint
-  - openid_providers_endpoint
+  - registration_endpoint
   - token_endpoint
   - jwks_uri
   - scopes_supported
@@ -116,5 +92,4 @@ required:
   - grant_types_supported
   - token_endpoint_auth_methods_supported
   - token_endpoint_auth_signing_alg_values_supported
-  - ui_locales_supported
   - code_challenge_methods_supported

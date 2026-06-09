@@ -1,0 +1,26 @@
+@startuml "Abb-ZETA-Schlüsselgenerierung-macOS"
+!include ../puml-layout.txt
+
+
+box "Device" DEVICE_COLOR
+  participant "Secure Enclave" as SE LEI_COMPONENT_COLOR
+  participant "OS (macOS, iOS, iPadOS)" as AppleOS LEI_COMPONENT_COLOR
+  box "App" PRIMAERSYSTEM_COLOR
+    participant "ZETA Client" as Client <<zeta>>
+  end box
+end box
+
+Client++
+AppleOS++
+Client --> Client: Installation (User Space)
+
+alt Secure Enclave
+    Client -> AppleOS: SecKeyCreateRandomKey\n(für PrK.Client.Sig, PuK.Client.Sig in SE)
+    AppleOS -> SE++: Generiere Schlüssel (Client.Sig)
+    SE --> AppleOS--: keyId (Referenz für PrK.Client.Sig)
+    AppleOS --> Client: keyId (Referenz für PrK.Client.Sig)
+else Fallback
+    Client -> Client: Generiere PrK.Client.Sig,\nPuK.Client.Sig
+end
+
+@enduml

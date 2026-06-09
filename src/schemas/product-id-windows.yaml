@@ -9,7 +9,7 @@ properties:
     const: "windows"
   store_id:
     type: string
-    description: The Store ID for the Windows app.
+    description: The Store ID for the Windows app. This can be the official Microsoft Store ID or an identifier from a custom/private store. If the app is not distributed via a store, this claim should be left empty or omitted.
   package_family_name:
     type: string
     description: The Package Family Name for the Windows app.

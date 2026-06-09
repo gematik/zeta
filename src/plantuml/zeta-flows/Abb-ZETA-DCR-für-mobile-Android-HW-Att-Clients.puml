@@ -1,0 +1,59 @@
+@startuml "Abb-ZETA-DCR-für-mobile-Android-HW-Att-Clients"
+!include ../puml-layout.txt
+
+actor User as "Nutzer"
+
+box "Android Device" DEVICE_COLOR
+  box "App" PRIMAERSYSTEM_COLOR
+    participant Client as "ZETA Client" <<zeta>>
+  end box
+end box
+
+box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
+  box "ZETA Guard" ZETA_GUARD_COLOR
+    participant AuthS as "PDP\nAuthorization Server" <<zeta>>
+  end box
+end box
+
+Client++
+alt Kein ZETA Attestation Token vorhanden
+    
+        Client -> AuthS++: POST /register\n{attestation_type="android", PuK.AK.Sig,\nAndroid_Key_Attestation_Certificate_Chain,\nPuK.Client.Sig, signed_Hash_PuK.Client.Sig,\nplay_integrity_token}
+        AuthS -> AuthS: Validiere Zertifikatskette gegen Google Root CA
+        AuthS -> AuthS: Prüfe signed_Hash_PuK.Client.Sig
+        
+        opt Play Integrity Prüfung
+            AuthS -> AuthS: Entschlüssele play_integrity_token (lokal/remote)
+            AuthS -> AuthS: Verifiziere Nonce (Muss Hash(PuK.Client.Sig) entsprechen)
+            AuthS -> AuthS: Werte Verdicts aus (appIntegrity, deviceIntegrity, accountDetails)
+        end
+        
+        note right of AuthS: PuK.AK.Sig muss mit dem Blatt-Zertifikat\nder Certificate Chain übereinstimmen.\nSicherheitsniveau: TrustedEnvironment oder StrongBox.
+
+
+    AuthS -> AuthS: Store Client Placeholder (state: pending_user_binding)
+
+    ' Trust On First Use (TOFU)
+    AuthS -> AuthS: Generiere OTP & transaction_id\nSpeichere Request im temporären Cache
+    AuthS -> User: E-Mail mit OTP-Bestätigungscode (Out-of-Band)
+    
+    ' Server antwortet mit 202, noch KEINE client_id!
+    AuthS --> Client--: 202 Accepted {transaction_id, message="OTP sent"}
+
+    ' Warte auf Nutzer-Eingabe
+    User -> Client: Gibt OTP-Bestätigungscode ein
+    
+    ' Verifikation mit der temporären ID
+    Client -> AuthS++: POST /register/verify\n{transaction_id, code}
+    AuthS -> AuthS: Verifiziere OTP-Code gegen Cache
+
+
+else ZETA Attestation Token vorhanden (Fast-Path)
+    Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token",\nzeta_guard_attestation_token, PuK.Client.Sig,\nBesitznachweis (Signatur/Assertion)}
+    AuthS -> AuthS: Prüfe Token-Signatur & Vertrauensstellung
+    AuthS -> AuthS: Extrahiere PuK.AK.Sig aus Token, verifiziere Besitznachweis
+end
+
+AuthS --> Client--: 201 Created {client_id, status="pending_user_binding"}
+
+@enduml

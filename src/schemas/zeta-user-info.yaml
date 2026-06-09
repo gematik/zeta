@@ -1,0 +1,26 @@
+# Schema for the user-info JSON object.
+# The PDP authorization server stores user-info records for all authenticated
+# user.
+# The PEP can request user-info records for a user by sending a request.
+#
+$schema: "http://json-schema.org/draft-07/schema#"
+title: zeta user info
+description: Schema for the zeta_user_info JSON object.
+type: object
+properties:
+  identifier:
+    type: string
+    description: "Telematik-ID, KVNR or other unique identifier"
+  professionOID:
+    type: string
+    description: "Profession identifier (OID)"
+  commonName:
+    type: string
+    description: "Kurzname der Institution"
+  organizationName:
+    type: string
+    description: "Name der Organisation oder Institution"
+required:
+  - identifier
+  - professionOID
+  - commonName

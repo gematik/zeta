@@ -1,0 +1,42 @@
+@startuml "Abb-ZETA-Token-Exchange-mit-Refresh-Token"
+!include ../puml-layout.txt
+
+
+' title Token Exchange with Refresh Token
+
+!pragma teoz true
+
+box "Device" DEVICE_COLOR
+  box "Primärsystem" PRIMAERSYSTEM_COLOR
+    participant Client as "ZETA Client" <<zeta>>
+  end box
+end box
+
+box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
+  box "ZETA Guard" ZETA_GUARD_COLOR
+    participant AuthS as "PDP\nAuthorization Server" <<zeta>>
+    participant OPA as "PDP\nPolicy Engine" <<zeta>>
+  end box
+end box
+
+Client++
+
+Client -> Client : Create DPoP Proof (without Nonce)
+Client -> Client : Create Client Assertion JWT (without Attestation)
+Client -> AuthS++: POST /token dpop: dpop_proof\n{client_assertion (JWT, PrK.Client.Sig signiert),\nrefresh_token}
+AuthS -> AuthS : Validate Request (Client Assertion,\nDPoP Proof, Refresh Token)
+AuthS -> AuthS: Invalidate Refresh token
+alt Validation successful
+  AuthS -> AuthS: Policy Engine Input erstellen
+  AuthS -> OPA++: POST /v1/data/authz {Policy Engine Input}
+  OPA --> AuthS--: Policy Decision
+  alt Policy Decision allow
+    AuthS --> Client: 200 OK\n{Access Token, Refresh Token}
+  else Policy Decision deny
+    AuthS --> Client--: 403 Forbidden
+  end alt
+else Validation fehlerhaft
+  AuthS --> Client: 403 Forbidden
+end alt
+
+@enduml

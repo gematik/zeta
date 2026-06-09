@@ -1,0 +1,127 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: ZETA Guard Attestation Token
+type: object
+description: >-
+  Ein signiertes JWT, das der ZETA Guard nach erfolgreicher
+  Hardware-Attestierung ausstellt ("Fast-Path").
+# oneOf zwingt das Objekt, exakt einem der referenzierten Sub-Schemata zu entsprechen
+oneOf:
+  - $ref: "#/definitions/TpmAttestationToken"
+  - $ref: "#/definitions/AppleAttestationToken"
+  - $ref: "#/definitions/AndroidAttestationToken"
+# Sagt dem Code-Generator, welches Feld zur Unterscheidung der Klassen genutzt wird.
+discriminator:
+  propertyName: attestation_type
+
+definitions:
+  # -------------------------------------------------------------
+  # 1. Gemeinsame Basis-Felder (verhindert Code-Duplizierung)
+  # -------------------------------------------------------------
+  BaseTokenProperties:
+    type: object
+    required: [iss, sub, iat, exp, jti, cnf, platform]
+    properties:
+      iss: 
+        type: string
+        format: uri 
+      sub: 
+        type: string 
+      iat: 
+        type: integer 
+      exp: 
+        type: integer 
+      jti: 
+        type: string
+        format: uuid 
+      platform: 
+        type: string
+        enum: [windows, linux, apple, android]
+      cnf:
+        type: object
+        description: Confirmation Claim nach RFC 7800 (Proof-of-Possession).
+        required: [jwk]
+        properties:
+          jwk: 
+            type: object
+            required: [kty]
+            properties:
+              kty: { type: string }
+              crv: { type: string }
+              x: { type: string }
+              y: { type: string }
+              n: { type: string }
+              e: { type: string }
+              description: Der verifizierte Public Key (PuK.AK.Sig) als JSON Web Key.
+
+  # -------------------------------------------------------------
+  # 2. Die spezifischen Klassen (Sub-Schemas)
+  # -------------------------------------------------------------
+  TpmAttestationToken:
+    type: object
+    # allOf bedeutet hier klassische Vererbung: Erbe von BaseTokenProperties
+    allOf:
+      - $ref: "#/definitions/BaseTokenProperties"
+      - type: object
+        required: [attestation_type, tpm]
+        properties:
+          attestation_type:
+            type: string
+            const: tpm
+          tpm:
+            type: object
+            required: [pcrs, quote_verified]
+            properties:
+              pcrs:
+                type: object
+                additionalProperties: { type: string }
+              quote_verified: 
+                type: boolean
+
+  AppleAttestationToken:
+    type: object
+    allOf:
+      - $ref: "#/definitions/BaseTokenProperties"
+      - type: object
+        required: [attestation_type, apple]
+        properties:
+          attestation_type:
+            type: string
+            const: apple
+          apple:
+            type: object
+            required: [app_id, environment, assertion_verified]
+            properties:
+              app_id: 
+                type: string
+              environment:
+                type: string
+                enum: [development, production]
+              assertion_verified: 
+                type: boolean
+
+  AndroidAttestationToken:
+    type: object
+    allOf:
+      - $ref: "#/definitions/BaseTokenProperties"
+      - type: object
+        required: [attestation_type, android]
+        properties:
+          attestation_type:
+            type: string
+            const: android
+          android:
+            type: object
+            required: [key_attestation_verified, security_level]
+            properties:
+              key_attestation_verified: 
+                type: boolean
+              security_level:
+                type: string
+                # Hier in snake_case umgewandelt!
+                enum: [software, trusted_environment, strong_box]
+              meets_basic_integrity: 
+                type: boolean
+              meets_device_integrity: 
+                type: boolean
+              meets_strong_integrity: 
+                type: boolean

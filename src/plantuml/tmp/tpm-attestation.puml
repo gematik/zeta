@@ -1,0 +1,91 @@
+@startuml
+skinparam maxMessageSize 200
+skinparam sequenceMessageAlign center
+skinparam NoteBackgroundColor #FEFECE
+skinparam NoteBorderColor #A9A9A9
+
+title ZETA RATS Integration: DCR & Token Exchange
+
+participant "TPM\n(Hardware)" as TPM
+participant "ZETA Attestation Service\n(ZAS / Attester)" as ZAS
+participant "ZETA Client" as Client
+participant "ZETA Guard AuthS\n(Verifier & Relying Party)" as AuthS
+participant "OPA Policy Engine\n(Endorser / Policy)" as OPA
+
+== 1. Dynamic Client Registration (DCR) ==
+note over Client, AuthS
+  Initiale Registrierung des Clients.
+  Hierbei werden die TPM-Schlüssel
+  (EK und AK) dem AuthS bekannt gemacht.
+end note
+
+Client -> ZAS: Fordere EK & AK an (Public Keys / Certs)
+ZAS -> TPM: Lese EK_pub & AK_pub aus
+TPM --> ZAS: EK_pub & AK_pub
+ZAS --> Client: EK_pub & AK_pub
+
+Client -> AuthS: POST /register (DCR Request)\nPayload: {Client Info, EK_pub, AK_pub}
+note right of AuthS
+  AuthS validiert die Trust Chain des EK 
+  (z.B. gegen Hersteller-Zertifikate) und
+  bindet den AK_pub an den neuen Client.
+end note
+AuthS --> Client: 201 Created (client_id)
+
+== 2. Boot-Phase (Primärsystem-Messung) ==
+note over TPM, ZAS
+  ZAS misst beim Start das Primärsystem
+  und verankert die Werte manipulationssicher.
+end note
+ZAS -> ZAS: Messe Zustand des Primärsystems
+ZAS -> TPM: PCR 23 Extend (Messwerte)
+TPM --> ZAS: Success
+
+== 3. RATS Ablauf & Token Exchange ==
+note over Client, AuthS
+  Client möchte Zugriff aufs Netzwerk/System
+  und muss im Austausch für die Evidence
+  ein Access Token erhalten.
+end note
+
+Client -> AuthS: GET /challenge (Nonce anfordern)
+AuthS --> Client: Challenge (Nonce generiert)
+
+Client -> ZAS: Fordere Evidence an (Nonce übergeben)
+ZAS -> TPM: Request Quote (PCR 23, Nonce, AK)
+note over TPM
+  TPM signiert PCR 23 + Nonce
+  mit dem Attestation Key (AK)
+end note
+TPM --> ZAS: TPM Quote (Kryptografischer Beweis)
+ZAS --> Client: Evidence (TPM Quote + Mess-Logs)
+
+Client -> AuthS: POST /token (Token Exchange Request)\nPayload: {client_id, Evidence, Nonce}
+
+group Verifier-Prozess im AuthS
+    note over AuthS
+      AuthS (Verifier) verifiziert Form:
+      - Signatur des Quotes mit dem aus der 
+        DCR bekannten AK_pub gültig?
+      - Entspricht die Nonce der Challenge (Freshness)?
+    end note
+    AuthS -> OPA: Sende extrahierte PCR 23 Messwerte\n(z.B. POST /v1/data/attestation)
+    note over OPA
+      OPA (Endorser/Policy) gleicht
+      PCR 23 mit Referenzwerten ab
+    end note
+    OPA --> AuthS: Attestation Result (Decision: Allow / Deny)
+end
+
+group Relying-Party-Entscheidung (Enforcement)
+    note over AuthS
+      AuthS (Relying Party) setzt 
+      die Policy-Entscheidung um
+    end note
+    alt Decision == Allow
+        AuthS --> Client: 200 OK (Access Token ausgestellt)
+    else Decision == Deny
+        AuthS --> Client: 403 Forbidden (Attestation fehlgeschlagen)
+    end
+end
+@enduml

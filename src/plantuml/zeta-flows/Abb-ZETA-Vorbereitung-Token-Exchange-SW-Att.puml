@@ -1,0 +1,40 @@
+@startuml "Abb-ZETA-Client-Statement-mit-TPM-Attestation"
+
+!include ../puml-layout.txt
+
+
+' title Obtain Attestation Evidence
+
+!pragma teoz true
+
+participant SMB as "SM(C)-B" LEI_COMPONENT_COLOR
+participant Konnektor as "Konnektor or\nTI-Gateway" LEI_COMPONENT_COLOR
+box "Device" DEVICE_COLOR
+  box "Primärsystem" PRIMAERSYSTEM_COLOR
+    participant Client as "ZETA Client" <<zeta>>
+  end box
+end box
+
+box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
+  box "ZETA Guard" ZETA_GUARD_COLOR
+    participant AuthS as "PDP\nAuthorization Server" <<zeta>>
+  end box
+end box
+
+
+Client++
+Client -> AuthS ++ : GET /nonce
+AuthS --> Client -- : Nonce
+
+Client -> Client : Create DPoP Key Pair (PrK.DPoP.Sig, PuK.DPoP.Sig)
+Client -> Client: Erstelle Subject Token (mit Nonce)
+group Sign Subject Token with SM(C)-B
+    Client -> Konnektor ++: Sign Subject Token
+    Konnektor -> SMB ++ : Sign Subject Token
+    SMB --> Konnektor -- : Signed Subject Token
+    Konnektor --> Client -- : Signed Subject Token
+end
+Client -> Client: Erstelle client-statement (OS und PS Daten)
+Client -> Client: Erstelle Client Assertion (JWT, signiert mit PrK.Client.Sig)
+
+@enduml

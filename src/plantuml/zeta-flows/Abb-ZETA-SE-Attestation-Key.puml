@@ -1,0 +1,31 @@
+@startuml "Abb-ZETA-SE-Attestation-Key"
+!include ../puml-layout.txt
+
+
+participant "Apple\nServices" as Apple
+box "Device" DEVICE_COLOR
+  participant "Secure Enclave" as SE LEI_COMPONENT_COLOR
+  participant "OS (macOS, iOS, iPadOS)" as AppleOS LEI_COMPONENT_COLOR
+  box "App" PRIMAERSYSTEM_COLOR
+    participant "ZETA Client" as Client <<zeta>>
+  end box
+end box
+
+Client++
+AppleOS++
+note left of Client: App nutzt native Apple-Frameworks.
+
+Client -> AppleOS: DCAppAttestService.shared.generateKey()
+AppleOS -> SE++: Generiere Schlüssel (AK)
+SE --> AppleOS--: keyId (Referenz für PrK.AK.Sig)
+AppleOS --> Client: keyId (Referenz für PrK.AK.Sig)
+
+Client -> Client: Create hash_puk_client_sig\n(SHA256(PuK.Client.Sig))
+Client -> AppleOS: DCAppAttest.attestKey(keyId_AK, hash_puk_client_sig)
+AppleOS -> SE++: Attestiere AK und binde hash_puk_client_sig
+SE --> AppleOS--: Hardware-Signatur
+AppleOS -> Apple++: Verifiziere & erstelle CBOR
+Apple --> AppleOS--: apple_attestation_object
+AppleOS --> Client: apple_attestation_object
+
+@enduml
