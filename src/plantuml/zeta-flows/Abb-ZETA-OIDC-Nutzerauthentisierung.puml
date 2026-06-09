@@ -1,0 +1,37 @@
+@startuml "Abb-ZETA-OIDC-Nutzerauthentisierung"
+!include ../puml-layout.txt
+
+
+' Teildiagramm (B): Nutzerauthentisierung am sektoralen IDP über das Authenticator-Modul
+' Teil von Abb-ZETA-OIDC-Authentifizierung-mobiler-Clients
+
+actor User as "Nutzer\n(Versicherter)"
+
+box "Mobile App" DEVICE_COLOR
+  participant Client as "ZETA Client" <<zeta>>
+end box
+
+box "Authenticator" LEI_COMPONENT_COLOR
+  participant AM as "Authenticator-Modul\n(sektoraler IDP)"
+end box
+
+box "TI-Föderation" #EAF2FF
+  participant IDP as "Sektoraler IDP\n(Authorization-Endpunkt)"
+end box
+
+note over Client, IDP: Der ZETA Client hat aus Teildiagramm (A) request_uri und client_id erhalten.
+
+Client -> AM++: Öffne Authenticator (Deep-Link / Universal-Link)\n{client_id, request_uri}
+AM -> IDP++: GET /auth {client_id, request_uri}\n(Authentication Request)
+IDP -> IDP: Prüfe request_uri (Bezug zum PAR),\nstelle Consent gemäß Claims zusammen
+IDP --> AM: Consent-Abfrage & Authentisierungsanforderung (proprietär)
+AM -> User: Fordere Authentisierung (eGK+PIN / eID)\nund Consent-Freigabe an
+User -> AM: Authentisierung + Consent-Freigabe
+AM -> IDP: Bestätigt erfolgreiche Authentisierung (proprietär)
+IDP -> IDP: Erzeuge AUTHORIZATION_CODE (IDP),\nGültigkeit max. 90s
+IDP --> AM--: 302 Found\nLocation: <redirect_uri>?code=AUTH_CODE_IDP&state=state_as
+AM -> Client--: App-Link / Universal-Link\n{code=AUTH_CODE_IDP, state=state_as}
+
+note over Client, IDP: Weiter mit Teildiagramm (C) Abb-ZETA-OIDC-Token-Bezug.
+
+@enduml
