@@ -74,7 +74,7 @@ properties:
         description: Authentication Context Class Reference (e.g. 'loa2').
     required:
       - scopes
-      - aud
+      - audience
       - ip_address
       - previous_ip_address
       - grant_type
