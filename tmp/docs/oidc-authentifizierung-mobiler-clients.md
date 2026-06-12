@@ -64,19 +64,19 @@ in drei Teilabläufe **(A)**, **(B)** und **(C)** zerlegt:
   IDP ein, entscheidet über die Policy Engine und stellt dem ZETA Client ein DPoP-gebundenes Access
   Token und ein Refresh Token aus.
 
-![Abbildung: Authentifizierung mobiler Clients (Übersicht)](../../../images/zeta-flows/Abb-ZETA-OIDC-Authentifizierung-mobiler-Clients.svg)
+![Abbildung: Authentifizierung mobiler Clients (Übersicht)](../../images/zeta-flows/Abb-ZETA-OIDC-Authentifizierung-mobiler-Clients.svg)
 
 ### Teilablauf (A): Authorization Request mit PAR
 
-![Abbildung: Authorization Request mit PAR](../../../images/zeta-flows/Abb-ZETA-OIDC-Authorization-Request-mit-PAR.svg)
+![Abbildung: Authorization Request mit PAR](../../images/zeta-flows/Abb-ZETA-OIDC-Authorization-Request-mit-PAR.svg)
 
 ### Teilablauf (B): Nutzerauthentisierung
 
-![Abbildung: Nutzerauthentisierung am sektoralen IDP](../../../images/zeta-flows/Abb-ZETA-OIDC-Nutzerauthentisierung.svg)
+![Abbildung: Nutzerauthentisierung am sektoralen IDP](../../images/zeta-flows/Abb-ZETA-OIDC-Nutzerauthentisierung.svg)
 
 ### Teilablauf (C): Token-Bezug und Ausstellung der ZETA Token
 
-![Abbildung: Token-Bezug und Ausstellung der ZETA Token](../../../images/zeta-flows/Abb-ZETA-OIDC-Token-Bezug.svg)
+![Abbildung: Token-Bezug und Ausstellung der ZETA Token](../../images/zeta-flows/Abb-ZETA-OIDC-Token-Bezug.svg)
 
 ## Endpunkt-Spezifikationen
 
