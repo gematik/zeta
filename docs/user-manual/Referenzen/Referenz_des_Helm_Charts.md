@@ -6,29 +6,65 @@ Als vollständige Vorlage mit Standardwerten dient die
 
 ## Inhaltsverzeichnis
 
+- [Globale Proxy-Konfiguration](#globale-proxy-konfiguration)
 - [Authserver](#authserver)
-  - [ServiceAccount](#serviceaccount)
-  - [Replicas und PodDisruptionBudget](#replicas-und-poddisruptionbudget)
-  - [Ressourcen](#ressourcen)
-  - [Security Contexts](#security-contexts)
-  - [Probes](#probes)
-  - [Admin-API-Absicherung](#admin-api-absicherung)
-  - [CloudNativePG-Datenbankverbindung](#cloudnativepg-datenbankverbindung)
-  - [HSM-Konfiguration](#hsm-konfiguration)
+    - [ServiceAccount](#serviceaccount)
+    - [Replicas und PodDisruptionBudget](#replicas-und-poddisruptionbudget)
+    - [Ressourcen](#ressourcen)
+    - [Security Contexts](#security-contexts)
+    - [Probes](#probes)
+    - [Admin-API-Absicherung](#admin-api-absicherung)
+    - [CloudNativePG-Datenbankverbindung](#cloudnativepg-datenbankverbindung)
+    - [Connection Pooling (Keycloak)](#connection-pooling-keycloak)
+    - [HSM-Konfiguration](#hsm-konfiguration)
 - [PEP-Proxy](#pep-proxy)
-  - [ServiceAccount](#serviceaccount-1)
-  - [Security Context](#security-context)
+    - [ServiceAccount](#serviceaccount-1)
+    - [Security Context](#security-context)
+    - [Well-Known Discovery Dokument](#well-known-discovery-dokument)
 - [Infinispan](#infinispan)
-  - [Image](#image)
-  - [ServiceAccount](#serviceaccount-2)
-  - [PodDisruptionBudget](#poddisruptionbudget)
-  - [Security Contexts](#security-contexts-1)
-  - [JVM-Optionen](#jvm-optionen)
+    - [Image](#image)
+    - [ServiceAccount](#serviceaccount-2)
+    - [PodDisruptionBudget](#poddisruptionbudget)
+    - [Security Contexts](#security-contexts-1)
+    - [JVM-Optionen](#jvm-optionen)
+    - [HSM-Konfiguration](#hsm-konfiguration-1)
 - [Provisioning Processor](#provisioning-processor)
-  - [Eigene Registry für den Provisioning Container](#eigene-registry-für-den-provisioning-container)
-  - [CA-Zertifikat für die Provisioning-Container-Registry](#ca-zertifikat-für-die-provisioning-container-registry)
-  - [Cosign-Vertrauenskette für Image-Verifikation](#cosign-vertrauenskette-für-image-verifikation)
+    - [Eigene Registry für den Provisioning Container](#eigene-registry-für-den-provisioning-container)
+    - [CA-Zertifikat für die Provisioning-Container-Registry](#ca-zertifikat-für-die-provisioning-container-registry)
+    - [Cosign-Vertrauenskette für Image-Verifikation](#cosign-vertrauenskette-für-image-verifikation)
 - [Terraform-Konfiguration (PDP)](#terraform-konfiguration-pdp)
+
+## Globale Proxy-Konfiguration
+
+Alle ZETA-Guard-Komponenten können den ausgehenden HTTP/HTTPS-Verkehr über
+einen Forward Proxy routen. Die Konfiguration erfolgt einmalig unter `global:`
+und wird von Helm automatisch in alle Subcharts propagiert.
+
+| Value               | Typ    | Standard | Beschreibung                                                                                                                                                  |
+|---------------------|--------|----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `global.httpProxy`  | string | `null`   | Proxy-URL für HTTP-Anfragen, z. B. `http://proxy.example.com:8080`                                                                                            |
+| `global.httpsProxy` | string | `null`   | Proxy-URL für HTTPS-Anfragen. Hat Vorrang vor `httpProxy` für HTTPS-Verkehr.                                                                                  |
+| `global.allProxy`   | string | `null`   | Fallback-Proxy-URL für alle Protokolle, falls kein protokollspezifischer Proxy greift.                                                                        |
+| `global.noProxy`    | string | `null`   | Komma-separierte Liste von Hosts / Suffixen, die den Proxy umgehen (z. B. `.cluster.local`). Führender Punkt bedeutet bei den meisten Tools "jede Subdomain". |
+
+```yaml
+global:
+  httpProxy: "http://proxy.example.com:8080"
+  httpsProxy: "http://proxy.example.com:8080"
+  allProxy: "http://proxy.example.com:8080"
+  noProxy: ".cluster.local"
+```
+
+Für nginx (PEP) erzeugt der Chart zusätzlich `env`-Direktiven in der `nginx.conf`.
+Für Keycloak (Authserver) wird `global.noProxy` automatisch in das
+`-Dhttp.nonProxyHosts`-Format konvertiert (Pipe-Trenner, `*`-Wildcard statt
+führendem Punkt). Subcharts wie `telemetry-gateway` sind upstream-Charts und
+konsumieren `global` nicht — diese müssen bei Bedarf manuell konfiguriert werden.
+
+Eine ausführliche Beschreibung der betroffenen Komponenten, der
+Konvertierungslogik, der Subchart-Konfiguration und der Überprüfung nach dem
+Deployment findet sich in der Anleitung
+[Wie Sie einen Forward Proxy konfigurieren](../Anleitungen/Wie_Sie_einen_Forward_Proxy_konfigurieren.md).
 
 ## Authserver
 
@@ -114,7 +150,7 @@ zeta-guard:
         initContainer:
             containerSecurityContext:
                 allowPrivilegeEscalation: false
-                readOnlyRootFilesystem: false
+                readOnlyRootFilesystem: true
                 runAsNonRoot: true
                 capabilities:
                     drop: [ "ALL" ]
@@ -155,12 +191,13 @@ Wenn `authserver.adminHostname` gesetzt ist, aktiviert das Chart zwei
 Schutzschichten:
 
 1. **PEP-Proxy blockiert `/auth/admin`** — ein `location ~ ^/auth/admin`-Block
-   im NGINX-PEP gibt `403 Forbidden` zurück, bevor die Anfrage Keycloak erreicht.
+   im NGINX-PEP gibt `403 Forbidden` zurück, bevor die Anfrage Keycloak
+   erreicht.
    Alle anderen `/auth/*`-Pfade (Token-Exchange, Well-Known-Endpunkte) werden
    ohne PEP-Token-Prüfung an den Authserver weitergeleitet.
 2. **Separater Admin-Ingress** — für den Admin-Hostnamen werden zwei zusätzliche
-   Ingress-Ressourcen erzeugt, die `/auth` direkt an den Authserver routen (unter
-   Umgehung des PEP-Proxy-Blocks). Terraform und CI/CD-Runner verwenden
+   Ingress-Ressourcen erzeugt, die `/auth` direkt an den Authserver routen
+   (unter Umgehung des PEP-Proxy-Blocks). Terraform und CI/CD-Runner verwenden
    ausschließlich diesen Hostnamen.
 
 Die Absicherung ist ingress-controller-unabhängig und funktioniert mit F5 NIC,
@@ -220,6 +257,52 @@ Die Standardwerte verweisen auf den vom CloudNativePG-Operator erzeugten
 Service und das zugehörige Secret. Passen Sie diese an, wenn Sie eine
 abweichende Datenbankinstanz verwenden.
 
+Tuning-Parameter, die direkt an die PostgreSQL-Konfiguration des
+CloudNativePG-Clusters durchgereicht werden, sind unter `cloudnativePg.parameters`
+konfigurierbar:
+
+```yaml
+zeta-guard:
+    cloudnativePg:
+        parameters:
+            sharedBuffers: 128MB
+            maxConnections: 400
+```
+
+| Value                                     | Beschreibung                 | Standard |
+|-------------------------------------------|------------------------------|----------|
+| `cloudnativePg.parameters.sharedBuffers`  | PostgreSQL `shared_buffers`  | `128MB`  |
+| `cloudnativePg.parameters.maxConnections` | PostgreSQL `max_connections` | `400`    |
+
+> **Hinweis:** Die mitgelieferte `values-demo.yaml` verwendet kleinere Werte
+> (`sharedBuffers: 24MB`, `maxConnections: 100`) für ressourcenarme Test-Cluster.
+> `maxConnections` muss zu den Keycloak-Pool-Größen (siehe unten) passen.
+
+### Connection Pooling (Keycloak)
+
+Keycloak hält serverseitig einen JDBC-Datenbank-Pool sowie einen HTTP-Worker-Pool.
+Beide sind konfigurierbar und wurden für höheren Durchsatz angepasst:
+
+```yaml
+zeta-guard:
+    authserver:
+        dbPool:
+            minSize: 100
+            maxSize: 500
+        httpPool:
+            maxThreads: 300
+```
+
+| Value                            | Beschreibung                                     | Standard |
+|----------------------------------|--------------------------------------------------|----------|
+| `authserver.dbPool.minSize`      | Minimale Größe des JDBC-Connection-Pools         | `100`    |
+| `authserver.dbPool.maxSize`      | Maximale Größe des JDBC-Connection-Pools         | `500`    |
+| `authserver.httpPool.maxThreads` | Maximale Anzahl der Keycloak-HTTP-Worker-Threads | `300`    |
+
+> **Hinweis:** `dbPool.maxSize` (pro Authserver-Replica) muss zusammen mit der
+> Replica-Anzahl unter `cloudnativePg.parameters.maxConnections` der Datenbank
+> passen, sonst weist PostgreSQL Verbindungen ab.
+
 ### HSM-Konfiguration
 
 HSM-Integration für TLS und Token-Signierung:
@@ -236,16 +319,18 @@ zeta-guard:
             tokenSigning:
                 enabled: false                                      # HSM_PROXY_TOKEN_KEY_ID setzen
                 keyId: "zeta-guard-keycloak-token-es256-v1.p256"    # Schlüssel-ID für Token-Signierung
+                failClosed: true                                    # kein Software-Key-Fallback bei nicht erreichbarem HSM
 ```
 
-| Value                                 | Beschreibung                                                | Standard |
-|---------------------------------------|-------------------------------------------------------------|----------|
-| `authserver.hsm.enabled`              | HSM-Proxy-Anbindung aktivieren (setzt `HSM_PROXY_ENDPOINT`) | `false`  |
-| `authserver.hsm.endpoint`             | gRPC-Endpunkt des HSM-Proxy                                 | `""`     |
-| `authserver.hsm.tls.enabled`          | Pod-Level TLS mit HSM-Schlüssel                             | `false`  |
-| `authserver.hsm.tls.keyId`            | Schlüssel-ID für TLS im HSM                                 | `""`     |
-| `authserver.hsm.tokenSigning.enabled` | Token-Signierung via HSM (setzt `HSM_PROXY_TOKEN_KEY_ID`)   | `false`  |
-| `authserver.hsm.tokenSigning.keyId`   | Schlüssel-ID für Token-Signierung im HSM                    | `""`     |
+| Value                                    | Beschreibung                                                                                                                                                                                                                                                             | Standard |
+|------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
+| `authserver.hsm.enabled`                 | HSM-Proxy-Anbindung aktivieren (setzt `HSM_PROXY_ENDPOINT`)                                                                                                                                                                                                              | `false`  |
+| `authserver.hsm.endpoint`                | gRPC-Endpunkt des HSM-Proxy                                                                                                                                                                                                                                              | `""`     |
+| `authserver.hsm.tls.enabled`             | Pod-Level TLS mit HSM-Schlüssel                                                                                                                                                                                                                                          | `false`  |
+| `authserver.hsm.tls.keyId`               | Schlüssel-ID für TLS im HSM                                                                                                                                                                                                                                              | `""`     |
+| `authserver.hsm.tokenSigning.enabled`    | Token-Signierung via HSM (setzt `HSM_PROXY_TOKEN_KEY_ID`)                                                                                                                                                                                                                | `false`  |
+| `authserver.hsm.tokenSigning.keyId`      | Schlüssel-ID für Token-Signierung im HSM                                                                                                                                                                                                                                 | `""`     |
+| `authserver.hsm.tokenSigning.failClosed` | Bei `true` verweigert der `HsmTokenSigningKeyProviderFactory` jeden Software-Key-Fallback, solange das HSM nicht erreichbar ist, statt Keycloak still einen Software-Signaturschlüssel erzeugen zu lassen. Nur für kontrollierte HSM-Wartungsfenster auf `false` setzen. | `true`   |
 
 > **Hinweis:** Die Helm-Values aktivieren die HSM-Proxy-Verbindung im
 > Authorization Service (Keycloak). Die Registrierung des HSM-KeyProviders
@@ -268,6 +353,26 @@ zeta-guard:
             name: pep-proxy
 ```
 
+### Replicas und Sticky Sessions
+
+```yaml
+zeta-guard:
+    pepproxy:
+        replicaCount: 3
+```
+
+Der Standardwert ist `1`. Bei `replicaCount > 1` werden Sticky Sessions
+automatisch über den mitgelieferten NGINX Ingress Controller realisiert: NIC
+setzt beim ersten Request einen opaken `zeta_route`-Cookie und routet
+nachfolgende Requests desselben Clients via Consistent Hashing konsistent auf
+denselben PEP-Pod. Dies ist eine Sicherheitsanforderung, da der
+ASL Session Cache pro Pod im nginx Shared Memory liegt und nicht zwischen
+Pods geteilt wird. Voraussetzung: der Client unterstützt HTTP-Cookies.
+
+Wird ein anderer Ingress Controller verwendet
+(`nginxIngressEnabled: false`), muss der Betreiber Sticky Sessions am eigenen
+Ingress-Layer sicherstellen.
+
 ### Security Context
 
 ```yaml
@@ -277,6 +382,46 @@ zeta-guard:
             seccompProfile:
                 type: RuntimeDefault
 ```
+
+### Well-Known Discovery Dokument
+
+Der PEP-Proxy stellt das OAuth Protected Resource Metadata Dokument (RFC 9728)
+unter `/.well-known/oauth-protected-resource` bereit. Die Pfadanteile der
+beiden enthaltenen URLs sind konfigurierbar:
+
+```yaml
+zeta-guard:
+    pepproxy:
+        wellKnownBase: "https://zeta.example.com"   # öffentliche Basis-URL des PEP
+        wellKnownResourceSuffix: /pep/              # Pfad-Suffix für das resource-Feld
+    authserver:
+        hostname: "zeta.example.com"
+        wellKnownAuthServerPath: /                  # Pfad-Suffix für authorization_servers
+```
+
+Das erzeugte Dokument hat dann folgendes Format:
+
+```json
+{
+    "resource": "https://zeta.example.com/pep/",
+    "authorization_servers": [
+        "https://zeta.example.com/"
+    ],
+    "zeta_asl_use": "required"
+}
+```
+
+| Value                                | Beschreibung                                                                                   | Standard |
+|--------------------------------------|------------------------------------------------------------------------------------------------|----------|
+| `pepproxy.wellKnownBase`             | Öffentliche Basis-URL des PEP (fließt in das `resource`-Feld ein)                              | `""`     |
+| `pepproxy.wellKnownResourceSuffix`   | Pfad-Suffix, der an `wellKnownBase` angehängt wird (inkl. führendem und abschließendem `/`)    | `/pep/`  |
+| `authserver.wellKnownAuthServerPath` | Pfad-Suffix, der an `authserver.hostname` für das `authorization_servers`-Array angehängt wird | `/`      |
+
+> **Hinweis:** Bei Deployments, bei denen Keycloak unter einem Unterpfad wie
+> `/auth` betrieben wird, ist
+> `authserver.wellKnownAuthServerPath: /auth` zu setzen. Wenn die Protected
+> Resource direkt unter der Root-URL erreichbar ist, genügt
+> `pepproxy.wellKnownResourceSuffix: /`.
 
 ---
 
@@ -293,8 +438,10 @@ werden (siehe auch
 global:
     infinispanExternal:
         image:
-            repository: infinispan/server
+            repository: infinispan-zeta
             tag: "15.2"
+        imagePullPolicy: Always
+        imagePullSecrets: [ ]
 ```
 
 ### ServiceAccount
@@ -343,6 +490,32 @@ global:
     infinispanExternal:
         extraJavaOptions: "-XX:MaxRAMPercentage=75.0 -XX:InitialRAMPercentage=50.0"
 ```
+
+### HSM-Konfiguration
+
+Das TLS-Schlüsselmaterial von Infinispan kann optional über den HSM-Proxy bezogen
+werden. Ist die HSM-Anbindung aktiviert, verwendet Infinispan einen
+HSM-gestützten Keystore (`type`/`provider`: `HSMPROXY`) sowohl für den
+Client-Endpunkt als auch für den `cluster-transport`-Realm (JGroups-mTLS).
+
+```yaml
+global:
+    infinispanExternal:
+        hsm:
+            enabled: false   # HSM-gestütztes TLS für Infinispan aktivieren
+            endpoint: ""     # gRPC-Adresse des HSM-Proxy, z. B. "hsm-sim:50051"
+            keyId: ""        # TLS-Schlüssel-ID im HSM, z. B. "zeta-guard-infinispan-tls-es256-v1.p256"
+            caCert: |        # CA-Zertifikat zur Validierung der HSM-TLS-Verbindungen
+                -----BEGIN CERTIFICATE-----
+                -----END CERTIFICATE-----
+```
+
+| Value                                    | Beschreibung                                                   | Standard |
+|------------------------------------------|----------------------------------------------------------------|----------|
+| `global.infinispanExternal.hsm.enabled`  | HSM-gestütztes TLS für Infinispan aktivieren                   | `false`  |
+| `global.infinispanExternal.hsm.endpoint` | gRPC-Adresse des HSM-Proxy                                     | `""`     |
+| `global.infinispanExternal.hsm.keyId`    | TLS-Schlüssel-ID im HSM                                        | `""`     |
+| `global.infinispanExternal.hsm.caCert`   | PEM-CA-Zertifikat für die Validierung der HSM-TLS-Verbindungen | `""`     |
 
 ---
 
@@ -440,7 +613,8 @@ auf dieses Test-Secret.
 
 > **Wichtig:** Das Test-Secret `gematik-image-signer-test` enthält
 > Testzertifikate und darf **nicht** in Produktivumgebungen verwendet werden.
-> Für den Produktivbetrieb muss das Secret mit den von der gematik bereitgestellten
+> Für den Produktivbetrieb muss das Secret mit den von der gematik
+> bereitgestellten
 > Produktivzertifikaten befüllt werden.
 
 ---
@@ -460,10 +634,10 @@ gehört:
 | `audience`            | `""`              | Expliziter Audience-Wert im Access Token. Erforderlich, wenn `keycloak_url` auf einen Admin-Hostnamen zeigt (siehe unten). |
 | `insecure_tls`        | `false`           | Selbst signierte Zertifikate zulassen                                                                                      |
 
-Wenn `adminHostname` gesetzt ist und `keycloak_url` auf den Admin-Hostnamen zeigt,
-muss `audience` explizit auf den **öffentlichen Haupthostnamen** gesetzt werden —
-andernfalls würde der Audience-Wert aus der URL abgeleitet und stimmte nicht mit
-dem überein, was die Access Tokens tragen:
+Wenn `adminHostname` gesetzt ist und `keycloak_url` auf den Admin-Hostnamen
+zeigt, muss `audience` explizit auf den **öffentlichen Haupthostnamen** gesetzt
+werden — andernfalls würde der Audience-Wert aus der URL abgeleitet und stimmte
+nicht mit dem überein, was die Access Tokens tragen:
 
 ```hcl
 keycloak_url = "https://admin.zeta.example.com/auth"

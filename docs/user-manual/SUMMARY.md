@@ -18,6 +18,7 @@
   * [Wie Sie Telemetrie des Resource Servers an die gematik schicken](Anleitungen/Wie_Sie_Telemetrie_des_Resource_Servers_an_die_gematik_schicken.md)
   * [Wie Sie ein Observability-Backend anschließen](Anleitungen/Wie_Sie_ein_Observability-Backend_an_ZETA-Guard_anschließen.md)
   * [Wie Sie einen Ende zu Ende Integrationstest ausführen](Anleitungen/Wie_Sie_einen_Ende_zu_Ende_Integrationstest_ausführen.md)
+  * [Wie Sie einen Forward Proxy konfigurieren](Anleitungen/Wie_Sie_einen_Forward_Proxy_konfigurieren.md)
 * Referenzen
   * [Komponentenübersicht](Referenzen/Komponentenuebersicht.md)
   * [Deploymentszenarien](Referenzen/Deploymentszenarien.md)

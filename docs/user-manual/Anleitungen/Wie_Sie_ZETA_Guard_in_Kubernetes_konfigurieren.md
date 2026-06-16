@@ -352,6 +352,44 @@ Bei aktivierter TLS-Terminierung im Authorization Service (
 `authserver.hsm.tls.enabled` oder
 `authserver.tls.enabled`) wird dieser auf Port 8443 (HTTPS) erreichbar.
 
+###### ECC-exklusives JWKS
+
+Die JWKS-Endpunkte der Realms
+(`/auth/realms/<realm>/protocol/openid-connect/certs`) dürfen ausschließlich
+ECC-Schlüssel (ES256 / P-256) enthalten — RSA-Schlüssel sind nicht zulässig.
+
+Keycloak legt beim Initialisieren eines Realms automatisch Default-Key-Provider
+an, darunter `rsa-generated` (RS256-Signatur) und `rsa-enc-generated`
+(RSA-OAEP-Verschlüsselung). Diese erscheinen im JWKS-Endpunkt. Betroffen sind
+sowohl der `zeta-guard`-Realm als auch der `master`-Realm.
+
+Die Terraform-Konfiguration (`make config` bzw. `terraform apply`) stellt daher
+nach jeder Ausführung für **beide** Realms sicher:
+
+1. ein ES256-Schlüsselprovider (ECDSA, P-256) ist vorhanden,
+2. `defaultSignatureAlgorithm` ist auf `ES256` gesetzt (im `master`-Realm wird
+   dabei von `RS256` umgestellt — dies betrifft auch die Token der
+   Admin-Console / Admin-API),
+3. anschließend werden alle RSA-Key-Provider entfernt.
+
+Diese Bereinigung läuft unabhängig davon, ob HSM-Token-Signierung
+aktiviert ist.
+
+> Hinweis: Da der Admin-Token vom `master`-Realm signiert wird, authentisiert
+> sich das Konfigurationsskript nach der Umstellung des `master`-Realms neu,
+> bevor es dessen RSA-Schlüssel löscht.
+
+**Verifikation (je Realm):**
+
+```bash
+curl -sk https://<hostname>/auth/realms/zeta-guard/protocol/openid-connect/certs \
+  | jq '.keys[].kty'
+curl -sk https://<hostname>/auth/realms/master/protocol/openid-connect/certs \
+  | jq '.keys[].kty'
+```
+
+Erwartetes Ergebnis: ausschließlich `"EC"`-Einträge, kein `"RSA"`.
+
 ###### HSM-basierte Token-Signierung
 
 Neben der TLS-Konfiguration kann der Authorization Service auch JWT-Token (
@@ -552,19 +590,35 @@ entscheidend:
 * Issuer URL des Authorization Server `pepproxy.nginxConf.pepIssuer`. Diese
   ergibt sich normalerweise aus dem öffentlichen Hostnamen des Authorization
   Server nach dem Muster `https://<authserver_name>/auth/realms/zeta-guard`
-* Öffentliche URL des PEP. Diese fließt in das Well-Known Discovery Dokument im
-  Value `pepproxy.wellKnownBase` ein nach folgendem Muster: `https://<pep_name>`
+* Öffentliche URL des PEP. Diese fließt in das Well-Known Discovery Dokument
+  (`/.well-known/oauth-protected-resource`) ein. Die Basis-URL wird über
+  `pepproxy.wellKnownBase` gesetzt (Muster: `https://<pep_name>`). Der
+  Pfad-Suffix für das `resource`-Feld ist über
+  `pepproxy.wellKnownResourceSuffix` konfigurierbar (Standard: `/pep/`). Der
+  Pfad-Suffix für das `authorization_servers`-Feld wird über
+  `authserver.wellKnownAuthServerPath` gesetzt (Standard: `/`). Bei
+  Deployments mit Keycloak unter einem Unterpfad (z. B. `/auth`) ist
+  `authserver.wellKnownAuthServerPath: /auth` zu verwenden.
 * Konfiguration des Fachdienst Resource Server über den Helm Value
   `pepproxy.nginxConf.locations`. Dieser wird
   mit [nginx location Blöcken](https://nginx.org/en/docs/http/ngx_http_core_module.html#location)
   welche `proxy_pass` auf den Fachdienst Resource Server nutzen eingerichtet.
-  Wichtig sind hierbei in den Locations folgende 2 Direktiven:
+  Wichtig sind hierbei in den Locations folgende Direktiven:
     * `pep on;` damit sich der HTTP Proxy hier wie ein PEP verhält
     * `pep_require_aud https://<pep_name> <other_audiences_here>;` zur
       Validierung der geforderten und mit der gematik abgestimmten Audiences
       (die gematik muss diese in zentrale Policys für den OPA integrieren).
     * Eventuelle Konfiguration für WebSockets findet hier mit nginx
       Standardmethoden statt.
+  Die PEP-Header-Behandlung (`include proxy_headers.conf;` — entfernt
+  client-gesetzte Credentials/ZETA-\* Header und setzt die vom PEP kontrollierten
+  Header) bindet das Chart bereits serverweit ein; einfache
+  `proxy_pass`-Locations erben sie automatisch. Nur eine Location, die eigene
+  `proxy_set_header`-Direktiven deklariert (z.B. ein WebSocket-Upgrade), erbt sie
+  wegen nginx' nicht-additiver Vererbung nicht und muss
+  `include proxy_headers.conf;` selbst erneut enthalten — andernfalls antwortet der
+  PEP auf `pep on;`-Locations mit HTTP 500 (ProxyHeadersMissing). Details siehe
+  [Konfiguration des PEP Http Proxy](../Referenzen/Konfiguration_des_PEP_Http_Proxy.md#header-behandlung-und-proxy_headersconf).
 * Für die Verwendung von ASL muss der Value `pepproxy.asl_enabled` auf `true`
   gesetzt werden. Dazu ist Schlüsselmaterial erforderlich, welches über die
   gematik bezogen werden kann. Dieses muss im PEM-Format im Kubernetes-Secret
@@ -580,8 +634,7 @@ entscheidend:
       gesetzt werden.
 
 Der PEP kann horizontal skaliert werden. Die Anzahl der Replikate wird über den
-Helm Value
-`pepproxy.replicaCount` (Standard: `1`) gesteuert.
+Helm Value `pepproxy.replicaCount` (Standard: `1`) gesteuert.
 
 ```yaml
 zeta-guard:
@@ -592,7 +645,25 @@ zeta-guard:
 Hinweis: Bei horizontaler Skalierung des PEP ist eine „Sticky Session" zu
 beachten, da die
 ASL-Schlüssel nicht über PEP-Instanzen hinweg geteilt werden (siehe
-[Deploymentszenarien](../Referenzen/Deploymentszenarien.md)).
+[Deploymentszenarien](../Referenzen/Deploymentszenarien.md)). Das Chart setzt
+hierfür auf Ingress-Ebene (F5 NIC) automatisch ein `zeta_route`-Cookie, das den
+Client an die zuvor genutzte PEP-Instanz bindet; eine manuelle ip-hash-Konfiguration
+ist damit nicht mehr nötig. Wird ein anderer Ingress-Controller als F5 NIC
+eingesetzt, muss der Betreiber eine äquivalente Session-Affinität selbst
+sicherstellen.
+
+Das mitgelieferte ZETA-Guard Helm Chart implementiert die Sticky Session
+automatisch über den NGINX Ingress Controller (NIC): Beim ersten Request setzt
+NIC einen opaken `zeta_route`-Cookie mit einem zufälligen Routing-Token, und
+verteilt alle Folgerequests desselben Clients (Cookie unverändert) via
+Consistent Hashing (Ketama) konsistent an denselben PEP-Pod. Voraussetzung: der
+Client unterstützt HTTP-Cookies (zeta-sdk erfüllt dies). Es ist keine
+zusätzliche Konfiguration notwendig.
+
+Wird ein anderer Ingress Controller anstelle des mitgelieferten NIC verwendet
+(`nginxIngressEnabled: false`), muss der Betreiber Sticky Sessions selbst
+sicherstellen (z. B. Cookie- oder Header-basiertes Routing am eigenen
+Ingress-/Load-Balancer-Layer).
 
 ### 8. Servie Mesh konfigurieren
 

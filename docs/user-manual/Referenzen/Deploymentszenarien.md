@@ -118,7 +118,10 @@ Instanzen (für den gleichen Resource-Endpunkt) an einem PDP zu nutzen.
 
 Bei horizontaler Skalierung des PEP ist allerdings eine „Sticky Session“ zu
 beachten, da die ASL Schlüssel nicht über die PEP Instanzen hinweg ausgetauscht
-werden.
+werden. Das mitgelieferte ZETA-Guard Helm Chart implementiert dies automatisch
+über den NGINX Ingress Controller (Cookie `zeta_route`, Consistent Hashing per
+Ketama). Bei alternativen Ingress-Controllern muss der Betreiber dies selbst
+sicherstellen.
 
 ### Einbindung in Infrastruktur und Anbindung des Fachdienstes
 
@@ -231,7 +234,9 @@ und nutzt diese dann im Sinne einer Sticky Session. Dies dient der
 Aufrechterhaltung der ASL-Session, die an die jeweilige PEP-Instanz gebunden
 ist. Sollte die PEP-Instanz ausfallen bzw. ein sonstiger Failover auf die andere
 Instanz stattfinden, wird die ASL Session neu ausgehandelt. Diese „Stickyness“
-ist bei Anycast- (oder anderen) Ansätzen zu beachten.
+ist bei Anycast- (oder anderen) Ansätzen zu beachten. Innerhalb eines Clusters
+unterstützt das Helm-Chart die Bindung eines Clients an eine PEP-Instanz
+chart-seitig über ein `zeta_route`-Cookie auf Ingress-Ebene (F5 NIC).
 
 Falls eine ZETA-Instanz ausfällt, so nutzt der Client dann – bei mehreren
 Endpunkten im DNS - automatisch den (bzw. einen der) anderen Endpunkte und
