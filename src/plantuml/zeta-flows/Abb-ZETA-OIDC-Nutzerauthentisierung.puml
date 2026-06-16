@@ -19,14 +19,15 @@ box "TI-Föderation" #EAF2FF
   participant IDP as "Sektoraler IDP\n(Authorization-Endpunkt)"
 end box
 
+Client++
 note over Client, IDP: Der ZETA Client hat aus Teildiagramm (A) request_uri und client_id erhalten.
 
 Client -> AM++: Öffne Authenticator (Deep-Link / Universal-Link)\n{client_id, request_uri}
 AM -> IDP++: GET /auth {client_id, request_uri}\n(Authentication Request)
 IDP -> IDP: Prüfe request_uri (Bezug zum PAR),\nstelle Consent gemäß Claims zusammen
 IDP --> AM: Consent-Abfrage & Authentisierungsanforderung (proprietär)
-AM -> User: Fordere Authentisierung (eGK+PIN / eID)\nund Consent-Freigabe an
-User -> AM: Authentisierung + Consent-Freigabe
+AM -> User++: Fordere Authentisierung (eGK+PIN / eID)\nund Consent-Freigabe an
+User -> AM--: Authentisierung + Consent-Freigabe
 AM -> IDP: Bestätigt erfolgreiche Authentisierung (proprietär)
 IDP -> IDP: Erzeuge AUTHORIZATION_CODE (IDP),\nGültigkeit max. 90s
 IDP --> AM--: 302 Found\nLocation: <redirect_uri>?code=AUTH_CODE_IDP&state=state_as

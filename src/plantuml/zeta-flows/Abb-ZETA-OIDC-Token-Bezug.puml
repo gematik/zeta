@@ -20,11 +20,12 @@ box "TI-Föderation" #EAF2FF
   participant IDP as "Sektoraler IDP\n(Token-Endpunkt)"
 end box
 
+Client++
 note over Client, IDP: Der ZETA Client hat aus Teildiagramm (B) den AUTHORIZATION_CODE (IDP) erhalten.
 
 == Innerer Flow: Token-Bezug beim sektoralen IDP ==
 
-Client -> AuthS++: Leitet AUTHORIZATION_CODE (IDP) weiter\n{code=AUTH_CODE_IDP, state=state_as}
+Client -> AuthS++: GET <redirect_uri> (Redirection-Endpunkt der OIDC Relying Party)\nFolgt der 302-Redirection aus Teildiagramm (B)\n{code=AUTH_CODE_IDP, state=state_as}
 AuthS -> IDP++: POST /token (mTLS, self_signed_tls_client_auth)\n{grant_type=authorization_code, code=AUTH_CODE_IDP,\ncode_verifier=code_verifier_as, client_id, redirect_uri}
 IDP -> IDP: Prüfe TLS-Clientzertifikat,\nverifiziere code_verifier_as gegen code_challenge_as (S256),\ninvalidiere AUTHORIZATION_CODE
 IDP --> AuthS--: 200 OK\n{id_token (JWE: ECDH-ES/A256GCM, signiert ES256),\naccess_token, token_type=Bearer, expires_in}

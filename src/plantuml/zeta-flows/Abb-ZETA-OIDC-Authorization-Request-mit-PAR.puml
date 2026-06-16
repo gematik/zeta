@@ -20,6 +20,7 @@ box "TI-Föderation" #EAF2FF
   participant FM as "Federation\nMaster"
 end box
 
+Client++
 note over Client, AuthS: Der ZETA Client hat vom Fach-Client den fachlichen Request inkl. idp_iss erhalten.
 
 Client -> Client: Erzeuge PKCE (code_verifier_app),\ncode_challenge_app = S256(code_verifier_app),\nstate_app
@@ -33,7 +34,7 @@ opt Entity Statement des IDP unbekannt
     IDP --> AuthS--: Entity Statement (signiert)
     AuthS -> FM++: GET federation_fetch_endpoint?sub=<idp_iss>
     FM --> AuthS--: Entity Statement des IDP (signiert, Federation Master)
-    AuthS -> AuthS: Validiere Trust Chain & importiere Signaturschlüssel des IDP
+    AuthS -> AuthS: Validiere Trust Chain, importiere Signaturschlüssel\nund OP-Metadaten (PAR-, Authorization-, Token-Endpunkt) des IDP
 end
 
 AuthS -> IDP++: POST /PAR (mTLS, self_signed_tls_client_auth)\n{client_id, redirect_uri, response_type=code,\ncode_challenge_as, code_challenge_method=S256,\nscope, claims, acr_values, nonce, state_as}
@@ -49,7 +50,7 @@ end
 IDP -> IDP: Validiere PAR (redirect_uri, scope, claims,\nTLS-Clientzertifikat), erzeuge request_uri
 IDP --> AuthS--: 201 Created {request_uri, expires_in (max. 90s)}
 
-AuthS --> Client--: 302 Found\nLocation: <authorization_endpoint>?client_id&request_uri
+AuthS --> Client--: 302 Found Location:\n<SekIDP Entity Statement authorization_endpoint>\n?client_id&request_uri
 
 note over Client, IDP: Weiter mit Teildiagramm (B) Abb-ZETA-OIDC-Nutzerauthentisierung.
 
