@@ -17,8 +17,16 @@ paths:
               properties:
                 grant_type:
                   type: string
-                  description: The grant type.
-                  enum: [authorization_code, password, client_credentials, refresh_token]
+                  description: >-
+                    The grant type. ZETA Clients use
+                    `urn:ietf:params:oauth:grant-type:token-exchange` (RFC 8693) to
+                    obtain DPoP-bound access tokens, or `refresh_token` for renewals.
+                  enum:
+                    - authorization_code
+                    - password
+                    - client_credentials
+                    - refresh_token
+                    - urn:ietf:params:oauth:grant-type:token-exchange
                 code:
                   type: string
                   description: The authorization code received in the previous step (for 'authorization_code' grant type only).
@@ -37,6 +45,26 @@ paths:
                 scope:
                   type: string
                   description: The scope of the access request as described by Section 3.3.
+                resource:
+                  type: string
+                  format: uri
+                  description: >-
+                    OPTIONAL resource indicator (RFC 8707). Absolute URI of the target
+                    resource the access token is requested for. The Authorization Server
+                    maps it to the logical `aud` of the issued token. Optional for
+                    backwards compatibility.
+                subject_token:
+                  type: string
+                  description: The subject token (RFC 8693). REQUIRED for the token-exchange grant.
+                subject_token_type:
+                  type: string
+                  description: Type of the subject_token (RFC 8693). REQUIRED for the token-exchange grant.
+                client_assertion_type:
+                  type: string
+                  description: Format of the client assertion (RFC 7521/RFC 7523).
+                client_assertion:
+                  type: string
+                  description: The Private Key JWT authenticating the client (RFC 7521/RFC 7523).
                 client_id:
                   type: string
                   description: The client identifier is issued to the client during the registration process described by Section 2.2.

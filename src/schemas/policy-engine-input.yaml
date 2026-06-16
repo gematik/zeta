@@ -29,9 +29,24 @@ properties:
           type: string
       audience:
         type: array
-        description: The audience for the authorization
+        description: >-
+          The logical, deployment-independent audience identifier(s) of the target
+          service for the requested token (e.g. "zeta-resource-server",
+          "zeta-notification-server", "zeta-client-management"). Derived by the AuthS
+          from the request's `resource` parameter (see `resource` below); MUST NOT be
+          the environment-specific resource URL.
         items:
           type: string
+      resource:
+        type: array
+        description: >-
+          The resource indicator(s) from the token request (RFC 8707): absolute
+          resource URL(s) the client requests the access token for. The AuthS maps
+          each resource to its logical `audience` and uses it for the scope/audience
+          policy decision. Optional for backwards compatibility.
+        items:
+          type: string
+          format: uri
       country_code:
         type: string
         description: "ISO 3166-1 alpha-2 country code of the source IP, resolved by
@@ -74,7 +89,7 @@ properties:
         description: Authentication Context Class Reference (e.g. 'loa2').
     required:
       - scopes
-      - aud
+      - audience
       - ip_address
       - previous_ip_address
       - grant_type
