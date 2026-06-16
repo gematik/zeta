@@ -24,6 +24,7 @@ genutzt werden können.
 | 0.5.0   | 02.04.26 | Update auf ZETA release 0.5.0 OpenShift-Ingress-to-Route (ersetzt OpenShift-Route), Terraform mit optionalem K8s-Backend, No-Travel-Option des PEP, ASL- und Telemetrie-TLS-Konfiguration aktualisiert |
 | 1.0.0   | 04.05.26 | Update auf ZETA release 1.0.0 Sicherheitsleistungen Guard-Betreiber, Client-Hersteller, Egress-NetworkPolicies, Client Build-Beschreibungen                                                            |
 | 1.0.1   | 13.05.26 | Überschrift für Releases 1.0.0 und 1.0.1 in Release Notes ergänzt.                                                                                                                                     |
+| 1.2.0   | 11.06.26 | Update auf ZETA release 1.2.0                                                                                                                                                                          |
 
 Detaillierte Informationen finden sich in den [Release Notes des Produkhandbuchs](ReleaseNotes.md).
 
@@ -160,7 +161,7 @@ Dokumente:
 
 Apache License, Version 2.0
 
-See the [LICENSE](../../LICENSE.md) for the specific language governing permissions and limitations under the License
+See the [LICENSE](LICENSE) for the specific language governing permissions and limitations under the License
 
 ### Additional Notes and Disclaimer from gematik GmbH
 

@@ -4,6 +4,7 @@
 
 - [Übersicht](#übersicht)
 - [libngx_pep.so](#libngxpepso)
+  - [Header-Behandlung und `proxy_headers.conf`](#header-behandlung-und-proxy_headersconf)
   - [Konfigurationsparameter (PEP-Basis)](#konfigurationsparameter-pep-basis)
   - [Konfigurationsparameter (ASL)](#konfigurationsparameter-asl)
 
@@ -62,6 +63,12 @@ http {
     server {
         listen 80;
         server_name  pep-proxy-svc;
+
+        # Einmal serverweit einbinden: entfernt client-gesetzte Credentials/ZETA-* Header
+        # und setzt die vom PEP kontrollierten Header. Alle Locations erben dies automatisch
+        # (siehe Abschnitt "Header-Behandlung und proxy_headers.conf").
+        include           proxy_headers.conf;
+
         location / {
             proxy_pass        https://testfachdienst;
             # potentially useful for some test installations
@@ -71,6 +78,11 @@ http {
             proxy_pass        https://testfachdienst/;
 
             pep               on;
+
+            # Erbt proxy_headers.conf aus dem server-Block. Ein eigenes
+            # `include proxy_headers.conf;` ist hier NUR nötig, wenn diese Location eigene
+            # proxy_set_header-Direktiven deklariert (z.B. WebSocket-Upgrade) — dann greift
+            # nginx' nicht-additive Vererbung (siehe Abschnitt unten).
 
             # pep_require_aud_any  "account|other"; # optional, multiple values with |, any one match suffices
             # pep_require_scope    "openid profile email"; # optional, exact string match
@@ -100,6 +112,46 @@ gestaltet, dass PEP-spezifisches Verhalten eingeschaltet wird.
 Damit dies funktioniert, ist insbesondere die Direktive
 `pep_issuer https://my.zeta.service.de/auth/realms/zeta-guard;` wichtig, die die
 Verbindung zum PDP herstellt.
+
+### Header-Behandlung und `proxy_headers.conf`
+
+`proxy_headers.conf` steuert sämtliche Header-Manipulation an der Upstream-Grenze.
+Die Datei wird mit dem PEP-Image unter `/etc/nginx/proxy_headers.conf` ausgeliefert.
+
+**Empfehlung — einmal serverweit einbinden:** Setzen Sie `include proxy_headers.conf;`
+einmal im `server`-Block. Alle Locations erben es dann automatisch, sodass jede
+PEP-geschützte `proxy_pass`-Location die Header-Behandlung erhält, ohne dass Sie das
+Include pro Location wiederholen müssen. Inhaltlich bewirkt die Datei:
+
+- **Entfernen client-gesetzter Credentials:** `Authorization`, `dpop` und `popp`
+  authentisieren den Aufrufer nur *gegenüber dem PEP* und werden nicht an den
+  Upstream weitergereicht.
+- **ZETA-\* Header — der PEP ist die alleinige Quelle (A_25669-01):**
+  `ZETA-User-Info`, `ZETA-Client-Data` und `ZETA-PoPP-Token-Content` werden
+  ausschließlich vom PEP gesetzt; eine vom Client mitgeschickte Kopie dieser
+  Header wird verworfen (überschrieben), nicht durchgereicht. `ZETA-Client-Data`
+  wird nur dann gesetzt, wenn `pep_forward_client_data on;` konfiguriert ist;
+  `ZETA-PoPP-Token-Content` nur, wenn ein PoPP-Token validiert wurde.
+- **`Forwarded` (RFC 7239, A_28439):** Der PEP aktualisiert den `Forwarded`-Header
+  und hängt sein eigenes Element an (`by=_zetapep`, `for`, `host`, `proto`); ein
+  bereits vorhandener `Forwarded`-Wert bleibt erhalten.
+- **`ZETA-API-Version`** ist ein Antwort-Header und wird auf dem Request-Pfad
+  Richtung Upstream entfernt.
+
+**Enforcement:** Erreicht eine Anfrage eine Location mit `pep on;` und `proxy_pass`,
+auf der die Strips nicht wirksam sind (weder geerbt noch lokal eingebunden),
+antwortet der PEP bewusst mit HTTP 500 (ProxyHeadersMissing), statt eine Anfrage
+zu autorisieren, deren Credentials anschließend ungewollt an den Upstream gelangen
+würden.
+
+> **Wichtig — nicht-additive Vererbung:** nginx vererbt `proxy_set_header` *nicht*
+> additiv. Eine Location, die eigene `proxy_set_header`-Direktiven deklariert
+> (z.B. für WebSocket-Upgrades oder einen Cookie-Strip), erbt das serverweite
+> `proxy_headers.conf` nicht und muss es selbst per `include proxy_headers.conf;`
+> erneut einbinden — sonst fehlen die Strips dort (und auf `pep on;`-Locations führt
+> das zum oben beschriebenen HTTP 500). Umgekehrt lässt sich eine Location über eine
+> eigene `proxy_set_header`-Deklaration auch gezielt von der Header-Behandlung
+> ausnehmen.
 
 ### Konfigurationsparameter (PEP-Basis)
 
@@ -179,6 +231,16 @@ Verbindung zum PDP herstellt.
     * Pflichtfeld: Nein
     * Context: `server`
     * Standardwert: `on`
+* `pep_forward_client_data`
+    * Typ: `on` | `off`
+    * Beschreibung: Steuert, ob der `ZETA-Client-Data`-Header (Base64-URL-kodierte
+      Client-Posture aus dem Access-Token) an den Upstream weitergereicht wird
+      (A_26492-02). Bei `off` setzt der PEP den Header nicht; eine vom Client
+      mitgeschickte Kopie wird in jedem Fall verworfen (siehe
+      [Header-Behandlung und `proxy_headers.conf`](#header-behandlung-und-proxy_headersconf)).
+    * Pflichtfeld: Nein
+    * Context: `server`, `location`
+    * Standardwert: `off`
 
 ### Konfigurationsparameter (ASL)
 

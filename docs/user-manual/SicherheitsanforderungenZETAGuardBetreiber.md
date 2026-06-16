@@ -28,6 +28,9 @@ Informationen zu den kubernetes OWASP Top Ten finden sich hier: https://owasp.or
 - A_25402	ZETA Guard - Schutz der transportierten Daten
 (Sicherung aller Endpunkte mit TLS)
 bei Nutzung einer betreiberspezifischen Lösung für mTLS
+- Seitens der Anbieter ist sicherzustellen, dass in allen Containern die Devices
+/dev/random und /dev/urandom Zufallszahlen entsprechend den Anforderungen aus
+BSI-TR-03116-1, 3.8 liefern.
 
 ## Storage
 

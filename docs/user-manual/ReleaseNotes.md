@@ -2,14 +2,81 @@
 
 # Release Notes ZETA SDK und ZETA Guard Helm Charts
 
+## Release 1.2.0
+
+### added
+
+- Neue Helm Values `pepproxy.wellKnownResourceSuffix` (Standard: `/pep/`) und
+  `authserver.wellKnownAuthServerPath` (Standard: `/`) ermöglichen die
+  Konfiguration der Pfadanteile im `/.well-known/oauth-protected-resource`
+  Dokument.
+- Forward-Proxy-Unterstützung für alle ZETA-Guard-Komponenten: Die neuen
+  globalen Values `global.httpProxy`, `global.httpsProxy`, `global.allProxy`
+  und `global.noProxy` leiten den ausgehenden HTTP/HTTPS-Verkehr von
+  `pepproxy`, `authserver`, `opa`, `opa-simulation`, `provisioning-processor`
+  und `opa-token-renewer` durch einen konfigurierbaren Forward Proxy.
+  Für nginx werden `env`-Direktiven in der `nginx.conf` erzeugt; für Keycloak
+  wird `noProxy` automatisch ins Java-`http.nonProxyHosts`-Format konvertiert.
+  Dokumentation: [Wie Sie einen Forward Proxy konfigurieren](Anleitungen/Wie_Sie_einen_Forward_Proxy_konfigurieren.md),
+  [Helm-Chart-Referenz – Globale Proxy-Konfiguration](Referenzen/Referenz_des_Helm_Charts.md#globale-proxy-konfiguration).
+- Neue PEP-Direktive `pep_forward_client_data` (`on`/`off`, Standard `off`) steuert,
+  ob der `ZETA-Client-Data`-Header an den Upstream weitergereicht wird (A_26492-02).
+  Dokumentation: [Konfiguration des PEP Http Proxy](Referenzen/Konfiguration_des_PEP_Http_Proxy.md#konfigurationsparameter-pep-basis).
+- Neuer Helm Value `authserver.hsm.tokenSigning.failClosed` (Standard: `true`)
+  verhindert einen Software-Key-Fallback bei nicht erreichbarem HSM.
+- HSM-gestütztes TLS für Infinispan über `global.infinispanExternal.hsm.*`
+  (`enabled`, `endpoint`, `keyId`, `caCert`).
+- Konfigurierbare PostgreSQL-Tuning-Parameter des CloudNativePG-Clusters über
+  `cloudnativePg.parameters` (`sharedBuffers`, `maxConnections`).
+- Dokumentation der Keycloak-Pools `authserver.dbPool` (`minSize`/`maxSize`) und
+  `authserver.httpPool.maxThreads`.
+- Weitere Dokumentation: [Wie Sie das ZETA SDK integrieren](Anleitungen/Wie_Sie_das_ZETA_SDK_integrieren.md)
+    - `clearRegistration()` operation on `ZetaSdkClient`
+    - `logger` parameter in `BuildConfig`
+    - `Security` configuration (`additionalCaPem`, `additionalCaFile`, `disableServerValidation`, `sslVerbose`)
+    - `Proxy` configuration support
+    - `RequiredRoleOid` in `AuthConfig` (C#)
+    - `CustomStorage` in `ZetaStorageConfig` (C#)
+    - `zeta_route` Cookie wird automatisch über `SdkStorage` persistiert
+
+### changed
+
+- Updated documentation to reflect changes in telemetry pipelines.
+- PEP-Header-Behandlung an der Upstream-Grenze ist jetzt zentral über
+  `proxy_headers.conf` geregelt: Der PEP entfernt client-gesetzte Credentials
+  (`Authorization`, `dpop`, `popp`), überschreibt die von ihm kontrollierten
+  `ZETA-*`-Header (`ZETA-User-Info`, `ZETA-Client-Data`, `ZETA-PoPP-Token-Content`)
+  und aktualisiert den `Forwarded`-Header gemäß RFC 7239 (A_25669-01, A_28439).
+  Das Helm-Chart bindet `proxy_headers.conf` serverweit ein; Locations erben die
+  Behandlung automatisch. Wichtig für Betreiber mit eigener nginx-Konfiguration:
+  Eine Location mit eigenen `proxy_set_header`-Direktiven (z.B. WebSocket-Upgrade)
+  erbt sie wegen nginx' nicht-additiver Vererbung nicht und muss
+  `include proxy_headers.conf;` selbst erneut enthalten, sonst antwortet der PEP auf
+  `pep on;`-Locations mit HTTP 500 (ProxyHeadersMissing). Details:
+  [Header-Behandlung und `proxy_headers.conf`](Referenzen/Konfiguration_des_PEP_Http_Proxy.md#header-behandlung-und-proxy_headersconf).
+- OPA ist nun verpflichtend und kann nicht mehr deaktiviert werden — die Toggles
+  `opa.enabled`, `provider.smcB.opa.enabled` und `provider.smcB.failClosed` wurden
+  entfernt. Der Bundle-Modus (`opa.bundle.enabled: true`) ist der neue Chart-Standard;
+  bei nicht erreichbarem OPA antwortet der Authserver mit `503 temporarily_unavailable`.
+- Sticky Session zwischen Client und PEP-Instanz wird nun chart-seitig über ein
+  `zeta_route`-Cookie auf Ingress-Ebene (F5 NIC) unterstützt; der Value
+  `ingress.sessionAffinity.enabled` (ip-hash) entfällt.
+- Infinispan-Image von `infinispan/server` auf `infinispan-zeta` umgestellt.
+- Dokumentation: [Wie Sie das ZETA SDK integrieren](Anleitungen/Wie_Sie_das_ZETA_SDK_integrieren.md)
+    - `logout()`, `forget()`, `clearRegistration()` löschen jetzt den `zeta_route` Cookie
+    - `StorageConfig` verwendet jetzt `Default`/`Custom` Varianten statt `provider`/`aesB64Key`
+    - `ZetaHttpClientBuilder` Konstruktor ohne Parameter verfügbar (kein `baseUrl` mehr erforderlich)
+
 ## Release 1.0.1
 
 ### changed
+
 - Korrektur der ReleaseNotes Version
 - Client Codebeispiele korrigiert und aktualisiert
 - Updated WIF configuration
 
 ### added
+
 - Client Dokumentation für Custom Log Provider, Custom Storage und Custom SMC-B Connector
 
 ## Release 1.0.0
