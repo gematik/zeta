@@ -1,6 +1,6 @@
 @startuml "Mobile Client Registration with API Details"
 
-!include ../puml-layout.txt
+!include ../../puml-layout.txt
 
 !pragma teoz true
 
