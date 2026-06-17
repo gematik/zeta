@@ -25,6 +25,7 @@ oneOf:
       grant_types:
         type: array
         items: { type: string }
+      redirect_uris: { $ref: "#/definitions/redirect_uris" }
       jwks:
         description: >-
           Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
@@ -81,6 +82,7 @@ oneOf:
       grant_types:
         type: array
         items: { type: string }
+      redirect_uris: { $ref: "#/definitions/redirect_uris" }
       jwks:
         description: >-
           Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
@@ -122,6 +124,7 @@ oneOf:
       grant_types:
         type: array
         items: { type: string }
+      redirect_uris: { $ref: "#/definitions/redirect_uris" }
       jwks:
         description: >-
           Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
@@ -177,6 +180,7 @@ oneOf:
       grant_types:
         type: array
         items: { type: string }
+      redirect_uris: { $ref: "#/definitions/redirect_uris" }
       jwks:
         description: >-
           Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
@@ -215,6 +219,7 @@ oneOf:
       grant_types:
         type: array
         items: { type: string }
+      redirect_uris: { $ref: "#/definitions/redirect_uris" }
       jwks:
         description: >-
           Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
@@ -226,6 +231,20 @@ oneOf:
         required: [keys]
 
 definitions:
+  redirect_uris:
+    type: array
+    description: >-
+      Liste der beim Client registrierten Redirection-Endpunkte (RFC 6749
+      Abschnitt 3.1.2, RFC 8252 für native Apps). Bei der Autorisierung muss
+      die übergebene redirect_uri exakt (String-Vergleich) mit einem der hier
+      registrierten Werte übereinstimmen. Für native mobile Clients werden
+      claimed-HTTPS-URIs (Universal Links / App Links) auf der AuthS-Domain
+      empfohlen, wobei jede App einen eigenen Pfad erhält, damit das
+      Betriebssystem den Callback eindeutig der richtigen App zustellt.
+    items:
+      type: string
+      format: uri
+    minItems: 1
   jwk:
     type: object
     properties:

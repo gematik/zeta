@@ -18,7 +18,7 @@ end box
 Client++
 alt Kein ZETA Attestation Token vorhanden
     
-        Client -> AuthS++: POST /register\n{attestation_type="android", PuK.AK.Sig,\nAndroid_Key_Attestation_Certificate_Chain,\nPuK.Client.Sig, signed_Hash_PuK.Client.Sig,\nplay_integrity_token}
+        Client -> AuthS++: POST /register\n{attestation_type="android", PuK.AK.Sig,\nAndroid_Key_Attestation_Certificate_Chain,\nPuK.Client.Sig, signed_Hash_PuK.Client.Sig,\nplay_integrity_token, redirect_uris}
         AuthS -> AuthS: Validiere Zertifikatskette gegen Google Root CA
         AuthS -> AuthS: Prüfe signed_Hash_PuK.Client.Sig
         
@@ -32,7 +32,6 @@ alt Kein ZETA Attestation Token vorhanden
 
 
     AuthS -> AuthS: Store Client Placeholder (state: pending_user_binding)
-
     ' Trust On First Use (TOFU)
     AuthS -> AuthS: Generiere OTP & transaction_id\nSpeichere Request im temporären Cache
     AuthS -> User: E-Mail mit OTP-Bestätigungscode (Out-of-Band)

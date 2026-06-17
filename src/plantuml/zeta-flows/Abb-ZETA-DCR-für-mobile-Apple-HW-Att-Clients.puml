@@ -18,7 +18,7 @@ end box
 Client++
 alt Kein ZETA Attestation Token vorhanden
     
-    Client -> AuthS++: POST /register\n{attestation_type="apple", Apple_Attestation_Object, PuK.Client.Sig}
+    Client -> AuthS++: POST /register\n{attestation_type="apple", Apple_Attestation_Object, PuK.Client.Sig, redirect_uris}
     AuthS -> AuthS: Validiere Apple_Attestation_Object
     note right of AuthS: AuthS verifiziert Apple App Attest Root CA.\nExtrahiert Hash(PuK.Client.Sig) aus Objekt\nund vergleicht ihn mit dem Payload.
 

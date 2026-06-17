@@ -19,12 +19,12 @@ Client++
 alt Kein ZETA Attestation Token
     
     alt Hardware Attestation: iOS, iPadOS, macOS (Apple App Attest)
-        Client -> AuthS++: POST /register\n{attestation_type="apple", Apple_Attestation_Object, PuK.Client.Sig}
+        Client -> AuthS++: POST /register\n{attestation_type="apple", Apple_Attestation_Object, PuK.Client.Sig, redirect_uris}
         AuthS -> AuthS: Validiere Apple_Attestation_Object
         note right of AuthS: AuthS verifiziert Apple App Attest Root CA.\nExtrahiert Hash(PuK.Client.Sig) aus Objekt\nund vergleicht ihn mit dem Payload.
 
     else Hardware Attestation: Android (Keystore, TEE, StrongBox)
-        Client -> AuthS: POST /register\n{attestation_type="android", PuK.AK.Sig,\nAndroid_Key_Attestation_Certificate_Chain,\nPuK.Client.Sig, signed_Hash_PuK.Client.Sig,\nplay_integrity_token}
+        Client -> AuthS: POST /register\n{attestation_type="android", PuK.AK.Sig,\nAndroid_Key_Attestation_Certificate_Chain,\nPuK.Client.Sig, signed_Hash_PuK.Client.Sig,\nplay_integrity_token, redirect_uris}
         AuthS -> AuthS: Validiere Zertifikatskette gegen Google Root CA
         AuthS -> AuthS: Prüfe signed_Hash_PuK.Client.Sig
         
@@ -37,8 +37,15 @@ alt Kein ZETA Attestation Token
         note right of AuthS: PuK.AK.Sig muss mit dem Blatt-Zertifikat\nder Certificate Chain übereinstimmen.\nSicherheitsniveau: TrustedEnvironment oder StrongBox.
 
     else Software Attestation (Legacy OIDC DCR)
-        Client -> AuthS: POST /register\n{\n  "client_name": "myClient",\n  "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"],\n  "jwks": { "keys": [ PuK.Client.Sig ] },\n  "token_endpoint_auth_method": "private_key_jwt"\n}
+        Client -> AuthS: POST /register\n{\n  "client_name": "myClient",\n  "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"],\n  "jwks": { "keys": [ PuK.Client.Sig ] },\n  "token_endpoint_auth_method": "private_key_jwt",\n  "redirect_uris": ["https://<AuthS-FQDN>/cb/<app-spezifischer-Pfad>"]\n}
     end
+
+    note right of AuthS
+      redirect_uris ist je App ein eigener claimed-HTTPS Universal-/App-Link
+      auf der AuthS-Domain (RFC 8252). Unterschiedliche Pfade pro App ermöglichen
+      die eindeutige Callback-Zustellung; die OS-seitige Verknüpfung erfolgt über
+      apple-app-site-association bzw. assetlinks.json (Deployment, kein Laufzeit-Flow).
+    end note
 
     AuthS -> AuthS: Store Client Placeholder (state: pending_user_binding)
 
