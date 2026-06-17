@@ -117,8 +117,8 @@ properties:
     description: >-
       Boolean value indicating whether the protected resource requires DPoP-bound
       access tokens [RFC9449] for all authorized requests. If omitted, the default
-      value is `false`.
-    default: false # Explicitly adding default for clarity.
+      value is `true`.
+    default: true # Explicitly adding default for clarity.
   signed_metadata:
     type: string
     description: >-
