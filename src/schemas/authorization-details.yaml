@@ -1,0 +1,88 @@
+# Schema für OAuth 2.0 Rich Authorization Requests (RAR) in ZETA gemäß RFC 9396
+$schema: "http://json-schema.org/draft-07/schema#"
+title: AuthorizationDetails
+description: >-
+  Schema für den Parameter `authorization_details` gemäß RFC 9396
+  (OAuth 2.0 Rich Authorization Requests). Der Parameter ist ein
+  JSON-Array von Objekten, die jeweils über das Feld `type` einen
+  Authorization-Details-Typ kennzeichnen.
+type: array
+minItems: 1
+items:
+  $ref: "#/definitions/authorizationDetail"
+
+definitions:
+  authorizationDetail:
+    type: object
+    description: >-
+      Ein einzelnes Authorization-Details-Objekt. Das Feld `type`
+      bestimmt die Struktur der weiteren Felder.
+    required:
+      - type
+    properties:
+      type:
+        type: string
+        description: >-
+          Bezeichner des Authorization-Details-Typs gemäß RFC 9396
+          Abschnitt 2. Ein eindeutiger String, der die Datenstruktur
+          der enthaltenen Felder festlegt.
+    oneOf:
+      - $ref: "#/definitions/authProvider"
+
+  # -----------------------------------------------------------------
+  # Authorization-Details-Typ: urn:ti:gematik:auth:provider
+  # -----------------------------------------------------------------
+  authProvider:
+    type: object
+    title: Auth Provider
+    description: >-
+      Authorization Details zur Auswahl des OpenID Providers, bei dem
+      die Authentifizierung des Nutzers durchgeführt werden soll.
+    required:
+      - type
+      - auth_preferences
+    properties:
+      type:
+        type: string
+        const: "urn:ti:gematik:auth:provider"
+        description: Authorization-Details-Typ für die Provider-Auswahl.
+      auth_preferences:
+        type: object
+        description: Präferenzen für die Authentifizierung.
+        required:
+          - openid_provider
+        properties:
+          openid_provider:
+            type: string
+            description: >-
+              Issuer-Identifier (URL) des gewünschten OpenID Providers
+              gemäß OpenID Connect Discovery.
+          amr:
+            type: array
+            description: >-
+              Anfrage spezifischer Authentisierungsmittel (Authentication Method Reference) 
+              gemäß gemSpec_IDP_Sek.
+            items:
+              type: string
+              enum:
+                - "urn:telematik:auth:eGK"
+                - "urn:telematik:auth:eID"
+                - "urn:telematik:auth:sso"
+                - "urn:telematik:auth:mEW"
+                - "urn:telematik:auth:guest:eGK"
+                - "urn:telematik:auth:other"
+          acr:
+            type: string
+            description: >-
+              Anfrage eines spezifischen Vertrauensniveaus (Authentication Context Class Reference) 
+              gemäß gemSpec_IDP_Sek.
+            enum:
+              - "gematik-ehealth-loa-high"
+              - "gematik-ehealth-loa-substantial"
+        additionalProperties: false
+    additionalProperties: false
+
+examples:
+  - - type: "urn:ti:gematik:auth:provider"
+      auth_preferences:
+        openid_provider: "Issuer des OpenID Providers"
