@@ -2,15 +2,15 @@
 
 ## Dokumenten- und Versionsübersicht
 
-|                               |                               |
-| ----------------------------- | ----------------------------- |
-| Dokumenttitel                 | ZETA API v1.3.1-2             |
-| Dokumentversion               | 1.3.1-2                       |
-| Stand                         | 03.06.2026                    |
-| Status                        | Draft                         |
-| Verantwortlich                | gematik                       |
-| Gültigkeitsbereich            | ZETA Guard API                |
-| Spezifikationsgrundlage       | gemSpec_ZETA, Version 1.3.1   |
+|                               |                                   |
+| ----------------------------- | --------------------------------- |
+| Dokumenttitel                 | ZETA API v2.0.0-draft             |
+| Dokumentversion               | 2.0.0-draft                       |
+| Stand                         | 17.06.2026                        |
+| Status                        | Draft                             |
+| Verantwortlich                | gematik                           |
+| Gültigkeitsbereich            | ZETA Guard API                    |
+| Spezifikationsgrundlage       | gemSpec_ZETA, Version 2.0.0-draft |
 
 ---
 
