@@ -9,9 +9,16 @@ description: >
   for the OPA policy engine.
 properties:
   version:
-    description: The version of the schema
+    description: >-
+      The version of the schema. `1.0` corresponds to the legacy contract where
+      the access token `aud` is taken verbatim from the `audience` parameter.
+      `1.1` corresponds to the contract where the client supplies a `resource`
+      indicator (RFC 8707) and the Policy Engine determines the `aud` claim
+      (returned in the decision).
     type: string
-    const: "1.0"
+    enum:
+      - "1.0"
+      - "1.1"
   client_registration_data:
     description: The client registration data stored at the authorization server.
     "$ref": "./policy-engine-client-data.yaml"
@@ -30,21 +37,24 @@ properties:
       audience:
         type: array
         description: >-
-          The logical, deployment-independent audience identifier(s) of the target
-          service for the requested token (e.g. "n_resource", "cm_resource"). Taken
-          from the `audience` parameter of the token request and written verbatim into
-          the access token `aud` claim; MUST NOT be the environment-specific resource
-          URL.
+          LEGACY (contract v1 / schema version 1.0). The logical,
+          deployment-independent audience identifier(s) taken verbatim from the
+          client-supplied `audience` parameter and written verbatim into the
+          access token `aud` claim. Present only for legacy requests; for
+          contract v2 the client sends `resource` instead and the Policy Engine
+          determines the `aud` (returned in the decision). MUST NOT be the
+          environment-specific resource URL.
         items:
           type: string
       resource:
         type: string
         format: uri
         description: >-
-          OPTIONAL resource indicator (RFC 8707): the single absolute endpoint URL at
-          the resource server for which the access token is requested. If present, the
-          authoritative target endpoint of the request. Does NOT determine the
-          `audience`. Exactly one endpoint per access token.
+          Resource indicator (RFC 8707), contract v2 / schema version 1.1: the
+          single absolute endpoint URL at the resource server for which the
+          access token is requested. The Policy Engine uses it to determine the
+          logical `aud` returned in the decision. Does NOT itself become the
+          `aud`. Exactly one endpoint per access token.
       country_code:
         type: string
         description: "ISO 3166-1 alpha-2 country code of the source IP, resolved by
@@ -87,7 +97,6 @@ properties:
         description: Authentication Context Class Reference (e.g. 'loa2').
     required:
       - scopes
-      - audience
       - ip_address
       - previous_ip_address
       - grant_type

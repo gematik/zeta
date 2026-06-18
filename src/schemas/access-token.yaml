@@ -45,11 +45,15 @@ properties:
               type: string
           - type: string
         description: >-
-          The intended recipient(s) of the token, expressed as a stable, logical
-          audience identifier of the target service (e.g. "n_resource",
-          "cm_resource"). The value is deployment-independent and MUST NOT be the
-          environment-specific resource URL. It corresponds to the `audience`
-          parameter of the token request.
+          The intended recipient(s) of the token, expressed as a stable, logical,
+          deployment-independent audience identifier of the target service (e.g.
+          "n_resource", "cm_resource"). For tokens issued under contract version 2
+          (`ver: 2`) this value is determined by the Policy Engine (OPA) decision
+          and MUST NOT be the environment-specific resource URL; the canonical
+          RFC 9728 resource identifier is conveyed via the `resource` request
+          parameter (RFC 8707) and bound to the request via the DPoP `htu` claim
+          (RFC 9449) instead. For legacy tokens (`ver` absent or `1`) the value is
+          taken verbatim from the client-supplied `audience` request parameter.
       sub:
         type: string
         description: "The subject of the token; Telematik-ID, KVNR or other unique identifier"
@@ -91,6 +95,18 @@ properties:
       scope:
         type: string
         description: The permissions that this token grants.
+      ver:
+        type: integer
+        description: >-
+          Token-issuance contract version. `1` (or absent) indicates the legacy
+          contract where `aud` is taken verbatim from the client-supplied
+          `audience` parameter. `2` indicates the new contract where the client
+          sends a `resource` indicator (RFC 8707) and the `aud` claim is
+          determined by the Policy Engine (OPA) decision. The PEP uses this value
+          to select the correct audience-matching rule during the transition.
+        enum:
+          - 1
+          - 2
       cnf:
         type: object
         description: The confirmation claim binding the token to the public key.

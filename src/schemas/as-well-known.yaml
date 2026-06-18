@@ -80,6 +80,38 @@ properties:
     items:
       type: string
 
+  # --- Token-Issuance Contract Versioning ---
+  api_versions_supported:
+    type: array
+    description: >-
+      A JSON array listing the token-issuance contract versions supported by this
+      Authorization Server. Clients use this to discover whether the Authorization
+      Server supports the `resource`-indicator based contract (version 2, RFC 8707)
+      before sending a `resource` parameter to the token endpoint. Mirrors the
+      structure of `api_versions_supported` in the protected resource metadata.
+    items:
+      type: object
+      properties:
+        major_version:
+          type: integer
+          description: The major version number of the token-issuance contract.
+        version:
+          type: string
+          description: The full, stable Semantic Versioning (SemVer) compliant string for this contract version.
+        status:
+          type: string
+          description: The release status of this contract version.
+          enum: [stable, beta, alpha, deprecated, retired]
+        documentation_uri:
+          type: string
+          format: uri
+          description: >-
+            URL of the documentation specific to this contract version.
+      required:
+        - major_version
+        - version
+        - status
+
 required:
   - issuer
   - authorization_endpoint

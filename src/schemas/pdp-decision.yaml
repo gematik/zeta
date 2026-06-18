@@ -31,6 +31,20 @@ properties:
         required:
           - access_token
           - refresh_token
+      aud:
+        description: >
+          The logical, deployment-independent audience identifier assigned by the
+          Policy Engine for the issued access token (contract v2). The
+          Authorization Server writes this value into the `aud` claim and sets
+          `ver: 2`. Only present when `allow` is true and the request supplied a
+          `resource` indicator (RFC 8707). Absent for legacy (contract v1)
+          decisions, where `aud` is taken verbatim from the client-supplied
+          `audience` parameter.
+        oneOf:
+          - type: array
+            items:
+              type: string
+          - type: string
       reasons:
         description: >
           Map of denial reasons. Keys are human-readable reason strings, values
