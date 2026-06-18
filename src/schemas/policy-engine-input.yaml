@@ -31,22 +31,20 @@ properties:
         type: array
         description: >-
           The logical, deployment-independent audience identifier(s) of the target
-          service for the requested token (e.g. "zeta-resource-server",
-          "zeta-notification-server", "zeta-client-management"). Derived by the AuthS
-          from the request's `resource` parameter (see `resource` below); MUST NOT be
-          the environment-specific resource URL.
+          service for the requested token (e.g. "n_resource", "cm_resource"). Taken
+          from the `audience` parameter of the token request and written verbatim into
+          the access token `aud` claim; MUST NOT be the environment-specific resource
+          URL.
         items:
           type: string
       resource:
-        type: array
+        type: string
+        format: uri
         description: >-
-          The resource indicator(s) from the token request (RFC 8707): absolute
-          resource URL(s) the client requests the access token for. The AuthS maps
-          each resource to its logical `audience` and uses it for the scope/audience
-          policy decision. Optional for backwards compatibility.
-        items:
-          type: string
-          format: uri
+          OPTIONAL resource indicator (RFC 8707): the single absolute endpoint URL at
+          the resource server for which the access token is requested. If present, the
+          authoritative target endpoint of the request. Does NOT determine the
+          `audience`. Exactly one endpoint per access token.
       country_code:
         type: string
         description: "ISO 3166-1 alpha-2 country code of the source IP, resolved by

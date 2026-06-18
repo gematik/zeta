@@ -45,14 +45,22 @@ paths:
                 scope:
                   type: string
                   description: The scope of the access request as described by Section 3.3.
+                audience:
+                  type: string
+                  description: >-
+                    The logical, deployment-independent audience identifier of the
+                    target service (RFC 8693), e.g. `n_resource` or `cm_resource`. This
+                    value is written verbatim into the `aud` claim of the issued access
+                    token. REQUIRED for the token-exchange grant when no `resource`
+                    parameter conveys the audience.
                 resource:
                   type: string
                   format: uri
                   description: >-
-                    OPTIONAL resource indicator (RFC 8707). Absolute URI of the target
-                    resource the access token is requested for. The Authorization Server
-                    maps it to the logical `aud` of the issued token. Optional for
-                    backwards compatibility.
+                    OPTIONAL resource indicator (RFC 8707). Absolute URL of the target
+                    endpoint at the resource server. If present, this URL is the
+                    authoritative target endpoint of the request. It does NOT determine
+                    the `aud` claim (the `aud` is taken from `audience`).
                 subject_token:
                   type: string
                   description: The subject token (RFC 8693). REQUIRED for the token-exchange grant.
