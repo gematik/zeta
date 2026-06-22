@@ -48,19 +48,21 @@ paths:
                 audience:
                   type: string
                   description: >-
-                    The logical, deployment-independent audience identifier of the
-                    target service (RFC 8693), e.g. `n_resource` or `cm_resource`. This
-                    value is written verbatim into the `aud` claim of the issued access
-                    token. REQUIRED for the token-exchange grant when no `resource`
-                    parameter conveys the audience.
+                    LEGACY (contract v1). The logical, deployment-independent audience 
+                    identifier of the target service (RFC 8693), e.g. `n_resource` or 
+                    `cm_resource`. This value is written verbatim into the `aud` claim 
+                    of the issued access token. REQUIRED for the token-exchange grant 
+                    when no `resource` parameter is provided. Deprecated; new clients 
+                    SHOULD use `resource` instead.
                 resource:
                   type: string
                   format: uri
                   description: >-
-                    OPTIONAL resource indicator (RFC 8707). Absolute URL of the target
-                    endpoint at the resource server. If present, this URL is the
-                    authoritative target endpoint of the request. It does NOT determine
-                    the `aud` claim (the `aud` is taken from `audience`).
+                    Resource indicator (RFC 8707), contract v2. Absolute URL of the 
+                    target endpoint at the resource server. The ZETA Guard determines 
+                    the logical `aud` claim from this URL via the Policy Engine decision. 
+                    The resource URL itself is NOT written into the `aud` claim but is 
+                    bound to the actual request via the DPoP proof `htu` claim (RFC 9449).
                 subject_token:
                   type: string
                   description: The subject token (RFC 8693). REQUIRED for the token-exchange grant.
