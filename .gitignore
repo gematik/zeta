@@ -1,6 +1,5 @@
 .idea
 .vscode
-.idea
 *.log
 *.tar.gz
 *.pyc
