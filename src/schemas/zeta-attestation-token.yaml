@@ -33,9 +33,24 @@ definitions:
       jti: 
         type: string
         format: uuid 
-      platform: 
+      platform:
         type: string
         enum: [windows, linux, apple, android]
+      redirect_uris:
+        type: array
+        description: >-
+          Die bei der ursprünglichen Registrierung verifizierten Redirection-Endpunkte
+          des Clients (claimed-HTTPS Universal-/App-Links auf der App-Hersteller-Domain).
+          Werden in den Token aufgenommen, damit sie bei einer erneuten Registrierung
+          im Fast-Path (attestation_type=zeta_attestation_token) nicht erneut übertragen
+          werden müssen; der AuthS übernimmt sie aus dem Token. Der letzte Pfad-Abschnitt
+          bestimmt den Flow: ".../as" = redirect_uri_as (SekIDP Auth Code Flow),
+          ".../app" = redirect_uri_app (ZETA Guard Auth Code Flow). Für stationäre
+          Clients i. d. R. nicht gesetzt.
+        items:
+          type: string
+          format: uri
+          pattern: '^https://.+/(as|app)$'
       cnf:
         type: object
         description: Confirmation Claim nach RFC 7800 (Proof-of-Possession).

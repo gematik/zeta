@@ -51,14 +51,23 @@ alt Kein ZETA Attestation Token vorhanden
     ' Verifikation mit der temporären ID
     Client -> AuthS++: POST /register/verify\n{transaction_id, code}
     AuthS -> AuthS: Verifiziere OTP-Code gegen Cache
+    AuthS -> AuthS: Stelle ZETA Guard Attestation Token aus\n(attestation_type="apple", signiert, cnf=PuK.AK.Sig,\nenthält die registrierten redirect_uris)
 
 
 else ZETA Attestation Token vorhanden (Fast-Path)
     Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token",\nzeta_guard_attestation_token, PuK.Client.Sig,\nBesitznachweis (Signatur/Assertion)}
     AuthS -> AuthS: Prüfe Token-Signatur & Vertrauensstellung
     AuthS -> AuthS: Extrahiere PuK.AK.Sig aus Token, verifiziere Besitznachweis
+    AuthS -> AuthS: Übernimm registrierte redirect_uris aus dem Token\n(kein erneutes Senden im Fast-Path)
 end
 
-AuthS --> Client--: 201 Created {client_id, status="pending_user_binding"}
+note over Client, AuthS
+  Der zeta_guard_attestation_token zertifiziert die erfolgreiche Apple App Attest
+  Attestierung, ist an PuK.AK.Sig gebunden (cnf) und enthält die registrierten
+  redirect_uris. Er kann bei einer erneuten Registrierung im Fast-Path vorgelegt werden,
+  sodass Hardware-Attestierung und redirect_uris nicht erneut übertragen werden müssen.
+end note
+
+AuthS --> Client--: 201 Created {client_id, status="pending_user_binding",\nzeta_guard_attestation_token (bei HW-Attestierung ausgestellt)}
 
 @enduml

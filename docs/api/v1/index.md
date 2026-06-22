@@ -798,7 +798,7 @@ Mobile Clients binden den Registrierungsprozess an eine interaktive Benutzeriden
 - *(04) 202 Accepted:* Der AuthS antwortet mit `{transaction_id, message="OTP sent"}` — zu diesem Zeitpunkt existiert noch keine `client_id`.
 - *(05) OTP-Eingabe:* Der Nutzer gibt den OTP-Code in der App ein.
 - *(06) POST /register/verify:* Der Client sendet `{transaction_id, code}` zur Verifikation.
-- *(07) 201 Created:* Bei korrektem OTP wird die Registrierung abgeschlossen mit `{client_id, status="pending_attestation"}`.
+- *(07) 201 Created:* Bei korrektem OTP wird die Registrierung abgeschlossen mit `{client_id, status="pending_attestation"}`. Zusätzlich stellt der AuthS einen `zeta_guard_attestation_token` aus (signiert, an `PuK.AK.Sig` gebunden über `cnf`, enthält die registrierten `redirect_uris`; siehe [zeta-attestation-token.yaml](../../../src/schemas/zeta-attestation-token.yaml)). Dieser Token kann bei einer erneuten Registrierung im Fast-Path (`attestation_type="zeta_attestation_token"`) vorgelegt werden, sodass Hardware-Attestierung und `redirect_uris` nicht erneut übertragen werden müssen — der AuthS übernimmt die `redirect_uris` dann aus dem Token.
 
 ![Abbildung 15: DCR für mobile Apple Clients mit Hardware Attestation](../../../images/zeta-flows/Abb-ZETA-DCR-für-mobile-Apple-HW-Att-Clients.svg)
 
@@ -881,7 +881,8 @@ Content-Type: application/json
 {
   "client_id": "zeta-client-ios-d4e5f6",
   "status": "pending_attestation",
-  "client_id_issued_at": 1748520000
+  "client_id_issued_at": 1748520000,
+  "zeta_guard_attestation_token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9...<signiertes JWT, siehe zeta-attestation-token.yaml>...=="
 }
 ```
 
@@ -975,7 +976,7 @@ Auch Android-Clients durchlaufen den TOFU-Prozess mit OTP-Verifikation.
 
 - *(01) POST /register:* Der Client sendet `attestation_type: "android"`, `PuK.AK.Sig`, `android_key_attestation_certificate_chain`, `PuK.Client.Sig`, `signed_hash_puk_client_sig` und optional `play_integrity_token`.
 - *(02) Validierung:* Der AuthS validiert die Zertifikatskette gegen die Google Hardware Attestation Root CA, prüft `signed_hash_puk_client_sig` und wertet optional die Play Integrity Verdicts aus.
-- *(03)–(07) TOFU OTP:* Identischer Ablauf wie bei Apple-Clients (OTP-Generierung, E-Mail-Versand, Nutzer-Eingabe, Verifikation).
+- *(03)–(07) TOFU OTP:* Identischer Ablauf wie bei Apple-Clients (OTP-Generierung, E-Mail-Versand, Nutzer-Eingabe, Verifikation). Mit der `201 Created` stellt der AuthS zudem einen `zeta_guard_attestation_token` aus (signiert, an `PuK.AK.Sig` gebunden über `cnf`, enthält die registrierten `redirect_uris`; siehe [zeta-attestation-token.yaml](../../../src/schemas/zeta-attestation-token.yaml)), der im Fast-Path wiederverwendet werden kann — die `redirect_uris` müssen dann nicht erneut übertragen werden.
 
 ![Abbildung 21: DCR für mobile Android Clients mit Hardware Attestation](../../../images/zeta-flows/Abb-ZETA-DCR-für-mobile-Android-HW-Att-Clients.svg)
 
@@ -1062,7 +1063,8 @@ Content-Type: application/json
 {
   "client_id": "zeta-client-android-g7h8i9",
   "status": "pending_attestation",
-  "client_id_issued_at": 1748520000
+  "client_id_issued_at": 1748520000,
+  "zeta_guard_attestation_token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9...<signiertes JWT, siehe zeta-attestation-token.yaml>...=="
 }
 ```
 
