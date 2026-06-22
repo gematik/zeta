@@ -16,6 +16,16 @@ properties:
     type: string
     format: uri
     description: "The URL of the token endpoint."
+  redirection_endpoint:
+    type: string
+    format: uri
+    description: >-
+      The URL of the redirection endpoint of the Authorization Server acting as OIDC
+      Relying Party. The sectoral IDP redirects the user agent here (redirect_uri_as)
+      after authentication; the AuthS then exchanges the IDP authorization code at the
+      IDP token endpoint. The ZETA Client uses the path of the incoming redirect_uri
+      to distinguish this endpoint (SekIDP Auth Code Flow) from the token_endpoint
+      (ZETA Guard Auth Code Flow).
   nonce_endpoint:
     type: string
     format: uri
@@ -118,6 +128,7 @@ required:
   - nonce_endpoint
   - registration_endpoint
   - token_endpoint
+  - redirection_endpoint
   - jwks_uri
   - scopes_supported
   - response_types_supported

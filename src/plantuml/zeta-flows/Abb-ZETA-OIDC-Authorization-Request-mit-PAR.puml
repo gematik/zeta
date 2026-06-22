@@ -25,7 +25,7 @@ note over Client, AuthS: Der ZETA Client hat vom Fach-Client den fachlichen Requ
 
 Client -> Client: Erzeuge PKCE (code_verifier_app),\ncode_challenge_app = S256(code_verifier_app),\nstate_app
 
-Client -> AuthS++: GET Authorization Request\n{response_type=code, client_id, redirect_uri,\ncode_challenge_app, code_challenge_method=S256,\nscope, state_app, idp_iss}
+Client -> AuthS++: GET Authorization Request\n{response_type=code, client_id, redirect_uri_app,\ncode_challenge_app, code_challenge_method=S256,\nscope, state_app, idp_iss}
 
 AuthS -> AuthS: Erzeuge PKCE (code_verifier_as),\ncode_challenge_as = S256(code_verifier_as),\nstate_as, nonce
 
@@ -37,7 +37,14 @@ opt Entity Statement des IDP unbekannt
     AuthS -> AuthS: Validiere Trust Chain, importiere Signaturschlüssel\nund OP-Metadaten (PAR-, Authorization-, Token-Endpunkt) des IDP
 end
 
-AuthS -> IDP++: POST /PAR (mTLS, self_signed_tls_client_auth)\n{client_id, redirect_uri, response_type=code,\ncode_challenge_as, code_challenge_method=S256,\nscope, claims, acr_values, nonce, state_as}
+note over AuthS, IDP
+  redirect_uri_as ist der Redirection-Endpunkt der OIDC Relying Party (AuthS) für den
+  SekIDP Auth Code Flow. Sie wird im Entity Statement des AS (Fachdienst) geführt; der
+  SekIDP prüft beim PAR, ob redirect_uri_as eine bekannte redirect_uri aus diesem
+  AS-Entity-Statement ist.
+end note
+
+AuthS -> IDP++: POST /PAR (mTLS, self_signed_tls_client_auth)\n{client_id, redirect_uri_as, response_type=code,\ncode_challenge_as, code_challenge_method=S256,\nscope, claims, acr_values, nonce, state_as}
 
 opt Entity Statement des Fachdienstes unbekannt
     IDP -> AuthS++: GET /.well-known/openid-federation
@@ -47,7 +54,7 @@ opt Entity Statement des Fachdienstes unbekannt
     IDP -> IDP: Validiere Trust Chain, Automatic Registration,\nimportiere Schlüssel (sig/enc) des Fachdienstes
 end
 
-IDP -> IDP: Validiere PAR (redirect_uri, scope, claims,\nTLS-Clientzertifikat), erzeuge request_uri
+IDP -> IDP: Validiere PAR: redirect_uri_as gegen redirect_uris\nim AS-Entity-Statement, scope, claims,\nTLS-Clientzertifikat; erzeuge request_uri
 IDP --> AuthS--: 201 Created {request_uri, expires_in (max. 90s)}
 
 AuthS --> Client--: 302 Found Location:\n<SekIDP Entity Statement authorization_endpoint>\n?client_id&request_uri
