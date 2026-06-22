@@ -183,6 +183,7 @@ ETag: "w/98d41-xyz98765"
   "issuer": "https://auth.example.com",
   "authorization_endpoint": "https://auth.example.com/auth",
   "token_endpoint": "https://auth.example.com/token",
+  "redirection_endpoint": "https://auth.example.com/redirect",
   "registration_endpoint": "https://auth.example.com/register",
   "jwks_uri": "https://auth.example.com/certs",
   "grant_types_supported": [
@@ -891,7 +892,7 @@ Der Token-Bezug für mobile Benutzer erfolgt über den standardisierten **OpenID
 **Vorbedingungen:**
 
 - Die Service Discovery ist abgeschlossen; der Client kennt die Endpunkte des AuthS (siehe [Kapitel 3](#3-discovery-und-konfiguration)).
-- Der Client wurde per DCR registriert und besitzt `PrK.Client.Sig` / `PuK.Client.Sig` sowie mindestens eine registrierte `redirect_uri` (siehe [5.4](#54-native-mobile-apps-universal-links--app-links-für-mehrere-clients)).
+- Der Client wurde per DCR registriert und besitzt `PrK.Client.Sig` / `PuK.Client.Sig` sowie zwei registrierte `redirect_uris` – `redirect_uri_as` (Pfad `.../as`, SekIDP-Flow) und `redirect_uri_app` (Pfad `.../app`, ZETA-Guard-Flow) (siehe [5.4](#54-native-mobile-apps-universal-links--app-links-für-mehrere-clients)).
 - Der AuthS ist als Relying Party beim Federation Master registriert.
 - App-Link / Universal-Link für ZETA Client und Authenticator-Modul sind im Betriebssystem registriert.
 
@@ -904,12 +905,12 @@ Der Gesamtablauf gliedert sich in drei Teilflows (A–C):
 Der ZETA Client startet die Autorisierung. Der AuthS reicht den Request als Pushed Authorization Request (PAR) beim sektoralen IDP ein. Client und AuthS verwenden jeweils eigenes PKCE-Material.
 
 - *(01) PKCE erzeugen:* Der Client erzeugt `code_verifier_app`, `code_challenge_app = S256(code_verifier_app)` sowie `state_app`.
-- *(02) GET Authorization Request:* Der Client ruft den `authorization_endpoint` des AuthS auf mit `{response_type=code, client_id, redirect_uri, code_challenge_app, code_challenge_method=S256, scope, state_app, idp_iss}`.
+- *(02) GET Authorization Request:* Der Client ruft den `authorization_endpoint` des AuthS auf mit `{response_type=code, client_id, redirect_uri_app, code_challenge_app, code_challenge_method=S256, scope, state_app, idp_iss}`.
 - *(03) PKCE des AuthS:* Der AuthS erzeugt eigenes PKCE-Material (`code_verifier_as`, `code_challenge_as`), `state_as` und `nonce`.
 - *(04) Optional – Entity Statement des IDP:* Ist das Entity Statement des IDP unbekannt, lädt der AuthS es über `GET /.well-known/openid-federation`, validiert die Trust Chain über den Federation Master und importiert Signaturschlüssel sowie OP-Metadaten (PAR-, Authorization-, Token-Endpunkt).
-- *(05) POST /PAR:* Der AuthS sendet den Pushed Authorization Request (mTLS, `self_signed_tls_client_auth`) mit `{client_id, redirect_uri, response_type=code, code_challenge_as, code_challenge_method=S256, scope, claims, acr_values, nonce, state_as}` an den IDP.
+- *(05) POST /PAR:* Der AuthS sendet den Pushed Authorization Request (mTLS, `self_signed_tls_client_auth`) mit `{client_id, redirect_uri_as, response_type=code, code_challenge_as, code_challenge_method=S256, scope, claims, acr_values, nonce, state_as}` an den IDP. `redirect_uri_as` ist der für den SekIDP-Flow bestimmte Redirection-Endpunkt der OIDC Relying Party (AuthS) und wird im **Entity Statement des AuthS** geführt.
 - *(06) Optional – Entity Statement des Fachdienstes:* Bei Bedarf validiert der IDP analog die Trust Chain des Fachdienstes (Automatic Registration) und importiert dessen Schlüssel.
-- *(07) 201 Created:* Der IDP validiert den PAR, erzeugt eine `request_uri` und antwortet mit `{request_uri, expires_in}` (max. 90 s).
+- *(07) 201 Created:* Der IDP validiert den PAR – u. a. prüft er `redirect_uri_as` gegen die im **AS-Entity-Statement** geführten `redirect_uris` –, erzeugt eine `request_uri` und antwortet mit `{request_uri, expires_in}` (max. 90 s).
 - *(08) 302 Found:* Der AuthS leitet den Client an den `authorization_endpoint` des IDP weiter (`?client_id&request_uri`).
 
 ![Abbildung 17: OIDC Authorization Request mit PAR](../../../images/zeta-flows/Abb-ZETA-OIDC-Authorization-Request-mit-PAR.svg)
@@ -923,7 +924,7 @@ Die Authentisierung des Nutzers erfolgt über das Authenticator-Modul des sektor
 - *(03) Consent:* Der IDP prüft die `request_uri` (Bezug zum PAR) und stellt die Consent-Abfrage gemäß Claims zusammen.
 - *(04) Authentisierung:* Der Nutzer authentisiert sich (eGK+PIN / eID) und gibt den Consent frei.
 - *(05) Code-Erzeugung:* Der IDP erzeugt den `AUTHORIZATION_CODE (IDP)` (Gültigkeit max. 90 s).
-- *(06) 302 Found:* Der IDP antwortet mit `Location: <redirect_uri>?code=AUTH_CODE_IDP&state=state_as`.
+- *(06) 302 Found:* Der IDP antwortet mit `Location: <redirect_uri_as>?code=AUTH_CODE_IDP&state=state_as`.
 - *(07) App-Link Rücksprung:* Das Betriebssystem stellt den App-Link / Universal-Link der ZETA Client App zu (`{code=AUTH_CODE_IDP, state=state_as}`). Der Client prüft `state_as` auf Übereinstimmung.
 
 ![Abbildung 18: OIDC Nutzerauthentisierung am sektoralen IDP](../../../images/zeta-flows/Abb-ZETA-OIDC-Nutzerauthentisierung.svg)
@@ -934,16 +935,18 @@ Im inneren Flow löst der AuthS den IDP-Code ein und gewinnt die Identitäts-Cla
 
 **Innerer Flow – Token-Bezug beim sektoralen IDP:**
 
-- *(01) GET <redirect_uri>:* Der Client folgt der Redirection an den Redirection-Endpunkt des AuthS mit `{code=AUTH_CODE_IDP, state=state_as}`.
-- *(02) POST /token:* Der AuthS löst den Code beim IDP ein (mTLS) mit `{grant_type=authorization_code, code=AUTH_CODE_IDP, code_verifier=code_verifier_as, client_id, redirect_uri}`.
+> Beide Auth Code Flows enden über denselben App-/Universal-Link in der App. Der ZETA Client erkennt am **Pfad** der eingehenden `redirect_uri`, welcher AuthS-Endpunkt zu verwenden ist: `.../as` (`redirect_uri_as`) → `redirection_endpoint` (aus `as-well-known`, **nicht** `/token`) für den SekIDP-Flow; `.../app` (`redirect_uri_app`) → `token_endpoint` für den ZETA-Guard-Flow.
+
+- *(01) GET <redirect_uri_as>:* Der Client folgt der Redirection an den `redirection_endpoint` des AuthS (nicht `/token`) mit `{code=AUTH_CODE_IDP, state=state_as}`.
+- *(02) POST /token:* Der AuthS löst den Code beim IDP ein (mTLS) mit `{grant_type=authorization_code, code=AUTH_CODE_IDP, code_verifier=code_verifier_as, client_id, redirect_uri_as}`.
 - *(03) 200 OK:* Der IDP prüft das TLS-Clientzertifikat und `code_verifier_as`, invalidiert den `AUTHORIZATION_CODE` und liefert `{id_token (JWE, ECDH-ES/A256GCM, signiert ES256), access_token, token_type=Bearer, expires_in}`.
 - *(04) ID Token verarbeiten:* Der AuthS entschlüsselt und verifiziert das ID Token (Signatur via `kid`/`x5c`, `iss`/`aud`/`nonce`/`exp`) und extrahiert die Identitäts-Claims (KVNR, `acr`, `amr`, ...).
 
 **Äußerer Flow – Policy-Entscheidung & ZETA Token:**
 
 - *(05) POST /v1/data/authz:* Der AuthS erstellt den Policy Engine Input (Identitäts-Claims, Posture, Kontext) und ruft die Policy Engine (OPA) auf.
-- *(06) Policy Decision:* Bei `allow` erzeugt der AuthS den `AUTHORIZATION_CODE (AS)` und leitet den Client per `302 Found` (`?code=AUTH_CODE_AS&state=state_app`) zurück. Bei `deny` antwortet der AuthS mit `403 Forbidden` und einer Begründung.
-- *(07) POST /token (DPoP):* Der Client erzeugt ein DPoP-Schlüsselpaar (`PrK.DPoP.Sig` / `PuK.DPoP.Sig`) und einen DPoP Proof und ruft den `token_endpoint` des AuthS mit dem `dpop`-Header sowie `{grant_type=authorization_code, code=AUTH_CODE_AS, code_verifier=code_verifier_app, client_id, redirect_uri, client_assertion}` auf.
+- *(06) Policy Decision:* Bei `allow` erzeugt der AuthS den `AUTHORIZATION_CODE (AS)` und leitet den Client per `302 Found` (`Location: <redirect_uri_app>?code=AUTH_CODE_AS&state=state_app`) zurück. Bei `deny` antwortet der AuthS mit `403 Forbidden` und einer Begründung.
+- *(07) POST /token (DPoP):* Der Client erzeugt ein DPoP-Schlüsselpaar (`PrK.DPoP.Sig` / `PuK.DPoP.Sig`) und einen DPoP Proof und ruft den `token_endpoint` des AuthS mit dem `dpop`-Header sowie `{grant_type=authorization_code, code=AUTH_CODE_AS, code_verifier=code_verifier_app, client_id, redirect_uri_app, client_assertion}` auf.
 - *(08) 200 OK:* Der AuthS verifiziert `code_verifier_app` (gegen `code_challenge_app`), den DPoP Proof und die Client Assertion (Key Binding aus DCR) und stellt `{access_token (DPoP-gebunden), refresh_token, token_type=DPoP, expires_in}` aus.
 
 Der ZETA Client besitzt nun ein DPoP-gebundenes Access Token und kann auf den Resource Server zugreifen (siehe [Kapitel 7](#7-zugriff-auf-den-resource-server)). Die Session-Erneuerung erfolgt über den Refresh Token.
@@ -1177,18 +1180,24 @@ Der OIDC-Ablauf (Authorization Request mit PAR, Nutzerauthentisierung am sektora
 
 Mehrere native Apps auf demselben Endgerät können denselben ZETA Guard Authorization Server und Resource Server nutzen. Jede App ist dabei ein eigener OAuth-Client mit eigener `client_id` und eigener `redirect_uris`-Registrierung (siehe DCR, [`POST /register`](../../../src/schemas/dcr-request.yaml)).
 
-Damit das mobile Betriebssystem die OIDC-Redirection (`302 Found` an die `redirect_uri`) eindeutig der richtigen App zustellt, gelten folgende Empfehlungen gemäß [RFC 8252](https://www.rfc-editor.org/info/rfc8252) (OAuth 2.0 for Native Apps):
+Je App werden **zwei** `redirect_uris` registriert – eine je Auth Code Flow (siehe [5.1.3](#513-authentifizierung--autorisierung-oidc-flow)):
 
-- **Claimed HTTPS Redirect-URIs (Universal Links / App Links):** Die `redirect_uri` ist eine HTTPS-URL auf der AuthS-Domain (zugleich Redirection-Endpunkt der OIDC Relying Party).
-- **Ein eigener Pfad je App:** Jede App registriert eine `redirect_uri` mit unterschiedlichem Pfad auf derselben AuthS-Domain (z. B. `https://<AuthS-FQDN>/cb/app-a` und `https://<AuthS-FQDN>/cb/app-b`). Die App-Zuordnung erfolgt über Host und Pfad – **nicht** über Query-Parameter wie `client_id`. Bei der Autorisierung muss die übergebene `redirect_uri` exakt (String-Vergleich) mit einer registrierten URI übereinstimmen.
-- **OS-seitige Verknüpfung (Domain-Ownership):** Auf der AuthS-Domain wird je Plattform eine Verknüpfungsdatei bereitgestellt, die App-Identitäten den jeweiligen Pfaden zuordnet:
-  - iOS/iPadOS/macOS: `https://<AuthS-FQDN>/.well-known/apple-app-site-association`
-  - Android: `https://<AuthS-FQDN>/.well-known/assetlinks.json`
+- `redirect_uri_as` (Pfad `.../as`) für den SekIDP Auth Code Flow,
+- `redirect_uri_app` (Pfad `.../app`) für den ZETA Guard Auth Code Flow.
 
-  Beide Dateien können mehrere Apps (App IDs bzw. Package-Namen + Signatur-Fingerprints) enthalten. Dies ist eine **Deployment-Konfiguration** auf der AuthS-Domain und kein Laufzeit-Flow; der Anbieter ist für die Bereitstellung und Pflege dieser Dateien verantwortlich.
-- **Fallback „App nicht installiert":** Da die `redirect_uri` eine reguläre HTTPS-URL ist, wird sie bei nicht installierter App im System-Browser geöffnet und kann serverseitig vom AuthS verarbeitet werden bzw. eine Hinweis-/Installationsseite ausliefern.
+Beide Callbacks enden über denselben App-/Universal-Link in der App. Damit das mobile Betriebssystem die OIDC-Redirection (`302 Found` an die `redirect_uri`) eindeutig der richtigen App zustellt und der ZETA Client den richtigen AuthS-Endpunkt anspricht, gelten folgende Festlegungen gemäß [RFC 8252](https://www.rfc-editor.org/info/rfc8252) (OAuth 2.0 for Native Apps):
 
-Die `redirect_uri` ist ein Client-Attribut und wird vom Client bestimmt und per DCR beim AuthS registriert. Sie wird **nicht** über das AuthS-`.well-known` (RFC 8414) verteilt; dort sind ausschließlich Server-Endpunkte (`authorization_endpoint`, `token_endpoint`, `registration_endpoint`, `jwks_uri` usw.) enthalten.
+- **Claimed HTTPS Redirect-URIs (Universal Links / App Links):** Die `redirect_uris` sind HTTPS-URLs auf einer **vom App-Hersteller kontrollierten Domain** – nicht auf der AuthS-Domain. Die App kennt den AuthS-FQDN zur Entwicklungszeit nicht; er wird erst zur Laufzeit über `opr-well-known`/`as-well-known` aufgelöst. Die `redirect_uris` müssen daher AuthS-unabhängig sein.
+- **Vorab-Registrierung bei der gematik:** Der Hersteller registriert die `redirect_uris` vorab bei der gematik. Nur so können sie (a) im AuthS hinterlegt werden – beim DCR (`POST /register`) prüft der AuthS, ob die übergebenen `redirect_uris` registriert sind (exakter String-Vergleich) – und (b) in das **Entity Statement des AuthS** aufgenommen werden, gegen das der sektorale IDP `redirect_uri_as` beim PAR prüft.
+- **Ein eigener Pfad je App und je Flow:** Jede App registriert ihre `redirect_uris` mit unterschiedlichem Pfad (z. B. `https://<App-FQDN>/cb/app-a/as` und `https://<App-FQDN>/cb/app-a/app`). Die App-Zuordnung erfolgt über Host und Pfad – **nicht** über Query-Parameter wie `client_id`. Der **letzte Pfad-Abschnitt** (`as` | `app`) bestimmt den Flow: Bei `.../as` reicht der ZETA Client den empfangenen Code an den `redirection_endpoint` des AuthS weiter (nicht `/token`), bei `.../app` an den `token_endpoint`.
+- **OS-seitige Verknüpfung (Domain-Ownership):** Auf der App-Hersteller-Domain wird je Plattform eine Verknüpfungsdatei bereitgestellt, die App-Identitäten den jeweiligen Pfaden zuordnet:
+  - iOS/iPadOS/macOS: `https://<App-FQDN>/.well-known/apple-app-site-association`
+  - Android: `https://<App-FQDN>/.well-known/assetlinks.json`
+
+  Beide Dateien können mehrere Apps (App IDs bzw. Package-Namen + Signatur-Fingerprints) enthalten. Dies ist eine **Deployment-Konfiguration** auf der App-Hersteller-Domain und kein Laufzeit-Flow; der App-Hersteller ist für die Bereitstellung und Pflege dieser Dateien verantwortlich.
+- **Fallback „App nicht installiert":** Da die `redirect_uris` reguläre HTTPS-URLs sind, werden sie bei nicht installierter App im System-Browser geöffnet und können auf der App-Hersteller-Domain serverseitig verarbeitet werden (z. B. Hinweis-/Installationsseite).
+
+Die `redirect_uris` sind ein Client-Attribut (auf der App-Hersteller-Domain) und werden per DCR beim AuthS registriert. Sie sind zu unterscheiden vom `redirection_endpoint` des AuthS: Dieser ist ein Server-Endpunkt **auf der AuthS-Domain**, an den der ZETA Client den im `.../as`-Callback erhaltenen IDP-Code weiterreicht; er wird – wie `authorization_endpoint`, `token_endpoint`, `registration_endpoint`, `jwks_uri` – über das AuthS-`.well-known` (RFC 8414) verteilt. Die `redirect_uris` selbst werden **nicht** über das AuthS-`.well-known` verteilt.
 
 ---
 
