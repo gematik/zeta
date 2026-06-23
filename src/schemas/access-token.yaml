@@ -59,7 +59,9 @@ properties:
         description: "The subject of the token; Telematik-ID, KVNR or other unique identifier"
       profession_oid:
         type: string
-        description: "Profession identifier (OID)"
+        description: >-
+          Profession identifier (OID)
+          Is required for tokens with authenticated users (Token Exchange and OIDC flows).
       common_name:
         type: string
         description: "Common name of the subject"
@@ -124,7 +126,6 @@ properties:
       - exp
       - aud
       - sub
-      - profession_oid
       - client_id
       - ip_address
       - product_id

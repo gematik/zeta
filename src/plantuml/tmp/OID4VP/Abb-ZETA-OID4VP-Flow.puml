@@ -33,7 +33,7 @@ end note
 
 == Schritt 1: PAR – ZC → AuthS (RFC 9126) ==
 
-zc -> as : (01) POST /par\n{response_type=code,\nclient_id=ZC,\nredirect_uri=redirect_uri_as,\nscope,\ncode_challenge, code_challenge_method=S256,\nstate=state_app,\n**acr_values=urn:zeta:oid4vp**}
+zc -> as : (01) POST /par\n{response_type=vp_token, client_id=ZC,redirect_uri=redirect_uri_as,\nscope, code_challenge, code_challenge_method=S256, state=state_app}
 note right of as
   AuthS erkennt acr_values=urn:zeta:oid4vp
   → wählt OID4VP/HAIP statt SekIDP OIDC Flow.

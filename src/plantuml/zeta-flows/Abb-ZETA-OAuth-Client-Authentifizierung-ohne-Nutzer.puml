@@ -1,0 +1,81 @@
+@startuml "Abb-ZETA-OAuth-Client-Authentifizierung-ohne-Nutzer"
+!include ../puml-layout.txt
+
+
+' Ablauf: Client-Authentifizierung ohne Nutzer-Identität (JWT-Bearer-Grant, RFC 7523)
+' Wird für Dienste verwendet, für die jeder Nutzer grundsätzlich berechtigt ist.
+' Es wird ausschließlich der Client durch die Policy Engine bewertet.
+
+box "Mobile App" DEVICE_COLOR
+  participant FC as "Fach-Client" <<provider>>
+  participant Client as "ZETA Client" <<zeta>>
+end box
+
+box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
+  box "ZETA Guard" ZETA_GUARD_COLOR
+    participant AuthS as "PDP\nAuthorization Server" <<zeta>>
+    participant OPA as "PDP\nPolicy Engine" <<zeta>>
+  end box
+end box
+
+note over FC, OPA
+  **Vorbedingungen:**
+  - Service Discovery ist abgeschlossen (Abb-ZETA-Service-Discovery); der ZETA Client kennt die Endpunkte
+    des PDP Authorization Server, insbesondere den token_endpoint (as-well-known).
+  - Der ZETA Client wurde per Dynamic Client Registration registriert und besitzt PrK.Client.Sig / PuK.Client.Sig.
+  - **Keine** Nutzer-Authentisierung erforderlich: Jeder Nutzer ist für den Dienst grundsätzlich berechtigt;
+    bewertet wird ausschließlich der Client durch die Policy Engine.
+end note
+
+FC++
+FC -> Client ++ : Beauftragt Verarbeitung des\nfachlichen Requests
+
+note over Client, AuthS
+  Es findet **kein** Authorization Code Flow und **keine** Nutzerauthentisierung am sektoralen IDP statt.
+  Der Client authentisiert sich direkt am Token-Endpunkt via JWT-Bearer-Grant (RFC 7523, Section 2.1).
+end note
+
+Client -> Client: Erzeuge DPoP Key Pair
+Client -> AuthS++: GET /nonce
+AuthS --> Client: Nonce
+Client -> Client : Create DPoP Proof (with Nonce from AuthS)
+Client -> Client: Erzeuge JWT-Bearer Assertion\n(JWT, signiert mit PrK.Client.Sig)\n{iss=client_id, sub=client_id,\naud=token_endpoint, exp, iat, jti}
+
+Client -> AuthS: POST /token  dpop: <dpop_proof>\n{grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer,\n\
+assertion=<JWT-Bearer Assertion>, client_id,\nscope, resource=<Resource ServerS Endpunkt>}
+
+note right of AuthS
+  RFC 7523 Section 2.1:
+  - grant_type = urn:ietf:params:oauth:grant-type:jwt-bearer
+  - assertion = signiertes JWT des Clients
+  Die Assertion dient zugleich als Client-Authentisierung
+  (Key Binding aus DCR: PuK.Client.Sig).
+end note
+
+AuthS -> AuthS: Verifiziere JWT-Bearer Assertion\n(Signatur gegen PuK.Client.Sig aus DCR,\niss/sub/aud/exp/jti), verifiziere DPoP Proof
+
+== Policy-Entscheidung (nur Client-Bewertung) ==
+
+AuthS -> AuthS: Erzeuge Policy Engine Input\n(Client-Identität, Client-Posture, Kontext;\n**keine** Nutzer-Identitäts-Claims)
+AuthS -> OPA++: POST /v1/data/authz {Policy Engine Input}
+OPA --> AuthS--: Policy Decision
+
+alt Policy Decision allow
+    AuthS --> Client: 200 OK\n{access_token (DPoP-gebunden, ohne Nutzer-Claims),\ntoken_type=DPoP, expires_in}
+    note over Client, AuthS
+      Das Access Token enthält keine Nutzer-Identität, ist aber an den Client
+      gebunden (DPoP) und spiegelt die positive Policy-Entscheidung wider.
+    end note
+else Policy Decision deny
+    AuthS --> Client: 403 Forbidden {"reasons": ["..."]}
+end
+deactivate AuthS
+
+Client --> FC -- : Fachliche Response\n(bzw. Fehler bei deny)
+
+note over Client, AuthS
+  Der ZETA Client kann mit dem DPoP-gebundenen Access Token auf den Resource Server zugreifen
+  (siehe Abb-ZETA-Zugriff-auf-RS-mit-ASL bzw. Abb-ZETA-Zugriff-auf-RS-ohne-ASL).
+end note
+
+@enduml
