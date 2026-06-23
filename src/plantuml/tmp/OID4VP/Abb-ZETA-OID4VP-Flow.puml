@@ -10,8 +10,8 @@ end box
 
 box "ZETA Guard" ZETA_GUARD_COLOR
   participant "AuthS\n(AS / Verifier A)" as as <<zeta>>
-  participant "Verifier\n(nur Var. B)" as verifier <<zeta>>
 end box
+participant "Verifier\n(nur Var. B)" as verifier
 
 participant "IDP /\nTrust Registry\n(Status)" as idp
 
