@@ -28,7 +28,7 @@ alt Kein ZETA Attestation Token vorhanden
             AuthS -> AuthS: Werte Verdicts aus (appIntegrity, deviceIntegrity, accountDetails)
         end
         
-        note right of AuthS: PuK.AK.Sig muss mit dem Blatt-Zertifikat\nder Certificate Chain übereinstimmen.\nSicherheitsniveau: TrustedEnvironment oder StrongBox.
+        note right of AuthS: PuK.AK.Sig muss mit dem Blatt-Zertifikat der Certificate Chain übereinstimmen.\nSicherheitsniveau: TrustedEnvironment oder StrongBox.
 
     note right of AuthS
       Es werden zwei redirect_uris je App registriert (RFC 8252, claimed-HTTPS
@@ -37,11 +37,8 @@ alt Kein ZETA Attestation Token vorhanden
         (SekIDP Auth Code Flow, redirection_endpoint des AuthS, nicht /token)
       - https://<App-FQDN>/cb/<app>/app = redirect_uri_app
         (ZETA Guard Auth Code Flow, /token-Endpunkt des AuthS)
-      Beide Callbacks enden über denselben App-Link/Universal-Link in der App;
-      der ZETA Client unterscheidet den zu nutzenden AuthS-Endpunkt anhand des Pfads.
-      Die OS-seitige Verknüpfung erfolgt über assetlinks.json
-      (Deployment, kein Laufzeit-Flow). Die App ist inkl. redirect_uris bei der gematik
-      registriert; der AuthS prüft beim DCR, ob die übergebenen redirect_uris registriert sind.
+      Beide Callbacks enden über denselben App-Link/Universal-Link in der App.
+      Der ZETA Client unterscheidet den zu nutzenden AuthS-Endpunkt anhand des Pfads.
     end note
 
     AuthS -> AuthS: Store Client Placeholder (state: pending_user_binding)
@@ -69,10 +66,8 @@ else ZETA Attestation Token vorhanden (Fast-Path)
 end
 
 note over Client, AuthS
-  Der zeta_guard_attestation_token zertifiziert die erfolgreiche Android Key Attestation,
-  ist an PuK.AK.Sig gebunden (cnf) und enthält die registrierten redirect_uris. Er kann
-  bei einer erneuten Registrierung im Fast-Path vorgelegt werden, sodass Hardware-Attestierung
-  und redirect_uris nicht erneut übertragen werden müssen.
+  Der zeta_guard_attestation_token zertifiziert die erfolgreiche Android Key Attestation, ist an PuK.AK.Sig gebunden (cnf) und enthält die registrierten redirect_uris. Er kann
+  bei einer erneuten Registrierung im Fast-Path vorgelegt werden, sodass Hardware-Attestierung und redirect_uris nicht erneut übertragen werden müssen.
 end note
 
 AuthS --> Client--: 201 Created {client_id, status="pending_user_binding",\nzeta_guard_attestation_token (bei HW-Attestierung ausgestellt)}
