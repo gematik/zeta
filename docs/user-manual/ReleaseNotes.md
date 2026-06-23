@@ -2,6 +2,16 @@
 
 # Release Notes ZETA SDK und ZETA Guard Helm Charts
 
+## Release 1.2.1
+
+### added
+
+- Neuer Sicherheitshinweis zur Konfiguration von Rate Limit
+
+### changed
+
+- Klärende Umformulierungen zur Verwenden eines Konnektor mit dem Client SDK
+
 ## Release 1.2.0
 
 ### added

@@ -165,23 +165,27 @@ Das Log-Provider Interface umfasst folgende Methoden:
 #### Konnektor-Zugriff
 
 Zur Erstellung eines SubjectTokens wird der Zugriff auf den Konnektor benötigt. Dies wird in der Regel
-in einem Primärsystem bereits umgesetzt sein. Daher bietet die API die Möglichkeit, den Zugriff auf den Konnektor
+in einem Primärsystem bereits umgesetzt sein. Daher nutzt die API die Möglichkeit, den Zugriff auf den Konnektor
 an den Client, d.h. das Primärsystem an sich, auszulagern.
 
-Hier gibt es einen Unterschied in der Umsetzung der kotlin/Java und C++/C# Varianten. Die kotlin/Java-Implementierungen erwarten eine
-Instanz des "SubjectTokenProvider", der die beiden nötigen Konnektor-Aufrufe kapselt und die benötigten Krypto-Operationen durchführt.
-Für C++/C# gibt es eine Lösung die nur die Konnektor-API benötigt, während die Krypto-Operationen im SDK gekapselt sind.
+Dazu muss die Konnektor API implementiert werden. Diese kann in C++/C# direkt konfiguriert werden.
+In der kotlin/Java-Variante wird die Konnektor-API in einen CustomSmbcTokenProvider gekapselt, der
+dann in die Konfiguration übernommen werden kann.
 
-Je nach Ansatz werden Implementierungen mitgeliefert, die weitere verschiedene Konfigurationsparameter benötigen.
+Hinweis: Die kotlin/Java-Implementierungen bieten eine Implementierung
+des "SubjectTokenProvider" in Form der SbmcTokenProvider und SmbTokenProvider, der die beiden nötigen Konnektor-Aufrufe kapselt.
+Der SubjectTokenProvider ruft eine eigene Konnektor API auf, die aber nur für Testzwecke vorgesehen ist und z.B. mTLS für die Authentifizierung
+an einem echten Konnektor nicht umsetzt. Daher soll in kotlin/Java der CustomSmcbTokenProvider mit der eigenen
+Anbindung eines Konnektors verwendet werden.
+SbmcTokenProvider und SmbTokenProvider können für Tests und benötigen weitere verschiedene Konfigurationsparameter.
 So benötigt der SmbTokenProvider den Dateipfad der Zertifikatsdatei mit Alias und Passwort. Der SmcbTokenProvider hingegen
 benötigt die Adresse des Konnektors sowie weitere für den Konnektoraufruf nötige Parameter wie mandant, handle, etc.
 
-Der CustomSmcbTokenProvider kann genutzt werden eine eigene Implementierung anzubinden. Er erwartet eine ConnectorAPI als
+Der CustomSmcbTokenProvider soll genutzt werden, um eine eigene Implementierung anzubinden. Er erwartet eine ConnectorAPI als
 Parameter, der nur die beiden Konnektor-Aufrufe abbildet. Die Instanz muss dabei die Aufrufparameter selbst verwalten.
 
 Bei Nutzung eines eigenen Connectors werden die SMC-B SOAP Felder (`baseUrl`, `mandantId` etc.) ignoriert.
 Beide Callbacks müssen genau einmal pro Aufruf aufgerufen werden, auch im Fehlerfall (dann mit size=0).
-
 
 Das Connector Interface umfasst folgende Methoden:
 

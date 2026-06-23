@@ -25,6 +25,7 @@ genutzt werden können.
 | 1.0.0   | 04.05.26 | Update auf ZETA release 1.0.0 Sicherheitsleistungen Guard-Betreiber, Client-Hersteller, Egress-NetworkPolicies, Client Build-Beschreibungen                                                            |
 | 1.0.1   | 13.05.26 | Überschrift für Releases 1.0.0 und 1.0.1 in Release Notes ergänzt.                                                                                                                                     |
 | 1.2.0   | 11.06.26 | Update auf ZETA release 1.2.0                                                                                                                                                                          |
+| 1.2.1   | 22.06.26 | Eränzung eines Sicherheitshinweis und kleiner Umformulierungen                                                                                                                                         |
 
 Detaillierte Informationen finden sich in den [Release Notes des Produkhandbuchs](ReleaseNotes.md).
 
