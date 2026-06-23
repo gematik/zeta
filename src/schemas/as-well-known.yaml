@@ -16,6 +16,16 @@ properties:
     type: string
     format: uri
     description: "The URL of the token endpoint."
+  pushed_authorization_request_endpoint:
+    type: string
+    format: uri
+    description: "The URL of the pushed authorization request endpoint."
+  require_pushed_authorization_requests:
+    type: boolean
+    description: >-
+      Indicates whether the Authorization Server requires pushed authorization requests.
+      In ZETA, this is always true.
+    const: true
   redirection_endpoint:
     type: string
     format: uri
