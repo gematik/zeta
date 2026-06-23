@@ -38,10 +38,9 @@ opt Entity Statement des IDP unbekannt
 end
 
 note over AuthS, IDP
-  redirect_uri_as ist der Redirection-Endpunkt der OIDC Relying Party (AuthS) für den
-  SekIDP Auth Code Flow. Sie wird im Entity Statement des AS (Fachdienst) geführt; der
-  SekIDP prüft beim PAR, ob redirect_uri_as eine bekannte redirect_uri aus diesem
-  AS-Entity-Statement ist.
+  redirect_uri_as ist der Redirection-Endpunkt der OIDC Relying Party (AuthS) für den SekIDP Auth Code Flow.
+  Sie wird im Entity Statement des AS (Fachdienst) geführt; der SekIDP prüft beim PAR, ob redirect_uri_as
+  eine bekannte redirect_uri aus diesem AS-Entity-Statement ist.
 end note
 
 AuthS -> IDP++: POST /PAR (mTLS, self_signed_tls_client_auth)\n{client_id, redirect_uri_as, response_type=code,\ncode_challenge_as, code_challenge_method=S256,\nscope, claims, acr_values, nonce, state_as}

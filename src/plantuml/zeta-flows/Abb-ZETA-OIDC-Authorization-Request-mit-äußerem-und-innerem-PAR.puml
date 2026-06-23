@@ -26,8 +26,8 @@ note over Client, AuthS: Der ZETA Client hat vom Fach-Client den fachlichen Requ
 Client -> Client: Erzeuge PKCE (code_verifier_app),\ncode_challenge_app = S256(code_verifier_app),\nstate_app
 
 Client -> AuthS++: POST /par (private_key_jwt, client_assertion)\n\
-  {response_type=code, client_id, redirect_uri_app,\n\
-  code_challenge_app, code_challenge_method=S256, scope, state_app, idp_iss}
+  {response_type=code, client_id, redirect_uri_app, code_challenge_app,\n\
+  code_challenge_method=S256, scope, state_app, idp_iss}
 AuthS -> AuthS:  Validiere & speichere Request-Parameter, erzeuge request_uri_app (kurzlebig)
 AuthS --> Client: 201 Created {request_uri_app, expires_in (z. B. max. 90s)}
 Client -> AuthS: GET /authorize?client_id=...&request_uri=request_uri_app
@@ -43,13 +43,14 @@ opt Entity Statement des IDP unbekannt
 end
 
 note over AuthS, IDP
-  redirect_uri_as ist der Redirection-Endpunkt der OIDC Relying Party (AuthS) für den
-  SekIDP Auth Code Flow. Sie wird im Entity Statement des AS (Fachdienst) geführt; der
-  SekIDP prüft beim PAR, ob redirect_uri_as eine bekannte redirect_uri aus diesem
-  AS-Entity-Statement ist.
+  redirect_uri_as ist der Redirection-Endpunkt der OIDC Relying Party (AuthS) für den SekIDP Auth Code Flow.
+  Sie wird im Entity Statement des AS (Fachdienst) geführt; der SekIDP prüft beim PAR, ob redirect_uri_as
+  eine bekannte redirect_uri aus diesem AS-Entity-Statement ist.
 end note
 
-AuthS -> IDP++: POST /PAR (mTLS, self_signed_tls_client_auth)\n{client_id, redirect_uri_as, response_type=code,\ncode_challenge_as, code_challenge_method=S256,\nscope, claims, acr_values, nonce, state_as}
+AuthS -> IDP++: POST /PAR (mTLS, self_signed_tls_client_auth)\n\
+  {client_id, redirect_uri_as, response_type=code, code_challenge_as,\n\
+  code_challenge_method=S256, scope, claims, acr_values, nonce, state_as}
 
 opt Entity Statement des Fachdienstes unbekannt
     IDP -> AuthS: GET /.well-known/openid-federation
