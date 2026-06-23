@@ -1,0 +1,69 @@
+@startuml "Abb-ZETA-OIDC-Authorization-Request-mit-PAR"
+!include ../puml-layout.txt
+
+
+' Teildiagramm (A): Authorization Request des ZETA Client mit Pushed Authorization Request (PAR)
+' Teil von Abb-ZETA-OIDC-Authentifizierung-mobiler-Clients
+
+box "Mobile App" DEVICE_COLOR
+  participant Client as "ZETA Client" <<zeta>>
+end box
+
+box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
+  box "ZETA Guard" ZETA_GUARD_COLOR
+    participant AuthS as "PDP\nAuthorization Server\n(OIDC Relying Party)" <<zeta>>
+  end box
+end box
+
+box "TI-Föderation" #EAF2FF
+  participant IDP as "Sektoraler IDP\n(PAR-Endpunkt)"
+  participant FM as "Federation\nMaster"
+end box
+
+Client++
+note over Client, AuthS: Der ZETA Client hat vom Fach-Client den fachlichen Request inkl. idp_iss erhalten.
+
+Client -> Client: Erzeuge PKCE (code_verifier_app),\ncode_challenge_app = S256(code_verifier_app),\nstate_app
+
+Client -> AuthS++: POST /par (private_key_jwt, client_assertion)\n\
+  {response_type=code, client_id, redirect_uri_app,\n\
+  code_challenge_app, code_challenge_method=S256, scope, state_app, idp_iss}
+AuthS -> AuthS:  Validiere & speichere Request-Parameter, erzeuge request_uri_app (kurzlebig)
+AuthS --> Client: 201 Created {request_uri_app, expires_in (z. B. max. 90s)}
+Client -> AuthS: GET /authorize?client_id=...&request_uri=request_uri_app
+
+AuthS -> AuthS: Erzeuge PKCE (code_verifier_as),\ncode_challenge_as = S256(code_verifier_as),\nstate_as, nonce
+
+opt Entity Statement des IDP unbekannt
+    AuthS -> IDP++: GET /.well-known/openid-federation
+    IDP --> AuthS--: Entity Statement (signiert)
+    AuthS -> FM++: GET federation_fetch_endpoint?sub=<idp_iss>
+    FM --> AuthS--: Entity Statement des IDP (signiert, Federation Master)
+    AuthS -> AuthS: Validiere Trust Chain, importiere Signaturschlüssel\nund OP-Metadaten (PAR-, Authorization-, Token-Endpunkt) des IDP
+end
+
+note over AuthS, IDP
+  redirect_uri_as ist der Redirection-Endpunkt der OIDC Relying Party (AuthS) für den
+  SekIDP Auth Code Flow. Sie wird im Entity Statement des AS (Fachdienst) geführt; der
+  SekIDP prüft beim PAR, ob redirect_uri_as eine bekannte redirect_uri aus diesem
+  AS-Entity-Statement ist.
+end note
+
+AuthS -> IDP++: POST /PAR (mTLS, self_signed_tls_client_auth)\n{client_id, redirect_uri_as, response_type=code,\ncode_challenge_as, code_challenge_method=S256,\nscope, claims, acr_values, nonce, state_as}
+
+opt Entity Statement des Fachdienstes unbekannt
+    IDP -> AuthS: GET /.well-known/openid-federation
+    AuthS --> IDP: Entity Statement des Fachdienstes (signiert)
+    IDP -> FM++: GET federation_fetch_endpoint?sub=<client_id>
+    FM --> IDP--: Entity Statement des Fachdienstes (signiert)
+    IDP -> IDP: Validiere Trust Chain, Automatic Registration,\nimportiere Schlüssel (sig/enc) des Fachdienstes
+end
+
+IDP -> IDP: Validiere PAR: redirect_uri_as gegen redirect_uris\nim AS-Entity-Statement, scope, claims,\nTLS-Clientzertifikat; erzeuge request_uri
+IDP --> AuthS--: 201 Created {request_uri, expires_in (max. 90s)}
+
+AuthS --> Client--: 302 Found Location:\n<SekIDP Entity Statement authorization_endpoint>\n?client_id&request_uri
+
+note over Client, IDP: Weiter mit Teildiagramm (B) Abb-ZETA-OIDC-Nutzerauthentisierung.
+
+@enduml
