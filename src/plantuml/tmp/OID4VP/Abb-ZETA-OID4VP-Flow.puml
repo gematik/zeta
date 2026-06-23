@@ -1,0 +1,253 @@
+@startuml Abb-ZETA-OID4VP-Flow
+!pragma teoz true
+skinparam responseMessageBelowArrow true
+skinparam sequenceMessageAlign direction
+skinparam BoxPadding 10
+skinparam ParticipantPadding 10
+skinparam sequenceArrowThickness 1.5
+skinparam roundcorner 5
+skinparam defaultFontSize 11
+skinparam noteFontSize 10
+
+!include ../../puml-layout.txt
+
+title ZETA OID4VP Flow (Ersatz für SekIDP OIDC Auth Code Flow)\n<size:10>Variante A: AuthS als Verifier | Variante B: AuthS delegiert an externen Verifier\nPAR (RFC 9126): ZC → AuthS | JAR (RFC 9101): AuthS → Wallet</size>
+
+actor "Nutzer" as user
+
+box "Mobiles Gerät" DEVICE_COLOR
+  participant "ZETA Client\n(ZC)" as zc <<zeta>>
+  participant "Wallet App\n(Holder)" as wallet
+end box
+
+box "ZETA Guard" ZETA_GUARD_COLOR
+  participant "AuthS\n(AS / Verifier A)" as as <<zeta>>
+  participant "Verifier\n(nur Var. B)" as verifier <<zeta>>
+end box
+
+participant "IDP /\nTrust Registry\n(Status)" as idp
+
+== Voraussetzungen ==
+
+note over zc, as
+  ZC hat AuthS Metadata (as-well-known, RFC 8414) bereits geladen.
+  Bekannte Endpunkte u.a.:
+    pushed_authorization_request_endpoint  (RFC 9126)
+    authorization_endpoint
+    token_endpoint
+    vp_formats_supported,
+    presentation_definition_uri_supported
+  Client Instance Key des ZC ist im TEE (Android) / Secure Enclave (iOS) gespeichert und dem AuthS aus DCR
+  bekannt. Er dient als Holder-Key der VP. Wallet hat Credential (z.B. PID, HBA-VC) bereits ausgestellt.
+end note
+
+== Schritt 1: PAR – ZC → AuthS (RFC 9126) ==
+
+zc -> as : (01) POST /par\n{response_type=code, client_id=ZC, redirect_uri=redirect_uri_as,\nscope, code_challenge, code_challenge_method=S256,\nstate=state_app, **acr_values=urn:zeta:oid4vp**}
+note right of as
+  AuthS erkennt acr_values=urn:zeta:oid4vp
+  → wählt OID4VP statt SekIDP OIDC Flow.
+  Erstellt PAR-Session inkl. presentation_definition.
+end note
+as --> zc : (02) 201 Created\n{**request_uri**, expires_in (max. 90s)}
+
+== Schritt 2: Authorization Request – ZC → AuthS ==
+
+zc -> as : (03) GET /auth\n{client_id=ZC, **request_uri**}
+note right of as
+  AuthS löst request_uri auf →
+  vollständiger PAR-Request liegt vor.
+  AuthS erstellt nun den OID4VP Request
+  für die Wallet (JAR, RFC 9101).
+end note
+
+== Schritt 3: JAR – AuthS → Wallet (RFC 9101) ==
+
+group Variante A: AuthS ist selbst Verifier
+
+as -> as : (04a) Erstelle signierten VP Request JWT\n{iss=AuthS, aud=Wallet,\npresentation_definition,\nclient_id=AuthS URI,\nresponse_uri=AuthS/vp-response,\nresponse_mode=direct_post,\nnonce=nonce_vp, state=state_vp,\n**client_metadata** (Verifier-Metadaten)}
+note right of as
+  AuthS stellt Request Object
+  unter eigenem request_uri-Endpunkt
+  bereit (JAR by Reference).
+  response_uri zeigt auf AuthS.
+end note
+as --> zc : (05a) 302 Found\nLocation: openid4vp://?client_id=<AuthS URI>\n&request_uri=<AuthS/vp-request/session-id>\n&request_uri_method=post
+
+end group
+
+group Variante B: AuthS delegiert an Verifier
+
+as -> verifier : (04b-i) POST /vp-request\n{presentation_definition, nonce_vp,\nstate_vp, client_id=Verifier URI,\nresponse_uri=Verifier/vp-response,\ntransaction_id}
+verifier --> as : (04b-ii) 201 Created\n{request_uri (beim Verifier), expires_in}
+note right of as
+  Verifier stellt signierten VP Request JWT
+  unter eigenem request_uri-Endpunkt bereit.
+  response_uri zeigt auf Verifier.
+  AuthS kennt transaction_id zur
+  späteren Statusabfrage.
+end note
+as --> zc : (05b) 302 Found\nLocation: openid4vp://?client_id=<Verifier URI>\n&request_uri=<Verifier/vp-request/session-id>\n&request_uri_method=post
+
+end group
+
+== (A) Same-Device Flow ==
+
+group Same-Device: App-zu-App-Aktivierung
+
+zc -> wallet : (06) App-zu-App (Custom URL Scheme / Intent)\nopenid4vp://?client_id=...&request_uri=...&request_uri_method=post
+note right of wallet
+  iOS: UIApplication.open(_:)
+  Android: Intent
+  OS aktiviert Wallet direkt.
+end note
+
+group Variante A
+  wallet -> as : (07a) POST <request_uri>\n{wallet_metadata, wallet_nonce}\n(request_uri_method=post, JAR)
+  as --> wallet : (08a) Signierter VP Request JWT\n{presentation_definition, nonce_vp,\nclient_id=AuthS URI,\nresponse_uri=AuthS/vp-response,\nresponse_mode=direct_post, state=state_vp}
+end group
+
+group Variante B
+  wallet -> verifier : (07b) POST <request_uri>\n{wallet_metadata, wallet_nonce}
+  verifier --> wallet : (08b) Signierter VP Request JWT\n{presentation_definition, nonce_vp,\nclient_id=Verifier URI,\nresponse_uri=Verifier/vp-response,\nresponse_mode=direct_post, state=state_vp}
+end group
+
+wallet -> idp : (09) Prüfe Credential-Status\n(Status List / Trust Registry)
+idp --> wallet : (10) Status OK
+
+wallet -> user : (11) Consent Dialog\n"Folgende Daten werden angefragt:\n[Felder aus presentation_definition]"
+user -> wallet : (12) Nutzer bestätigt
+
+wallet -> wallet : (13) Erstelle Verifiable Presentation\n{VP mit Credential-Subset,\nnonce=nonce_vp, aud=client_id,\n**cnf.jwk = Client Instance Key**\n(TEE / Secure Enclave),\nHolder-Signatur mit Client Instance Key}
+
+note over wallet
+  Client Instance Key als Holder-Key:
+  - Langlebig, gerätegebunden
+  - Nicht exportierbar (TEE/Secure Enclave)
+  - Dem AuthS aus DCR bereits bekannt
+  - Bindung: VP.cnf.jwk == DCR.instance_key
+end note
+
+group Variante A: direct_post an AuthS
+
+  wallet -> as : (14a) POST <response_uri=AuthS/vp-response>\n{vp_token, presentation_submission, state=state_vp}
+  as -> as : (15a) Validiere VP\n- Holder-Signatur (Client Instance Key)\n- VP.cnf.jwk == DCR-registrierter Instance Key\n- nonce_vp stimmt überein\n- presentation_definition erfüllt\n- Credential-Status (Cache / live)
+  as --> wallet : (16a) 200 OK\n{redirect_to:\n<redirect_uri_as>?code=AUTH_CODE_AS&state=state_app}
+
+end group
+
+group Variante B: direct_post an Verifier
+
+  wallet -> verifier : (14b) POST <response_uri=Verifier/vp-response>\n{vp_token, presentation_submission, state=state_vp}
+  verifier -> idp : (15b-i) Prüfe Trust Registry / Credential-Status
+  idp --> verifier : (15b-ii) OK
+  verifier -> verifier : (15b-iii) Validiere VP\n- Holder-Signatur\n- nonce_vp\n- presentation_definition erfüllt
+  verifier --> wallet : (16b-i) 200 OK\n{redirect_to:\n<redirect_uri_as>?code=AUTH_CODE_AS&state=state_app}
+  verifier -> as : (16b-ii) POST /vp-result\n{transaction_id,\nvp_claims (signierte JWT-Assertion),\nvalidation_result=ok,\n**cnf.jwk** (Client Instance Key aus VP)}
+  note right of as
+    AuthS prüft:
+    vp_claims.cnf.jwk == DCR-registrierter Instance Key
+    Kein VP-Transfer zum AuthS nötig.
+  end note
+
+end group
+
+wallet -> zc : (17) **App-Link / Universal-Link**\n<redirect_uri_as>?code=AUTH_CODE_AS&state=state_app
+note right of zc
+  OS erkennt App-Link →
+  ZETA Client wird aktiviert.
+  Identisch zu Schritt (10) im
+  SekIDP OIDC Nutzerauthentisierungs-Flow.
+end note
+
+end group
+
+== (B) Cross-Device Flow ==
+
+group Cross-Device: QR-Code auf zweitem Gerät
+
+note over zc, as
+  Schritte (01)–(05) identisch zu Same-Device (PAR + JAR).
+  AuthS signalisiert Cross-Device-Modus zusätzlich per session_id / polling_endpoint.
+end note
+
+zc -> user : (06) Zeige QR-Code\nopenid4vp://?client_id=...&request_uri=...&request_uri_method=post
+note right of user
+  Nutzer scannt QR-Code mit
+  Wallet auf Gerät 2.
+end note
+
+group Variante A
+  wallet -> as : (07a) POST <request_uri> (Gerät 2, JAR)\n{wallet_metadata, wallet_nonce}
+  as --> wallet : (08a) Signierter VP Request JWT
+end group
+
+group Variante B
+  wallet -> verifier : (07b) POST <request_uri> (Gerät 2, JAR)
+  verifier --> wallet : (08b) Signierter VP Request JWT
+end group
+
+wallet -> user : (09) Consent Dialog (Gerät 2)
+user -> wallet : (10) Bestätigung (Gerät 2)
+wallet -> wallet : (11) Erstelle VP\n(cnf.jwk = Client Instance Key, Gerät 2)
+
+group Variante A
+  wallet -> as : (12a) POST <response_uri=AuthS/vp-response>\n{vp_token, presentation_submission, state=state_vp}
+  as -> as : (13a) Validiere VP
+  as --> wallet : (14a) 200 OK\n(kein redirect_to – Cross-Device)
+end group
+
+group Variante B
+  wallet -> verifier : (12b) POST <response_uri>\n{vp_token, ...}
+  verifier -> as : (13b) POST /vp-result\n{transaction_id, vp_claims, cnf.jwk}
+  verifier --> wallet : (14b) 200 OK
+end group
+
+as -> zc : (15) **Polling-Response / WebSocket Push** (Gerät 1)\n{code=AUTH_CODE_AS, state=state_app}
+note right of zc
+  Kein App-Link möglich (anderes Gerät).
+  ZC empfängt Code über Polling gegen
+  AuthS-Statusendpunkt oder WebSocket.
+end note
+
+end group
+
+== Token Request (gemeinsam für Same-Device und Cross-Device) ==
+
+zc -> as : (18/16) POST /token\n{grant_type=authorization_code,\ncode=AUTH_CODE_AS,\nredirect_uri=redirect_uri_as,\nclient_id=ZC,\ncode_verifier,\n**DPoP-Proof** (RFC 9449)}
+
+as -> as : Prüfe:\n- code + code_verifier (PKCE)\n- redirect_uri\n- **VP.cnf.jwk == DCR-registrierter Client Instance Key**\n- DPoP-Proof gültig
+
+as --> zc : (19/17) 200 OK\n{**access_token** (DPoP-bound),\ntoken_type=DPoP,\nid_token (mit VP-Claims),\nrefresh_token, expires_in}
+
+note over zc, as
+  Access Token ist DPoP-gebunden (RFC 9449) – kurzlebig, per-Request-Bindung.
+  Client Instance Key ist Holder-Key der VP – langlebig, gerätegebunden (TEE/SE).
+  Beide Keys sind orthogonal: DPoP schützt den Token-Transport,
+  Client Instance Key beweist die Credential-Inhaberschaft.
+  ZC kann nun auf den Resource Server (ZETA Guard) zugreifen.
+end note
+
+== Offene Designentscheidungen ==
+
+note over zc, idp
+  **[D1]** client_id im VP Request (Trust Framework Registrierung):
+    Var. A: AuthS URI muss als Verifier im Trust Framework (gematik) registriert sein.
+    Var. B: Verifier URI muss als eigenständige Komponente registriert sein.
+    → Client Identifier Prefix: "verifier_attestation" oder "x509_san_dns" (OID4VP §5.8)
+
+  **[D2]** Sicherung des Verifier→AuthS-Kanals (Var. B):
+    Option i:  mTLS zwischen Verifier und AuthS (client_certificate aus DCR)
+    Option ii: Verifier signiert vp_claims als JWT (AuthS prüft Verifier-Signaturzertifikat)
+
+  **[D3]** Cross-Device Code-Rückgabe:
+    Option i:  Polling gegen AuthS /vp-status/{session_id} (einfach, kein WS nötig)
+    Option ii: WebSocket / Server-Sent Events (niedrigere Latenz)
+
+  **[D4]** Cross-Device Holder-Key-Bindung:
+    Client Instance Key (Gerät 2, Wallet) ≠ Client Instance Key (Gerät 1, ZC).
+    → Bindung nur auf Basis des Credentials möglich (Issuer-Signatur), nicht per Device-Key.
+    → Cross-Device erfordert abgeschwächtes Sicherheitsniveau oder separaten LoA.
+end note
+
+@enduml
