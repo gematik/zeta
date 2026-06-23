@@ -42,7 +42,7 @@ Client -> Client : Create DPoP Proof (with Nonce from AuthS)
 Client -> Client: Erzeuge JWT-Bearer Assertion\n(JWT, signiert mit PrK.Client.Sig)\n{iss=client_id, sub=client_id,\naud=token_endpoint, exp, iat, jti}
 
 Client -> AuthS: POST /token  dpop: <dpop_proof>\n{grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer,\n\
-assertion=<JWT-Bearer Assertion>, client_id,\nscope, resource=<Resource ServerS Endpunkt>}
+assertion=<JWT-Bearer Assertion>, client_id,\nscope, resource=<Resource Server Endpunkt>}
 
 note right of AuthS
   RFC 7523 Section 2.1:
