@@ -28,8 +28,8 @@ Client -> Client: Erzeuge PKCE (code_verifier_app),\ncode_challenge_app = S256(c
 Client -> AuthS++: POST /par (private_key_jwt, client_assertion)\n\
   {response_type=code, client_id, redirect_uri_app, code_challenge_app,\n\
   code_challenge_method=S256, scope, state_app, idp_iss}
-AuthS -> AuthS:  Validiere & speichere Request-Parameter, erzeuge request_uri_app (kurzlebig)
-AuthS --> Client: 201 Created {request_uri_app, expires_in (z. B. max. 90s)}
+AuthS -> AuthS:  Validiere & speichere Request-Parameter, erzeuge request_uri_app
+AuthS --> Client: 201 Created {request_uri_app, expires_in (5s)}
 Client -> AuthS: GET /authorize?client_id=...&request_uri=request_uri_app
 
 AuthS -> AuthS: Erzeuge PKCE (code_verifier_as),\ncode_challenge_as = S256(code_verifier_as),\nstate_as, nonce
