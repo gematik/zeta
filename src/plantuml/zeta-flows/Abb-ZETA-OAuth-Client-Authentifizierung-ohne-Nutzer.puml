@@ -39,7 +39,7 @@ Client -> Client: Erzeuge DPoP Key Pair
 Client -> AuthS++: GET /nonce
 AuthS --> Client: Nonce
 Client -> Client : Create DPoP Proof (with Nonce from AuthS)
-Client -> Client: Erzeuge JWT-Bearer Assertion (JWT, signiert mit PrK.Client.Sig)\n{iss=client_id, sub=client_id, aud=token_endpoint, exp, iat, jti}
+Client -> Client: Erzeuge JWT-Bearer Assertion (JWT, signiert mit PrK.Client.Sig)\n{iss=client_id, sub=client_id, aud=token_endpoint, nonce, exp, iat, jti}
 
 Client -> AuthS: POST /token  dpop: <dpop_proof>\n{grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer,\n\
 assertion=<JWT-Bearer Assertion>, client_id,\nscope, resource=<Resource Server Endpunkt>}
@@ -52,7 +52,7 @@ note right of AuthS
   (Key Binding aus DCR: PuK.Client.Sig).
 end note
 
-AuthS -> AuthS: Verifiziere JWT-Bearer Assertion\n(Signatur gegen PuK.Client.Sig aus DCR,\niss/sub/aud/exp/jti), verifiziere DPoP Proof
+AuthS -> AuthS: Verifiziere JWT-Bearer Assertion\n(Signatur gegen PuK.Client.Sig aus DCR,\niss/sub/aud/exp/jti, nonce), verifiziere DPoP Proof
 
 == Policy-Entscheidung (nur Client-Bewertung) ==
 
