@@ -121,5 +121,4 @@ properties:
 required:
   - version
   - client_registration_data
-  - user_info
   - authorization_request

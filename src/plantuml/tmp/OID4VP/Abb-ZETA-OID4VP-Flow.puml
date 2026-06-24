@@ -1,0 +1,260 @@
+@startuml Abb-ZETA-OID4VP-Flow
+!include ../../puml-layout.txt
+
+actor "Nutzer" as user
+
+box "Mobiles Gerät" DEVICE_COLOR
+  participant "ZETA Client\n(ZC)" as zc <<zeta>>
+  participant "Wallet App\n(Holder)" as wallet
+end box
+
+box "ZETA Guard" ZETA_GUARD_COLOR
+  participant "AuthS\n(AS / Verifier A)" as as <<zeta>>
+end box
+participant "Verifier\n(nur Var. B)" as verifier
+
+participant "IDP /\nTrust Registry\n(Status)" as idp
+
+== Voraussetzungen ==
+
+note over zc, as
+  ZC hat AuthS Metadata (as-well-known, RFC 8414) bereits geladen.
+  Bekannte Endpunkte u.a.:
+    pushed_authorization_request_endpoint  (RFC 9126)
+    authorization_endpoint
+    token_endpoint
+    vp_formats_supported: [dc+sd-jwt, mso_mdoc]    (HAIP §5.1)
+    dcql_query_supported: true                      (HAIP §5, OID4VP §6)
+    request_uri_method_supported: [post]            (JAR MUST, RFC 9101)
+  Client Instance Key des ZC ist im TEE (Android) / Secure Enclave (iOS) gespeichert
+  und dem AuthS aus DCR bekannt. Er dient als Holder-Key der VP.
+  Wallet hat Credential im Format SD-JWT VC oder ISO mdoc bereits ausgestellt. (HAIP §5.1)
+end note
+
+== Schritt 1: PAR – ZC → AuthS (RFC 9126) ==
+
+zc -> as : (01) POST /par\n{response_type=vp_token, client_id=ZC,redirect_uri=redirect_uri_as,\nscope, code_challenge, code_challenge_method=S256, state=state_app}
+note right of as
+  AuthS erkennt acr_values=urn:zeta:oid4vp
+  → wählt OID4VP/HAIP statt SekIDP OIDC Flow.
+  Erstellt PAR-Session inkl. DCQL Query
+  und generiert ephemeren ECDH-ES P-256
+  Encryption Key für direct_post.jwt.   (HAIP §5.1)
+end note
+as --> zc : (02) 201 Created\n{**request_uri**, expires_in (max. 90s)}
+
+== Schritt 2: Authorization Request – ZC → AuthS ==
+
+zc -> as : (03) GET /auth\n{client_id=ZC, **request_uri**}
+note right of as
+  AuthS löst request_uri auf →
+  vollständiger PAR-Request liegt vor.
+  AuthS erstellt nun den OID4VP/HAIP Request
+  für die Wallet (JAR MUST, RFC 9101).
+end note
+
+== Schritt 3: JAR MUST – AuthS/Verifier → Wallet (RFC 9101, HAIP §5.1) ==
+
+group Variante A: AuthS ist selbst Verifier
+
+as -> as : (04a) Erstelle signierten VP Request JWT\nJOSE Header: {alg=ES256, **x5c=[Verifier-Zertifikat]**}\nPayload:\n{iss=x509_hash:<hash>, aud=Wallet,\n**client_id=x509_hash:<hash>**,\n**dcql_query** (statt presentation_definition),\nresponse_uri=AuthS/vp-response,\n**response_mode=direct_post.jwt**,\nnonce=nonce_vp, state=state_vp,\nclient_metadata: {\n  jwks: [{use=enc, alg=ECDH-ES,\n          crv=P-256, **ephemerer Enc-Key**}],\n  encrypted_response_enc: A256GCM\n}}
+note right of as
+  HAIP §5.1:
+  - client_id Prefix MUST: x509_hash
+  - x5c MUST im JOSE Header
+  - dcql_query MUST (statt presentation_definition)
+  - response_mode MUST: direct_post.jwt
+  - Ephemerer ECDH-ES P-256 Enc-Key MUST
+    pro Authorization Request (HAIP §5)
+  AuthS stellt Request Object unter eigenem
+  request_uri-Endpunkt bereit (JAR by Reference).
+end note
+as --> zc : (05a) 302 Found\nLocation: **haip-vp://**?client_id=x509_hash:<hash>\n&request_uri=<AuthS/vp-request/session-id>\n&request_uri_method=post
+
+end group
+
+group Variante B: AuthS delegiert an Verifier
+
+as -> verifier : (04b-i) POST /vp-request\n{dcql_query, nonce_vp,\nstate_vp, transaction_id,\nephemerer Enc-Key (ECDH-ES P-256)}
+verifier -> verifier : Erstelle signierten VP Request JWT\n(analog 04a, client_id=x509_hash:<Verifier-hash>,\nresponse_uri=Verifier/vp-response,\nx5c=[Verifier-Zertifikat] im JOSE Header)
+verifier --> as : (04b-ii) 201 Created\n{request_uri (beim Verifier), expires_in}
+as --> zc : (05b) 302 Found\nLocation: **haip-vp://**?client_id=x509_hash:<Verifier-hash>\n&request_uri=<Verifier/vp-request/session-id>\n&request_uri_method=post
+
+end group
+
+== (A) Same-Device Flow ==
+
+group Same-Device: App-zu-App-Aktivierung (HAIP §5.1 RECOMMENDED)
+
+zc -> wallet : (06) App-zu-App\n**haip-vp://**?client_id=x509_hash:<hash>\n&request_uri=...&request_uri_method=post
+note right of wallet
+  HAIP §5.1: haip-vp:// (MAY) oder
+  claimed https URI (App-Link).
+  OS aktiviert Wallet via App-Link /
+  Custom URL Scheme.
+  Same-Device RECOMMENDED (HAIP §5.1):
+  stärkere Phishing-Resistenz als Cross-Device.
+end note
+
+group Variante A
+  wallet -> as : (07a) POST <request_uri>\n{wallet_metadata, wallet_nonce}\n(request_uri_method=post, JAR MUST)
+  as --> wallet : (08a) Signierter VP Request JWT\n(siehe Schritt 04a)
+end group
+
+group Variante B
+  wallet -> verifier : (07b) POST <request_uri>\n{wallet_metadata, wallet_nonce}
+  verifier --> wallet : (08b) Signierter VP Request JWT\n(analog 04a, Verifier als Aussteller)
+end group
+
+wallet -> wallet : (09) Prüfe x5c Zertifikat des Verifiers\n(HAIP §5.1: Wallet MUST x5c validieren)\nPrüfe Credential-Status via Status List
+wallet -> idp : (09b) Prüfe Trust Registry / Credential-Status
+idp --> wallet : (10) Status OK
+
+wallet -> user : (11) Consent Dialog\n"Folgende Daten werden angefragt:\n[Felder aus **dcql_query**]"
+user -> wallet : (12) Nutzer bestätigt
+
+wallet -> wallet : (13) Erstelle Verifiable Presentation\nFormat: **SD-JWT VC** oder **ISO mdoc**  (HAIP §5.1)\n{VP mit selektiv offengelegten Claims (SD-JWT),\nnonce=nonce_vp, aud=client_id,\n**cnf.jwk = Client Instance Key**\n(TEE / Secure Enclave),\nHolder-Signatur mit Client Instance Key}
+
+note over wallet
+  Client Instance Key als Holder-Key (HAIP-konform):
+  - Langlebig, gerätegebunden (TEE/Secure Enclave)
+  - Nicht exportierbar
+  - Dem AuthS aus DCR bekannt
+  - Bindung: VP.cnf.jwk == DCR-registrierter Instance Key
+  DPoP Key bleibt orthogonal (Token-Transport-Schutz).
+end note
+
+group Variante A: direct_post.jwt an AuthS (HAIP §5.1)
+
+  wallet -> as : (14a) POST <response_uri=AuthS/vp-response>\n**response=<JWE>**\n(VP Response JWE-verschlüsselt mit\nephemerem ECDH-ES P-256 Enc-Key des AuthS,\nPayload: {vp_token, dcql_vp, state=state_vp})\n**response_mode=direct_post.jwt**
+  note right of as
+    HAIP §5.1: Response MUST verschlüsselt sein.
+    AuthS entschlüsselt JWE mit eigenem
+    ephemeren privaten Enc-Key.
+  end note
+  as -> as : (15a) Validiere VP\n- JWE entschlüsseln (ECDH-ES P-256)\n- Holder-Signatur (Client Instance Key)\n- VP.cnf.jwk == DCR-registrierter Instance Key\n- nonce_vp stimmt überein\n- dcql_query erfüllt\n- x5c Verifier-Zertifikat gültig\n- Credential-Status (Cache / live)
+  as --> wallet : (16a) 200 OK\n{redirect_to:\n<redirect_uri_as>?code=AUTH_CODE_AS\n&state=state_app\n**&iss=<AuthS-Issuer>**}
+  note right of as
+    RFC 9207 (via FAPI 2.0 / HAIP §4):
+    iss-Parameter MUST im Auth Response.
+  end note
+
+end group
+
+group Variante B: direct_post.jwt an Verifier (HAIP §5.1)
+
+  wallet -> verifier : (14b) POST <response_uri=Verifier/vp-response>\n**response=<JWE>**\n(JWE mit ephemerem Enc-Key des Verifiers)
+  verifier -> idp : (15b-i) Prüfe Trust Registry / Credential-Status
+  idp --> verifier : (15b-ii) OK
+  verifier -> verifier : (15b-iii) Entschlüssele JWE,\nvalidiere VP (analog 15a)
+  verifier --> wallet : (16b-i) 200 OK\n{redirect_to:\n<redirect_uri_as>?code=AUTH_CODE_AS\n&state=state_app\n**&iss=<AuthS-Issuer>**}
+  verifier -> as : (16b-ii) POST /vp-result\n{transaction_id,\n**vp_claims (signierte JWT-Assertion)**,\nvalidation_result=ok,\ncnf.jwk (Client Instance Key aus VP)}
+  note right of as
+    Verifier→AuthS Kanal: mTLS oder
+    signierte JWT-Assertion (Verifier-Key).
+    AuthS prüft:
+    vp_claims.cnf.jwk == DCR-registrierter Instance Key.
+  end note
+
+end group
+
+wallet -> zc : (17) **App-Link / Universal-Link**\n<redirect_uri_as>?code=AUTH_CODE_AS\n&state=state_app&iss=<AuthS-Issuer>
+note right of zc
+  OS erkennt App-Link →
+  ZETA Client wird aktiviert.
+  ZC prüft iss gegen bekannte AuthS-Issuer
+  (RFC 9207, Mix-Up-Schutz).
+end note
+
+end group
+
+== (B) Cross-Device Flow (HAIP §5.1: nur ohne Session-Binding) ==
+
+group Cross-Device: QR-Code auf zweitem Gerät
+
+note over zc, as
+  Schritte (01)–(05) identisch zu Same-Device (PAR + JAR).
+  HAIP §5.1: Cross-Device nur RECOMMENDED wenn
+  Verifier nicht auf Session-Binding für Phishing-Resistenz angewiesen.
+  **[D4]: Holder-Key-Bindung eingeschränkt** (siehe Designentscheidungen).
+  AuthS signalisiert Cross-Device-Modus zusätzlich per session_id / polling_endpoint.
+end note
+
+zc -> user : (06) Zeige QR-Code\n**haip-vp://**?client_id=x509_hash:<hash>\n&request_uri=...&request_uri_method=post
+
+group Variante A
+  wallet -> as : (07a) POST <request_uri> (Gerät 2, JAR MUST)
+  as --> wallet : (08a) Signierter VP Request JWT (mit Enc-Key)
+end group
+
+group Variante B
+  wallet -> verifier : (07b) POST <request_uri> (Gerät 2, JAR MUST)
+  verifier --> wallet : (08b) Signierter VP Request JWT (mit Enc-Key)
+end group
+
+wallet -> user : (09) Consent Dialog (Gerät 2)
+user -> wallet : (10) Bestätigung (Gerät 2)
+wallet -> wallet : (11) Erstelle VP (SD-JWT VC / mdoc)\ncnf.jwk = Client Instance Key (Gerät 2)
+
+group Variante A
+  wallet -> as : (12a) POST <response_uri=AuthS/vp-response>\n**response=<JWE>** (direct_post.jwt, Gerät 2)
+  as -> as : (13a) Entschlüssele JWE, validiere VP
+  as --> wallet : (14a) 200 OK (kein redirect_to – Cross-Device)
+end group
+
+group Variante B
+  wallet -> verifier : (12b) POST <response_uri>\n**response=<JWE>** (direct_post.jwt, Gerät 2)
+  verifier -> as : (13b) POST /vp-result\n{transaction_id, vp_claims, cnf.jwk}
+  verifier --> wallet : (14b) 200 OK
+end group
+
+as -> zc : (15) **Polling-Response / WebSocket Push** (Gerät 1)\n{code=AUTH_CODE_AS, state=state_app,\n**iss=<AuthS-Issuer>**}
+
+end group
+
+== Token Request (gemeinsam für Same-Device und Cross-Device) ==
+
+zc -> as : (18/16) POST /token\n{grant_type=authorization_code,\ncode=AUTH_CODE_AS,\nredirect_uri=redirect_uri_as,\nclient_id=ZC,\ncode_verifier,\n**DPoP-Proof** (RFC 9449)}
+
+as -> as : Prüfe:\n- code + code_verifier (PKCE S256)\n- redirect_uri\n- **VP.cnf.jwk == DCR-registrierter Client Instance Key**\n- DPoP-Proof gültig\n- iss (RFC 9207)
+
+as --> zc : (19/17) 200 OK\n{**access_token** (DPoP-bound),\ntoken_type=DPoP,\nid_token (mit VP-Claims aus dcql_query),\nrefresh_token, expires_in}
+
+note over zc, as
+  Access Token ist DPoP-gebunden (RFC 9449) – kurzlebig, per-Request-Bindung.
+  Client Instance Key ist Holder-Key der VP – langlebig, gerätegebunden (TEE/SE).
+  DPoP Key und Client Instance Key sind orthogonal:
+    DPoP schützt den Token-Transport (kurzlebig, session-orientiert).
+    Client Instance Key beweist die Credential-Inhaberschaft (langlebig, gerätegebunden).
+  ZC kann nun auf den Resource Server (ZETA Guard) zugreifen.
+end note
+
+== Offene Designentscheidungen ==
+
+note over zc, idp
+  **[D1]** Trust Framework Registrierung des Verifiers:
+    Var. A: AuthS muss als Verifier mit x509_hash Client Identifier im
+            gematik Trust Framework registriert sein (Zertifikat + x5c).
+    Var. B: Verifier muss als eigenständige Komponente registriert sein.
+    → Zertifikat-Policy: PKI-Hierarchie gematik oder externer TSP?
+
+  **[D2]** Sicherung des Verifier→AuthS-Kanals (Var. B):
+    Option i:  mTLS (Client-Zertifikat aus DCR)
+    Option ii: Verifier signiert vp_claims als JWT (AuthS prüft Verifier-Signaturzertifikat)
+
+  **[D3]** Cross-Device Code-Rückgabe:
+    Option i:  Polling gegen AuthS /vp-status/{session_id}
+    Option ii: WebSocket / Server-Sent Events (niedrigere Latenz)
+
+  **[D4]** Cross-Device Holder-Key-Bindung (eingeschränkt):
+    Client Instance Key (Gerät 2, Wallet) ≠ Client Instance Key (Gerät 1, ZC).
+    → Bindung nur auf Basis der Credential-Issuer-Signatur möglich.
+    → Cross-Device erfordert abgeschwächtes LoA oder separaten Trust-Anker.
+    → HAIP §5.1: Cross-Device nur ohne Session-Binding-Anforderung zulässig.
+
+  **[D5]** Ephemerer Enc-Key bei Cross-Device:
+    AuthS/Verifier muss ephemeren ECDH-ES P-256 Enc-Key pro Session vorhalten.
+    Bei Polling: Enc-Key muss bis zur VP-Response gültig bleiben (Session-Lebensdauer).
+end note
+
+@enduml

@@ -25,8 +25,16 @@ note over Client, IDP: Der ZETA Client hat aus Teildiagramm (B) den AUTHORIZATIO
 
 == Innerer Flow: Token-Bezug beim sektoralen IDP ==
 
-Client -> AuthS++: GET <redirect_uri> (Redirection-Endpunkt der OIDC Relying Party)\nFolgt der 302-Redirection aus Teildiagramm (B)\n{code=AUTH_CODE_IDP, state=state_as}
-AuthS -> IDP++: POST /token (mTLS, self_signed_tls_client_auth)\n{grant_type=authorization_code, code=AUTH_CODE_IDP,\ncode_verifier=code_verifier_as, client_id, redirect_uri}
+note over Client, AuthS
+  Beide Auth Code Flows enden über denselben App-Link/Universal-Link in der App. Der ZETA
+  Client erkennt anhand des Pfads der redirect_uri, welcher AuthS-Endpunkt zu verwenden ist:
+  - redirect_uri_as (/cb/<app>/as) → redirection_endpoint des AuthS (aus as-well-known),
+    nicht der /token-Endpunkt → SekIDP Auth Code Flow (innerer Flow).
+  - redirect_uri_app (/cb/<app>/app) → /token-Endpunkt des AuthS → ZETA Guard Auth Code Flow (äußerer Flow).
+end note
+
+Client -> AuthS++: GET <redirect_uri_as> (redirection_endpoint der OIDC Relying Party, nicht /token)\nFolgt der 302-Redirection aus Teildiagramm (B)\n{code=AUTH_CODE_IDP, state=state_as}
+AuthS -> IDP++: POST /token (mTLS, self_signed_tls_client_auth)\n{grant_type=authorization_code, code=AUTH_CODE_IDP,\ncode_verifier=code_verifier_as, client_id, redirect_uri_as}
 IDP -> IDP: Prüfe TLS-Clientzertifikat,\nverifiziere code_verifier_as gegen code_challenge_as (S256),\ninvalidiere AUTHORIZATION_CODE
 IDP --> AuthS--: 200 OK\n{id_token (JWE: ECDH-ES/A256GCM, signiert ES256),\naccess_token, token_type=Bearer, expires_in}
 AuthS -> AuthS: Entschlüssele ID Token, verifiziere Signatur (kid/x5c),\nprüfe iss/aud/nonce/exp, extrahiere Claims (KVNR, acr, amr, ...)
@@ -39,9 +47,9 @@ OPA --> AuthS--: Policy Decision
 
 alt Policy Decision allow
     AuthS -> AuthS: Erzeuge AUTHORIZATION_CODE (AS)
-    AuthS --> Client: 302 Found\nLocation: <redirect_uri>?code=AUTH_CODE_AS&state=state_app
+    AuthS --> Client: 302 Found\nLocation: <redirect_uri_app>?code=AUTH_CODE_AS&state=state_app
     Client -> Client: Erzeuge DPoP Key Pair (PrK.DPoP.Sig, PuK.DPoP.Sig)\nund DPoP Proof
-    Client -> AuthS++: POST /token  dpop: <dpop_proof>\n{grant_type=authorization_code, code=AUTH_CODE_AS,\ncode_verifier=code_verifier_app, client_id, redirect_uri,\nclient_assertion (JWT, PrK.Client.Sig signiert)}
+    Client -> AuthS++: POST /token  dpop: <dpop_proof>\n{grant_type=authorization_code, code=AUTH_CODE_AS,\ncode_verifier=code_verifier_app, client_id, redirect_uri_app,\nclient_assertion (JWT, PrK.Client.Sig signiert)}
     AuthS -> AuthS: Verifiziere code_verifier_app gegen code_challenge_app (S256),\nDPoP Proof und Client Assertion (Key Binding aus DCR)
     AuthS --> Client--: 200 OK\n{access_token (DPoP-gebunden), refresh_token,\ntoken_type=DPoP, expires_in}
 else Policy Decision deny
