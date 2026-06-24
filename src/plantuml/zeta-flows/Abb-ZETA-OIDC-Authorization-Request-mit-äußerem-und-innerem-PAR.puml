@@ -26,7 +26,8 @@ note over Client, AuthS: Der ZETA Client hat vom Fach-Client den fachlichen Requ
 Client -> Client: Erzeuge PKCE (code_verifier_app),\ncode_challenge_app = S256(code_verifier_app),\nstate_app
 
 Client -> AuthS++: POST /par (private_key_jwt, client_assertion)\n\
-  {response_type=code, client_id, redirect_uri_app, code_challenge_app,\n\
+  {response_type=code, client_id, redirect_uri=redirect_uri_app,\n\
+  redirect_uri_as=redirect_uri_as, code_challenge_app,\n\
   code_challenge_method=S256, scope, state_app, idp_iss}
 AuthS -> AuthS:  Validiere & speichere Request-Parameter, erzeuge request_uri_app
 AuthS --> Client: 201 Created {request_uri_app, expires_in (5s)}
