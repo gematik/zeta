@@ -1,5 +1,6 @@
 openapi: 3.0.0
 info:
+  schemaVersion: "1.0.0"
   title: OAuth 2.0 Authorization Endpoint (RFC 6749 Section 3.1)
   version: 1.0.0
 servers:

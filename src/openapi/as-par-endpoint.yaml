@@ -1,5 +1,6 @@
 openapi: 3.0.0
 info:
+  schemaVersion: "1.0.0"
   title: OAuth 2.0 Pushed Authorization Requests (PAR) Endpoint (RFC 9126)
   version: 1.0.0
 servers:

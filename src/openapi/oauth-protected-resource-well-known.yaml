@@ -1,6 +1,7 @@
 openapi: 3.0.0
 
 info:
+  schemaVersion: "1.0.0"
   title: OAuth 2.0 Protected Resource Metadata Endpoint
   version: 1.0.0
 
