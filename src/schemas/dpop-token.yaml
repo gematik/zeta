@@ -1,5 +1,6 @@
 # YAML Schema for a DPoP Proof JWT according to RFC 9449
 $schema: "http://json-schema.org/draft-07/schema#"
+schemaVersion: "1.0.0"
 title: DPoP Proof JWT
 description: Schema for a DPoP Proof JWT as defined in RFC 9449.
 type: object

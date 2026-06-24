@@ -1,4 +1,5 @@
 $schema: "http://json-schema.org/draft-07/schema#"
+schemaVersion: "1.1.0"
 title: PDP Decision Response
 description: Schema for the PDP Decision as provided by the OPA Policy Engine
   REST API (/v1/data/...).

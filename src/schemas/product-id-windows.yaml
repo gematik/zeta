@@ -1,5 +1,6 @@
 # Plattformspezifische Produkt-ID für Windows Apps
 $schema: "http://json-schema.org/draft-07/schema#"
+schemaVersion: "1.0.0"
 title: Windows Product ID
 description: The product identifier for Windows apps
 type: object

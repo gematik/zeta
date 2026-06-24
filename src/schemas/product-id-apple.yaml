@@ -1,5 +1,6 @@
 # Platform specific product id for Apple Apps (iOS, macOS, iPadOS, watchOS, tvOS, etc.)
 $schema: "http://json-schema.org/draft-07/schema#"
+schemaVersion: "1.0.0"
 title: Apple Product ID
 description: The product identifier for Apple apps
 type: object

@@ -6,6 +6,7 @@
 # - HARDWARE
 # etc
 $schema: "http://json-schema.org/draft-07/schema#"
+schemaVersion: "1.0.0"
 title: Android Posture
 description: The posture of the client instance. The structure depends on the platform.
 type: object

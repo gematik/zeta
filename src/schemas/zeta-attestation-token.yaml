@@ -1,4 +1,5 @@
 $schema: "http://json-schema.org/draft-07/schema#"
+schemaVersion: "1.0.0"
 title: ZETA Guard Attestation Token
 type: object
 description: >-

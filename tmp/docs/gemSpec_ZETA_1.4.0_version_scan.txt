@@ -1,0 +1,1627 @@
+MATCHES 205
+
+=== PAGE 4 LINE 20 ===
+5.3.1.6.3   Token Exchange mit Attestation  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 50
+5.3.1.6.4   Token Exchange mit Refresh Token  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 53
+5.3.1.7   Zugriff auf den Resource Server  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 54
+5.3.1.7.1   Zugriff auf den Resource Server mit ZETA/ASL  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 54
+5.3.1.7.2   Zugriff auf den Resource Server ohne ZETA/ASL . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 56
+---
+
+=== PAGE 4 LINE 21 ===
+5.3.1.6.4   Token Exchange mit Refresh Token  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 53
+5.3.1.7   Zugriff auf den Resource Server  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 54
+5.3.1.7.1   Zugriff auf den Resource Server mit ZETA/ASL  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 54
+5.3.1.7.2   Zugriff auf den Resource Server ohne ZETA/ASL . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 56
+5.3.2   Abläufe für mobile Clients  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 58
+---
+
+=== PAGE 4 LINE 22 ===
+5.3.1.7   Zugriff auf den Resource Server  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 54
+5.3.1.7.1   Zugriff auf den Resource Server mit ZETA/ASL  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 54
+5.3.1.7.2   Zugriff auf den Resource Server ohne ZETA/ASL . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 56
+5.3.2   Abläufe für mobile Clients  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 58
+5.3.2.1   Initialisierung und Schlüsselgenerierung  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 58
+---
+
+=== PAGE 5 LINE 1 ===
+5.3.2.5.6   Authentifizierung für eine andere Resource am gleichen ZETA Guard . . . . . . . . . . . . . . 71
+5.3.3   Authentifizierung ohne Nutzer-Identität  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 71
+5.3.4   Dienst-zu-Dienst Kommunikation  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 71
+---
+
+=== PAGE 5 LINE 8 ===
+5.4.2   Verbindungsaufbau  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 73
+5.4.2.1   Definition der Endpunkte  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 73
+5.4.2.2   Adressierung und Gültigkeitsbereich (Audience und Scope) . . . . . . . . . . . . . . . . . . . . . . . . . 74
+5.4.2.3   Zusammenhang der Token Exchange Komponenten . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 74
+5.4.2.4   Resultierende Token für den Aufruf von Fachdiensten . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 75
+---
+
+=== PAGE 6 LINE 29 ===
+5.12.8   Prozesse zur Inbetriebnahme eines ZETA Guard  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 117
+5.13   Anforderungen an Dienste der TI  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 117
+5.14   Sicherheitsleistungen des ZETA Guard für Resource Server . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 117
+5.15   Weitere Leistungen des ZETA Guard für Resource Server . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 118
+6   Beispiele und Referenzimplementierungen  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 119
+---
+
+=== PAGE 6 LINE 30 ===
+5.13   Anforderungen an Dienste der TI  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 117
+5.14   Sicherheitsleistungen des ZETA Guard für Resource Server . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 117
+5.15   Weitere Leistungen des ZETA Guard für Resource Server . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 118
+6   Beispiele und Referenzimplementierungen  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 119
+7   Anhang A – Verzeichnisse  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 119
+---
+
+=== PAGE 9 LINE 7 ===
+2.2.2 HTTP Proxy
+Der HTTP Proxy stellt sicher, dass nur Requests mit gültigem Access Token sowie bestandenen zusätzlichen Prüfungen
+an den Resource Server weitergeleitet werden. Welche Prüfungen zusätzlich erfolgen, wird über Attribute im Access
+Token gesteuert.
+2.3 Decide from Policies
+---
+
+=== PAGE 11 LINE 14 ===
+Nutzer wird hier als der Akteur definiert, der einen TI 2.0-Dienst nutzt. Dabei kann es sich um einen Versicherten oder um
+einen Mitarbeiter in einer Organisation des Gesundheitswesens handeln (z. B. LEI, LEO, Krankenkasse). Ein TI 2.0-
+Dienst setzt sich zusammen aus einem ZETA Guard und mindestens einem Resource Server. Der ZETA-Guard wird als
+eingebettetes Modul engmaschig mit dem Resource Server verbunden und vom Anbieter des TI 2.0-Dienstes zwingend
+mit betrieben. Der Anbieter implementiert zusätzliche Komponenten, um seine Infrastruktur vor Angriffen aus dem
+---
+
+=== PAGE 11 LINE 15 ===
+einen Mitarbeiter in einer Organisation des Gesundheitswesens handeln (z. B. LEI, LEO, Krankenkasse). Ein TI 2.0-
+Dienst setzt sich zusammen aus einem ZETA Guard und mindestens einem Resource Server. Der ZETA-Guard wird als
+eingebettetes Modul engmaschig mit dem Resource Server verbunden und vom Anbieter des TI 2.0-Dienstes zwingend
+mit betrieben. Der Anbieter implementiert zusätzliche Komponenten, um seine Infrastruktur vor Angriffen aus dem
+Internet zu schützen und um die Zugriffe zu optimieren (z. B. Content Delivery Network, eigener Ingress und Load
+---
+
+=== PAGE 11 LINE 19 ===
+Internet zu schützen und um die Zugriffe zu optimieren (z. B. Content Delivery Network, eigener Ingress und Load
+Balancer, Web Application Firewall). Das folgende Bild zeigt eine Übersicht der beteiligten Komponenten in der
+Vernetzung zwischen einem Clientsystem (links grün) und einem Backendservice (rechts grün: Resource Server).
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.4.0.pdf Spezifikation Seite 11 von 127
+---
+
+=== PAGE 12 LINE 4 ===
+Abbildung 2: Abb-ZETA-Architektur
+Die obige Abbildung zeigt die Einbettung von ZETA bezogenen, logischen Komponenten (orange) in die Aufrufkette
+zwischen einem Clientsystem und einem Resource Server (grün). Darüber hinaus soll durch die roten und gestrichelt
+umrandeten Komponenten hervorgehoben werden, dass je nach Einsatzumgebung und Anforderungen an die Umgebung
+verschiedene Deployment-Szenarien unterstützt werden. Dargestellt sind zusätzlich heute bereits vorhandene und
+---
+
+=== PAGE 13 LINE 21 ===
+(4) Die Schnittstelle des HSM Proxy Richtung ZETA Guard Komponenten ist spezifiziert und ermöglicht die einheitliche
+Anbindung von HSMs verschiedener Hersteller. Der HSM Proxy enthält aktuell nur Funktionen, die von ZETA Guard
+Komponenten benötigt werden. Grundsätzlich soll der HSM Proxy auch Komponenten des Resource Servers den
+einheitlichen Zugriff auf HSMs ermöglichen. Fehlende Funktionen werden nach Bedarf ergänzt.
+(5) Falls eine Mandantentrennung verwendet wird, dann kann der Fachclient durch Abfrage eines Well-known JSON-
+---
+
+=== PAGE 13 LINE 24 ===
+einheitlichen Zugriff auf HSMs ermöglichen. Fehlende Funktionen werden nach Bedarf ergänzt.
+(5) Falls eine Mandantentrennung verwendet wird, dann kann der Fachclient durch Abfrage eines Well-known JSON-
+Dokuments die zu verwendende URL des Resource Servers ermitteln.
+(6) Der ZETA Client bietet dem Fach-Client Operationen zur Initialisierung und zum Versenden von HTTP Requests an.
+Das heißt, der Fach-Client erstellt einen vollständigen HTTP Request inkl. fachlich benötigter Header und ruft den ZETA
+---
+
+=== PAGE 13 LINE 28 ===
+Das heißt, der Fach-Client erstellt einen vollständigen HTTP Request inkl. fachlich benötigter Header und ruft den ZETA
+Client zur Ausführung des Requests auf. Der ZETA Client ermittelt aus der URL des HTTP Requests im ersten Schritt die
+Well-known Metadaten des Resource Servers und des Authorization Servers und konfiguriert sich für die Nutzung der
+ZETA Guard Instanz.
+(7) Aus dem Authorization Server Well-known hat der ZETA Client die Endpunkte für die Client-Registrierung und
+---
+
+=== PAGE 14 LINE 2 ===
+Engine eine "Allow"-Entscheidung gefällt hat und auch kein Verbot vom Authorization Backend vorliegt.
+(16) Der ZETA Client sendet einen Request Richtung Resource Server. Der HTTP Proxy erlaubt den Zugriff auf Daten
+des Resource Servers, wenn ein gültiges Access Token im Authorization Header enthalten ist.
+(17) Nach erfolgreicher Prüfung des Access Token und des DPoP Token (wenn vorhanden auch des PoPP Token) erfolgt
+---
+
+=== PAGE 14 LINE 3 ===
+Engine eine "Allow"-Entscheidung gefällt hat und auch kein Verbot vom Authorization Backend vorliegt.
+(16) Der ZETA Client sendet einen Request Richtung Resource Server. Der HTTP Proxy erlaubt den Zugriff auf Daten
+des Resource Servers, wenn ein gültiges Access Token im Authorization Header enthalten ist.
+(17) Nach erfolgreicher Prüfung des Access Token und des DPoP Token (wenn vorhanden auch des PoPP Token) erfolgt
+die Weiterleitung des Requests zum Resource Server. Falls ZETA/ASL verwendet wird, erfolgt zuerst der ASL-
+---
+
+=== PAGE 14 LINE 5 ===
+des Resource Servers, wenn ein gültiges Access Token im Authorization Header enthalten ist.
+(17) Nach erfolgreicher Prüfung des Access Token und des DPoP Token (wenn vorhanden auch des PoPP Token) erfolgt
+die Weiterleitung des Requests zum Resource Server. Falls ZETA/ASL verwendet wird, erfolgt zuerst der ASL-
+Verbindungsaufbau.
+(18) Vom Resource Server werden Traces und die Selbstauskunft an den Telemetriedaten-Service gesendet. Der
+---
+
+=== PAGE 14 LINE 7 ===
+die Weiterleitung des Requests zum Resource Server. Falls ZETA/ASL verwendet wird, erfolgt zuerst der ASL-
+Verbindungsaufbau.
+(18) Vom Resource Server werden Traces und die Selbstauskunft an den Telemetriedaten-Service gesendet. Der
+Telemetriedaten-Service empfängt von allen ZETA Guard Komponenten Traces, Logs und Metriken. Die
+Verbindungspfeile dafür sind nicht dargestellt. Zum Einsatz kommt OpenTelemetry. Alle von OpenTelemetry unterstützten
+---
+
+=== PAGE 14 LINE 20 ===
+(23) Das Clientsystem kann über den ZETA Client eine Push-Konfiguration im ZETA Guard Notification Service
+einrichten.
+(24) (25) Wenn Ereignisse eintreten, für die der Resource Server eine Push Nachricht für den Nutzer generiert, dann
+werden entsprechend der vorhandenen Push-Konfigurationen des Nutzers im Notification Service, Benachrichtigungen
+an den Client gesendet.
+---
+
+=== PAGE 18 LINE 28 ===
+PEP validiert Access Token: Der PEP prüft:3.
+Ist das Access Token gültig (Signatur, Ablaufdatum etc.)?
+Hat das Access Token den erforderlichen Scope und die passende Resource-Identifier (aud) für die
+angeforderte Ressource?
+Zugriff verweigert: Wenn der erforderliche Scope oder der passende Resource-Identifier nicht im Access Token4.
+---
+
+=== PAGE 18 LINE 30 ===
+Hat das Access Token den erforderlichen Scope und die passende Resource-Identifier (aud) für die
+angeforderte Ressource?
+Zugriff verweigert: Wenn der erforderliche Scope oder der passende Resource-Identifier nicht im Access Token4.
+enthalten ist, verweigert der PEP den Zugriff.
+PEP antwortet mit Step-up-Anforderung: Wenn die angefragte Ressource auf dem Resource Server existiert,5.
+---
+
+=== PAGE 18 LINE 32 ===
+Zugriff verweigert: Wenn der erforderliche Scope oder der passende Resource-Identifier nicht im Access Token4.
+enthalten ist, verweigert der PEP den Zugriff.
+PEP antwortet mit Step-up-Anforderung: Wenn die angefragte Ressource auf dem Resource Server existiert,5.
+informiert der PEP den Nutzer, dass für den Zugriff ein Access Token mit einem bestimmten Scope und einem
+bestimmten Resource-Identifier benötigt wird.
+---
+
+=== PAGE 18 LINE 34 ===
+PEP antwortet mit Step-up-Anforderung: Wenn die angefragte Ressource auf dem Resource Server existiert,5.
+informiert der PEP den Nutzer, dass für den Zugriff ein Access Token mit einem bestimmten Scope und einem
+bestimmten Resource-Identifier benötigt wird.
+Nutzer initiiert die Step-up-Authentifizierung: Der ZETA Client kommuniziert mit dem Authorization Server, um6.
+die Authentifizierung für den benötigten Scope und den benötigten Resource-Identifier zu beginnen.
+---
+
+=== PAGE 18 LINE 36 ===
+bestimmten Resource-Identifier benötigt wird.
+Nutzer initiiert die Step-up-Authentifizierung: Der ZETA Client kommuniziert mit dem Authorization Server, um6.
+die Authentifizierung für den benötigten Scope und den benötigten Resource-Identifier zu beginnen.
+Authorization Server authentifiziert und gewährt neues Access Token: Der Authorization Server:7.
+Steuert die Durchführung der Step-up-Authentifizierung.
+---
+
+=== PAGE 18 LINE 39 ===
+Authorization Server authentifiziert und gewährt neues Access Token: Der Authorization Server:7.
+Steuert die Durchführung der Step-up-Authentifizierung.
+Erstellt ein neues Access Token mit passendem Scope und passendem Resource-Identifier (aud).
+Gibt das neue Access Token an den ZETA Client zurück.
+Nutzer stellt eine erneute Anfrage: Der Nutzer sendet die Anfrage mit dem neuen Access Token an den PEP.8.
+---
+
+=== PAGE 18 LINE 44 ===
+PEP prüft das neue Token: Der PEP prüft wieder:9.
+Ist das neue Access Token gültig?
+Hat das neue Access Token den Scope und die den Resource-Identifier (aud) für die angeforderte
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.4.0.pdf Spezifikation Seite 18 von 127
+---
+
+=== PAGE 19 LINE 2 ===
+Ressource?
+Zugriff gewährt: Wenn der erforderliche Scope und der passende Resource-Identifier im neuen Access Token10.
+enthalten ist, gewährt der PEP den Zugriff auf die Ressource.
+Die Step-up-Authentifizierung stellt sicher, dass zusätzliche Sicherheitsmaßnahmen - wenn erforderlich - ergriffen
+---
+
+=== PAGE 19 LINE 7 ===
+werden, um die Integrität und Vertraulichkeit der geschützten Daten zu gewährleisten.
+4.9 TI 2.0-Dienst-Backend
+Das TI 2.0-Dienst-Backend (im folgenden Resource Server genannt) stellt das Ziel jedes Zugriffswunschs eines Nutzers
+über sein Clientsystem dar. Es stellt fachliche Schnittstellen zur Nutzung durch Clientsysteme dar, die über die
+Mechanismen des Zero Trust abgesichert werden. 
+---
+
+=== PAGE 20 LINE 13 ===
+A_26517-01 - ZETA Guard - Unterstützung von mTLS
+ZETA Guard MUSS die Konfiguration und Nutzung von mTLS für die interne Kommunikation und für die Kommunikation
+zum Resource Server unterstützen. [<= ]
+A_25403 - ZETA Guard - Schutzmaßnahmen gegen die OWASP Top 10 Risiken
+ZETA Guard MUSS geeignete technische Maßnahmen zum Schutz vor den Risiken in der aktuellen Version der
+---
+
+=== PAGE 20 LINE 34 ===
+ZETA Guard MUSS sicherstellen, dass alle Daten und Parameter, die über eine API kommuniziert werden,
+sicherheitstechnisch validiert werden. [<= ]
+Hinweis: Eine Eingabe-Validierung von Resource Server APIs erfolgt im Resource Server und nicht in den Zero Trust-
+Komponenten. 
+A_25407 - ZETA Guard - Sicherheitstechnische Validierung von Policy und Konfigurationen
+---
+
+=== PAGE 22 LINE 38 ===
+ZETA Guard MUSSeinmal täglich mittels dem Telemetriedaten-Service die folgende Sicherheits-KPIs automatisiert über
+die von der gematik angebotene Schnittstelle an das TI SIEM-System als OTel-Metric übermitteln:
+Anzahl versuchter Zugriffe von nicht registrierten Clients (hier muss die KPIs zwischen Resource Server APIs und
+Client-Registrierung APIs unterscheiden)
+Anzahl von Zugriffen von Botnetzen
+---
+
+=== PAGE 23 LINE 20 ===
+Hier ein Beispiel Metric für die Anzahl von Zugriffen von Botnetzen:
+{
+  "resourceMetrics": [
+    {
+      "resource": {
+---
+
+=== PAGE 23 LINE 22 ===
+  "resourceMetrics": [
+    {
+      "resource": {
+        "attributes": [
+          {
+---
+
+=== PAGE 26 LINE 38 ===
+Hier ein Beispiel eines OTel-Logs für die Policyentscheidung:
+{
+  "resourceLogs": [
+    {
+      "resource": {
+---
+
+=== PAGE 26 LINE 40 ===
+  "resourceLogs": [
+    {
+      "resource": {
+        "attributes": [
+          {
+---
+
+=== PAGE 37 LINE 84 ===
+Dieses Kapitel spezifiziert die dynamischen Kommunikations- und Prozessabläufe innerhalb der ZETA-Architektur. Um
+die Interaktionen zwischen dem ZETA Client, dem ZETA Attestation Service (ZAS), dem ZETA Guard (Authorization
+Server) und dem Resource Server nachvollziehbar darzustellen, sind die Unterkapitel chronologisch anhand des
+Lebenszyklus einer Client-Instanz strukturiert.
+Die Beschreibung folgt dem Weg von stationären und mobilen Clients von der initialen Bereitstellung (Installation und
+---
+
+=== PAGE 38 LINE 1 ===
+sicheren Zugriff auf geschützte Fach-dienste (Resource Server) nutzt. Den Abschluss bilden die Prozesse zur Session-
+Erneuerung sowie die Besonderheiten bei der Dienst-zu-Dienst-Kommunikation.
+5.3.1 Abläufe für stationäre Clients
+---
+
+=== PAGE 44 LINE 3 ===
+Abbildung 7 Abb-ZETA-Service-Discovery
+(01) Der ZETA Client sendet einen HTTP GET Request an den PEP HTTP Proxy. Der Proxy agiert hier als Stellvertreter
+für die eigentliche Fachanwendung (Resource Server / RS-FQDN). Der Pfad /.well-known/oauth-protected-resource ist
+standardisiert und dient exakt diesem Zweck.
+(02) Antwort des Proxys: Der PEP Proxy antwortet mit 200 OK und liefert ein JSON-Dokument zurück. Gemäß RFC 9728
+---
+
+=== PAGE 44 LINE 6 ===
+standardisiert und dient exakt diesem Zweck.
+(02) Antwort des Proxys: Der PEP Proxy antwortet mit 200 OK und liefert ein JSON-Dokument zurück. Gemäß RFC 9728
+(OAuth 2.0 Protected Resource Metadata) enthält dieses Dokument Metadaten über die Ressource. Die für den Client
+wichtigste Information darin ist der Issuer (die URL) des Autorisierungsservers (PDP), der diese spezielle Ressource
+schützt. Das Schema für das OAuth Protected Resource Well-known JSON Dokument ist in [opr-well-known.yaml]
+---
+
+=== PAGE 44 LINE 8 ===
+(OAuth 2.0 Protected Resource Metadata) enthält dieses Dokument Metadaten über die Ressource. Die für den Client
+wichtigste Information darin ist der Issuer (die URL) des Autorisierungsservers (PDP), der diese spezielle Ressource
+schützt. Das Schema für das OAuth Protected Resource Well-known JSON Dokument ist in [opr-well-known.yaml]
+festgelegt.
+Nachdem der Client nun weiß, mit wem er für die Authentifizierung sprechen muss, fragt er diesen Server nach seinen
+---
+
+=== PAGE 44 LINE 19 ===
+Verschlüsselungsalgorithmen, Scopes und die URL zu den öffentlichen Schlüsseln (JWKS) des Servers. Über das Feld
+api_versions_supported gibt der Authorization Server zudem bekannt, welche Vertragsversionen der Token-Ausstellung
+er unterstützt; hieran erkennt der ZETA Client, ob er den Parameter resource (Contract v2) verwenden kann oder den
+Parameter audience (Contract v1, Legacy) verwenden muss (siehe 5.4.2.5). Das Schema für das OAuth Authorization
+Server Well-known JSON Dokument ist in [as-well-known.yaml] festgelegt.
+---
+
+=== PAGE 44 LINE 20 ===
+api_versions_supported gibt der Authorization Server zudem bekannt, welche Vertragsversionen der Token-Ausstellung
+er unterstützt; hieran erkennt der ZETA Client, ob er den Parameter resource (Contract v2) verwenden kann oder den
+Parameter audience (Contract v1, Legacy) verwenden muss (siehe 5.4.2.5). Das Schema für das OAuth Authorization
+Server Well-known JSON Dokument ist in [as-well-known.yaml] festgelegt.
+(05) Update Configuration: Der ZETA Client verarbeitet die empfangenen JSON-Dokumente aus Schritt (02) und (04)
+---
+
+=== PAGE 52 LINE 1 ===
+Im Body: den Parameter resource [RFC8707] (Endpunkt-URL der Zielressource aus [opr-well-known.yaml])
+sowie scope. Aus Gründen der Abwärtskompatibilität kann stattdessen der Parameter audience verwendet werden
+(siehe 5.4.2.5).
+---
+
+=== PAGE 52 LINE 2 ===
+Im Body: den Parameter resource [RFC8707] (Endpunkt-URL der Zielressource aus [opr-well-known.yaml])
+sowie scope. Aus Gründen der Abwärtskompatibilität kann stattdessen der Parameter audience verwendet werden
+(siehe 5.4.2.5).
+Im Header (dpop): Den in (05) erstellten dpop_proof.
+---
+
+=== PAGE 52 LINE 24 ===
+Wenn die technische und kryptografische Validierung (07-09) erfolgreich war, muss inhaltlich über den Zugriff
+entschieden werden.
+(10 - 11): Der Authorization Server bereitet die validierten Daten auf (Policy Engine Input) und sendet sie via POST
+/v1/data/authz an die PDP Policy Engine.
+(12): Die Policy Engine evaluiert die Zugriffsregeln und liefert eine Entscheidung (Policy Decision) zurück.
+---
+
+=== PAGE 52 LINE 31 ===
+(13): Der Server erstellt die Standard-OIDC-Tokens (Access Token, Refresh Token). Diese sind durch den Request an
+den DPoP-Schlüssel gebunden. Der aud-Claim des Access Tokens wird dabei aus der Policy Engine Decision
+übernommen (Contract v2, ver: 2); bei einem Legacy-Request über audience wird der Wert verbatim übernommen (ver:
+1).
+Unterscheidung nach Attestierungs-Level (Innerster alt-Block):
+---
+
+=== PAGE 54 LINE 12 ===
+Fall A: [Validation successful] (Schritte 07 - 11)
+Wenn die Token gültig sind und die SMC-B nicht gesperrt ist, wird die inhaltliche Autorisierung geprüft.
+(06 - 07): Der Authorization Server bereitet die Daten auf (Policy Engine Input) und befragt via POST /v1/data/authz die
+PDP Policy Engine.
+(08): Die Policy Engine liefert ihre Entscheidung (Policy Decision) zurück.
+---
+
+=== PAGE 54 LINE 28 ===
+Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-Token-Exchange-mit-Refresh-
+Token unterstützen. [<= ]
+5.3.1.7 Zugriff auf den Resource Server
+Voraussetzung für den Zugriff auf eine geschützte Ressource (Resource Server) durch einen Client in der ZETA-
+Architektur ist, dass der vorgeschaltete Authentifizierungs- und Autorisierungsprozess bereits erfolgreich war und der
+---
+
+=== PAGE 54 LINE 29 ===
+Token unterstützen. [<= ]
+5.3.1.7 Zugriff auf den Resource Server
+Voraussetzung für den Zugriff auf eine geschützte Ressource (Resource Server) durch einen Client in der ZETA-
+Architektur ist, dass der vorgeschaltete Authentifizierungs- und Autorisierungsprozess bereits erfolgreich war und der
+ZETA Client über ein gültiges Access Token verfügt.
+---
+
+=== PAGE 54 LINE 32 ===
+Architektur ist, dass der vorgeschaltete Authentifizierungs- und Autorisierungsprozess bereits erfolgreich war und der
+ZETA Client über ein gültiges Access Token verfügt.
+Durch die Auswertung des OAuth Protected Resource Well-known JSON Dokuments kann der ZETA Client erkennen, ob
+eine ZETA/ASL Verbindung aufgebaut werden muss und welche Token benötigt werden.
+5.3.1.7.1 Zugriff auf den Resource Server mit ZETA/ASL
+---
+
+=== PAGE 54 LINE 34 ===
+Durch die Auswertung des OAuth Protected Resource Well-known JSON Dokuments kann der ZETA Client erkennen, ob
+eine ZETA/ASL Verbindung aufgebaut werden muss und welche Token benötigt werden.
+5.3.1.7.1 Zugriff auf den Resource Server mit ZETA/ASL
+Das folgende Diagramm zeigt, wie eine Anfrage vom Fach-Client über den ZETA Client zum Resource Server geleitet
+wird.
+---
+
+=== PAGE 54 LINE 35 ===
+eine ZETA/ASL Verbindung aufgebaut werden muss und welche Token benötigt werden.
+5.3.1.7.1 Zugriff auf den Resource Server mit ZETA/ASL
+Das folgende Diagramm zeigt, wie eine Anfrage vom Fach-Client über den ZETA Client zum Resource Server geleitet
+wird.
+Das Hauptmerkmal dieses Diagramms ist die Nutzung des ZETA/ASL (Application Security Layer), welcher eine
+---
+
+=== PAGE 54 LINE 40 ===
+zusätzliche Verschlüsselungsschicht auf Applikationsebene darstellt. Das Diagramm zeigt in einem großen alt-Block zwei
+unterschiedliche Architektur-Ansätze, je nachdem, wo dieser verschlüsselte Tunnel endet (terminiert). Je nach Einstellung
+im OAuth Protected Resource Well-known JSON Dokument wird der Tunnel entweder am ZETA Guard HTTP Proxy oder
+am Resource Server terminiert.
+Vorbedingung: Der ZETA Client hat bereits erfolgreich den Authentifizierungsprozess durchlaufen und besitzt ein gültiges
+---
+
+=== PAGE 54 LINE 41 ===
+unterschiedliche Architektur-Ansätze, je nachdem, wo dieser verschlüsselte Tunnel endet (terminiert). Je nach Einstellung
+im OAuth Protected Resource Well-known JSON Dokument wird der Tunnel entweder am ZETA Guard HTTP Proxy oder
+am Resource Server terminiert.
+Vorbedingung: Der ZETA Client hat bereits erfolgreich den Authentifizierungsprozess durchlaufen und besitzt ein gültiges
+Access Token für den Resource Server und ggf. für den ASL Tunnel.
+---
+
+=== PAGE 54 LINE 43 ===
+am Resource Server terminiert.
+Vorbedingung: Der ZETA Client hat bereits erfolgreich den Authentifizierungsprozess durchlaufen und besitzt ein gültiges
+Access Token für den Resource Server und ggf. für den ASL Tunnel.
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.4.0.pdf Spezifikation Seite 54 von 127
+---
+
+=== PAGE 55 LINE 3 ===
+Abbildung 15 Abb-ZETA-Zugriff-auf-RS-mit-ASL
+(01)-(02): Der Nutzer (User) möchte auf eine Ressource zugreifen. Das Primärsystem (Fach-Client) sendet eine normale,
+unverschlüsselte HTTP-Anfrage (GET /resource) an den lokalen ZETA Client.
+(03): Der ZETA Client erstellt einen kryptografischen DPoP-Proof (Demonstrating Proof-of-Possession), der an die URL
+des Resource Servers gebunden ist, um das Access Token vor Diebstahl/Replay zu schützen.
+---
+
+=== PAGE 55 LINE 5 ===
+unverschlüsselte HTTP-Anfrage (GET /resource) an den lokalen ZETA Client.
+(03): Der ZETA Client erstellt einen kryptografischen DPoP-Proof (Demonstrating Proof-of-Possession), der an die URL
+des Resource Servers gebunden ist, um das Access Token vor Diebstahl/Replay zu schützen.
+Fall A: [ZETA/ASL terminates at PEP]
+In diesem Szenario dient ASL als sicherer Tunnel zwischen dem lokalen Client und dem Netzübergang (PEP) des
+---
+
+=== PAGE 55 LINE 8 ===
+Fall A: [ZETA/ASL terminates at PEP]
+In diesem Szenario dient ASL als sicherer Tunnel zwischen dem lokalen Client und dem Netzübergang (PEP) des
+Anbieters. Im internen Netz des Anbieters (vom PEP zum Resource Server) fließen die Daten nur mit TLS verschlüsselt.
+(04)-(05): Es wird ein ZETA/ASL-Verbindungsaufbau zwischen dem ZETA Client und dem PEP HTTP Proxy initiiert.
+(06): Der ZETA Client verpackt die eigentliche Anfrage. Er sendet einen "äußeren" Request (POST /ASL) an den PEP. Im
+---
+
+=== PAGE 55 LINE 11 ===
+(04)-(05): Es wird ein ZETA/ASL-Verbindungsaufbau zwischen dem ZETA Client und dem PEP HTTP Proxy initiiert.
+(06): Der ZETA Client verpackt die eigentliche Anfrage. Er sendet einen "äußeren" Request (POST /ASL) an den PEP. Im
+verschlüsselten Body (inner request) liegt der eigentliche GET /resource-Aufruf, zusammen mit dem Access Token und
+dem in (03) generierten DPoP-Proof.
+(07): Der PEP terminiert den ASL-Tunnel. Das bedeutet, er entschlüsselt den Body.
+---
+
+=== PAGE 55 LINE 15 ===
+(07): Der PEP terminiert den ASL-Tunnel. Das bedeutet, er entschlüsselt den Body.
+(08): Der PEP verifiziert nun das entpackte Access Token und den DPoP-Proof.
+(09): Ist die Prüfung erfolgreich, leitet der PEP den ursprünglichen Klartext-Request (GET /resource) an den eigentlichen
+Resource Server weiter.
+(10 - 11): Der Resource Server verarbeitet die Anfrage und sendet die Response an den PEP zurück.
+---
+
+=== PAGE 55 LINE 16 ===
+(08): Der PEP verifiziert nun das entpackte Access Token und den DPoP-Proof.
+(09): Ist die Prüfung erfolgreich, leitet der PEP den ursprünglichen Klartext-Request (GET /resource) an den eigentlichen
+Resource Server weiter.
+(10 - 11): Der Resource Server verarbeitet die Anfrage und sendet die Response an den PEP zurück.
+Spezifikation Zero Trust Access (ZETA)
+---
+
+=== PAGE 55 LINE 17 ===
+(09): Ist die Prüfung erfolgreich, leitet der PEP den ursprünglichen Klartext-Request (GET /resource) an den eigentlichen
+Resource Server weiter.
+(10 - 11): Der Resource Server verarbeitet die Anfrage und sendet die Response an den PEP zurück.
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.4.0.pdf Spezifikation Seite 55 von 127
+---
+
+=== PAGE 56 LINE 3 ===
+(12): Der PEP verschlüsselt diese Antwort wieder mit ASL, um sie für den sicheren Rückweg über das Internet
+vorzubereiten.
+Fall B: [ZETA/ASL terminates at Resource Server]
+In diesem hochsicheren Szenario wird der Payload Ende-zu-Ende verschlüsselt. Der PEP agiert nur als Router und kann
+den Inhalt der Fachnachricht nicht mitlesen.
+---
+
+=== PAGE 56 LINE 6 ===
+In diesem hochsicheren Szenario wird der Payload Ende-zu-Ende verschlüsselt. Der PEP agiert nur als Router und kann
+den Inhalt der Fachnachricht nicht mitlesen.
+(13): Der ZETA Client muss hier einen zweiten DPoP-Proof generieren. Einer ist für den Resource Server (für die
+Fachdaten), der neue ist für den PEP (um überhaupt den ASL-Endpunkt nutzen zu dürfen).
+(14)-(15): Ein ZETA/ASL-Verbindungsaufbau findet logisch zwischen dem ZETA Client und dem Resource Server statt.
+---
+
+=== PAGE 56 LINE 8 ===
+(13): Der ZETA Client muss hier einen zweiten DPoP-Proof generieren. Einer ist für den Resource Server (für die
+Fachdaten), der neue ist für den PEP (um überhaupt den ASL-Endpunkt nutzen zu dürfen).
+(14)-(15): Ein ZETA/ASL-Verbindungsaufbau findet logisch zwischen dem ZETA Client und dem Resource Server statt.
+(16): Der Request (POST /ASL) ist komplexer verschachtelt:
+Auf der äußeren Ebene (für den PEP sichtbar) liegen ein Access Token und ein DPoP-Proof, die nur für den Zugang zum
+---
+
+=== PAGE 56 LINE 12 ===
+Auf der äußeren Ebene (für den PEP sichtbar) liegen ein Access Token und ein DPoP-Proof, die nur für den Zugang zum
+ASL-Endpunkt berechtigen.
+Der verschlüsselte Body enthält den eigentlichen Request (GET /resource) samt eigenen Autorisierungsdaten (Access
+Token und DPoP-Proof für den RS).
+(17)-(18): Der PEP prüft nur die äußeren Header. Da er den Body nicht entschlüsseln kann, leitet er den POST /ASL
+---
+
+=== PAGE 56 LINE 15 ===
+Token und DPoP-Proof für den RS).
+(17)-(18): Der PEP prüft nur die äußeren Header. Da er den Body nicht entschlüsseln kann, leitet er den POST /ASL
+Request ungesehen an den Resource Server weiter.
+(19): Erst der Resource Server terminiert den ASL-Tunnel und entschlüsselt die Nachricht.
+(20): Der Resource Server prüft nun die inneren Header (Access Token und DPoP-Proof für die Ressource).
+---
+
+=== PAGE 56 LINE 16 ===
+(17)-(18): Der PEP prüft nur die äußeren Header. Da er den Body nicht entschlüsseln kann, leitet er den POST /ASL
+Request ungesehen an den Resource Server weiter.
+(19): Erst der Resource Server terminiert den ASL-Tunnel und entschlüsselt die Nachricht.
+(20): Der Resource Server prüft nun die inneren Header (Access Token und DPoP-Proof für die Ressource).
+(21): Er verarbeitet die Anfrage, erzeugt die Antwort und verschlüsselt diese direkt wieder in eine ASL-Response.
+---
+
+=== PAGE 56 LINE 17 ===
+Request ungesehen an den Resource Server weiter.
+(19): Erst der Resource Server terminiert den ASL-Tunnel und entschlüsselt die Nachricht.
+(20): Der Resource Server prüft nun die inneren Header (Access Token und DPoP-Proof für die Ressource).
+(21): Er verarbeitet die Anfrage, erzeugt die Antwort und verschlüsselt diese direkt wieder in eine ASL-Response.
+(22)-(23): Unabhängig davon, ob der PEP oder der Resource Server die ASL-Verschlüsselung der Antwort übernommen
+---
+
+=== PAGE 56 LINE 19 ===
+(20): Der Resource Server prüft nun die inneren Header (Access Token und DPoP-Proof für die Ressource).
+(21): Er verarbeitet die Anfrage, erzeugt die Antwort und verschlüsselt diese direkt wieder in eine ASL-Response.
+(22)-(23): Unabhängig davon, ob der PEP oder der Resource Server die ASL-Verschlüsselung der Antwort übernommen
+hat, empfängt der ZETA Client nun die verschlüsselte ASL-Response.
+(24): Der ZETA Client entschlüsselt die Antwort lokal.
+---
+
+=== PAGE 56 LINE 27 ===
+Der ZETA Guard und der ZETA Client MÜSSEN den Ablauf gemäß Abbildung Abb-ZETA-Zugriff-auf-RS-mit-ASL unterstü
+tzen. [<= ]
+5.3.1.7.2 Zugriff auf den Resource Server ohne ZETA/ASL
+Das folgende Sequenzdiagramm beschreibt den direkten Zugriff auf eine geschützte Ressource (Resource Server) durch
+einen Client in der ZETA-Architektur.
+---
+
+=== PAGE 56 LINE 28 ===
+tzen. [<= ]
+5.3.1.7.2 Zugriff auf den Resource Server ohne ZETA/ASL
+Das folgende Sequenzdiagramm beschreibt den direkten Zugriff auf eine geschützte Ressource (Resource Server) durch
+einen Client in der ZETA-Architektur.
+Er zeigt das Routing über den PEP, bei dem die Absicherung primär über tokenbasierte HTTP-Header (Authorization,
+---
+
+=== PAGE 56 LINE 33 ===
+DPoP) erfolgt, ohne dass ein zusätzlicher ASL-Verschlüsselungstunnel aufgebaut wird.
+Vorbedingung: Der ZETA Client hat im Vorfeld bereits erfolgreich einen Authentifizierungsprozess durchlaufen und
+verfügt über ein gültiges Access Token für den entsprechenden Resource Server.
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.4.0.pdf Spezifikation Seite 56 von 127
+---
+
+=== PAGE 57 LINE 4 ===
+(01): Der Endnutzer (User) möchte auf eine bestimmte Ressource zugreifen und interagiert dafür mit seiner
+Fachanwendung (Fach-Client, z. B. ein Praxisverwaltungssystem).
+(02): Der Fach-Client sendet eine reguläre, ungesicherte HTTP-Anfrage (GET /resource) an den lokal installierten ZETA
+Client. Der Fach-Client selbst muss sich nicht um die komplexe ZETA-Kryptografie kümmern.
+(03): Der ZETA Client bereitet die Anfrage vor. Er erstellt einen DPoP Proof (Demonstrating Proof-of-Possession). Dies
+---
+
+=== PAGE 57 LINE 8 ===
+(03): Der ZETA Client bereitet die Anfrage vor. Er erstellt einen DPoP Proof (Demonstrating Proof-of-Possession). Dies
+ist eine kryptografische Signatur, die beweist, dass der Client im Besitz des privaten Schlüssels ist, an den das Access
+Token gebunden wurde. Dieser Proof wird speziell für die Ziel-URL des Resource Servers (RS) generiert (Schutz vor
+Replay-Attacken).
+(04): Der ZETA Client leitet den GET /resource Request an den PEP HTTP Proxy (den ZETA Guard des Anbieters)
+---
+
+=== PAGE 57 LINE 10 ===
+Token gebunden wurde. Dieser Proof wird speziell für die Ziel-URL des Resource Servers (RS) generiert (Schutz vor
+Replay-Attacken).
+(04): Der ZETA Client leitet den GET /resource Request an den PEP HTTP Proxy (den ZETA Guard des Anbieters)
+weiter. Dabei fügt er zwei Sicherheits-Header hinzu:
+Authorization: DPoP ...: Enthält das eigentliche Access Token.
+---
+
+=== PAGE 57 LINE 15 ===
+DPoP: ...: Enthält den in Schritt 03 generierten DPoP-Token (Proof).
+(05): Der PEP HTTP Proxy empfängt die Anfrage und verifiziert die Gültigkeit des Access Tokens und des DPoP Proofs.
+(06): Verläuft die Prüfung erfolgreich, leitet der PEP den Request in das interne Netz an den eigentlichen Resource
+Server weiter. Um dem Resource Server mitzuteilen, wer anfragt, fügt der PEP verifizierte Kontextdaten (Identität,
+Berechtigungen) in Form von ZETA headers as JSON an die Anfrage an.
+---
+
+=== PAGE 57 LINE 16 ===
+(05): Der PEP HTTP Proxy empfängt die Anfrage und verifiziert die Gültigkeit des Access Tokens und des DPoP Proofs.
+(06): Verläuft die Prüfung erfolgreich, leitet der PEP den Request in das interne Netz an den eigentlichen Resource
+Server weiter. Um dem Resource Server mitzuteilen, wer anfragt, fügt der PEP verifizierte Kontextdaten (Identität,
+Berechtigungen) in Form von ZETA headers as JSON an die Anfrage an.
+(07): Der Resource Server verarbeitet die nun vollständig autorisierte Anfrage und stellt die angeforderten Daten bereit
+---
+
+=== PAGE 57 LINE 18 ===
+Server weiter. Um dem Resource Server mitzuteilen, wer anfragt, fügt der PEP verifizierte Kontextdaten (Identität,
+Berechtigungen) in Form von ZETA headers as JSON an die Anfrage an.
+(07): Der Resource Server verarbeitet die nun vollständig autorisierte Anfrage und stellt die angeforderten Daten bereit
+(provide resource access).
+(08): Der Resource Server antwortet dem PEP mit einer Response.
+---
+
+=== PAGE 57 LINE 19 ===
+Berechtigungen) in Form von ZETA headers as JSON an die Anfrage an.
+(07): Der Resource Server verarbeitet die nun vollständig autorisierte Anfrage und stellt die angeforderten Daten bereit
+(provide resource access).
+(08): Der Resource Server antwortet dem PEP mit einer Response.
+(09): Der PEP HTTP Proxy leitet diese Antwort transparent an den ZETA Client zurück.
+---
+
+=== PAGE 57 LINE 20 ===
+(07): Der Resource Server verarbeitet die nun vollständig autorisierte Anfrage und stellt die angeforderten Daten bereit
+(provide resource access).
+(08): Der Resource Server antwortet dem PEP mit einer Response.
+(09): Der PEP HTTP Proxy leitet diese Antwort transparent an den ZETA Client zurück.
+(10): Der ZETA Client reicht die Response an den Fach-Client durch.
+---
+
+=== PAGE 65 LINE 30 ===
+und Proof Key for Code Exchange (PKCE, RFC 7636) ausgeführt.
+Auf dem mobilen Endgerät wirken zwei Komponenten zusammen:
+Der Fach-Client enthält die fachliche Logik für die Arbeit mit dem Resource Server. Er wählt bzw. lässt den Nutzer
+den zuständigen sektoralen IDP wählen (idp_iss), erstellt den vollständigen fachlichen HTTPS-Request inklusive
+aller Header und übergibt ihn an den ZETA Client.
+---
+
+=== PAGE 65 LINE 36 ===
+Authentifizierung. Er verarbeitet den Request, beschafft bei Bedarf ein gültiges Access Token und gibt die
+Response an den Fach-Client zurück.
+Diese Aufgabenteilung entspricht dem Zusammenspiel von Fach-Client und ZETA Client beim Zugriff auf den Resource
+Server (siehe Kapitel 5.3.1.6 - Authentifizierung).
+Der PDP Authorization Server des ZETA Guard übernimmt zwei Rollen:
+---
+
+=== PAGE 70 LINE 14 ===
+und exp und extrahiert die Identitäts-Claims (z. B. KVNR, acr, amr).
+(06) Der PDP Authorization Server bereitet die validierten Identitäts-Claims zusammen mit Posture- und Kontextdaten als
+Policy Engine Input auf.
+(07) Der PDP Authorization Server sendet den Policy Engine Input via POST /v1/data/authz an die PDP Policy Engine.
+(08) Die Policy Engine evaluiert die Zugriffsregeln und liefert eine Policy Decision zurück.
+---
+
+=== PAGE 70 LINE 15 ===
+(06) Der PDP Authorization Server bereitet die validierten Identitäts-Claims zusammen mit Posture- und Kontextdaten als
+Policy Engine Input auf.
+(07) Der PDP Authorization Server sendet den Policy Engine Input via POST /v1/data/authz an die PDP Policy Engine.
+(08) Die Policy Engine evaluiert die Zugriffsregeln und liefert eine Policy Decision zurück.
+Ab hier spaltet sich der Ablauf je nach Policy Decision auf (alt-Block):
+---
+
+=== PAGE 71 LINE 16 ===
+n.
+ [<= ]
+5.3.2.5.6 Authentifizierung für eine andere Resource am gleichen ZETA Guard
+5.3.3 Authentifizierung ohne Nutzer-Identität
+<offen, nur Client-Reg und Auth mit grant_type=client_credentials>
+---
+
+=== PAGE 71 LINE 23 ===
+Authentifizierung verwendet. Ein Backend-Dienst authentifiziert sich mit einem Subject Token am token_endpoint des
+Ziel-Dienstes und erhält nach erfolgreicher Prüfung ein Access Token für den Zugriff auf den Ziel-Dienst.
+Wenn eine ZETA Guard geschützte Workload (z. B. der Resource Server) auf einen externen Dienst zugreift, der eine
+Authentifizierung gemäß Workload Identity Federation verlangt, dann stellt der ZETA Guard Authorization Server als
+OpenID Provider die erforderlichen Subject Token aus. Der ZETA Guard erstellt regelmäßig einen cronjob Pod, der
+---
+
+=== PAGE 71 LINE 30 ===
+erneuten Start des cronjob Pods und Token Exchange erneuert. Dadurch hat die Workload permanent Zugriff auf ein
+gültiges Access Token und kann mit dem externen Ziel-Dienst kommunizieren.
+Wenn ein ZETA Guard geschützter Resource Server als Ziel-Dienst genutzt wird, dann übernimmt der ZETA Guard
+Authorization Server die Rolle eines Secure Token Service in der Workload Identity Federation und tauscht beim Token
+Exchange das Subject Token eines anfragenden Dienstes gegen ein Access Token für den Zugriff auf den Resource
+---
+
+=== PAGE 71 LINE 32 ===
+Wenn ein ZETA Guard geschützter Resource Server als Ziel-Dienst genutzt wird, dann übernimmt der ZETA Guard
+Authorization Server die Rolle eines Secure Token Service in der Workload Identity Federation und tauscht beim Token
+Exchange das Subject Token eines anfragenden Dienstes gegen ein Access Token für den Zugriff auf den Resource
+Server.
+A_28431 - ZETA Guard, Ablauf Dienst-zu-Dienst Kommunikation
+---
+
+=== PAGE 73 LINE 2 ===
+Der zweite parallele Block (par) beschreibt den eigentlichen Zugriff auf die geschützte Ressource:
+Token auslesen (16): Der Resource Server von Anbieter A liest das zuvor im etcd gespeicherte Access-Token aus.
+Anfrage senden (17): Der Resource Server von Anbieter A stellt eine Anfrage inklusive des Access-Tokens an den PEP
+HTTP Proxy von Anbieter B.
+---
+
+=== PAGE 73 LINE 3 ===
+Der zweite parallele Block (par) beschreibt den eigentlichen Zugriff auf die geschützte Ressource:
+Token auslesen (16): Der Resource Server von Anbieter A liest das zuvor im etcd gespeicherte Access-Token aus.
+Anfrage senden (17): Der Resource Server von Anbieter A stellt eine Anfrage inklusive des Access-Tokens an den PEP
+HTTP Proxy von Anbieter B.
+Token-Prüfung (18): Der Proxy validiert das Access-Token.
+---
+
+=== PAGE 73 LINE 7 ===
+Token-Prüfung (18): Der Proxy validiert das Access-Token.
+Abzweigung (alt-Block):
+Erfolgreiche Validierung (19–21): Die Anfrage wird an den eigentlichen Resource Server von Anbieter B weitergeleitet.
+Dieser antwortet, und die Antwort wird über den Proxy an den Resource Server von Anbieter A zurückgegeben.
+Fehlgeschlagene Validierung (22): Der Proxy blockiert die Anfrage und liefert einen Fehler 401 Unauthorized zurück.
+---
+
+=== PAGE 73 LINE 8 ===
+Abzweigung (alt-Block):
+Erfolgreiche Validierung (19–21): Die Anfrage wird an den eigentlichen Resource Server von Anbieter B weitergeleitet.
+Dieser antwortet, und die Antwort wird über den Proxy an den Resource Server von Anbieter A zurückgegeben.
+Fehlgeschlagene Validierung (22): Der Proxy blockiert die Anfrage und liefert einen Fehler 401 Unauthorized zurück.
+5.4 Clientsystem und ZETA Client
+---
+
+=== PAGE 73 LINE 37 ===
+5.4.2.1 Definition der Endpunkte
+Für den Verbindungsaufbau und die Anforderung von Token werden die folgenden Endpunkte unterschieden:
+Resource Server Endpunkt: Der finale Endpunkt des aufgerufenen Fachdienstes. Die URL dieses Endpunkts MUSS mit
+dem Parameter resource der OAuth Protected Resource Metadata ([opr-well-known.yaml]) des jeweiligen Dienstes
+übereinstimmen.
+---
+
+=== PAGE 73 LINE 38 ===
+Für den Verbindungsaufbau und die Anforderung von Token werden die folgenden Endpunkte unterschieden:
+Resource Server Endpunkt: Der finale Endpunkt des aufgerufenen Fachdienstes. Die URL dieses Endpunkts MUSS mit
+dem Parameter resource der OAuth Protected Resource Metadata ([opr-well-known.yaml]) des jeweiligen Dienstes
+übereinstimmen.
+ZETA/ASL Endpunkt: Der fest definierte Endpunkt für die Terminierung des ZETA Application Security Layer (ASL)
+---
+
+=== PAGE 73 LINE 42 ===
+ZETA/ASL Endpunkt: Der fest definierte Endpunkt für die Terminierung des ZETA Application Security Layer (ASL)
+Protokolls. Die URL dieses Endpunkts MUSS nach dem Schema https://<hostname>/ASL gebildet werden, wobei
+<hostname> exakt dem Hostnamen des ermittelten Resource Server Endpunkts entspricht.
+ZETA Guard Token Endpunkt: Der Autorisierungsendpunkt des ZETA Guards (Authorization Server), an den der Token
+Spezifikation Zero Trust Access (ZETA)
+---
+
+=== PAGE 74 LINE 2 ===
+Exchange Request gesendet wird.
+5.4.2.2 Adressierung und Gültigkeitsbereich (Audience und Scope)
+Um sicherzustellen, dass Tokens nur für den vorgesehenen Empfänger gültig sind, muss bei der Token-Anforderung
+strikt zwischen Parametern des HTTP-Requests und den Claims innerhalb der JWT-Strukturen unterschieden werden.
+---
+
+=== PAGE 74 LINE 6 ===
+strikt zwischen Parametern des HTTP-Requests und den Claims innerhalb der JWT-Strukturen unterschieden werden.
+Claim aud im Subject Token: Das Subject Token wird an den ZETA Guard gesendet, damit dieser es auswertet.
+Folglich MUSS der Claim aud (Audience) innerhalb des Subject Tokens exakt die URL des ZETA Guard Token
+Endpunkts enthalten.
+Parameter resource im Token Request (HTTP Body): Dieser Parameter gemäß [RFC8707] enthält die absolute URL
+---
+
+=== PAGE 74 LINE 8 ===
+Folglich MUSS der Claim aud (Audience) innerhalb des Subject Tokens exakt die URL des ZETA Guard Token
+Endpunkts enthalten.
+Parameter resource im Token Request (HTTP Body): Dieser Parameter gemäß [RFC8707] enthält die absolute URL
+des aufgerufenen Endpunkts am Resource Server und wird der OAuth Protected Resource Metadata ([opr-well-
+known.yaml], Feld resource) entnommen. Der ZETA Guard ermittelt aus dem angeforderten resource über die Policy
+---
+
+=== PAGE 74 LINE 9 ===
+Endpunkts enthalten.
+Parameter resource im Token Request (HTTP Body): Dieser Parameter gemäß [RFC8707] enthält die absolute URL
+des aufgerufenen Endpunkts am Resource Server und wird der OAuth Protected Resource Metadata ([opr-well-
+known.yaml], Feld resource) entnommen. Der ZETA Guard ermittelt aus dem angeforderten resource über die Policy
+Engine den logischen Bezeichner der Zielressource und stellt das Access Token mit diesem Wert im Claim aud aus
+---
+
+=== PAGE 74 LINE 10 ===
+Parameter resource im Token Request (HTTP Body): Dieser Parameter gemäß [RFC8707] enthält die absolute URL
+des aufgerufenen Endpunkts am Resource Server und wird der OAuth Protected Resource Metadata ([opr-well-
+known.yaml], Feld resource) entnommen. Der ZETA Guard ermittelt aus dem angeforderten resource über die Policy
+Engine den logischen Bezeichner der Zielressource und stellt das Access Token mit diesem Wert im Claim aud aus
+(siehe 5.4.2.4). Die Ressourcen-URL wird NICHT in den aud-Claim übernommen; sie wird beim späteren Aufruf der
+---
+
+=== PAGE 74 LINE 14 ===
+(siehe 5.4.2.4). Die Ressourcen-URL wird NICHT in den aud-Claim übernommen; sie wird beim späteren Aufruf der
+Ressource über den Claim htu des DPoP Proofs [RFC9449] an den konkreten Request gebunden.
+Parameter audience im Token Request (HTTP Body): Aus Gründen der Abwärtskompatibilität DARF ein ZETA Client
+anstelle von resource den Parameter audience (logischer Bezeichner) senden. In diesem Fall wird der angegebene Wert
+unverändert als aud-Claim in das Access Token übernommen (Legacy-Verhalten, siehe 5.4.2.5). Der Parameter
+---
+
+=== PAGE 74 LINE 15 ===
+Ressource über den Claim htu des DPoP Proofs [RFC9449] an den konkreten Request gebunden.
+Parameter audience im Token Request (HTTP Body): Aus Gründen der Abwärtskompatibilität DARF ein ZETA Client
+anstelle von resource den Parameter audience (logischer Bezeichner) senden. In diesem Fall wird der angegebene Wert
+unverändert als aud-Claim in das Access Token übernommen (Legacy-Verhalten, siehe 5.4.2.5). Der Parameter
+audience ist als veraltet gekennzeichnet; neue ZETA Clients SOLLEN ausschließlich resource verwenden.
+---
+
+=== PAGE 74 LINE 17 ===
+anstelle von resource den Parameter audience (logischer Bezeichner) senden. In diesem Fall wird der angegebene Wert
+unverändert als aud-Claim in das Access Token übernommen (Legacy-Verhalten, siehe 5.4.2.5). Der Parameter
+audience ist als veraltet gekennzeichnet; neue ZETA Clients SOLLEN ausschließlich resource verwenden.
+Parameter scope im Token Request (HTTP Body): Dieser Parameter MUSS die spezifischen Berechtigungen (Scopes)
+anfordern, die für den Zugriff auf den unter resource definierten Endpunkt erforderlich sind. Die unterstützten Scopes
+---
+
+=== PAGE 74 LINE 19 ===
+audience ist als veraltet gekennzeichnet; neue ZETA Clients SOLLEN ausschließlich resource verwenden.
+Parameter scope im Token Request (HTTP Body): Dieser Parameter MUSS die spezifischen Berechtigungen (Scopes)
+anfordern, die für den Zugriff auf den unter resource definierten Endpunkt erforderlich sind. Die unterstützten Scopes
+werden der OAuth Protected Resource Metadata ([opr-well-known.yaml], Feld scopes_supportded) entnommen.
+5.4.2.3 Zusammenhang der Token Exchange Komponenten
+---
+
+=== PAGE 74 LINE 20 ===
+Parameter scope im Token Request (HTTP Body): Dieser Parameter MUSS die spezifischen Berechtigungen (Scopes)
+anfordern, die für den Zugriff auf den unter resource definierten Endpunkt erforderlich sind. Die unterstützten Scopes
+werden der OAuth Protected Resource Metadata ([opr-well-known.yaml], Feld scopes_supportded) entnommen.
+5.4.2.3 Zusammenhang der Token Exchange Komponenten
+Stationäre ZETA Clients nutzen für den Bezug eines Access Tokens den OAuth 2.0 Token Exchange Grant [RFC 8693].
+---
+
+=== PAGE 74 LINE 26 ===
+kryptografischen Komponenten zusammen:
+Der Token Request (HTTP Body): Die Klammer um alle Parameter. Er definiert über
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange die Art der Anfrage, benennt über resource [RFC8707] die
+Endpunkt-URL der Zielressource und über scope die angeforderten Berechtigungen und bindet das Subject Token sowie
+die Client Assertion ein. Aus der angegebenen resource leitet der ZETA Guard über die Policy Engine den logischen aud-
+---
+
+=== PAGE 74 LINE 28 ===
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange die Art der Anfrage, benennt über resource [RFC8707] die
+Endpunkt-URL der Zielressource und über scope die angeforderten Berechtigungen und bindet das Subject Token sowie
+die Client Assertion ein. Aus der angegebenen resource leitet der ZETA Guard über die Policy Engine den logischen aud-
+Claim ab; die resource-URL selbst wird nicht in den aud-Claim übernommen, sondern bestimmt den späteren Ziel-
+Endpunkt (Bezug zum DPoP-Claim htu, siehe 5.4.2.4).
+---
+
+=== PAGE 74 LINE 29 ===
+Endpunkt-URL der Zielressource und über scope die angeforderten Berechtigungen und bindet das Subject Token sowie
+die Client Assertion ein. Aus der angegebenen resource leitet der ZETA Guard über die Policy Engine den logischen aud-
+Claim ab; die resource-URL selbst wird nicht in den aud-Claim übernommen, sondern bestimmt den späteren Ziel-
+Endpunkt (Bezug zum DPoP-Claim htu, siehe 5.4.2.4).
+Das Subject Token: Ein JWT, welches den Kontext der Anfrage (z.B. den Nutzer oder die Session) repräsentiert. Es ist
+---
+
+=== PAGE 74 LINE 39 ===
+im Besitz des privaten DPoP-Schlüssels ist. In diesem DPoP-Proof MUSS der Claim htm den Wert POST und der Claim
+htu die URL des ZETA Guard Token Endpunkts enthalten (da dieser Request an den Guard gerichtet ist).
+Hinweis: Über den Parameter resource können in getrennten Token Requests verschiedene Access Tokens für
+unterschiedliche Zielressourcen bezogen werden. Alle so bezogenen Access Tokens werden über denselben DPoP-
+Schlüssel an die Client-Instanz gebunden (Claim jkt); sie unterscheiden sich im logischen aud-Claim, den die Policy
+---
+
+=== PAGE 75 LINE 4 ===
+Nach erfolgreicher Validierung des Token Requests stellt der ZETA Guard ein Access Token aus. Der aud-Claim dieses
+Access Tokens enthält den von der Policy Engine festgelegten logischen Bezeichner der Zielressource, der aus dem im
+Request angegebenen Parameter resource abgeleitet wird. Tokens, die auf diesem Weg ausgestellt werden, trafen den
+Claim ver mit dem Wert 2. Wurde der Token Request im Legacy-Verfahren über den Parameter audience gestellt, so
+entspricht der aud-Claim dem verbatim übernommenen audience-Wert und das Token trägt ver mit dem Wert 1 (siehe
+---
+
+=== PAGE 75 LINE 5 ===
+Access Tokens enthält den von der Policy Engine festgelegten logischen Bezeichner der Zielressource, der aus dem im
+Request angegebenen Parameter resource abgeleitet wird. Tokens, die auf diesem Weg ausgestellt werden, trafen den
+Claim ver mit dem Wert 2. Wurde der Token Request im Legacy-Verfahren über den Parameter audience gestellt, so
+entspricht der aud-Claim dem verbatim übernommenen audience-Wert und das Token trägt ver mit dem Wert 1 (siehe
+5.4.2.5).
+---
+
+=== PAGE 75 LINE 6 ===
+Request angegebenen Parameter resource abgeleitet wird. Tokens, die auf diesem Weg ausgestellt werden, trafen den
+Claim ver mit dem Wert 2. Wurde der Token Request im Legacy-Verfahren über den Parameter audience gestellt, so
+entspricht der aud-Claim dem verbatim übernommenen audience-Wert und das Token trägt ver mit dem Wert 1 (siehe
+5.4.2.5).
+Wenn der ZETA Client anschließend den eigentlichen Request an den Resource Server (oder den ZETA/ASL Endpunkt)
+---
+
+=== PAGE 75 LINE 8 ===
+entspricht der aud-Claim dem verbatim übernommenen audience-Wert und das Token trägt ver mit dem Wert 1 (siehe
+5.4.2.5).
+Wenn der ZETA Client anschließend den eigentlichen Request an den Resource Server (oder den ZETA/ASL Endpunkt)
+durchführt, MUSS er einen neuen DPoP Proof generieren. Für diesen neuen DPoP Proof gilt zwingend: Der
+Claim htu MUSS exakt der URL des aufgerufenen Endpunkts entsprechen gemäß [RFC9449]; wurde im Token Request
+---
+
+=== PAGE 75 LINE 11 ===
+durchführt, MUSS er einen neuen DPoP Proof generieren. Für diesen neuen DPoP Proof gilt zwingend: Der
+Claim htu MUSS exakt der URL des aufgerufenen Endpunkts entsprechen gemäß [RFC9449]; wurde im Token Request
+der Parameter resource angegeben, MUSS htu mit dieser URL übereinstimmen. Während der aud-Claim die
+Zielressource über ihren logischen Bezeichner benennt, adressiert der htu-Claim den konkret aufgerufenen Endpunkt und
+bindet das DPoP-gebundene Access Token an den tatsächlichen Request.
+---
+
+=== PAGE 75 LINE 18 ===
+Claims versioniert und abwärtskompatibel betrieben werden. Es werden zwei Vertragsversionen (Contract Versions)
+unterschieden:
+Contract v1 (Legacy): Der ZETA Client sendet den Parameter audience (logischer Bezeichner). Der ZETA Guard
+übernimmt diesen Wert verbatim in den aud-Claim und stellt das Access Token mit dem Claim ver: 1 aus. Fehlt der
+Claim ver, ist das Token wie ver: 1 zu behandeln.
+---
+
+=== PAGE 75 LINE 21 ===
+übernimmt diesen Wert verbatim in den aud-Claim und stellt das Access Token mit dem Claim ver: 1 aus. Fehlt der
+Claim ver, ist das Token wie ver: 1 zu behandeln.
+Contract v2: Der ZETA Client sendet den Parameter resource [RFC8707] sowie scope. Der ZETA Guard leitet den
+logischen aud-Claim aus der Policy Engine Decision ([pdp-decision.yaml], Feld aud) ab und stellt das Access
+Token mit dem Claim ver: 2 aus.
+---
+
+=== PAGE 75 LINE 27 ===
+Server Well-known JSON Dokument ([as-well-known.yaml], Feld api_versions_supported) bekannt geben. Der ZETA
+Client MUSS dieses Feld vor dem Token Request auswerten und das Verfahren entsprechend wählen.
+Unterstützt der ZETA Guard Contract v2 und wird der Parameter resource für eine nicht unterstützte Zielressource
+angegeben, so MUSS der Authorization Server den Token Request mit dem Fehler invalid_target gemäß [RFC8707]
+ablehnen.
+---
+
+=== PAGE 75 LINE 31 ===
+ablehnen.
+Der PEP HTTP Proxy MUSS während der Übergangsphase sowohl Access Tokens mit ver: 1 als auch mit ver:
+2 akzeptieren und die jeweils zutreffende Regel zum Audience-Matching anwenden.
+5.4.2.6 Anforderungen
+A_25338-01 - ZETA Client - Authentifizierung beim Token Exchange
+---
+
+=== PAGE 77 LINE 9 ===
+Der ZETA/ASL Kanal muss aufgebaut werden, wenn in [opr-well-known.yaml] der claim zeta_asl_use den Wert requi
+red oder required_passthrough hat. Der innere Request MUSS ein Access Token und ein DPoP Token enthalten.
+Das DPoP Token htu claim MUSS die URI des Resource Server Endpunktes enthalten. Das Access Token aud claim
+und das DPoP Token htu claim MÜSSEN die URI des Resource Server Endpunktes enthalten.
+Bei zeta_asl_use: required_passthrough gilt:
+---
+
+=== PAGE 77 LINE 10 ===
+red oder required_passthrough hat. Der innere Request MUSS ein Access Token und ein DPoP Token enthalten.
+Das DPoP Token htu claim MUSS die URI des Resource Server Endpunktes enthalten. Das Access Token aud claim
+und das DPoP Token htu claim MÜSSEN die URI des Resource Server Endpunktes enthalten.
+Bei zeta_asl_use: required_passthrough gilt:
+Im äußeren HTTP Request MÜSSEN zusätzlich ein Access Token und ein DPoP Token vorhanden sein. Das htu claim
+---
+
+=== PAGE 77 LINE 16 ===
+Access Token im äußeren HTTP Request MUSS den logischen Bezeichner des ZETA/ASL Endpunktes enthalten.
+ [<= ]
+Hinweis: Ob ein ZETA/ASL Kanal zu verwenden ist, wird im OAuth Protected Resource Well-known Dokument des TI 2.0
+Dienstes festgelegt (claim zeta_asl_use). Die Anforderungen für den ZETA/ASL-Kanal sind in [gemSpec_Krypt#8] zu
+finden.
+---
+
+=== PAGE 77 LINE 34 ===
+A_29692 - ZETA Client - Versionierung der Token Ausstellung
+Der ZETA Client MUSS das Feld api_versions_supported auswerten und
+bei Unterstützung von Contract v2 den Parameter resource [RFC8707] und scope verwenden,
+andernfalls den Parameter audience (Contract v1) verwenden
+ [<= ]
+---
+
+=== PAGE 77 LINE 35 ===
+Der ZETA Client MUSS das Feld api_versions_supported auswerten und
+bei Unterstützung von Contract v2 den Parameter resource [RFC8707] und scope verwenden,
+andernfalls den Parameter audience (Contract v1) verwenden
+ [<= ]
+A_29693 - ZETA Guard - Versionsabhängige Policy Engine Decision
+---
+
+=== PAGE 77 LINE 38 ===
+ [<= ]
+A_29693 - ZETA Guard - Versionsabhängige Policy Engine Decision
+Der ZETA Guard MUSS bei einem Token Request mit resource den aud-Claim aus der Policy Engine Decision ableiten
+und das Access Token mit ver: 2 ausstellen. Bei einem Token Request mit audience MUSS der ZETA Guard den aud
+-Claim verbatim übernehmen und das Access Token mit ver: 1 ausstellen.
+---
+
+=== PAGE 77 LINE 39 ===
+A_29693 - ZETA Guard - Versionsabhängige Policy Engine Decision
+Der ZETA Guard MUSS bei einem Token Request mit resource den aud-Claim aus der Policy Engine Decision ableiten
+und das Access Token mit ver: 2 ausstellen. Bei einem Token Request mit audience MUSS der ZETA Guard den aud
+-Claim verbatim übernehmen und das Access Token mit ver: 1 ausstellen.
+ [<= ]
+---
+
+=== PAGE 78 LINE 2 ===
+A_29694 - ZETA Guard - Fehlermeldung bei fehlerhaftem Parameter im Token Request
+Der ZETA Guard MUSS einen Token Request mit resource für eine nicht unterstützte Zielressource mit dem Fehler in
+valid_target gemäß [RFC8707] ablehnen.
+ [<= ]
+---
+
+=== PAGE 78 LINE 13 ===
+Der ZETA Client MUSS sich einmalig am Authorization Server pro ZETA Guard registrieren. [<= ]
+Hinweis: Dabei ist es unerheblich, ob der TI 2.0-Dienst einen oder mehrere Ressource Server bereitstellt. Der PDP im
+ZETA Guard kann für mehrere Resource Server eines TI 2.0-Fachdienste zuständig sein. Diese Realisierung wird durch
+die Verwendung des API-Katalog in der Service Discovery ermöglicht.
+A_28524 - ZETA Client, Konfigurationsdaten pro ZETA Guard Registrierung
+---
+
+=== PAGE 80 LINE 16 ===
+ [<= ]
+A_25783-01 - ZETA Client - Anweisungen aus HTTP Response Status Codes und Header folgen
+Der ZETA Client MUSS die HTTP Response Status Codes und HTTP Header entsprechend der Vorgaben der Resource
+Server und Zero Trust-APIs auswerten und den Anweisungen daraus folgen und insbesondere
+eine Step-Up- oder erneute Authentifizierung des Nutzers,
+---
+
+=== PAGE 88 LINE 30 ===
+können.
+Der Notification Service MUSS gemäß [gemF_PushNotification] die Push Konfigurationen von ZETA Clients registrieren
+und verwalten können und MUSS die vom Resource Server empfangenen Notification Events an die dafür registrierten
+Push Gateways der Clients weiterleiten. [<= ]
+A_25737 - ZETA Guard - Push Notification
+---
+
+=== PAGE 92 LINE 34 ===
+service-account-jwks-uri).
+Für die Workload Identity Federation (WIF) nutzt Kubernetes die TokenRequest API. Diese API ermöglicht es, kurzlebige,
+zielgruppenspezifische (Audience-bound) JSON Web Tokens (JWT) zu erstellen. Ein externer Dienst (gematik
+Telemetriedaten Empfänger) akzeptiert nur Tokens, 
+- deren Issuer im gematik WIF Pool registriert sind (per Onboarding Prozess für den TI 2.0 Dienst Anbieter) und
+---
+
+=== PAGE 92 LINE 37 ===
+Telemetriedaten Empfänger) akzeptiert nur Tokens, 
+- deren Issuer im gematik WIF Pool registriert sind (per Onboarding Prozess für den TI 2.0 Dienst Anbieter) und
+- die eine für ihn definierte aud (Audience) enthalten.
+Damit die gematik Dienste die Token validieren können, muss entweder der Token Signatur-Schlüssel bei der gematik
+registriert sein oder es werden die standardisierten Endpunkte des api-servers öffentlich bereitgestellt:
+---
+
+=== PAGE 93 LINE 16 ===
+ [<= ]
+A_28464 - ZETA Guard, genau ein Authorization Server
+Die Komponente PEP HTTP Proxy MUSS das OAuth Protected Resource Well-known so bereitstellen, dass für ZETA
+Clients der ZETA Guard Authorization Server als genau eine logische Komponente bereitgestellt wird (nur ein Eintrag au
+thorization_servers im OAuth Protected Resource Well-known). [<= ]
+---
+
+=== PAGE 93 LINE 18 ===
+Die Komponente PEP HTTP Proxy MUSS das OAuth Protected Resource Well-known so bereitstellen, dass für ZETA
+Clients der ZETA Guard Authorization Server als genau eine logische Komponente bereitgestellt wird (nur ein Eintrag au
+thorization_servers im OAuth Protected Resource Well-known). [<= ]
+5.6.4 Laufzeitüberwachung
+Um die Integrität und Vertraulichkeit der ZETA Guard Microservices innerhalb einer Kubernetes-Infrastruktur zu
+---
+
+=== PAGE 94 LINE 8 ===
+Sicherstellung, dass nur Images mit der gematik Signatur produktiv eingesetzt werden. Bei jedem Deployment wird
+geprüft, ob das Image eine gültige gematik-Signatur trägt.
+Ablehnung von Deployments ohne definierte resources.requests und resources.limits
+Als Policy-Engine für Admission Control sollen Kyverno oder OPA Gatekeeper eingesetzt werden, um Richtlinien
+deklarativ als Kubernetes-Custom- Resources zu verwalten.
+---
+
+=== PAGE 94 LINE 10 ===
+Ablehnung von Deployments ohne definierte resources.requests und resources.limits
+Als Policy-Engine für Admission Control sollen Kyverno oder OPA Gatekeeper eingesetzt werden, um Richtlinien
+deklarativ als Kubernetes-Custom- Resources zu verwalten.
+5.6.4.1.3 Network Policies
+Kubernetes Network Policies steuern den zulässigen Netzwerkverkehr zwischen Pods auf Basis von Label-Selektoren,
+---
+
+=== PAGE 94 LINE 21 ===
+Ausgehender Verkehr zu gematik-Diensten (PIP/PAP Artifact Registry, Telemetrie-Service) nur über definierte
+Egress-Regeln
+Vollständige Isolation zwischen ZETA-Guard-Namespace und Resource-Server- Namespace auf Netzwerkebene
+Hinweis: Native Kubernetes Network Policies sind Layer-3/4-Konstrukte und operieren auf IP-Adressen und Ports. Für
+eine weitergehende Layer-7-Kontrolle wird auf das Service Mesh (s. u.) verwiesen.
+---
+
+=== PAGE 94 LINE 33 ===
+Autorisierungsrichtlinien:
+Mit AuthorizationPolicy-Ressourcen (Istio) oder Server-Ressourcen (Linkerd) wird die dienstspezifische Kommunikation
+auf Layer 7 eingeschränkt. So darf z. B. nur der PEP den Resource Server aufrufen.
+Traffic-Observability:
+Das Service Mesh liefert metrische Daten (Latenz, Fehlerrate, Throughput) und Traces für jede Dienstkommunikation, die
+---
+
+=== PAGE 95 LINE 34 ===
+Prozess und Container.
+TracingPolicy und Enforcement:
+Über TracingPolicy-Custom-Resources können deklarative Sicherheitsregeln definiert werden, die Tetragon im Kernel
+durchsetzt. Im Enforcement Mode werden unzulässige Aktionen (z. B. execve eines nicht-erlaubten Binaries,
+Verbindung zu einer nicht-erlaubten IP) direkt durch den Kernel blockiert, noch bevor eine Reaktion auf
+---
+
+=== PAGE 96 LINE 14 ===
+dieser alle Zugriffsentscheidungen durchgesetzt (engl.: enforce) werden.
+5.7.1 PEP HTTP Proxy
+Die Komponente HTTP Proxy ist die "letzte" vor das Resource Backend geschaltete Zero Trust-Komponente und prüft
+das Access Token im Authorization Header des Requests. Ist das Access Token gültig, wird der Zugriff gewährt. Zudem
+wird der Request um zusätzliche HTTP-Header angereichert, um ein Tracing zu ermöglichen. Wenn ein PoPP Token im
+---
+
+=== PAGE 96 LINE 33 ===
+die Signatur des Authorization Servers gültig,
+die Angaben zur zeitlichen Gültigkeit (Felder: iat, exp) valide, 
+der Claim aud für das Resource Backend korrekt eingetragen, d.h. exakt übereinstimmend mit der für den
+aufgerufenen Request-Pfad konfigurierten logischen Audience, und
+die Angabe scope passend zur Request url
+---
+
+=== PAGE 96 LINE 34 ===
+die Angaben zur zeitlichen Gültigkeit (Felder: iat, exp) valide, 
+der Claim aud für das Resource Backend korrekt eingetragen, d.h. exakt übereinstimmend mit der für den
+aufgerufenen Request-Pfad konfigurierten logischen Audience, und
+die Angabe scope passend zur Request url
+sein. Die Bindung des Tokens an die konkret aufgerufene URL erfolgt nicht über aud sondern über den DPoP-Claim htu
+---
+
+=== PAGE 97 LINE 12 ===
+HTTP Proxy geprüft.
+A_26477-01 - PEP HTTP Proxy - PoPP Token Validierung
+Die Komponente HTTP Proxy MUSS so konfiguriert werden können, dass pro Endpunkt des Resource Servers der
+Request Header PoPP verlangt und das PoPP Token validiert wird. Zusätzlich MUSS die Konfiguration pro Endpunkt
+unterstützen, dass die Dauer der Gültigkeit des PoPP Token in Sekunden seit Ausstellung und nach
+---
+
+=== PAGE 97 LINE 18 ===
+Prüfzeitpunkt innerhalb des gleichen Quartals MUSS eine grace-period von 5 Minuten beim Quartalswechsel akzeptiert
+werden.
+Wenn ein Request für einen Endpunkt des Resource Servers empfangen wird, der kein PoPP Header enthält und das
+Vorhandensein des PoPP Headers verlangt wird, dann MUSS der HTTP Proxy den Request mit HTTP Code 400 Bad
+Request beantworten.
+---
+
+=== PAGE 97 LINE 37 ===
+wenn
+der erforderliche Scope im Access-Token nicht enthalten ist oder
+der aud-Claim des Access-Token nicht der für den aufgerufenen Request-Pfad konfigurierten logische Audience
+übereinstimmt.
+Die angefragte URL MUSS existieren und einer konfigurierten Route (mit hinterlegter logischen Audience) zugeordnet
+---
+
+=== PAGE 97 LINE 39 ===
+der aud-Claim des Access-Token nicht der für den aufgerufenen Request-Pfad konfigurierten logische Audience
+übereinstimmt.
+Die angefragte URL MUSS existieren und einer konfigurierten Route (mit hinterlegter logischen Audience) zugeordnet
+sein.
+ [<= ]
+---
+
+=== PAGE 98 LINE 9 ===
+Wenn der ASL Kanal am HTTP Proxy terminiert, dann enthält der äußere Request kein Access und kein DPoP Token.
+Der HTTP Proxy terminiert den Kanal und prüft das Access und das DPoP Token im inneren Request.
+Wenn der Resource Server den ASL Kanal terminiert, dann enthält der äußere Request ein Access Token und ein DPoP
+Token passend zum ASL Endpunkt am HTTP Proxy. Der HTTP Proxy leitet den Request nach erfolgreicher Token-
+Prüfung an den Resource Server weiter. Der Resource Server terminiert den ASL Kanal und findet im inneren Request
+---
+
+=== PAGE 98 LINE 11 ===
+Wenn der Resource Server den ASL Kanal terminiert, dann enthält der äußere Request ein Access Token und ein DPoP
+Token passend zum ASL Endpunkt am HTTP Proxy. Der HTTP Proxy leitet den Request nach erfolgreicher Token-
+Prüfung an den Resource Server weiter. Der Resource Server terminiert den ASL Kanal und findet im inneren Request
+ein Access und ein DPoP Token passend zum Endpunkt des Resource Servers. Es wird empfohlen, dass der Resource
+Server das Access und das DPoP Token prüft.
+---
+
+=== PAGE 98 LINE 12 ===
+Token passend zum ASL Endpunkt am HTTP Proxy. Der HTTP Proxy leitet den Request nach erfolgreicher Token-
+Prüfung an den Resource Server weiter. Der Resource Server terminiert den ASL Kanal und findet im inneren Request
+ein Access und ein DPoP Token passend zum Endpunkt des Resource Servers. Es wird empfohlen, dass der Resource
+Server das Access und das DPoP Token prüft.
+A_26492-02 - PEP HTTP Proxy - Weiterleitung von Client-Daten
+---
+
+=== PAGE 98 LINE 15 ===
+Server das Access und das DPoP Token prüft.
+A_26492-02 - PEP HTTP Proxy - Weiterleitung von Client-Daten
+Die Komponente HTTP Proxy MUSS so konfiguriert werden können, dass pro Endpunkt des Resource Servers die
+Weiterleitung der Client-Daten durch den HTTP Proxy ein- und ausgeschaltet werden kann. Die default-Einstellung ist
+keine Weiterleitung der Client-Daten.
+---
+
+=== PAGE 98 LINE 20 ===
+ [<= ]
+A_25669-01 - PEP HTTP Proxy - Zusätzliche HTTP-Header
+Die Komponente HTTP Proxy MUSS die HTTP Requests mit allen HTTP-Headern an das Resource Backend weiterleiten
+und dabei die folgenden zusätzlichen HTTP-Header einsetzen.
+Tabelle 14: PEP HTTP Proxy - Zusätzliche HTTP-Header
+---
+
+=== PAGE 98 LINE 41 ===
+A_26560-01 - PEP HTTP Proxy - Weiterleitungskonfiguration
+Der PEP HTTP Proxy MUSS eine Konfigurationsschnittstelle bereitstellen, über die ein statisches Mapping von externen
+Request-URLs (FQDNs und Request-Pfade) auf die internen Ziel-URLs der Resource Server konfiguriert werden kann.
+Der PEP HTTP Proxy MUSS es ermöglichen, für jede dieser statisch konfigurierten Routen zwingend eine erwartete
+logische Audience zu hinterlegen. Diese logische Audience entspricht dem aud-Wert, den die Policy Engine für die
+---
+
+=== PAGE 98 LINE 43 ===
+Request-URLs (FQDNs und Request-Pfade) auf die internen Ziel-URLs der Resource Server konfiguriert werden kann.
+Der PEP HTTP Proxy MUSS es ermöglichen, für jede dieser statisch konfigurierten Routen zwingend eine erwartete
+logische Audience zu hinterlegen. Diese logische Audience entspricht dem aud-Wert, den die Policy Engine für die
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.4.0.pdf Spezifikation Seite 98 von 127
+---
+
+=== PAGE 99 LINE 1 ===
+zugehörige Zielressource vergibt. Das Routing an die internen Resource Server DARF NICHT rein dynamisch auf Basis
+des ausgelesenen aud-Claims des Access Tokens ohne vordefinierte Pfad-Zuordnung erfolgen. [<= ]
+A_29675 - Anbieter TI 2.0 Dienst - Konfiguration der internen Endpunkte am PEP
+---
+
+=== PAGE 99 LINE 5 ===
+A_29675 - Anbieter TI 2.0 Dienst - Konfiguration der internen Endpunkte am PEP
+Der Anbieter des TI 2.0 Dienstes MUSS das statische Routing des PEP HTTP Proxys so konfigurieren, dass externe
+Aufrufe der Clients ausschließlich auf die für den jeweiligen Dienst vorgesehenen, internen Resource Server Endpunkte
+des Anbieters geleitet werden (Whitelist-Prinzip).
+Der Anbieter MUSS dabei für jeden konfigurierten Pfad oder virtuellen Host die exakte logische Audience festlegen,
+---
+
+=== PAGE 99 LINE 7 ===
+Aufrufe der Clients ausschließlich auf die für den jeweiligen Dienst vorgesehenen, internen Resource Server Endpunkte
+des Anbieters geleitet werden (Whitelist-Prinzip).
+Der Anbieter MUSS dabei für jeden konfigurierten Pfad oder virtuellen Host die exakte logische Audience festlegen,
+deren Vorhandensein im aud-Claim  des Access Tokens durch den PEP für den Zugriff erzwungen wird (Strict Audience
+Enforcement). Diese logische Audience MUSS mit dem Wert übereinstimmen, den die Policy Engine des ZETA Guard für
+---
+
+=== PAGE 99 LINE 8 ===
+des Anbieters geleitet werden (Whitelist-Prinzip).
+Der Anbieter MUSS dabei für jeden konfigurierten Pfad oder virtuellen Host die exakte logische Audience festlegen,
+deren Vorhandensein im aud-Claim  des Access Tokens durch den PEP für den Zugriff erzwungen wird (Strict Audience
+Enforcement). Diese logische Audience MUSS mit dem Wert übereinstimmen, den die Policy Engine des ZETA Guard für
+die betreffende Zielressource im aud-Claim vergibt. [<= ]
+---
+
+=== PAGE 99 LINE 9 ===
+Der Anbieter MUSS dabei für jeden konfigurierten Pfad oder virtuellen Host die exakte logische Audience festlegen,
+deren Vorhandensein im aud-Claim  des Access Tokens durch den PEP für den Zugriff erzwungen wird (Strict Audience
+Enforcement). Diese logische Audience MUSS mit dem Wert übereinstimmen, den die Policy Engine des ZETA Guard für
+die betreffende Zielressource im aud-Claim vergibt. [<= ]
+A_29676 - PEP HTTP Proxy - Sicherheitsprüfungen vor Weiterleitung
+---
+
+=== PAGE 99 LINE 12 ===
+die betreffende Zielressource im aud-Claim vergibt. [<= ]
+A_29676 - PEP HTTP Proxy - Sicherheitsprüfungen vor Weiterleitung
+Zusätzlich zur Tokenvalidierung MUSS der PEP HTTP Proxy vor der Weiterleitung an einen internen Resource Server die
+folgenden Übereinstimmungen prüfen:
+Strict Audience-Matching: Der aud-Claim des Access Tokens MUSS exakt mit der für den aufgerufenen Resource-
+---
+
+=== PAGE 99 LINE 14 ===
+Zusätzlich zur Tokenvalidierung MUSS der PEP HTTP Proxy vor der Weiterleitung an einen internen Resource Server die
+folgenden Übereinstimmungen prüfen:
+Strict Audience-Matching: Der aud-Claim des Access Tokens MUSS exakt mit der für den aufgerufenen Resource-
+Pfad konfigurierten logischen Audience übereinstimmen. Der PEP MUSS dabei Tokens mit ver: 1 und ver: 2
+unterstützen.
+---
+
+=== PAGE 99 LINE 15 ===
+folgenden Übereinstimmungen prüfen:
+Strict Audience-Matching: Der aud-Claim des Access Tokens MUSS exakt mit der für den aufgerufenen Resource-
+Pfad konfigurierten logischen Audience übereinstimmen. Der PEP MUSS dabei Tokens mit ver: 1 und ver: 2
+unterstützen.
+PPoP Target URI-Abgleich: Die im DPoP-Proof enthaltene Target URI (Claim htu) MUSS exakt der extern
+---
+
+=== PAGE 99 LINE 20 ===
+aufgerufenen URL des PEP HTTP Proxys entsprechen.
+Sind diese Übereinstimmungen nicht gegeben, MUSS der PEP HTTP Proxy den Request mit dem HTTP-Fehlercode 403
+Forbidden abweisen und DARF ihn NICHT an den internen Resource Server weiterleiten.
+ [<= ]
+A_27265 - PEP HTTP Proxy - unveränderte Weiterleitung von Host Header und Request Zeile
+---
+
+=== PAGE 99 LINE 23 ===
+ [<= ]
+A_27265 - PEP HTTP Proxy - unveränderte Weiterleitung von Host Header und Request Zeile
+Der PEP HTTP Proxy MUSS den Host Header und die Request Zeile unverändert an den Resource Server weiterleiten. [
+<= ]
+A_26589-01 - PEP HTTP Proxy - Nutzer-Daten
+---
+
+=== PAGE 99 LINE 27 ===
+A_26589-01 - PEP HTTP Proxy - Nutzer-Daten
+Die Komponente HTTP Proxy MUSS für jeden Request mit gültigem Access Token die Nutzer-Daten aus dem Access
+Token als neuen HTTP Header zeta-user-info in den Request eintragen, bevor der Request an den Resource
+Server weitergeleitet wird.
+Folgende claims das Access Token gehören zu den Nutzer-Daten und werden gemäß Tabelle in den zeta-user-info
+---
+
+=== PAGE 100 LINE 4 ===
+Wenn die Request-Weiterleitung mit Client-Daten konfiguriert wurde und der Request ein gültiges Access Token hat,
+dann MUSS die Komponente HTTP Proxy die Client-Daten aus dem Access Token als neuen HTTP Header zeta-
+client-data in den Request eintragen, bevor der Request an den Resource Server weitergeleitet wird.
+Folgende claims das Access Token gehören zu den Client-Daten:
+client_id
+---
+
+=== PAGE 100 LINE 10 ===
+product_version
+ [<= ]
+A_26974-01 - PEP HTTP Proxy - Fehler vom Resource Server
+Die Komponente HTTP Proxy MUSS die Response vom Resource Server als Fehler des HTTP Proxy werten, wenn der
+Resource Server den Response Header zeta-cause: Proxy gesetzt hat (der Resource Server hat einen Fehler im
+---
+
+=== PAGE 100 LINE 11 ===
+ [<= ]
+A_26974-01 - PEP HTTP Proxy - Fehler vom Resource Server
+Die Komponente HTTP Proxy MUSS die Response vom Resource Server als Fehler des HTTP Proxy werten, wenn der
+Resource Server den Response Header zeta-cause: Proxy gesetzt hat (der Resource Server hat einen Fehler im
+Request festgestellt und vermutet die Ursache beim HTTP Proxy) und DARF diese Response nicht an den Client
+---
+
+=== PAGE 100 LINE 12 ===
+A_26974-01 - PEP HTTP Proxy - Fehler vom Resource Server
+Die Komponente HTTP Proxy MUSS die Response vom Resource Server als Fehler des HTTP Proxy werten, wenn der
+Resource Server den Response Header zeta-cause: Proxy gesetzt hat (der Resource Server hat einen Fehler im
+Request festgestellt und vermutet die Ursache beim HTTP Proxy) und DARF diese Response nicht an den Client
+weiterleiten. Der entsprechende Request des Clients MUSS in diesem Fall mit HTTP 500 beantwortet werden. [<= ]
+---
+
+=== PAGE 100 LINE 15 ===
+Request festgestellt und vermutet die Ursache beim HTTP Proxy) und DARF diese Response nicht an den Client
+weiterleiten. Der entsprechende Request des Clients MUSS in diesem Fall mit HTTP 500 beantwortet werden. [<= ]
+A_27266 - PEP HTTP Proxy - Protected Resource Metadata Well-known
+Die Komponente HTTP Proxy MUSS gemäß [RFC9728] und [opr-well-known.yaml] ein Well-known JSON Dokument wie
+folgt bereitstellen, damit Clients die notwendigen Informationen zur Interaktion mit dem Resource Server finden können.
+---
+
+=== PAGE 100 LINE 17 ===
+A_27266 - PEP HTTP Proxy - Protected Resource Metadata Well-known
+Die Komponente HTTP Proxy MUSS gemäß [RFC9728] und [opr-well-known.yaml] ein Well-known JSON Dokument wie
+folgt bereitstellen, damit Clients die notwendigen Informationen zur Interaktion mit dem Resource Server finden können.
+GET /.well-known/oauth-protected-resource
+Host: <FQDN des Resource Servers>
+---
+
+=== PAGE 100 LINE 18 ===
+Die Komponente HTTP Proxy MUSS gemäß [RFC9728] und [opr-well-known.yaml] ein Well-known JSON Dokument wie
+folgt bereitstellen, damit Clients die notwendigen Informationen zur Interaktion mit dem Resource Server finden können.
+GET /.well-known/oauth-protected-resource
+Host: <FQDN des Resource Servers>
+Das Well-known JSON Dokument MUSS mit dem Schema [opr-well-known.yaml] validiert werden können.
+---
+
+=== PAGE 100 LINE 19 ===
+folgt bereitstellen, damit Clients die notwendigen Informationen zur Interaktion mit dem Resource Server finden können.
+GET /.well-known/oauth-protected-resource
+Host: <FQDN des Resource Servers>
+Das Well-known JSON Dokument MUSS mit dem Schema [opr-well-known.yaml] validiert werden können.
+ [<= ]
+---
+
+=== PAGE 100 LINE 22 ===
+Das Well-known JSON Dokument MUSS mit dem Schema [opr-well-known.yaml] validiert werden können.
+ [<= ]
+Hinweis: Es ist geplant, die Protected Resource Metadata Well-known JSON Dokumente in einer folgenden ZETA
+Ausbaustufe durch den Federation Master bereitzustellen. Der Federation Master signiert die Protected Resource
+Metadata Dokumente und stellt so sicher, dass alle Services zur Föderation und zur gleichen Umgebung gehören (dev,
+---
+
+=== PAGE 100 LINE 23 ===
+ [<= ]
+Hinweis: Es ist geplant, die Protected Resource Metadata Well-known JSON Dokumente in einer folgenden ZETA
+Ausbaustufe durch den Federation Master bereitzustellen. Der Federation Master signiert die Protected Resource
+Metadata Dokumente und stellt so sicher, dass alle Services zur Föderation und zur gleichen Umgebung gehören (dev,
+prod, ref, etc.). Dadurch verbessert sich für ZETA Clients die Authentizität der TI 2.0-Services.
+---
+
+=== PAGE 100 LINE 31 ===
+5.7.2 Sicherheits- und Datenschutz-Anforderungen an den PEP
+A_25445 - PEP - Zugriffsentscheidung nur über PDP
+Der PEP MUSS sicherstellen, dass Zugriffe auf den Resource Server nur durch eine positive Zugriffsentscheidung vom
+PDP möglich sind.   [<= ]
+Hinweis: Die positive Zugriffsentscheidung auf den Resource Server ist gegeben, wenn der Client im Request
+---
+
+=== PAGE 100 LINE 33 ===
+Der PEP MUSS sicherstellen, dass Zugriffe auf den Resource Server nur durch eine positive Zugriffsentscheidung vom
+PDP möglich sind.   [<= ]
+Hinweis: Die positive Zugriffsentscheidung auf den Resource Server ist gegeben, wenn der Client im Request
+Authorization Header ein gültiges Access Token mit passendem scope - ausgestellt von einem Authorization Server, zu
+dem eine Vertrauensbeziehung besteht - vorweisen kann. Durch das gültige Access Token ist sichergestellt, dass der
+---
+
+=== PAGE 108 LINE 12 ===
+des Anbieters, gematik Telemetriedaten Schnittstelle und gematik SIEM) aufbereitet.
+Zusätzlich nimmt der Telemetriedaten-Service Fehlermeldungen (Traces), Bestandsdaten (Metriken) und
+Selbstauskunftsdaten  (Logs) des Resource Servers entgegen und leitet sie an die gematik Telemetriedaten Schnittstelle
+weiter.
+A_27260 - ZETA Guard, Telemetriedaten-Service, Weitergabe der Daten ohne Profilbildung
+---
+
+=== PAGE 109 LINE 12 ===
+HTTP-Statuscodes gemäß [RFC9110] zu verwenden.
+A_27494-02 - Telemetriedaten-Service, Custom Collector für Selbstauskunft
+Der Telemetriedaten-Service MUSS einen OTEL Collector für die Selbstauskunft des Resource Servers bereitstellen. Die
+Selbstauskunft des Resource Servers erfolgt für jede eigenständige Instanz als OTLP Log Record.
+Hinweis: Der OTLP Log Record für die Selbstauskunft ist in gemSpec_Perf
+---
+
+=== PAGE 109 LINE 13 ===
+A_27494-02 - Telemetriedaten-Service, Custom Collector für Selbstauskunft
+Der Telemetriedaten-Service MUSS einen OTEL Collector für die Selbstauskunft des Resource Servers bereitstellen. Die
+Selbstauskunft des Resource Servers erfolgt für jede eigenständige Instanz als OTLP Log Record.
+Hinweis: Der OTLP Log Record für die Selbstauskunft ist in gemSpec_Perf
+(Tab_gemSpec_Perf_Telemetriedaten_product_info) definiert.  [<= ]
+---
+
+=== PAGE 109 LINE 16 ===
+Hinweis: Der OTLP Log Record für die Selbstauskunft ist in gemSpec_Perf
+(Tab_gemSpec_Perf_Telemetriedaten_product_info) definiert.  [<= ]
+Beispiel: Selbstauskunft OTLP-Log-Nachricht (JSON) vom Resource Server an den Telemetriedaten-Service. Die Log-
+Nachricht wird unverändert an die gematik Telemetriedaten-Schnittstelle weitergeleitet.
+{
+---
+
+=== PAGE 109 LINE 19 ===
+Nachricht wird unverändert an die gematik Telemetriedaten-Schnittstelle weitergeleitet.
+{
+  "resourceLogs": [
+    {
+      "scopeLogs": [
+---
+
+=== PAGE 113 LINE 26 ===
+SelfHealingMechanismen durch Kubernetes (z.B. RestartPolicy, ReplicaSets): ermöglichen automatische
+Wiederherstellung bei Ausfällen einzelner Komponenten, ohne dass ein manuelles Eingreifen nötig ist.
+ResourceÜberwachung mittels KubernetesMetriken (CPU, RAM, Netzwerk): kann frühzeitig Engpässe und
+Anomalien im Ressourcenverbrauch sichtbar machen.
+A_27385-01 - ZETA Guard-Komponenten - Abbildung von Produkt- und Konfigurationsversionen
+---
+
+=== PAGE 113 LINE 34 ===
+ [<= ]
+A_27496 - Zeta Guard-Komponenten - Aufbereitung von Client Daten zum Monitoring
+Die Komponenten des ZETA Guard MÜSSEN zu jedem Schnittstellenaufruf an den Resource-Server mindestens
+folgende Informationen aus der PDP Datenbank - und dem Request des Aufrufers verarbeiten und protokollieren, damit
+eine anschließende Zusammenführung von Monitoring-Daten aus verschiedenen Quellen (siehe [A_27494*]) im
+---
+
+=== PAGE 116 LINE 3 ===
+Tabelle 22: Tab_gemSpec_ZETA_Schnittstellendefinition_ZETA_Guard
+Endpunkt / Anwendungsfall Beschreibung
+GET /.well-known/api-catalog Abruf des Resource Server API Catalog Well-known JSON Dokuments (ht
+tps://www.rfc-editor.org/rfc/rfc9727.html)
+GET /.well-known/oauth-protected-resource/<resource>
+---
+
+=== PAGE 116 LINE 5 ===
+GET /.well-known/api-catalog Abruf des Resource Server API Catalog Well-known JSON Dokuments (ht
+tps://www.rfc-editor.org/rfc/rfc9727.html)
+GET /.well-known/oauth-protected-resource/<resource>
+Abruf des Resource Server Well-known JSON Dokuments. Default
+ist GET /.well-known/oauth-protected-resource/. Wenn mehrere
+---
+
+=== PAGE 116 LINE 6 ===
+tps://www.rfc-editor.org/rfc/rfc9727.html)
+GET /.well-known/oauth-protected-resource/<resource>
+Abruf des Resource Server Well-known JSON Dokuments. Default
+ist GET /.well-known/oauth-protected-resource/. Wenn mehrere
+Ressourcen vom Resource Server bereitgestellt werden, dann werden die
+---
+
+=== PAGE 116 LINE 7 ===
+GET /.well-known/oauth-protected-resource/<resource>
+Abruf des Resource Server Well-known JSON Dokuments. Default
+ist GET /.well-known/oauth-protected-resource/. Wenn mehrere
+Ressourcen vom Resource Server bereitgestellt werden, dann werden die
+Well-known Dokumente über den Subpath <resource> bereitgestellt.
+---
+
+=== PAGE 116 LINE 8 ===
+Abruf des Resource Server Well-known JSON Dokuments. Default
+ist GET /.well-known/oauth-protected-resource/. Wenn mehrere
+Ressourcen vom Resource Server bereitgestellt werden, dann werden die
+Well-known Dokumente über den Subpath <resource> bereitgestellt.
+Beispiel: GET /.well-known/oauth-protected-resource/resource1
+---
+
+=== PAGE 116 LINE 9 ===
+ist GET /.well-known/oauth-protected-resource/. Wenn mehrere
+Ressourcen vom Resource Server bereitgestellt werden, dann werden die
+Well-known Dokumente über den Subpath <resource> bereitgestellt.
+Beispiel: GET /.well-known/oauth-protected-resource/resource1
+(https://www.rfc-editor.org/rfc/rfc9728.html)
+---
+
+=== PAGE 116 LINE 10 ===
+Ressourcen vom Resource Server bereitgestellt werden, dann werden die
+Well-known Dokumente über den Subpath <resource> bereitgestellt.
+Beispiel: GET /.well-known/oauth-protected-resource/resource1
+(https://www.rfc-editor.org/rfc/rfc9728.html)
+GET /.well-known/oauth-authorization-serverAbruf des Autorisierungsserver Well-known JSON Dokuments
+---
+
+=== PAGE 117 LINE 18 ===
+Flow verwendet wird) bei der gematik registrieren. [<= ]
+5.13 Anforderungen an Dienste der TI
+Dienste der TI (Resource Server), die durch einen ZETA Guard geschützt sind, erhalten nur Requests von Clients oder
+anderen Diensten, wenn der PDP des ZETA Guard den Zugriff gewährt und ein Access Token ausgestellt hat. Der PEP
+des ZETA Guards setzt durch, dass nur Requests mit gültigem Access Token zum Resource Server gelangen.
+---
+
+=== PAGE 117 LINE 20 ===
+Dienste der TI (Resource Server), die durch einen ZETA Guard geschützt sind, erhalten nur Requests von Clients oder
+anderen Diensten, wenn der PDP des ZETA Guard den Zugriff gewährt und ein Access Token ausgestellt hat. Der PEP
+des ZETA Guards setzt durch, dass nur Requests mit gültigem Access Token zum Resource Server gelangen.
+5.14 Sicherheitsleistungen des ZETA Guard für Resource Server
+Der ZETA Guard bietet umfassende Sicherheitsleistungen für Resource Server in der TI 2.0, indem er das Zero Trust-
+---
+
+=== PAGE 117 LINE 21 ===
+anderen Diensten, wenn der PDP des ZETA Guard den Zugriff gewährt und ein Access Token ausgestellt hat. Der PEP
+des ZETA Guards setzt durch, dass nur Requests mit gültigem Access Token zum Resource Server gelangen.
+5.14 Sicherheitsleistungen des ZETA Guard für Resource Server
+Der ZETA Guard bietet umfassende Sicherheitsleistungen für Resource Server in der TI 2.0, indem er das Zero Trust-
+Paradigma umsetzt. Seine wichtigsten Sicherheitsleistungen lassen sich wie folgt zusammenfassen:
+---
+
+=== PAGE 117 LINE 22 ===
+des ZETA Guards setzt durch, dass nur Requests mit gültigem Access Token zum Resource Server gelangen.
+5.14 Sicherheitsleistungen des ZETA Guard für Resource Server
+Der ZETA Guard bietet umfassende Sicherheitsleistungen für Resource Server in der TI 2.0, indem er das Zero Trust-
+Paradigma umsetzt. Seine wichtigsten Sicherheitsleistungen lassen sich wie folgt zusammenfassen:
+Zugriffskontrolle: Der Policy Enforcement Point (PEP) fungiert als HTTP Proxy und kontrolliert den gesamten
+---
+
+=== PAGE 117 LINE 25 ===
+Paradigma umsetzt. Seine wichtigsten Sicherheitsleistungen lassen sich wie folgt zusammenfassen:
+Zugriffskontrolle: Der Policy Enforcement Point (PEP) fungiert als HTTP Proxy und kontrolliert den gesamten
+Datenverkehr zwischen Client-Anwendungen und dem Resource Server. Er lässt nur Anfragen mit gültigem Access
+Token durch, das vom Policy Decision Point (PDP) ausgestellt wurde. Zusätzliche Prüfungen, gesteuert durch
+Attribute im Access Token, können integriert werden. Optional kann konfiguriert werden, dass im Request Header
+---
+
+=== PAGE 118 LINE 3 ===
+Refresh Token erfolgt. Die Integrität und Authentizität der Policies wird durch Signaturen sichergestellt.
+Schutz vor Token-Theft: Durch den Einsatz von DPoP wird verhindert, dass gestohlene Access und Refresh
+Token durch Angreifer verwendet werden können, um Zugriff auf den Resource Server zu erhalten.
+TLS Transportverschlüsselung: Alle Komponenten des ZETA Guards stellen die Vertraulichkeit und Integrität der
+transportierten Daten sicher, indem sie TLS an allen Endpunkten verwenden und clientseitig mTLS unterstützen.
+---
+
+=== PAGE 118 LINE 29 ===
+Anbieter des TI 2.0 Dienstes erkennbar, welche zusätzlichen Sicherheitsleistungen zum Schutz des Dienstes und
+der Daten vom Anbieter erbracht werden müssen.
+5.15 Weitere Leistungen des ZETA Guard für Resource Server
+Der ZETA Guard übernimmt für Resource Server weitere Leistungen:
+gematik Telemetriedaten Lieferung: Der Telemetriedaten-Service sammelt von allen Komponenten des ZETA
+---
+
+=== PAGE 118 LINE 30 ===
+der Daten vom Anbieter erbracht werden müssen.
+5.15 Weitere Leistungen des ZETA Guard für Resource Server
+Der ZETA Guard übernimmt für Resource Server weitere Leistungen:
+gematik Telemetriedaten Lieferung: Der Telemetriedaten-Service sammelt von allen Komponenten des ZETA
+Guard Metriken, Traces und Logdaten und bereitet diese für den Versand an das Monitoring des TI 2.0 Dienst-
+---
+
+=== PAGE 118 LINE 37 ===
+Daten und leitet sie an das SIEM der gematik weiter.
+Notification Service: Der ZETA Guard implementiert eine API um Notification-Konfigurationen für Nutzer und ihre
+Clients zu speichern und um Notification-Events vom Resource Server entgegenzunehmen und an die
+Clientsystem Notification Services weiterzuleiten.
+Protected Resource Metadata: Über den HTTP Proxy können Clients das OAuth 2.0 Protected Resource
+---
+
+=== PAGE 118 LINE 39 ===
+Clients zu speichern und um Notification-Events vom Resource Server entgegenzunehmen und an die
+Clientsystem Notification Services weiterzuleiten.
+Protected Resource Metadata: Über den HTTP Proxy können Clients das OAuth 2.0 Protected Resource
+Metadata Well-known JSON-Dokument ([RFC9728]) abfragen, um die notwendigen Informationen für die
+Interaktion mit diesem Resource Server zu erhalten.
+---
+
+=== PAGE 118 LINE 41 ===
+Protected Resource Metadata: Über den HTTP Proxy können Clients das OAuth 2.0 Protected Resource
+Metadata Well-known JSON-Dokument ([RFC9728]) abfragen, um die notwendigen Informationen für die
+Interaktion mit diesem Resource Server zu erhalten.
+Spezifikation Zero Trust Access (ZETA)
+gemSpec_ZETA_1.4.0.pdf Spezifikation Seite 118 von 127
+---
+
+=== PAGE 124 LINE 9 ===
+[JOSE] JSON Object Signing and Encryption (JOSE)
+https://www.iana.org/assignments/jose/jose.xhtml 
+[opr-well-known.yaml]Schema für das OAuth Protected Resource Metadata Well-known JSON Dokument
+https://raw.githubusercontent.com/gematik/zeta/main/src/schemas/opr-well-known.yaml 
+[pdp-decision.yaml] Schema pdp-decision.yaml 
+---
+
+=== PAGE 126 LINE 9 ===
+[RFC8705] OAuth 2.0 Mutual-TLS Client Authentication and Certificate-Bound Access Token
+https://datatracker.ietf.org/doc/html/rfc8705 (Abruf 01/2025)
+[RFC8707] Resource Indicators for OAuth 2.0
+https://www.rfc-editor.org/rfc/rfc8707.html
+[RFC9334] Remote ATtestation procedureS (RATS) Architecture
+---
+
+=== PAGE 126 LINE 17 ===
+[RFC9727] api-catalog: A Well-Known URI and Link Relation to Help Discovery of APIs
+https://www.rfc-editor.org/rfc/rfc9727.html
+[RFC9728] OAuth 2.0 Protected Resource Metadata
+https://www.rfc-editor.org/rfc/rfc9728.html 
+[session.yaml] Schema session.yaml
+---
