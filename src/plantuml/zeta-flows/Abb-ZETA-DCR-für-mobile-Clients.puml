@@ -45,7 +45,7 @@ alt Kein ZETA Attestation Token
       Universal-/App-Links auf einer vom App-Hersteller kontrollierten Domain):
       - https://<App-FQDN>/cb/<app>/oidc = oidc_redirect_uri
         (SekIDP Auth Code Flow, redirection_endpoint des AuthS, nicht /token)
-      - https://<App-FQDN>/cb/<app>/app = redirect_uri_app
+      - https://<App-FQDN>/cb/<app>/app = app_redirect_uri
         (ZETA Guard Auth Code Flow, /token-Endpunkt des AuthS)
       Beide Callbacks enden über denselben App-Link/Universal-Link in der App;
       der ZETA Client unterscheidet den zu nutzenden AuthS-Endpunkt anhand des Pfads.

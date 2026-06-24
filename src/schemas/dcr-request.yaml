@@ -255,7 +255,7 @@ definitions:
           den über diese URI empfangenen Code an den redirection_endpoint des AuthS
           weiter (NICHT /token). Diese URI wird ins AuthS-Entity-Statement aufgenommen;
           der AuthS erkennt am Suffix, welche URI für den SekIDP bestimmt ist.
-        - ".../app" = redirect_uri_app → ZETA Guard Auth Code Flow; der ZETA Client
+        - ".../app" = app_redirect_uri → ZETA Guard Auth Code Flow; der ZETA Client
           reicht den Code an den /token-Endpunkt des AuthS weiter.
       Die OS-seitige Verknüpfung erfolgt über apple-app-site-association bzw.
       assetlinks.json (Deployment, kein Laufzeit-Flow).
