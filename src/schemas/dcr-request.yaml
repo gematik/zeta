@@ -251,7 +251,7 @@ definitions:
       App Links) je App registriert. Beide Auth Code Flows enden über denselben
       App-/Universal-Link in der App; der ZETA Client unterscheidet den beim AuthS zu
       nutzenden Endpunkt über den LETZTEN Pfad-Abschnitt (Konvention "/cb/<app>/<flow>"):
-        - ".../as" = oidc_redirect_uri → SekIDP Auth Code Flow; der ZETA Client reicht
+        - ".../oidc" = oidc_redirect_uri → SekIDP Auth Code Flow; der ZETA Client reicht
           den über diese URI empfangenen Code an den redirection_endpoint des AuthS
           weiter (NICHT /token). Diese URI wird ins AuthS-Entity-Statement aufgenommen;
           der AuthS erkennt am Suffix, welche URI für den SekIDP bestimmt ist.

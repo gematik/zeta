@@ -45,7 +45,7 @@ definitions:
           Werden in den Token aufgenommen, damit sie bei einer erneuten Registrierung
           im Fast-Path (attestation_type=zeta_attestation_token) nicht erneut übertragen
           werden müssen; der AuthS übernimmt sie aus dem Token. Der letzte Pfad-Abschnitt
-          bestimmt den Flow: ".../as" = oidc_redirect_uri (SekIDP Auth Code Flow),
+          bestimmt den Flow: ".../oidc" = oidc_redirect_uri (SekIDP Auth Code Flow),
           ".../app" = redirect_uri_app (ZETA Guard Auth Code Flow). Für stationäre
           Clients i. d. R. nicht gesetzt.
         items:

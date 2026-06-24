@@ -16,11 +16,11 @@ box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
 end box
 
 Client++
-Client -> AuthS++: POST /register\n{\n  "client_name": "myClient",\n  "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"],\n  "jwks": { "keys": [ PuK.Client.Sig ] },\n  "token_endpoint_auth_method": "private_key_jwt",\n  "redirect_uris": ["https://<App-FQDN>/cb/<app>/as", "https://<App-FQDN>/cb/<app>/app"]\n}
+Client -> AuthS++: POST /register\n{\n  "client_name": "myClient",\n  "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"],\n  "jwks": { "keys": [ PuK.Client.Sig ] },\n  "token_endpoint_auth_method": "private_key_jwt",\n  "redirect_uris": ["https://<App-FQDN>/cb/<app>/oidc", "https://<App-FQDN>/cb/<app>/app"]\n}
 note right of AuthS
   Es werden zwei redirect_uris je App registriert (RFC 8252, claimed-HTTPS
   Universal-/App-Links auf einer vom App-Hersteller kontrollierten Domain):
-  - https://<App-FQDN>/cb/<app>/as = oidc_redirect_uri
+  - https://<App-FQDN>/cb/<app>/oidc = oidc_redirect_uri
     (SekIDP Auth Code Flow, redirection_endpoint des AuthS, nicht /token)
   - https://<App-FQDN>/cb/<app>/app = redirect_uri_app
     (ZETA Guard Auth Code Flow, /token-Endpunkt des AuthS)

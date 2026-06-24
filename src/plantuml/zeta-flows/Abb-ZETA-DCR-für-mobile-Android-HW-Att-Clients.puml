@@ -33,7 +33,7 @@ alt Kein ZETA Attestation Token vorhanden
     note right of AuthS
       Es werden zwei redirect_uris je App registriert (RFC 8252, claimed-HTTPS
       Universal-/App-Links auf einer vom App-Hersteller kontrollierten Domain):
-      - https://<App-FQDN>/cb/<app>/as = oidc_redirect_uri
+      - https://<App-FQDN>/cb/<app>/oidc = oidc_redirect_uri
         (SekIDP Auth Code Flow, redirection_endpoint des AuthS, nicht /token)
       - https://<App-FQDN>/cb/<app>/app = redirect_uri_app
         (ZETA Guard Auth Code Flow, /token-Endpunkt des AuthS)

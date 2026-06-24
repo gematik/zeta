@@ -28,7 +28,7 @@ note over Client, IDP: Der ZETA Client hat aus Teildiagramm (B) den AUTHORIZATIO
 note over Client, AuthS
   Beide Auth Code Flows enden über denselben App-Link/Universal-Link in der App. Der ZETA
   Client erkennt anhand des Pfads der redirect_uri, welcher AuthS-Endpunkt zu verwenden ist:
-  - oidc_redirect_uri (/cb/<app>/as) → redirection_endpoint des AuthS (aus as-well-known),
+  - oidc_redirect_uri (/cb/<app>/oidc) → redirection_endpoint des AuthS (aus as-well-known),
     nicht der /token-Endpunkt → SekIDP Auth Code Flow (innerer Flow).
   - redirect_uri_app (/cb/<app>/app) → /token-Endpunkt des AuthS → ZETA Guard Auth Code Flow (äußerer Flow).
 end note

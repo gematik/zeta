@@ -893,7 +893,7 @@ Der Token-Bezug für mobile Benutzer erfolgt über den standardisierten **OpenID
 **Vorbedingungen:**
 
 - Die Service Discovery ist abgeschlossen; der Client kennt die Endpunkte des AuthS (siehe [Kapitel 3](#3-discovery-und-konfiguration)).
-- Der Client wurde per DCR registriert und besitzt `PrK.Client.Sig` / `PuK.Client.Sig` sowie zwei registrierte `redirect_uris` – `oidc_redirect_uri` (Pfad `.../as`, SekIDP-Flow) und `redirect_uri_app` (Pfad `.../app`, ZETA-Guard-Flow) (siehe [5.4](#54-native-mobile-apps-universal-links--app-links-für-mehrere-clients)).
+- Der Client wurde per DCR registriert und besitzt `PrK.Client.Sig` / `PuK.Client.Sig` sowie zwei registrierte `redirect_uris` – `oidc_redirect_uri` (Pfad `.../oidc`, SekIDP-Flow) und `redirect_uri_app` (Pfad `.../app`, ZETA-Guard-Flow) (siehe [5.4](#54-native-mobile-apps-universal-links--app-links-für-mehrere-clients)).
 - Der AuthS ist als Relying Party beim Federation Master registriert.
 - App-Link / Universal-Link für ZETA Client und Authenticator-Modul sind im Betriebssystem registriert.
 
@@ -936,7 +936,7 @@ Im inneren Flow löst der AuthS den IDP-Code ein und gewinnt die Identitäts-Cla
 
 **Innerer Flow – Token-Bezug beim sektoralen IDP:**
 
-> Beide Auth Code Flows enden über denselben App-/Universal-Link in der App. Der ZETA Client erkennt am **Pfad** der eingehenden `redirect_uri`, welcher AuthS-Endpunkt zu verwenden ist: `.../as` (`oidc_redirect_uri`) → `redirection_endpoint` (aus `as-well-known`, **nicht** `/token`) für den SekIDP-Flow; `.../app` (`redirect_uri_app`) → `token_endpoint` für den ZETA-Guard-Flow.
+> Beide Auth Code Flows enden über denselben App-/Universal-Link in der App. Der ZETA Client erkennt am **Pfad** der eingehenden `redirect_uri`, welcher AuthS-Endpunkt zu verwenden ist: `.../oidc` (`oidc_redirect_uri`) → `redirection_endpoint` (aus `as-well-known`, **nicht** `/token`) für den SekIDP-Flow; `.../app` (`redirect_uri_app`) → `token_endpoint` für den ZETA-Guard-Flow.
 
 - *(01) GET <oidc_redirect_uri>:* Der Client folgt der Redirection an den `redirection_endpoint` des AuthS (nicht `/token`) mit `{code=AUTH_CODE_IDP, state=state_as}`.
 - *(02) POST /token:* Der AuthS löst den Code beim IDP ein (mTLS) mit `{grant_type=authorization_code, code=AUTH_CODE_IDP, code_verifier=code_verifier_as, client_id, oidc_redirect_uri}`.
@@ -1184,14 +1184,14 @@ Mehrere native Apps auf demselben Endgerät können denselben ZETA Guard Authori
 
 Je App werden **zwei** `redirect_uris` registriert – eine je Auth Code Flow (siehe [5.1.3](#513-authentifizierung--autorisierung-oidc-flow)):
 
-- `oidc_redirect_uri` (Pfad `.../as`) für den SekIDP Auth Code Flow,
+- `oidc_redirect_uri` (Pfad `.../oidc`) für den SekIDP Auth Code Flow,
 - `redirect_uri_app` (Pfad `.../app`) für den ZETA Guard Auth Code Flow.
 
 Beide Callbacks enden über denselben App-/Universal-Link in der App. Damit das mobile Betriebssystem die OIDC-Redirection (`302 Found` an die `redirect_uri`) eindeutig der richtigen App zustellt und der ZETA Client den richtigen AuthS-Endpunkt anspricht, gelten folgende Festlegungen gemäß [RFC 8252](https://www.rfc-editor.org/info/rfc8252) (OAuth 2.0 for Native Apps):
 
 - **Claimed HTTPS Redirect-URIs (Universal Links / App Links):** Die `redirect_uris` sind HTTPS-URLs auf einer **vom App-Hersteller kontrollierten Domain** – nicht auf der AuthS-Domain. Die App kennt den AuthS-FQDN zur Entwicklungszeit nicht; er wird erst zur Laufzeit über `opr-well-known`/`as-well-known` aufgelöst. Die `redirect_uris` müssen daher AuthS-unabhängig sein.
 - **Vorab-Registrierung bei der gematik:** Der Hersteller registriert die `redirect_uris` vorab bei der gematik. Nur so können sie (a) im AuthS hinterlegt werden – beim DCR (`POST /register`) prüft der AuthS, ob die übergebenen `redirect_uris` registriert sind (exakter String-Vergleich) – und (b) in das **Entity Statement des AuthS** aufgenommen werden, gegen das der sektorale IDP `oidc_redirect_uri` beim PAR prüft.
-- **Ein eigener Pfad je App und je Flow:** Jede App registriert ihre `redirect_uris` mit unterschiedlichem Pfad (z. B. `https://<App-FQDN>/cb/app-a/as` und `https://<App-FQDN>/cb/app-a/app`). Die App-Zuordnung erfolgt über Host und Pfad – **nicht** über Query-Parameter wie `client_id`. Der **letzte Pfad-Abschnitt** (`as` | `app`) bestimmt den Flow: Bei `.../as` reicht der ZETA Client den empfangenen Code an den `redirection_endpoint` des AuthS weiter (nicht `/token`), bei `.../app` an den `token_endpoint`.
+- **Ein eigener Pfad je App und je Flow:** Jede App registriert ihre `redirect_uris` mit unterschiedlichem Pfad (z. B. `https://<App-FQDN>/cb/app-a/as` und `https://<App-FQDN>/cb/app-a/app`). Die App-Zuordnung erfolgt über Host und Pfad – **nicht** über Query-Parameter wie `client_id`. Der **letzte Pfad-Abschnitt** (`as` | `app`) bestimmt den Flow: Bei `.../oidc` reicht der ZETA Client den empfangenen Code an den `redirection_endpoint` des AuthS weiter (nicht `/token`), bei `.../app` an den `token_endpoint`.
 - **OS-seitige Verknüpfung (Domain-Ownership):** Auf der App-Hersteller-Domain wird je Plattform eine Verknüpfungsdatei bereitgestellt, die App-Identitäten den jeweiligen Pfaden zuordnet:
   - iOS/iPadOS/macOS: `https://<App-FQDN>/.well-known/apple-app-site-association`
   - Android: `https://<App-FQDN>/.well-known/assetlinks.json`
@@ -1199,7 +1199,7 @@ Beide Callbacks enden über denselben App-/Universal-Link in der App. Damit das 
   Beide Dateien können mehrere Apps (App IDs bzw. Package-Namen + Signatur-Fingerprints) enthalten. Dies ist eine **Deployment-Konfiguration** auf der App-Hersteller-Domain und kein Laufzeit-Flow; der App-Hersteller ist für die Bereitstellung und Pflege dieser Dateien verantwortlich.
 - **Fallback „App nicht installiert":** Da die `redirect_uris` reguläre HTTPS-URLs sind, werden sie bei nicht installierter App im System-Browser geöffnet und können auf der App-Hersteller-Domain serverseitig verarbeitet werden (z. B. Hinweis-/Installationsseite).
 
-Die `redirect_uris` sind ein Client-Attribut (auf der App-Hersteller-Domain) und werden per DCR beim AuthS registriert. Sie sind zu unterscheiden vom `redirection_endpoint` des AuthS: Dieser ist ein Server-Endpunkt **auf der AuthS-Domain**, an den der ZETA Client den im `.../as`-Callback erhaltenen IDP-Code weiterreicht; er wird – wie `authorization_endpoint`, `token_endpoint`, `registration_endpoint`, `jwks_uri` – über das AuthS-`.well-known` (RFC 8414) verteilt. Die `redirect_uris` selbst werden **nicht** über das AuthS-`.well-known` verteilt.
+Die `redirect_uris` sind ein Client-Attribut (auf der App-Hersteller-Domain) und werden per DCR beim AuthS registriert. Sie sind zu unterscheiden vom `redirection_endpoint` des AuthS: Dieser ist ein Server-Endpunkt **auf der AuthS-Domain**, an den der ZETA Client den im `.../oidc`-Callback erhaltenen IDP-Code weiterreicht; er wird – wie `authorization_endpoint`, `token_endpoint`, `registration_endpoint`, `jwks_uri` – über das AuthS-`.well-known` (RFC 8414) verteilt. Die `redirect_uris` selbst werden **nicht** über das AuthS-`.well-known` verteilt.
 
 ---
 
