@@ -50,7 +50,7 @@ note over AuthS, IDP
 end note
 
 AuthS -> IDP++: POST /PAR (mTLS, self_signed_tls_client_auth)\n\
-  {client_id, oidc_redirect_uri, response_type=code, code_challenge_as,\n\
+  {client_id, redirect_uri=oidc_redirect_uri, response_type=code, code_challenge_as,\n\
   code_challenge_method=S256, scope, claims, acr_values, nonce, state_as}
 
 opt Entity Statement des Fachdienstes unbekannt
