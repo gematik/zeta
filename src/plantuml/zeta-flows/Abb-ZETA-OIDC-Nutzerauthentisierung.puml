@@ -30,7 +30,7 @@ AM -> User++: Fordere Authentisierung (eGK+PIN / eID)\nund Consent-Freigabe an
 User -> AM--: Authentisierung + Consent-Freigabe
 AM -> IDP: Bestätigt erfolgreiche Authentisierung (proprietär)
 IDP -> IDP: Erzeuge AUTHORIZATION_CODE (IDP),\nGültigkeit max. 90s
-IDP --> AM--: 302 Found\nLocation: <redirect_uri_as>?code=AUTH_CODE_IDP&state=state_as
+IDP --> AM--: 302 Found\nLocation: <oidc_redirect_uri>?code=AUTH_CODE_IDP&state=state_as
 AM -> Client--: App-Link / Universal-Link\n{code=AUTH_CODE_IDP, state=state_as}
 
 note over Client, IDP: Weiter mit Teildiagramm (C) Abb-ZETA-OIDC-Token-Bezug.

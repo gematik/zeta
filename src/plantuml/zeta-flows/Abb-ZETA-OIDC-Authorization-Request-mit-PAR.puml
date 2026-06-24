@@ -38,12 +38,12 @@ opt Entity Statement des IDP unbekannt
 end
 
 note over AuthS, IDP
-  redirect_uri_as ist der Redirection-Endpunkt der OIDC Relying Party (AuthS) für den SekIDP Auth Code Flow.
-  Sie wird im Entity Statement des AS (Fachdienst) geführt; der SekIDP prüft beim PAR, ob redirect_uri_as
+  oidc_redirect_uri ist der Redirection-Endpunkt der OIDC Relying Party (AuthS) für den SekIDP Auth Code Flow.
+  Sie wird im Entity Statement des AS (Fachdienst) geführt; der SekIDP prüft beim PAR, ob oidc_redirect_uri
   eine bekannte redirect_uri aus diesem AS-Entity-Statement ist.
 end note
 
-AuthS -> IDP++: POST /PAR (mTLS, self_signed_tls_client_auth)\n{client_id, redirect_uri_as, response_type=code,\ncode_challenge_as, code_challenge_method=S256,\nscope, claims, acr_values, nonce, state_as}
+AuthS -> IDP++: POST /PAR (mTLS, self_signed_tls_client_auth)\n{client_id, oidc_redirect_uri, response_type=code,\ncode_challenge_as, code_challenge_method=S256,\nscope, claims, acr_values, nonce, state_as}
 
 opt Entity Statement des Fachdienstes unbekannt
     IDP -> AuthS++: GET /.well-known/openid-federation
@@ -53,7 +53,7 @@ opt Entity Statement des Fachdienstes unbekannt
     IDP -> IDP: Validiere Trust Chain, Automatic Registration,\nimportiere Schlüssel (sig/enc) des Fachdienstes
 end
 
-IDP -> IDP: Validiere PAR: redirect_uri_as gegen redirect_uris\nim AS-Entity-Statement, scope, claims,\nTLS-Clientzertifikat; erzeuge request_uri
+IDP -> IDP: Validiere PAR: oidc_redirect_uri gegen redirect_uris\nim AS-Entity-Statement, scope, claims,\nTLS-Clientzertifikat; erzeuge request_uri
 IDP --> AuthS--: 201 Created {request_uri, expires_in (max. 90s)}
 
 AuthS --> Client--: 302 Found Location:\n<SekIDP Entity Statement authorization_endpoint>\n?client_id&request_uri

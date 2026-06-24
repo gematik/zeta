@@ -28,13 +28,13 @@ note over Client, IDP: Der ZETA Client hat aus Teildiagramm (B) den AUTHORIZATIO
 note over Client, AuthS
   Beide Auth Code Flows enden über denselben App-Link/Universal-Link in der App. Der ZETA
   Client erkennt anhand des Pfads der redirect_uri, welcher AuthS-Endpunkt zu verwenden ist:
-  - redirect_uri_as (/cb/<app>/as) → redirection_endpoint des AuthS (aus as-well-known),
+  - oidc_redirect_uri (/cb/<app>/as) → redirection_endpoint des AuthS (aus as-well-known),
     nicht der /token-Endpunkt → SekIDP Auth Code Flow (innerer Flow).
   - redirect_uri_app (/cb/<app>/app) → /token-Endpunkt des AuthS → ZETA Guard Auth Code Flow (äußerer Flow).
 end note
 
-Client -> AuthS++: GET <redirect_uri_as> (redirection_endpoint der OIDC Relying Party, nicht /token)\nFolgt der 302-Redirection aus Teildiagramm (B)\n{code=AUTH_CODE_IDP, state=state_as}
-AuthS -> IDP++: POST /token (mTLS, self_signed_tls_client_auth)\n{grant_type=authorization_code, code=AUTH_CODE_IDP,\ncode_verifier=code_verifier_as, client_id, redirect_uri_as}
+Client -> AuthS++: GET <oidc_redirect_uri> (redirection_endpoint der OIDC Relying Party, nicht /token)\nFolgt der 302-Redirection aus Teildiagramm (B)\n{code=AUTH_CODE_IDP, state=state_as}
+AuthS -> IDP++: POST /token (mTLS, self_signed_tls_client_auth)\n{grant_type=authorization_code, code=AUTH_CODE_IDP,\ncode_verifier=code_verifier_as, client_id, oidc_redirect_uri}
 IDP -> IDP: Prüfe TLS-Clientzertifikat,\nverifiziere code_verifier_as gegen code_challenge_as (S256),\ninvalidiere AUTHORIZATION_CODE
 IDP --> AuthS--: 200 OK\n{id_token (JWE: ECDH-ES/A256GCM, signiert ES256),\naccess_token, token_type=Bearer, expires_in}
 AuthS -> AuthS: Entschlüssele ID Token, verifiziere Signatur (kid/x5c),\nprüfe iss/aud/nonce/exp, extrahiere Claims (KVNR, acr, amr, ...)
