@@ -34,16 +34,15 @@ alt Secure Enclave
     SE --> AppleOS--: Attestation-Objekt (CBOR)
     AppleOS --> Client: apple_attestation_object\n(X.509-Kette + Receipt, Challenge eingebettet)
 
-    == Expliziter Besitznachweis (Proof of Possession) ==
+== Expliziter Besitznachweis (Proof of Possession) ==
     note left of Client
-      Besitznachweis des Client Instance Keys.
-      Das apple_attestation_object beweist HW-Bindung;
-      diese Assertion beweist Besitz von PrK.Client.Sig.
+      Besitznachweis des Client Instance Keys. Das apple_attestation_object beweist die HW-Bindung;
+      diese Signatur beweist den physischen Besitz von PrK.Client.Sig.
     end note
-    Client -> AppleOS: DCAppAttest.shared.generateAssertion(\n  keyId_AK, SHA-256(PuK.Client.Sig))
-    AppleOS -> SE++: Signiere Hash mit PrK.AK.Sig
-    SE --> AppleOS--: CBOR Assertion
-    AppleOS --> Client: signed_hash_puk_client_sig\n(dc_assertion: Signatur + authenticatorData)
+    Client -> AppleOS: SecKeyCreateSignature(\n  PrK.Client.Sig, SHA-256(PuK.Client.Sig))
+    AppleOS -> SE++: Signiere Hash mit PrK.Client.Sig
+    SE --> AppleOS--: ECDSA Signatur
+    AppleOS --> Client: signed_hash_puk_client_sig
 
 else Fallback
   Client -> Client: Generiere PrK.Client.Sig,\nPuK.Client.Sig

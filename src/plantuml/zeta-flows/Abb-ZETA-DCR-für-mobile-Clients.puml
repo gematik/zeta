@@ -19,11 +19,11 @@ Client++
 alt Kein ZETA Attestation Token
     
     alt Hardware Attestation: iOS, iPadOS, macOS (Apple App Attest)
-        Client -> AuthS++: POST /register\n{attestation_type="apple", Apple_Attestation_Object, PuK.Client.Sig, redirect_uris}
+        Client -> AuthS++: POST /register\n{attestation_type="apple", Apple_Attestation_Object, PuK.Client.Sig,\nsigned_hash_puk_client_sig, redirect_uris}
         AuthS -> AuthS: Validiere Apple_Attestation_Object
+        AuthS -> AuthS: Prüfe signed_hash_puk_client_sig mit PuK.Client.Sig
         note right of AuthS: AuthS verifiziert Apple App Attest Root CA.\nExtrahiert Hash(PuK.Client.Sig) aus Objekt und vergleicht ihn mit dem Payload.
-
-else Hardware Attestation: Android (Keystore, TEE, StrongBox)
+    else Hardware Attestation: Android (Keystore, TEE, StrongBox)
         Client -> AuthS: POST /register\n{attestation_type="android", PuK.AK.Sig, Android_Key_Attestation_Certificate_Chain,\nPuK.Client.Sig, signed_hash_puk_client_sig, play_integrity_token, redirect_uris}
         AuthS -> AuthS: Validiere Zertifikatskette gegen Google Root CA
         AuthS -> AuthS: Extrahiere attestationChallenge aus KeyDescription ASN.1-Extension des Blatt-Zertifikats
