@@ -30,7 +30,7 @@ AuthS --> Client -- : Nonce
 alt Apple AppAttest Attestation
   Client -> OS: Ermittle Posture\n(SIP, Gatekeeper, OS-Version, Secure Boot)
   OS --> Client: Posture-Daten (Klartext)
-  Client -> Client: clientDataHash = Hash(Nonce + Posture-Daten)
+  Client -> Client: clientDataHash =\nSHA-256(Nonce || Posture-Daten || PuK.Client.Sig)
   Client -> OS: DCAppAttest.generateAssertion(\nkeyId: Handle_PrK.AK.Sig,  clientDataHash)
   OS -> SE: Erstelle Hardware-Signatur über clientDataHash
   SE --> OS: Signatur + Authenticator Data (Counter)
