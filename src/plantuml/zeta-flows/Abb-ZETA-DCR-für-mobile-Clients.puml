@@ -22,7 +22,7 @@ alt Kein ZETA Attestation Token
         Client -> AuthS++: POST /register\n{attestation_type="apple", Apple_Attestation_Object, PuK.Client.Sig,\nsigned_hash_puk_client_sig, redirect_uris}
         AuthS -> AuthS: Validiere Apple_Attestation_Object
         AuthS -> AuthS: Prüfe signed_hash_puk_client_sig mit PuK.Client.Sig
-        note right of AuthS: AuthS verifiziert Apple App Attest Root CA.\nExtrahiert Hash(PuK.Client.Sig) aus Objekt und vergleicht ihn mit dem Payload.
+        note right of AuthS: AuthS verifiziert Apple App Attest Root CA. Extrahiert clientDataHash aus dem\nAttestation Object und prüft: clientDataHash == SHA-256(PuK.Client.Sig).
     else Hardware Attestation: Android (Keystore, TEE, StrongBox)
         Client -> AuthS: POST /register\n{attestation_type="android", PuK.AK.Sig, Android_Key_Attestation_Certificate_Chain,\nPuK.Client.Sig, signed_hash_puk_client_sig, play_integrity_token, redirect_uris}
         AuthS -> AuthS: Validiere Zertifikatskette gegen Google Root CA
@@ -38,8 +38,8 @@ alt Kein ZETA Attestation Token
 
         note right of AuthS
           PuK.AK.Sig muss mit dem Blatt-Zertifikat der Certificate Chain übereinstimmen.
-          Sicherheitsniveau: TrustedEnvironment oder StrongBox.
-          attestationChallenge im Blatt-Zertifikat beweist die TEE-interne Bindung AK ↔ PuK.Client.Sig.
+          Sicherheitsniveau: TrustedEnvironment oder StrongBox. attestationChallenge im
+          Blatt-Zertifikat beweist die TEE-interne Bindung AK ↔ PuK.Client.Sig.
         end note
     else Software Attestation (Legacy OIDC DCR)
         Client -> AuthS: POST /register\n{client_name, "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token",\n"urn:ietf:params:oauth:grant-type:jwt-bearer"], jwks, token_endpoint_auth_method="private_key_jwt",\n  "redirect_uris": ["https://<App-FQDN>/cb/<app>/oidc", "https://<App-FQDN>/cb/<app>/app"]}
