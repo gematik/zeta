@@ -70,6 +70,7 @@ oneOf:
       - client_name
       - jwks
       - apple_attestation_object
+      - signed_hash_puk_client_sig
     description: >-
       Für iOS, iPadOS und macOS identisch. Die Apple App Attest API
       (DeviceCheck-Framework) produziert auf allen Plattformen dasselbe
@@ -100,6 +101,12 @@ oneOf:
           (fmt: "apple-appattest"). Enthält attStmt (x5c-Zertifikatskette inkl.
           puk_ak_sig + receipt) sowie authData (rpIdHash, counter, credentialId).
           Base64-kodiert.
+      signed_hash_puk_client_sig:
+        type: string
+        description: >-
+          Signatur des SHA-256-Hashes von PuK.Client.Sig, erstellt mit
+          PrK.Client.Sig (SecKeyCreateSignature). Beweist Besitz des
+          Client Instance Keys. Base64url-kodiert.
 
   # -----------------------------------------------------------------
   # 3. Android Hardware Attestation

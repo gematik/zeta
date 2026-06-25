@@ -1,7 +1,7 @@
-@startuml "Abb-ZETA-Schlüsselgenerierung-macAppleOS"
+@startuml "Abb-ZETA-Schlüsselgenerierung-Apple"
 !include ../puml-layout.txt
 
-
+participant Apple
 box "Device" DEVICE_COLOR
   participant "Secure Enclave" as SE LEI_COMPONENT_COLOR
   participant "AppleOS (macOS, iOS, iPadOS)" as AppleOS LEI_COMPONENT_COLOR
@@ -24,15 +24,18 @@ alt Secure Enclave
 
     == Hardware-Attestierung (Attestation Key, App Attest) ==
     note left of Client: Generierung des dedizierten Attestation Keys\nund einmalige Attestierung gegen Apple CA.
-    Client -> AppleOS: DCAppAttest.shared.generateKey()
+    Client -> AppleOS: DCAppAttestService.shared.generateKey()
     AppleOS -> SE++: Generiere AK-Schlüsselpaar in SE
     SE --> AppleOS--: keyId_AK (Handle für PrK.AK.Sig)
     AppleOS --> Client: keyId_AK
     Client -> Client: Berechne challenge =\nSHA-256(PuK.Client.Sig)
-    Client -> AppleOS: DCAppAttest.shared.attestKey(\n  keyId_AK, clientDataHash = challenge)
-    AppleOS -> SE++: Signiere challenge mit PrK.AK.Sig
-    SE --> AppleOS--: Attestation-Objekt (CBOR)
-    AppleOS --> Client: apple_attestation_object\n(X.509-Kette + Receipt, Challenge eingebettet)
+
+    Client -> AppleOS: DCAppAttestService.shared.attestKey(\n  keyId_AK, clientDataHash = challenge)
+    AppleOS -> SE++: Erstelle Hardware-Signatur über challenge
+    SE --> AppleOS--: Hardware-Signatur
+    AppleOS -> Apple++: Verifiziere Signatur & erstelle CBOR\n(X.509-Kette + Receipt)
+    Apple --> AppleOS--: apple_attestation_object
+    AppleOS --> Client: apple_attestation_object
 
 == Expliziter Besitznachweis (Proof of Possession) ==
     note left of Client
