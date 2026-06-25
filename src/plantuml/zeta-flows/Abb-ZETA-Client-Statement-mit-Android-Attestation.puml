@@ -1,0 +1,46 @@
+@startuml "Abb-ZETA-Client-Statement-mit-Android-Attestation"
+!include ../puml-layout.txt
+
+!pragma teoz true
+
+box "Device" DEVICE_COLOR
+  participant "TEE / StrongBox\n(Hardware Security)" as TEE LEI_COMPONENT_COLOR
+  participant OS as "OS (Android)" LEI_COMPONENT_COLOR
+  box "Primärsystem" PRIMAERSYSTEM_COLOR
+    participant Client as "ZETA Client" <<zeta>>
+  end box
+end box
+
+box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
+  box "ZETA Guard" ZETA_GUARD_COLOR
+    participant AuthS as "PDP\nAuthorization Server" <<zeta>>
+  end box
+end box
+
+
+Client++
+OS++
+TEE++
+Client -> AuthS ++ : (01) GET /nonce
+AuthS --> Client -- : (02) Nonce
+
+alt Android Key / ID Attestation
+  Client -> OS: (03) Ermittle Posture\n(OS-Version, Security Patch Level,\nHersteller, Modell, Verified Boot,\nApp-Signaturinformationen)
+  OS --> Client: (04) Posture-Daten (Klartext)
+  Client -> Client: (05) clientDataHash = Hash(Nonce + Posture-Daten)
+  Client -> OS: (06) KeyPairGenerator mit\nsetAttestationChallenge(clientDataHash)\n[KeyProperties.PURPOSE_SIGN, StrongBox]
+  OS -> TEE: (07) Erstelle hardwaregebundenes\nSchlüsselpaar + Attestierungszertifikat
+  TEE --> OS: (08) Attestierungszertifikatskette\n(X.509 mit KeyDescription Extension)
+  OS --> Client: (09) attestationCertChain\n(Root → Intermediate → Leaf + KeyDescription)
+
+  opt Play Integrity API (ergänzend)
+    Client -> OS: (10) IntegrityTokenProvider.request(\nrequestHash = clientDataHash)
+    OS --> Client: (11) integrityToken\n(JWS: deviceIntegrity + appIntegrity + accountDetails)
+  end
+
+  Client -> Client: (12) Generiere client-statement\n(Evidence = attestationCertChain\n[+ integrityToken] + Posture-Daten im Klartext)
+else Software Attestation (Fallback)
+  Client -> Client: (13) Generiere client-statement\n(OS und PS Daten ungesichert)
+end
+
+@enduml
