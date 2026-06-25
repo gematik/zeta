@@ -35,8 +35,13 @@
     AndroidOS --> Client: android_key_attestation_certificate_chain
     
     == Expliziter Besitznachweis (Proof of Possession) ==
-    Client -> AndroidOS: Signature.sign(KeyStore.getKey(Alias_AK), hash_puk_client_sig)
-    AndroidOS -> StrongBox++: Signiere Hash mit PrK.AK.Sig
+    note left of Client
+      Besitznachweis des Client Instance Keys.
+      Die AK-Kette beweist die HW-Bindung;
+      diese Signatur beweist Besitz von PrK.Client.Sig.
+    end note
+    Client -> AndroidOS: Signature.sign(KeyStore.getKey(Alias_Client_Sig),\nhash_puk_client_sig)
+    AndroidOS -> StrongBox++: Signiere Hash mit PrK.Client.Sig
     StrongBox --> AndroidOS--: ECDSA Signatur
     AndroidOS --> Client: signed_hash_puk_client_sig
     

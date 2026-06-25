@@ -21,44 +21,43 @@ alt Kein ZETA Attestation Token
     alt Hardware Attestation: iOS, iPadOS, macOS (Apple App Attest)
         Client -> AuthS++: POST /register\n{attestation_type="apple", Apple_Attestation_Object, PuK.Client.Sig, redirect_uris}
         AuthS -> AuthS: Validiere Apple_Attestation_Object
-        note right of AuthS: AuthS verifiziert Apple App Attest Root CA.\nExtrahiert Hash(PuK.Client.Sig) aus Objekt\nund vergleicht ihn mit dem Payload.
+        note right of AuthS: AuthS verifiziert Apple App Attest Root CA.\nExtrahiert Hash(PuK.Client.Sig) aus Objekt und vergleicht ihn mit dem Payload.
 
-    else Hardware Attestation: Android (Keystore, TEE, StrongBox)
-        Client -> AuthS: POST /register\n{attestation_type="android", PuK.AK.Sig,\nAndroid_Key_Attestation_Certificate_Chain,\nPuK.Client.Sig, signed_Hash_PuK.Client.Sig,\nplay_integrity_token, redirect_uris}
+else Hardware Attestation: Android (Keystore, TEE, StrongBox)
+        Client -> AuthS: POST /register\n{attestation_type="android", PuK.AK.Sig, Android_Key_Attestation_Certificate_Chain,\nPuK.Client.Sig, signed_hash_puk_client_sig, play_integrity_token, redirect_uris}
         AuthS -> AuthS: Validiere Zertifikatskette gegen Google Root CA
-        AuthS -> AuthS: Prüfe signed_Hash_PuK.Client.Sig
-        
+        AuthS -> AuthS: Extrahiere attestationChallenge aus KeyDescription ASN.1-Extension des Blatt-Zertifikats
+        AuthS -> AuthS: Prüfe attestationChallenge == SHA-256(PuK.Client.Sig)
+        AuthS -> AuthS: Prüfe signed_hash_puk_client_sig mit PuK.Client.Sig
+
         opt Play Integrity Prüfung
             AuthS -> AuthS: Entschlüssele play_integrity_token (lokal/remote)
-            AuthS -> AuthS: Verifiziere Nonce (Muss Hash(PuK.Client.Sig) entsprechen)
+            AuthS -> AuthS: Verifiziere Nonce (Muss SHA-256(PuK.Client.Sig) entsprechen)
             AuthS -> AuthS: Werte Verdicts aus (appIntegrity, deviceIntegrity, accountDetails)
         end
-        
-        note right of AuthS: PuK.AK.Sig muss mit dem Blatt-Zertifikat\nder Certificate Chain übereinstimmen.\nSicherheitsniveau: TrustedEnvironment oder StrongBox.
 
+        note right of AuthS
+          PuK.AK.Sig muss mit dem Blatt-Zertifikat der Certificate Chain übereinstimmen.
+          Sicherheitsniveau: TrustedEnvironment oder StrongBox.
+          attestationChallenge im Blatt-Zertifikat beweist die TEE-interne Bindung AK ↔ PuK.Client.Sig.
+        end note
     else Software Attestation (Legacy OIDC DCR)
-        Client -> AuthS: POST /register\n{\n  "client_name": "myClient",\n  "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"],\n  "jwks": { "keys": [ PuK.Client.Sig ] },\n  "token_endpoint_auth_method": "private_key_jwt",\n  "redirect_uris": ["https://<App-FQDN>/cb/<app>/oidc", "https://<App-FQDN>/cb/<app>/app"]\n}
+        Client -> AuthS: POST /register\n{client_name, "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token",\n"urn:ietf:params:oauth:grant-type:jwt-bearer"], jwks, token_endpoint_auth_method="private_key_jwt",\n  "redirect_uris": ["https://<App-FQDN>/cb/<app>/oidc", "https://<App-FQDN>/cb/<app>/app"]}
     end
 
-    note right of AuthS
-      Es werden zwei redirect_uris je App registriert (RFC 8252, claimed-HTTPS
-      Universal-/App-Links auf einer vom App-Hersteller kontrollierten Domain):
-      - https://<App-FQDN>/cb/<app>/oidc = oidc_redirect_uri
-        (SekIDP Auth Code Flow, redirection_endpoint des AuthS, nicht /token)
-      - https://<App-FQDN>/cb/<app>/app = app_redirect_uri
-        (ZETA Guard Auth Code Flow, /token-Endpunkt des AuthS)
-      Beide Callbacks enden über denselben App-Link/Universal-Link in der App;
-      der ZETA Client unterscheidet den zu nutzenden AuthS-Endpunkt anhand des Pfads.
-      Die OS-seitige Verknüpfung erfolgt über apple-app-site-association bzw.
-      assetlinks.json (Deployment, kein Laufzeit-Flow). Die App ist inkl. redirect_uris
-      bei der gematik registriert; der AuthS prüft beim DCR, ob die übergebenen
-      redirect_uris registriert sind.
+    note right of Client
+      Es werden zwei redirect_uris je App registriert (RFC 8252, claimed-HTTPS Universal-/App-Links auf einer vom App-Hersteller kontrollierten Domain):
+      - https://<App-FQDN>/cb/<app>/oidc = oidc_redirect_uri (SekIDP Auth Code Flow, redirection_endpoint des AuthS, nicht /token)
+      - https://<App-FQDN>/cb/<app>/app = app_redirect_uri (ZETA Guard Auth Code Flow, /token-Endpunkt des AuthS)
+      Beide Callbacks enden über denselben App-Link/Universal-Link in der App; der ZETA Client unterscheidet den zu nutzenden AuthS-Endpunkt anhand des Pfads.
+      Die OS-seitige Verknüpfung erfolgt über apple-app-site-association bzw. assetlinks.json (Deployment, kein Laufzeit-Flow). Die App ist inkl. redirect_uris
+      bei der gematik registriert; der AuthS prüft beim DCR, ob die übergebenen redirect_uris registriert sind.
     end note
 
     AuthS -> AuthS: Store Client Placeholder (state: pending_user_binding)
 
     ' Trust On First Use (TOFU)
-    AuthS -> AuthS: Generiere OTP & transaction_id\nSpeichere Request im temporären Cache
+    AuthS -> AuthS: Generiere OTP & transaction_id, Speichere Request im temporären Cache
     AuthS -> User: E-Mail mit OTP-Bestätigungscode (Out-of-Band)
     
     ' Server antwortet mit 202, noch KEINE client_id!
@@ -73,7 +72,7 @@ alt Kein ZETA Attestation Token
 
 
 else ZETA Attestation Token vorhanden (Fast-Path)
-    Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token",\nzeta_guard_attestation_token, PuK.Client.Sig,\nBesitznachweis (Signatur/Assertion)}
+    Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token", zeta_guard_attestation_token,\nPuK.Client.Sig, Besitznachweis (Signatur/Assertion)}
     AuthS -> AuthS: Prüfe Token-Signatur & Vertrauensstellung
     AuthS -> AuthS: Extrahiere PuK.AK.Sig aus Token, verifiziere Besitznachweis
 end

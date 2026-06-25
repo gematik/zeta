@@ -21,26 +21,32 @@ end box
 Client++
 OS++
 TEE++
-Client -> AuthS ++ : (01) GET /nonce
-AuthS --> Client -- : (02) Nonce
+Client -> AuthS ++ : GET /nonce
+AuthS --> Client -- : Nonce
 
 alt Android Key / ID Attestation
-  Client -> OS: (03) Ermittle Posture\n(OS-Version, Security Patch Level,\nHersteller, Modell, Verified Boot,\nApp-Signaturinformationen)
-  OS --> Client: (04) Posture-Daten (Klartext)
-  Client -> Client: (05) clientDataHash = Hash(Nonce + Posture-Daten)
-  Client -> OS: (06) KeyPairGenerator mit\nsetAttestationChallenge(clientDataHash)\n[KeyProperties.PURPOSE_SIGN, StrongBox]
-  OS -> TEE: (07) Erstelle hardwaregebundenes\nSchlüsselpaar + Attestierungszertifikat
-  TEE --> OS: (08) Attestierungszertifikatskette\n(X.509 mit KeyDescription Extension)
-  OS --> Client: (09) attestationCertChain\n(Root → Intermediate → Leaf + KeyDescription)
+  Client -> OS: Ermittle Posture\n(OS-Version, Security Patch Level,\nHersteller, Modell, Verified Boot,\nApp-Signaturinformationen)
+  OS --> Client: Posture-Daten (Klartext)
+Client -> Client: clientDataHash =\nSHA-256(Nonce || Posture-Daten || PuK.Client.Sig)
+
+  Client -> OS: Signature.sign(\n  KeyStore.getKey(Alias_AK),\n  clientDataHash)
+  OS -> TEE: Signiere clientDataHash\nmit PrK.AK.Sig
+  TEE --> OS: ECDSA Signatur
+  OS --> Client: signed_client_data_hash
+
+  note left of Client
+    android_key_attestation_certificate_chain wurde beim DCR übermittelt; kein erneutes
+    Erzeugen eines Schlüsselpaars. AuthS verifiziert: attestationChallenge im
+    Blatt-Zertifikat == SHA-256(PuK.Client.Sig).
+  end note
 
   opt Play Integrity API (ergänzend)
-    Client -> OS: (10) IntegrityTokenProvider.request(\nrequestHash = clientDataHash)
-    OS --> Client: (11) integrityToken\n(JWS: deviceIntegrity + appIntegrity + accountDetails)
+    Client -> OS: IntegrityTokenProvider.request(\nrequestHash = clientDataHash)
+    OS --> Client: integrityToken\n(JWS: deviceIntegrity + appIntegrity + accountDetails)
   end
-
-  Client -> Client: (12) Generiere client-statement\n(Evidence = attestationCertChain\n[+ integrityToken] + Posture-Daten im Klartext)
+  Client -> Client: Generiere client-statement\n(Evidence = signed_client_data_hash,\nandroid_key_attestation_certificate_chain,\n[integrityToken], Posture-Daten im Klartext)
 else Software Attestation (Fallback)
-  Client -> Client: (13) Generiere client-statement\n(OS und PS Daten ungesichert)
+  Client -> Client: Generiere client-statement\n(OS und PS Daten ungesichert)
 end
 
 @enduml
