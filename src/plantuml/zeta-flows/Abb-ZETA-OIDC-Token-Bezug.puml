@@ -49,9 +49,16 @@ alt Policy Decision allow
     AuthS -> AuthS: Erzeuge AUTHORIZATION_CODE (AS)
     AuthS --> Client: 302 Found\nLocation: <app_redirect_uri>?code=AUTH_CODE_AS&state=state_app
     Client -> Client: Erzeuge DPoP Key Pair (PrK.DPoP.Sig, PuK.DPoP.Sig)\nund DPoP Proof
-    Client -> AuthS++: POST /token  dpop: <dpop_proof>\n{grant_type=authorization_code, code=AUTH_CODE_AS,\ncode_verifier=code_verifier_app, client_id, app_redirect_uri,\nclient_assertion (JWT, PrK.Client.Sig signiert)}
+    Client -> AuthS: POST /token  dpop: <dpop_proof>\n{grant_type=authorization_code, code=AUTH_CODE_AS,\ncode_verifier=code_verifier_app, client_id, app_redirect_uri,\nclient_assertion (JWT, PrK.Client.Sig signiert)}
     AuthS -> AuthS: Verifiziere code_verifier_app gegen code_challenge_app (S256),\nDPoP Proof und Client Assertion (Key Binding aus DCR)
-    AuthS --> Client--: 200 OK\n{access_token (DPoP-gebunden), refresh_token,\ntoken_type=DPoP, expires_in}
+
+    alt Hardware Attestation  (Android TEE oder StrongBox / SE)
+        AuthS -> AuthS: Create ZETA Guard Attestation Token (zg_att_token)
+        AuthS --> Client: 200 OK {Access Token, Refresh Token, zg_att_token, token_type=DPoP, expires_in}
+    else Software Attestation (Fallback)
+        AuthS --> Client: 200 OK {Access Token, Refresh Token, token_type=DPoP, expires_in}
+    end
+
 else Policy Decision deny
     AuthS --> Client: 403 Forbidden {"reasons": ["..."]}
 end
