@@ -32,7 +32,7 @@ properties:
     format: uri
     description: >-
       The URL of the redirection endpoint of the Authorization Server acting as OIDC
-      Relying Party. The sectoral IDP redirects the user agent here (redirect_uri_as)
+      Relying Party. The sectoral IDP redirects the user agent here (oidc_redirect_uri)
       after authentication; the AuthS then exchanges the IDP authorization code at the
       IDP token endpoint. The ZETA Client uses the path of the incoming redirect_uri
       to distinguish this endpoint (SekIDP Auth Code Flow) from the token_endpoint

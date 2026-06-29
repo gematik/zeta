@@ -70,6 +70,7 @@ oneOf:
       - client_name
       - jwks
       - apple_attestation_object
+      - signed_hash_puk_client_sig
     description: >-
       Für iOS, iPadOS und macOS identisch. Die Apple App Attest API
       (DeviceCheck-Framework) produziert auf allen Plattformen dasselbe
@@ -100,6 +101,12 @@ oneOf:
           (fmt: "apple-appattest"). Enthält attStmt (x5c-Zertifikatskette inkl.
           puk_ak_sig + receipt) sowie authData (rpIdHash, counter, credentialId).
           Base64-kodiert.
+      signed_hash_puk_client_sig:
+        type: string
+        description: >-
+          Signatur des SHA-256-Hashes von PuK.Client.Sig, erstellt mit
+          PrK.Client.Sig (SecKeyCreateSignature). Beweist Besitz des
+          Client Instance Keys. Base64url-kodiert.
 
   # -----------------------------------------------------------------
   # 3. Android Hardware Attestation
@@ -241,7 +248,7 @@ definitions:
       sie (a) im AuthS für die DCR-Prüfung hinterlegt werden — beim DCR muss jede
       übergebene redirect_uri exakt (String-Vergleich) einer registrierten URI
       entsprechen — und (b) in das Entity Statement des AuthS aufgenommen werden,
-      gegen das der sektorale IDP die redirect_uri_as beim PAR prüft. Die URIs liegen
+      gegen das der sektorale IDP die oidc_redirect_uri beim PAR prüft. Die URIs liegen
       auf einer vom App-Hersteller kontrollierten Domain (dem Universal-/App-Link-Host)
       und stehen damit schon zur Entwicklungszeit fest — unabhängig vom AuthS, dessen
       FQDN der Client erst nach Abruf von opr-well-known/as-well-known auflöst. Die
@@ -251,11 +258,11 @@ definitions:
       App Links) je App registriert. Beide Auth Code Flows enden über denselben
       App-/Universal-Link in der App; der ZETA Client unterscheidet den beim AuthS zu
       nutzenden Endpunkt über den LETZTEN Pfad-Abschnitt (Konvention "/cb/<app>/<flow>"):
-        - ".../as" = redirect_uri_as → SekIDP Auth Code Flow; der ZETA Client reicht
+        - ".../oidc" = oidc_redirect_uri → SekIDP Auth Code Flow; der ZETA Client reicht
           den über diese URI empfangenen Code an den redirection_endpoint des AuthS
           weiter (NICHT /token). Diese URI wird ins AuthS-Entity-Statement aufgenommen;
           der AuthS erkennt am Suffix, welche URI für den SekIDP bestimmt ist.
-        - ".../app" = redirect_uri_app → ZETA Guard Auth Code Flow; der ZETA Client
+        - ".../app" = app_redirect_uri → ZETA Guard Auth Code Flow; der ZETA Client
           reicht den Code an den /token-Endpunkt des AuthS weiter.
       Die OS-seitige Verknüpfung erfolgt über apple-app-site-association bzw.
       assetlinks.json (Deployment, kein Laufzeit-Flow).

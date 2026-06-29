@@ -33,7 +33,7 @@ end note
 
 == Schritt 1: PAR – ZC → AuthS (RFC 9126) ==
 
-zc -> as : (01) POST /par\n{response_type=vp_token, client_id=ZC,redirect_uri=redirect_uri_as,\nscope, code_challenge, code_challenge_method=S256, state=state_app}
+zc -> as : (01) POST /par\n{response_type=vp_token, client_id=ZC,redirect_uri=oidc_redirect_uri,\nscope, code_challenge, code_challenge_method=S256, state=state_app}
 note right of as
   AuthS erkennt acr_values=urn:zeta:oid4vp
   → wählt OID4VP/HAIP statt SekIDP OIDC Flow.
@@ -133,7 +133,7 @@ group Variante A: direct_post.jwt an AuthS (HAIP §5.1)
     ephemeren privaten Enc-Key.
   end note
   as -> as : (15a) Validiere VP\n- JWE entschlüsseln (ECDH-ES P-256)\n- Holder-Signatur (Client Instance Key)\n- VP.cnf.jwk == DCR-registrierter Instance Key\n- nonce_vp stimmt überein\n- dcql_query erfüllt\n- x5c Verifier-Zertifikat gültig\n- Credential-Status (Cache / live)
-  as --> wallet : (16a) 200 OK\n{redirect_to:\n<redirect_uri_as>?code=AUTH_CODE_AS\n&state=state_app\n**&iss=<AuthS-Issuer>**}
+  as --> wallet : (16a) 200 OK\n{redirect_to:\n<oidc_redirect_uri>?code=AUTH_CODE_AS\n&state=state_app\n**&iss=<AuthS-Issuer>**}
   note right of as
     RFC 9207 (via FAPI 2.0 / HAIP §4):
     iss-Parameter MUST im Auth Response.
@@ -147,7 +147,7 @@ group Variante B: direct_post.jwt an Verifier (HAIP §5.1)
   verifier -> idp : (15b-i) Prüfe Trust Registry / Credential-Status
   idp --> verifier : (15b-ii) OK
   verifier -> verifier : (15b-iii) Entschlüssele JWE,\nvalidiere VP (analog 15a)
-  verifier --> wallet : (16b-i) 200 OK\n{redirect_to:\n<redirect_uri_as>?code=AUTH_CODE_AS\n&state=state_app\n**&iss=<AuthS-Issuer>**}
+  verifier --> wallet : (16b-i) 200 OK\n{redirect_to:\n<oidc_redirect_uri>?code=AUTH_CODE_AS\n&state=state_app\n**&iss=<AuthS-Issuer>**}
   verifier -> as : (16b-ii) POST /vp-result\n{transaction_id,\n**vp_claims (signierte JWT-Assertion)**,\nvalidation_result=ok,\ncnf.jwk (Client Instance Key aus VP)}
   note right of as
     Verifier→AuthS Kanal: mTLS oder
@@ -158,7 +158,7 @@ group Variante B: direct_post.jwt an Verifier (HAIP §5.1)
 
 end group
 
-wallet -> zc : (17) **App-Link / Universal-Link**\n<redirect_uri_as>?code=AUTH_CODE_AS\n&state=state_app&iss=<AuthS-Issuer>
+wallet -> zc : (17) **App-Link / Universal-Link**\n<oidc_redirect_uri>?code=AUTH_CODE_AS\n&state=state_app&iss=<AuthS-Issuer>
 note right of zc
   OS erkennt App-Link →
   ZETA Client wird aktiviert.
@@ -214,7 +214,7 @@ end group
 
 == Token Request (gemeinsam für Same-Device und Cross-Device) ==
 
-zc -> as : (18/16) POST /token\n{grant_type=authorization_code,\ncode=AUTH_CODE_AS,\nredirect_uri=redirect_uri_as,\nclient_id=ZC,\ncode_verifier,\n**DPoP-Proof** (RFC 9449)}
+zc -> as : (18/16) POST /token\n{grant_type=authorization_code,\ncode=AUTH_CODE_AS,\nredirect_uri=oidc_redirect_uri,\nclient_id=ZC,\ncode_verifier,\n**DPoP-Proof** (RFC 9449)}
 
 as -> as : Prüfe:\n- code + code_verifier (PKCE S256)\n- redirect_uri\n- **VP.cnf.jwk == DCR-registrierter Client Instance Key**\n- DPoP-Proof gültig\n- iss (RFC 9207)
 
