@@ -58,16 +58,16 @@ alt Kein ZETA Attestation Token
 
     ' Trust On First Use (TOFU)
     AuthS -> AuthS: Generiere OTP & transaction_id, Speichere Request im temporären Cache
-    AuthS -> User: E-Mail mit OTP-Bestätigungscode (Out-of-Band)
+    AuthS -> User++: E-Mail mit OTP-Bestätigungscode (Out-of-Band)
     
     ' Server antwortet mit 202, noch KEINE client_id!
-    AuthS --> Client--: 202 Accepted {transaction_id, message="OTP sent"}
+    AuthS --> Client--: 202 Accepted {transaction_id, message_id: otp_verification}
 
     ' Warte auf Nutzer-Eingabe
-    User -> Client: Gibt OTP-Bestätigungscode ein
+    User -> Client--: Gibt OTP-Bestätigungscode ein
     
     ' Verifikation mit der temporären ID
-    Client -> AuthS++: POST /register/verify\n{transaction_id, code}
+    Client -> AuthS++: POST /register/verify {transaction_id, code}
     AuthS -> AuthS: Verifiziere OTP-Code gegen Cache
 
 
