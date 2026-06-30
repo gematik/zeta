@@ -38,15 +38,18 @@ definitions:
     allOf:
       - $ref: "#/definitions/BaseResponse"
       - type: object
-        required: [challenge_type, message]
+        required: [challenge_type, message_id]
         properties:
           challenge_type:
             type: string
             const: email_otp
-          message:
+          message_id:
             type: string
-            description: Ein für den Nutzer anzeigbarer Text.
-            example: "Bitte geben Sie den 6-stelligen Code aus der E-Mail ein."
+            const: otp_verification
+            description: >-
+              Eindeutiger Identifikator für den Typ der Nachricht. 
+              Erlaubt es dem Client, einen lokalisierten Text (z. B. für die OTP-Eingabe) 
+              aus den eigenen App-Ressourcen anzuzeigen.
 
   # --- TPM MakeCredential Fall ---
   TpmChallengeResponse:
