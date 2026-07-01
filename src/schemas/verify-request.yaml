@@ -5,6 +5,11 @@ type: object
 description: >-
   Payload für den POST /register/verify Request, um eine Registrierung
   abzuschließen. Die Antwort auf die Challenge wird übermittelt.
+# Die Variante wird über den `const`-Wert von `verify_type` in den beiden
+# oneOf-Zweigen eindeutig bestimmt; die Validierung unter draft-07 ist damit
+# deterministisch. Das nachfolgende `discriminator`-Feld ist ein OpenAPI-3-Konstrukt
+# (kein draft-07-Keyword) und wird von JSON-Schema-Validatoren ignoriert; es dient
+# ausschließlich als Hinweis für den Code-Generator.
 oneOf:
   - $ref: "#/definitions/OtpVerifyRequest"
   - $ref: "#/definitions/TpmVerifyRequest"

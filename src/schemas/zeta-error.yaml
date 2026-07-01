@@ -1,13 +1,21 @@
 # Schema for HTTP ZETA Error Response
+#
+# Wird von allen ZETA Guard Endpunkten (Authorization Server / PDP, PEP HTTP Proxy,
+# Client-Registrierung) für Fehlerantworten verwendet. Fachliche Fehler des
+# dahinterliegenden Resource Servers werden hingegen unverändert durchgereicht und
+# folgen NICHT diesem Schema (A_29853).
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.0.0"
+schemaVersion: "1.1.0"
 title: HTTP ZETA Error Response
 description: Schema for transmitting error information for HTTP ZETA error response.
 type: object
 properties:
   error:
-    type: string
-    description: A short, machine-readable error identifier.
+    # Der maschinenlesbare Fehlercode. Der Wertebereich (definitions/errorCode)
+    # umfasst die ZETA-spezifischen Codes sowie die von den jeweiligen Endpunkten
+    # gemäß den zugrunde liegenden RFCs (OAuth 2.0, Token Exchange, Bearer, DPoP)
+    # verwendeten Standard-Codes.
+    $ref: "#/definitions/errorCode"
   error_description:
     type: string
     description: A human-readable explanation of the error.
@@ -17,3 +25,47 @@ properties:
     description: A URI that provides more information about the error.
 required:
   - error
+
+definitions:
+  errorCode:
+    type: string
+    description: >-
+      Standardisierter, maschinenlesbarer Fehlercode einer ZETA-Guard-Fehlerantwort.
+      Der Client MUSS insbesondere auf die ZETA-spezifischen Codes reagieren
+      (z. B. erneute Authentifizierung bei `session_terminated`/`refresh_token_revoked`,
+      Step-Up bei `insufficient_user_authentication`). Die übrigen Codes sind die von
+      den jeweiligen Endpunkten gemäß den referenzierten RFCs ausgestellten
+      Standard-Codes.
+    enum:
+      # --- ZETA-spezifische Codes (gemSpec_ZETA) ------------------------------
+      # Session serverseitig terminiert; 403 beim Token-Refresh. Client MUSS neu
+      # authentifizieren und DARF keinen weiteren Refresh im selben Session-Kontext
+      # senden. (A_29849, S. 89/91)
+      - session_terminated
+      # Zugehöriges Refresh Token wurde entzogen; 403 beim Token-Refresh. (S. 91)
+      - refresh_token_revoked
+      # Step-Up-Authentifizierung erforderlich; 401/403 mit Header
+      # `zeta-error-origin: pep`. Der PEP MUSS diesen Wert setzen. (A_29860, S. 113/93)
+      - insufficient_user_authentication
+      # `resource`-Indicator (RFC 8707) benennt eine nicht unterstützte
+      # Zielressource; Ablehnung am Token Endpoint. (A_29694, S. 84)
+      - invalid_target
+
+      # --- OAuth 2.0 Authorization Server / Token Endpoint (RFC 6749 §5.2) -----
+      - invalid_request
+      - invalid_client
+      - invalid_grant
+      - unauthorized_client
+      - unsupported_grant_type
+      - invalid_scope
+      - access_denied
+      - server_error
+      - temporarily_unavailable
+
+      # --- Bearer Token / geschützte Ressource (RFC 6750 §3.1) ----------------
+      - invalid_token
+      - insufficient_scope
+
+      # --- DPoP (RFC 9449 §7) -------------------------------------------------
+      - invalid_dpop_proof
+      - use_dpop_nonce

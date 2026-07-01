@@ -25,7 +25,7 @@ properties:
     "$ref": "./policy-engine-client-data.yaml"
   user_info:
     description: The user information data
-    "$ref": "./user-info.yaml"
+    "$ref": "./zeta-user-info.yaml"
   authorization_request:
     description: The authorization request data
     type: object

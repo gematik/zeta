@@ -54,7 +54,7 @@ alt Kein ZETA Attestation Token
       bei der gematik registriert; der AuthS prüft beim DCR, ob die übergebenen redirect_uris registriert sind.
     end note
 
-    AuthS -> AuthS: Store Client Placeholder (state: pending_user_binding)
+    AuthS -> AuthS: Store Client Placeholder (state: pending_verification)
 
     ' Trust On First Use (TOFU)
     AuthS -> AuthS: Generiere OTP & transaction_id, Speichere Request im temporären Cache
@@ -83,30 +83,11 @@ alt Kein ZETA Attestation Token
 
 
 else ZETA Attestation Token vorhanden (Fast-Path)
-    Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token", zeta_guard_attestation_token,\nPuK.Client.Sig, Besitznachweis (Signatur/Assertion)}
+    Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token", zeta_attestation_token,\nPuK.Client.Sig, Besitznachweis (Signatur/Assertion)}
     AuthS -> AuthS: Prüfe Token-Signatur & Vertrauensstellung
     AuthS -> AuthS: Extrahiere PuK.AK.Sig aus Token, verifiziere Besitznachweis
 end
 
-AuthS --> Client--: 201 Created {client_id, status="pending_user_binding"}
-
-group Account Recovery: Verlust von E-Mail-Zugang UND Gerät
-    note over User, AuthS
-      Der Nutzer hat weder Zugriff auf sein altes Gerät (mobile Client) noch auf sein
-      altes E-Mail-Konto. Mit dem zuvor erhaltenen recovery_code registriert er einen
-      neuen Client mit NEUER E-Mail-Adresse. Die Hardware-Attestierung des neuen Geräts
-      läuft wie oben (Apple/Android/TPM); statt der OTP-Verifikation dient der
-      recovery_code als Besitz-/Identitätsnachweis für den bestehenden Nutzer-Account.
-    end note
-    User -> Client++: Startet Wiederherstellung, gibt recovery_code\nund neue E-Mail-Adresse ein
-    Client -> AuthS++: POST /register\n{attestation_type, <Hardware-Attestation des neuen Geräts>,\nPuK.Client.Sig, signed_hash_puk_client_sig, redirect_uris,\nuser_email=<neue E-Mail>, recovery_code}
-    AuthS -> AuthS: Validiere Hardware-Attestation (wie oben)
-    AuthS -> AuthS: Verifiziere recovery_code gegen gespeicherten Hash
-    AuthS -> AuthS: Binde neuen Client & neue E-Mail an bestehenden Nutzer-Account,\ninvalidiere alten recovery_code
-    AuthS -> AuthS: Generiere neuen recovery_code, speichere neuen Hash
-    AuthS --> User: neuer recovery_code (Out-of-Band, einmalige Anzeige)
-    AuthS --> Client--: 201 Created {client_id, status="active"}
-    Client --> User--: Wiederherstellung abgeschlossen
-end
+AuthS --> Client--: 201 Created {client_id}
 
 @enduml

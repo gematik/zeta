@@ -32,7 +32,7 @@ note right of AuthS
   redirect_uris registriert sind.
 end note
 
-    AuthS -> AuthS: Store Client Placeholder (state: pending_user_binding)
+    AuthS -> AuthS: Store Client Placeholder (state: pending_verification)
 
     ' Trust On First Use (TOFU)
     AuthS -> AuthS: Generiere OTP & transaction_id\nSpeichere Request im temporären Cache
@@ -50,6 +50,6 @@ end note
 
 
 
-AuthS --> Client--: 201 Created {client_id, status="pending_user_binding"}
+AuthS --> Client--: 201 Created {client_id}
 
 @enduml

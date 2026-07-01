@@ -1,11 +1,16 @@
 $schema: "http://json-schema.org/draft-07/schema#"
 schemaVersion: "1.0.0"
-title: Registration Accepted Response (202)
+title: DCR Accepted Response (202)
 type: object
 description: >-
-  Wird vom ZETA Guard zurückgegeben, wenn die initiale Registrierungsanfrage 
+  Wird vom ZETA Guard zurückgegeben, wenn die initiale DCR-Anfrage 
   kryptografisch valide war, aber eine asynchrone Herausforderung (Challenge) 
   gelöst werden muss, bevor die endgültige client_id vergeben wird.
+# Die Variante wird über den `const`-Wert von `challenge_type` in den beiden
+# oneOf-Zweigen eindeutig bestimmt; die Validierung unter draft-07 ist damit
+# deterministisch. Das nachfolgende `discriminator`-Feld ist ein OpenAPI-3-Konstrukt
+# (kein draft-07-Keyword) und wird von JSON-Schema-Validatoren ignoriert; es dient
+# ausschließlich als Hinweis für den Code-Generator.
 oneOf:
   - $ref: "#/definitions/OtpChallengeResponse"
   - $ref: "#/definitions/TpmChallengeResponse"

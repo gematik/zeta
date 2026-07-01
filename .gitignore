@@ -9,3 +9,4 @@ console
 poetry.lock
 dist/
 *.pdf
+tmp/

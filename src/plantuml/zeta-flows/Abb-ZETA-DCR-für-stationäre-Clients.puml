@@ -42,12 +42,12 @@ alt Kein ZETA Guard Attestation Token
     end
 
 else ZETA Attestation Token vorhanden
-    Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token",\nzeta_guard_attestation_token, PuK.Client.Sig,\nsigned_Hash_PuK.Client.Sig}
+    Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token",\nzeta_attestation_token, PuK.Client.Sig,\nsigned_Hash_PuK.Client.Sig}
     AuthS -> AuthS: Prüfe Token-Signatur & Vertrauensstellung
     AuthS -> AuthS: Extrahiere PuK.AK.Sig aus Token, prüfe signed_Hash_PuK.Client.Sig
 end
 
-AuthS -> AuthS: Store Client Placeholder (state: pending_user_binding)
+AuthS -> AuthS: Store Client Placeholder
 AuthS --> Client--: 201 Created {client_id}
 
 @enduml

@@ -1,6 +1,5 @@
 # Schema for the Token Endpoint response of the PDP authorization server.
-# Returned by POST /token after a successful OAuth 2.0 Token Exchange
-# (RFC 8693) or Refresh Token request. The issued access token is
+# Returned by POST /token. The issued access token is
 # DPoP-bound (RFC 9449) and follows access-token.yaml.
 # See also https://www.rfc-editor.org/rfc/rfc6749#section-5.1
 $schema: "http://json-schema.org/draft-07/schema#"
@@ -45,6 +44,13 @@ properties:
       StrongBox). Its claims follow zeta-attestation-token.yaml. Only present
       when the token exchange included a hardware attestation; absent for
       software attestation (fallback).
+  asl_access_token:
+    type: string
+    description: >-
+      Signed JWT issued by the ZETA Authorization Server for access to the /ASL
+      Endpoint. Only present when the attribute zeta_asl_use is set to
+      required_passthrough in OAuth Protected Resource well-known;
+      absent otherwise.
   scope:
     type: string
     description: >-
@@ -58,14 +64,6 @@ properties:
     enum:
       - "urn:ietf:params:oauth:token-type:access_token"
       - "urn:ietf:params:oauth:token-type:jwt"
-  session_state:
-    type: string
-    description: The session state identifier associated with the issued tokens.
-  not-before-policy:
-    type: integer
-    description: >-
-      Unix timestamp before which tokens issued prior to this policy revision
-      are considered invalid. Tokens issued before this value MUST be rejected.
 required:
   - access_token
   - refresh_token

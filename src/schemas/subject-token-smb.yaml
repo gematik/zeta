@@ -75,7 +75,7 @@ properties:
         properties:
           jkt:
             type: string
-            description: JWK Thumbprint of the public client instance key.
+            description: JWK Thumbprint of the public client instance key. Must be the same as the jwks key in the DCR request.
         required:
           - jkt
       dpop_key:
@@ -84,7 +84,7 @@ properties:
         properties:
           jkt:
             type: string
-            description: JWK Thumbprint of the public DPoP key.
+            description: JWK Thumbprint of the public DPoP key. Must be the same as the jkt claim in the DPoP proof sent with the token request.
         required:
           - jkt
     required:

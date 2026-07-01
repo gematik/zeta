@@ -61,7 +61,7 @@ AuthS -> OPA++: POST /v1/data/authz {Policy Engine Input}
 OPA --> AuthS--: Policy Decision
 
 alt Policy Decision allow
-    AuthS --> Client: 200 OK\n{access_token (DPoP-gebunden, ohne Nutzer-Claims),\ntoken_type=DPoP, expires_in}
+    AuthS --> Client: 200 OK\n{access_token (DPoP-gebunden, ohne Nutzer-Claims),\ntoken_type=DPoP, expires_in, refresh_token}
     note over Client, AuthS
       Das Access Token enthält keine Nutzer-Identität, ist aber an den Client
       gebunden (DPoP) und spiegelt die positive Policy-Entscheidung wider.

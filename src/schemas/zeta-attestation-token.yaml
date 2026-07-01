@@ -5,12 +5,17 @@ type: object
 description: >-
   Ein signiertes JWT, das der ZETA Guard nach erfolgreicher
   Hardware-Attestierung ausstellt ("Fast-Path").
-# oneOf zwingt das Objekt, exakt einem der referenzierten Sub-Schemata zu entsprechen
+# oneOf zwingt das Objekt, exakt einem der referenzierten Sub-Schemata zu entsprechen.
+# Die Zuordnung erfolgt eindeutig über den `const`-Wert von `attestation_type`
+# (tpm | apple | android) im jeweiligen Zweig; die Validierung unter draft-07 ist
+# damit deterministisch und unabhängig vom nachfolgenden `discriminator`.
 oneOf:
   - $ref: "#/definitions/TpmAttestationToken"
   - $ref: "#/definitions/AppleAttestationToken"
   - $ref: "#/definitions/AndroidAttestationToken"
-# Sagt dem Code-Generator, welches Feld zur Unterscheidung der Klassen genutzt wird.
+# `discriminator` ist ein OpenAPI-3-Konstrukt (kein draft-07-Keyword) und wird von
+# JSON-Schema-Validatoren ignoriert; es dient ausschließlich als Hinweis für den
+# Code-Generator, welches Feld die Klassen unterscheidet.
 discriminator:
   propertyName: attestation_type
 
@@ -61,7 +66,7 @@ definitions:
         items:
           type: string
           format: uri
-          pattern: '^https://.+/(as|app)$'
+          pattern: '^https://.+/(oidc|app)$'
       recovery_code_hash:
         type: string
         description: >-

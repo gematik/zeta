@@ -89,6 +89,7 @@ properties:
           - apple
           - windows
           - linux
+          - other
       iat:
         type: integer
         description: Issued at time of the token as a Unix timestamp.
@@ -126,6 +127,7 @@ properties:
       - iss
       - exp
       - aud
+      - scope
       - sub
       - client_id
       - ip_address

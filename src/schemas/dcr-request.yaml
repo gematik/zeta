@@ -303,9 +303,9 @@ definitions:
       type: string
       format: uri
       description: >-
-        Claimed-HTTPS-Redirection-URI. Der letzte Pfad-Abschnitt (as|app) bestimmt,
+        Claimed-HTTPS-Redirection-URI. Der letzte Pfad-Abschnitt (oidc|app) bestimmt,
         welchem Auth Code Flow die URI zugeordnet ist (siehe Beschreibung des Arrays).
-      pattern: '^https://.+/(as|app)$'
+      pattern: '^https://.+/(oidc|app)$'
     minItems: 1
   jwk:
     type: object
