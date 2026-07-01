@@ -22,6 +22,7 @@ properties:
       - apple
       - windows
       - linux
+      - other
 required:
   - client_id
   - product_id

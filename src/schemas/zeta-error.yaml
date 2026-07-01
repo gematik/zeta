@@ -13,7 +13,7 @@ properties:
     description: A human-readable explanation of the error.
   error_uri:
     type: string
-    format: url
+    format: uri
     description: A URI that provides more information about the error.
 required:
   - error
