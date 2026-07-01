@@ -37,6 +37,16 @@ definitions:
       platform:
         type: string
         enum: [windows, linux, apple, android]
+      user_email:
+        type: string
+        format: email
+        description: >-
+          Die bei der ursprünglichen Registrierung per Trust-On-First-Use (TOFU)
+          verifizierte E-Mail-Adresse des Nutzers (mobile Clients: Android, Apple).
+          Wird in den Token aufgenommen, damit sie bei einer erneuten Registrierung
+          im Fast-Path (attestation_type=zeta_attestation_token) nicht erneut
+          übertragen und per OTP verifiziert werden muss; der AuthS übernimmt sie
+          aus dem Token. Für stationäre Clients i. d. R. nicht gesetzt.
       redirect_uris:
         type: array
         description: >-

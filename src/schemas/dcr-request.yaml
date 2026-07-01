@@ -71,6 +71,7 @@ oneOf:
       - jwks
       - apple_attestation_object
       - signed_hash_puk_client_sig
+      - user_email
     description: >-
       Für iOS, iPadOS und macOS identisch. Die Apple App Attest API
       (DeviceCheck-Framework) produziert auf allen Plattformen dasselbe
@@ -85,6 +86,7 @@ oneOf:
         type: array
         items: { type: string }
       redirect_uris: { $ref: "#/definitions/redirect_uris" }
+      user_email: { $ref: "#/definitions/user_email" }
       jwks:
         description: >-
           Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
@@ -123,6 +125,7 @@ oneOf:
       - jwks
       - android_key_attestation_certificate_chain
       - signed_hash_puk_client_sig
+      - user_email
     properties:
       attestation_type:
         type: string
@@ -133,6 +136,7 @@ oneOf:
         type: array
         items: { type: string }
       redirect_uris: { $ref: "#/definitions/redirect_uris" }
+      user_email: { $ref: "#/definitions/user_email" }
       jwks:
         description: >-
           Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
@@ -228,6 +232,7 @@ oneOf:
         type: array
         items: { type: string }
       redirect_uris: { $ref: "#/definitions/redirect_uris" }
+      user_email: { $ref: "#/definitions/user_email" }
       jwks:
         description: >-
           Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
@@ -239,6 +244,15 @@ oneOf:
         required: [keys]
 
 definitions:
+  user_email:
+    type: string
+    format: email
+    description: >-
+      E-Mail-Adresse des Nutzers für die Trust-On-First-Use (TOFU) Bindung
+      mobiler Clients (Android, Apple). Der AuthS sendet an diese Adresse
+      Out-of-Band eine E-Mail mit einem OTP-Bestätigungscode, den der Nutzer
+      anschließend über POST /register/verify bestätigt
+      (siehe Abb-ZETA-DCR-für-mobile-Clients.puml).
   redirect_uris:
     type: array
     description: >-
