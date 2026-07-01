@@ -33,39 +33,52 @@ definitions:
       Standardisierter, maschinenlesbarer Fehlercode einer ZETA-Guard-Fehlerantwort.
       Der Client MUSS insbesondere auf die ZETA-spezifischen Codes reagieren
       (z. B. erneute Authentifizierung bei `session_terminated`/`refresh_token_revoked`,
-      Step-Up bei `insufficient_user_authentication`). Die übrigen Codes sind die von
-      den jeweiligen Endpunkten gemäß den referenzierten RFCs ausgestellten
-      Standard-Codes.
-    enum:
-      # --- ZETA-spezifische Codes (gemSpec_ZETA) ------------------------------
-      # Session serverseitig terminiert; 403 beim Token-Refresh. Client MUSS neu
-      # authentifizieren und DARF keinen weiteren Refresh im selben Session-Kontext
-      # senden. (A_29849, S. 89/91)
-      - session_terminated
-      # Zugehöriges Refresh Token wurde entzogen; 403 beim Token-Refresh. (S. 91)
-      - refresh_token_revoked
-      # Step-Up-Authentifizierung erforderlich; 401/403 mit Header
-      # `zeta-error-origin: pep`. Der PEP MUSS diesen Wert setzen. (A_29860, S. 113/93)
-      - insufficient_user_authentication
-      # `resource`-Indicator (RFC 8707) benennt eine nicht unterstützte
-      # Zielressource; Ablehnung am Token Endpoint. (A_29694, S. 84)
-      - invalid_target
+      Step-Up bei `insufficient_user_authentication`). Die übrigen aufgeführten Codes
+      sind die von den jeweiligen Endpunkten gemäß den referenzierten RFCs
+      ausgestellten Standard-Codes.
 
-      # --- OAuth 2.0 Authorization Server / Token Endpoint (RFC 6749 §5.2) -----
-      - invalid_request
-      - invalid_client
-      - invalid_grant
-      - unauthorized_client
-      - unsupported_grant_type
-      - invalid_scope
-      - access_denied
-      - server_error
-      - temporarily_unavailable
+      Offenes Enum: Die folgende Liste dokumentiert die bekannten Codes (für
+      Codegen und Doku), ist aber NICHT abschließend — jeder weitere String ist
+      gültig, damit künftige oder implementierungsspezifische Codes die Validierung
+      nicht brechen.
+    # anyOf statt eines constrainenden `enum`: Der erste Zweig listet die bekannten
+    # Codes (rein dokumentarisch), der zweite akzeptiert jeden weiteren String.
+    # Dadurch schlägt die Validierung bei einem nicht gelisteten Code NICHT fehl.
+    anyOf:
+      - description: Bekannte, standardisierte Fehlercodes.
+        enum:
+          # --- ZETA-spezifische Codes (gemSpec_ZETA) --------------------------
+          # Session serverseitig terminiert; 403 beim Token-Refresh. Client MUSS neu
+          # authentifizieren und DARF keinen weiteren Refresh im selben
+          # Session-Kontext senden. (A_29849, S. 89/91)
+          - session_terminated
+          # Zugehöriges Refresh Token wurde entzogen; 403 beim Token-Refresh. (S. 91)
+          - refresh_token_revoked
+          # Step-Up-Authentifizierung erforderlich; 401/403 mit Header
+          # `zeta-error-origin: pep`. Der PEP MUSS diesen Wert setzen. (A_29860, S. 113/93)
+          - insufficient_user_authentication
+          # `resource`-Indicator (RFC 8707) benennt eine nicht unterstützte
+          # Zielressource; Ablehnung am Token Endpoint. (A_29694, S. 84)
+          - invalid_target
 
-      # --- Bearer Token / geschützte Ressource (RFC 6750 §3.1) ----------------
-      - invalid_token
-      - insufficient_scope
+          # --- OAuth 2.0 Authorization Server / Token Endpoint (RFC 6749 §5.2) -
+          - invalid_request
+          - invalid_client
+          - invalid_grant
+          - unauthorized_client
+          - unsupported_grant_type
+          - invalid_scope
+          - access_denied
+          - server_error
+          - temporarily_unavailable
 
-      # --- DPoP (RFC 9449 §7) -------------------------------------------------
-      - invalid_dpop_proof
-      - use_dpop_nonce
+          # --- Bearer Token / geschützte Ressource (RFC 6750 §3.1) ------------
+          - invalid_token
+          - insufficient_scope
+
+          # --- DPoP (RFC 9449 §7) ---------------------------------------------
+          - invalid_dpop_proof
+          - use_dpop_nonce
+      - description: >-
+          Weiterer, hier nicht enumerierter Fehlercode (Forward-Compatibility).
+        type: string
