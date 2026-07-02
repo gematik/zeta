@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c ' *)",
+      "Bash(python3 -m venv /tmp/claude-1000/-home-cp-dev-zeta/c99096b5-487b-4d88-98bd-153c9341eaa7/scratchpad/venv)",
+      "Bash(/tmp/claude-1000/-home-cp-dev-zeta/c99096b5-487b-4d88-98bd-153c9341eaa7/scratchpad/venv/bin/pip install *)",
+      "Bash(/tmp/claude-1000/-home-cp-dev-zeta/c99096b5-487b-4d88-98bd-153c9341eaa7/scratchpad/venv/bin/python -c ' *)",
+      "Bash(python3.12 -c ' *)",
+      "Bash(PYTHONPATH=/home/cp/.local/lib/python3.12/site-packages python3.12 -c ' *)"
+    ]
+  }
+}
