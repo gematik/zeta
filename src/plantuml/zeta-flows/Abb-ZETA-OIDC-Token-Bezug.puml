@@ -53,8 +53,8 @@ OPA --> AuthS--: Policy Decision
 
 alt Policy Decision allow
     alt Hardware Attestation  (Android TEE oder StrongBox / SE)
-        AuthS -> AuthS: Create ZETA Guard Attestation Token (zg_att_token)
-        AuthS --> Client: 200 OK {Access Token, Refresh Token, zg_att_token, token_type=DPoP, expires_in}
+        AuthS -> AuthS: Create ZETA Guard Attestation Token (zeta_attestation_token)
+        AuthS --> Client: 200 OK {Access Token, Refresh Token, zeta_attestation_token, token_type=DPoP, expires_in}
     else Software Attestation (Fallback)
         AuthS --> Client: 200 OK {Access Token, Refresh Token, token_type=DPoP, expires_in}
     end

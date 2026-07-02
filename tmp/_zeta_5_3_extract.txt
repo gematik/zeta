@@ -523,8 +523,8 @@ Die Policy Engine erlaubt den Zugriff.
 den DPoP-Schlüssel gebunden.
 Unterscheidung nach Attestierungs-Level (Innerster alt-Block):
 (14 - 15) [Hardware Attestation (TPM / SE)]: Wenn das Gerät seinen Zustand erfolgreich durch Hardware (TPM/Secure
-Enclave) bewiesen hat, generiert der Server zusätzlich ein ZETA Guard Attestation Token (zg_att_token). Er antwortet
-mit 200 OK und liefert Access Token, Refresh Token und das zg_att_token an den Client.
+Enclave) bewiesen hat, generiert der Server zusätzlich ein ZETA Guard Attestation Token (zeta_attestation_token). Er antwortet
+mit 200 OK und liefert Access Token, Refresh Token und das zeta_attestation_token an den Client.
 (16) [Software Attestation (Fallback)]: Wenn das Gerät nur auf Software-Basis attestiert wurde, erhält der Client zwar
 Zugriff (200 OK), bekommt aber nur das Access Token und das Refresh Token (kein Attestation Token).
 Unterfall A2: [Policy Decision deny] (Schritt 17)
