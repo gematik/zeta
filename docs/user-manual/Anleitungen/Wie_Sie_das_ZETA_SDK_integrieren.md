@@ -165,23 +165,27 @@ Das Log-Provider Interface umfasst folgende Methoden:
 #### Konnektor-Zugriff
 
 Zur Erstellung eines SubjectTokens wird der Zugriff auf den Konnektor benötigt. Dies wird in der Regel
-in einem Primärsystem bereits umgesetzt sein. Daher bietet die API die Möglichkeit, den Zugriff auf den Konnektor
+in einem Primärsystem bereits umgesetzt sein. Daher nutzt die API die Möglichkeit, den Zugriff auf den Konnektor
 an den Client, d.h. das Primärsystem an sich, auszulagern.
 
-Hier gibt es einen Unterschied in der Umsetzung der kotlin/Java und C++/C# Varianten. Die kotlin/Java-Implementierungen erwarten eine
-Instanz des "SubjectTokenProvider", der die beiden nötigen Konnektor-Aufrufe kapselt und die benötigten Krypto-Operationen durchführt.
-Für C++/C# gibt es eine Lösung die nur die Konnektor-API benötigt, während die Krypto-Operationen im SDK gekapselt sind.
+Dazu muss die Konnektor API implementiert werden. Diese kann in C++/C# direkt konfiguriert werden.
+In der kotlin/Java-Variante wird die Konnektor-API in einen CustomSmbcTokenProvider gekapselt, der
+dann in die Konfiguration übernommen werden kann.
 
-Je nach Ansatz werden Implementierungen mitgeliefert, die weitere verschiedene Konfigurationsparameter benötigen.
+Hinweis: Die kotlin/Java-Implementierungen bieten eine Implementierung
+des "SubjectTokenProvider" in Form der SbmcTokenProvider und SmbTokenProvider, der die beiden nötigen Konnektor-Aufrufe kapselt.
+Der SubjectTokenProvider ruft eine eigene Konnektor API auf, die aber nur für Testzwecke vorgesehen ist und z.B. mTLS für die Authentifizierung
+an einem echten Konnektor nicht umsetzt. Daher soll in kotlin/Java der CustomSmcbTokenProvider mit der eigenen
+Anbindung eines Konnektors verwendet werden.
+SbmcTokenProvider und SmbTokenProvider können für Tests und benötigen weitere verschiedene Konfigurationsparameter.
 So benötigt der SmbTokenProvider den Dateipfad der Zertifikatsdatei mit Alias und Passwort. Der SmcbTokenProvider hingegen
 benötigt die Adresse des Konnektors sowie weitere für den Konnektoraufruf nötige Parameter wie mandant, handle, etc.
 
-Der CustomSmcbTokenProvider kann genutzt werden eine eigene Implementierung anzubinden. Er erwartet eine ConnectorAPI als
+Der CustomSmcbTokenProvider soll genutzt werden, um eine eigene Implementierung anzubinden. Er erwartet eine ConnectorAPI als
 Parameter, der nur die beiden Konnektor-Aufrufe abbildet. Die Instanz muss dabei die Aufrufparameter selbst verwalten.
 
 Bei Nutzung eines eigenen Connectors werden die SMC-B SOAP Felder (`baseUrl`, `mandantId` etc.) ignoriert.
 Beide Callbacks müssen genau einmal pro Aufruf aufgerufen werden, auch im Fehlerfall (dann mit size=0).
-
 
 Das Connector Interface umfasst folgende Methoden:
 
@@ -235,18 +239,19 @@ Das `ZetaSdk` ist die Builder Klasse, mit der ein `ZetaSdkClient` erstellt werde
 
 Der `ZetaSdkClient` ist ein Objekt, welches für den Zugriff auf einen bestimmten Fachdienst vorkonfiguriert ist (nach dem Bauen durch `ZetaSdk`).
 
-| Operation      | Beschreibung                                                                                                                                                                                           | Return value                | Errors                                                                                                                                                                                   |
-|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| forget()       | statische Methode, um alle Informationen zu einem FQDN zu vergessen wie client ID, client instance key, ...                                                                                            | -                           | error codes                                                                                                                                                                              |
-| -              |                                                                                                                                                                                                        |                             |                                                                                                                                                                                          |
-| discover()     | Umsetzen der Discovery und Configuration. Dieser Call ist optional und wird ggf. automatisch nachgeholt                                                                                                | -                           | Fehler bei der Discovery und Configuration, insb. wenn für die Resource URL keine gültige Endpunkt-Konfiguration (im Sinne eines Eintrags in einer OPR .well-known Datei) gefunden wurde |
-| register()     | Ausführen der Client registration, wenn nötig (keine client_id vorhanden). Includiert discover() falls dieses noch nicht ausgeführt wurde.                                                             | -                           | error codes                                                                                                                                                                              |
-| authenticate() | Ausführen der Authentifizierung falls nötig (kein AccessToken vorhanden). Falls gültiges Refresh Token vorhanden, wird dieses genutzt. Inkludiert register() falls dieses noch nicht ausgeführt wurde. | -                           | error codes                                                                                                                                                                              |
-| httpClient()   | gibt einen HTTP Client zurück, dessen Operationen überschrieben werden um die notwendigen ZETA-spezifischen Protokolle umzusetzen                                                                      | Ein `ZetaHttpClient` Objekt |                                                                                                                                                                                          |
-| ws()           | Eröffnen einen WebSockets session                                                                                                                                                                      |                             |                                                                                                                                                                                          |
-| status()       | gibt den Status des SdkClients zurück, also ob eine Client-Registrierung vorliegt, ein AccessToken vorliegt usw.                                                                                       | Ein `SdkStatus` Objekt      | -                                                                                                                                                                                        |
-| logout()       | Ausloggen aus dem Fachdienst, so dass ein neues Access Token benötigt wird                                                                                                                             | -                           | error codes                                                                                                                                                                              |
-| close()        | Schliessen des ZetaSDKclients, ohne relevante Inhalte zu vergessen                                                                                                                                     | -                           | error codes                                                                                                                                                                              |
+| Operation           | Beschreibung                                                                                                                                                                                          | Return value                | Errors                                                                                                                                                                                   |
+|---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| forget()            | statische Methode, um alle Informationen zu einem FQDN zu vergessen wie client ID, client instance key, ...                                                                                           | -                           | error codes                                                                                                                                                                              |
+| -                   |                                                                                                                                                                                                       |                             |                                                                                                                                                                                          |
+| discover()          | Umsetzen der Discovery und Configuration. Dieser Call ist optional und wird ggf. automatisch nachgeholt                                                                                               | -                           | Fehler bei der Discovery und Configuration, insb. wenn für die Resource URL keine gültige Endpunkt-Konfiguration (im Sinne eines Eintrags in einer OPR .well-known Datei) gefunden wurde |
+| register()          | Ausführen der Client registration, wenn nötig (keine client_id vorhanden). Includiert discover() falls dieses noch nicht ausgeführt wurde.                                                            | -                           | error codes                                                                                                                                                                              |
+| authenticate()      | Ausführen der Authentifizierung falls nötig (kein AccessToken vorhanden). Falls gültiges Refresh Token vorhanden, wird dieses genutzt. Inkludiert register() falls dieses noch nicht ausgeführt wurde. | -                           | error codes                                                                                                                                                                              |
+| httpClient()        | gibt einen HTTP Client zurück, dessen Operationen überschrieben werden um die notwendigen ZETA-spezifischen Protokolle umzusetzen                                                                     | Ein `ZetaHttpClient` Objekt |                                                                                                                                                                                          |
+| ws()                | Eröffnen einen WebSockets session                                                                                                                                                                     |                             |                                                                                                                                                                                          |
+| status()            | gibt den Status des SdkClients zurück, also ob eine Client-Registrierung vorliegt, ein AccessToken vorliegt usw.                                                                                      | Ein `SdkStatus` Objekt      | -                                                                                                                                                                                        |
+| logout()            | Ausloggen aus dem Fachdienst, so dass ein neues Access Token benötigt wird                                                                                                                            | -                           | error codes                                                                                                                                                                              |
+| clearRegistration() | Löscht Client-Registrierung, Tokens und ASL Session, behält jedoch den Instance Key.                                                                                                                  | -                                                                                                                                                                                        |
+| close()             | Schliessen des ZetaSDKclients, ohne relevante Inhalte zu vergessen                                                                                                                                    | -                           | error codes                                                                                                                                                                              |
 
 Die verschiedenen Stufen des ZETA-Protokolls (`discover()`, `register()`, `authenticate()`) werden bei Erstellung des HttpClient bzw. Aufruf einer Resource _automatisch_ ausgeführt.
 Zusammen mit der `status()` Methode dienen sie nur der feingranularen Kontrolle durch das Primärsystem, soweit gewünscht.
@@ -269,18 +274,21 @@ Das in der build() Methode angegebene `BuildConfig` Objekt enthält auch die not
 | httpClientBuilder   | Builder für HttpClients; wird für die Aufrufe der PDP APIs verwendet                                                                                                                                              |                       |
 | registration_cb()   | wenn während register(), authenticate(), or späterer HTTP Methoden eine Client-Registrierung erforderlich ist, und die nötigen Informationen nicht vorhanden sind                                                 | A reginfo object      |
 | authentication_cb() | wenn während authenticate(), oder dem späteren Aufruf von HTTP Methoden Authentifizierungsinformationennötig sind.                                                                                                | An authinfo object    |
+| logger              | Eigener Log-Provider zur Weiterleitung der SDK-Logs an das Logging-System des Primärsystems                                                                                                                     |                       |
 
 Hinweis: in Implementierungsstufe 1 werden aktuell keine Callbacks genutzt. In Implementierungsstufe 2 können hier Anfragen
 zum Beispiel zum Pushed-Authentication-Request an den IDP hinzukommen.
 
 ### StorageConfig
 
-Mit diesem Objekt wird der Speicher konfiguriert. Wie oben beschrieben kann hier eine Custom-Implementierung eingefügt werden, die die sichere Speicherung an das Primärsystem auslagert.
+Mit diesem Objekt wird der Speicher konfiguriert. Es gibt zwei Varianten:
 
-| Attribut  | Beschreibung                                                                                              |
-|-----------|-----------------------------------------------------------------------------------------------------------|
-| provider  | Das eigentliche Speicherinterface (optional)                                                              |
-| aesB64Key | Verschlüsselungsschlüssel für den Default-Speicher (falls kein eigener Speichermechanismus genutzt wurde) |
+| Variante  | Beschreibung                                                                                                      |
+|-----------|-------------------------------------------------------------------------------------------------------------------|
+| `Default` | Verschlüsselter Standard-Speicher mit einem AES-256 Schlüssel (`aesB64Key`) und optionalem Dateipfad              |
+| `Custom`  | Eigene Implementierung des `SdkStorage` Interface. Verschlüsselung liegt in der Verantwortung des Primärsystems   |
+
+**Hinweis:** Der `zeta_route` Cookie wird automatisch über `SdkStorage` persistiert und bei `logout()`, `forget()` und `clearRegistration()` gelöscht. Keine zusätzliche Konfiguration erforderlich
 
 Falls kein provider angegeben wird, wird ein verschlüsselter Standard-Speicher verwendet, der mit dem angegebenen
 AES key verschlüsselt wird. Details siehe dazu das README im Quellcode des storage Modul bzw. im Umsetzungskonzept.
@@ -322,7 +330,7 @@ in der IDE anschauen.
             "https://<resource-url>",                       // Basis-URL des Fachdienstes
             BuildConfig(                                    // BuildConfig Objekt mit der ganzen Konfiguration
                 "demo-client",                              // Produkt ID
-                "1.0.0",                                    // Produkt Version
+                "1.2.0",                                    // Produkt Version
                 "client-sdk",                               // Client Name
                 StorageConfig.Custom(InMemoryStorage()),    // Konfiguration des sicheren Speichers; InMemoryStorage für Tests
                 object : TpmConfig {},                      // Aktuell nicht genutzt - wird mit Hardware-Attestation erweitert
@@ -406,7 +414,7 @@ Hier ist der API Aufruf
             getFirstResourceUrl(props),                                 // Fachdienst-URL, hier aus einer Konfigurationsdatei gelesen
             new BuildConfig(                                            // BuildConfig Objekt
                 "ZETA-Test-Client",                                     // Produkt ID
-                "1.0.0",                                                // Produkt Version
+                "1.2.0",                                                // Produkt Version
                 "sdk-client",                                           // Client Name
                 new StorageConfig.Custom(new InMemoryStorage()),        // Storage Implementierung (hier InMemory nur zum Testen)
                 new TpmConfig() {                                       // ungenutzt bis die Hardware-Attestierung spezifiziert ist
@@ -423,9 +431,10 @@ Hier ist der API Aufruf
                 ),
                 getPlatformProductId(),                                 // Platform Information
                                                                         // ZetaHttpClientBuilder für die PDP Aufrufe, inkl. Logging und möglicher Abschaltung der Server Validierung (für Nutzung im Testsystem)
-                new ZetaHttpClientBuilder("").disableServerValidation(disableServerValidation).logging(LogLevel.ALL),
+                new ZetaHttpClientBuilder().disableServerValidation(disableServerValidation).logging(LogLevel.ALL),
                 null,                                                   // ungenutzt - registration Callback für Stufe 2
-                null                                                    // ungenutzt - authentication Callback für Stufe 2
+                null,                                                   // ungenutzt - authentication Callback für Stufe 2
+                null                                                    // optional - eigener Log-Provider
             ));
 
         // Erstellen eines ZetaHttpClients
@@ -512,6 +521,13 @@ Die Nutzung der API ist hier aufwändiger, da die Erstellung der Objekte "manuel
 
     ZetaSdk_SmcbConfig smcbConfig = {};
 
+    ZetaSdk_SecurityConfig security = {};
+    security.additionalCaPem = const_cast<char**>(caPem);
+    security.additionalCaPemCount = 1;
+    //security.additionalCaFile = const_cast<char*>(caPemFile);
+    //security.disableServerValidation = disableTls;
+    //security.sslVerbose = false;
+
     ZetaSdk_AuthConfig authConfig = {
             const_cast<char**>(scopes), ARRAY_SIZE(scopes), // Liste der scopes
             30,                                             // Expiration des Subject Tokens
@@ -526,17 +542,28 @@ Die Nutzung der API ist hier aufwändiger, da die Erstellung der Objekte "manuel
             ZETA_LOG_LEVEL_ERROR                            // Log-Level (Standard: ERROR)
     };
 
+    // Proxy-Konfiguration (optional)
+    ZetaSdk_ProxyConfig proxyConfig = {
+            "127.0.0.1",    // Host
+            8080,           // Port
+            "user",         // Username, NULL falls nicht benötigt
+            "password",     // Password, NULL falls nicht benötigt
+            0               // Typ: 0=HTTP, 1=SOCKS
+    };
+
     // Zusammenbau des BuildConfig Objekts
     ZetaSdk_BuildConfig buildConfig = {
             resource,                                       // Basis-URL des Fachdienstes
             const_cast<char*>(PRODUCT_ID),                  // Produkt ID
             const_cast<char*>(PRODUCT_VERSION),             // Produkt Version
             const_cast<char*>(CLIENT_NAME),                 // Client-Name
-            &storageConfig, &tpmConfig, &authConfig,         // Konfigurations-Objekte
+            &storageConfig, &tpmConfig, &authConfig,        // Konfigurations-Objekte
             &logVTable                                      // Optionaler Log-Provider
+            nullptr,                                        // Optionaler Proxy (hier &proxyConfig einsetzen)
+            &security                                       // Optionale Sicherheitskonfiguration
     };
                                                             // Erstellen des ZetaSdk Objekts
-    ZetaSdk_Client*     zetaSdkClient  = (ZetaSdk_Client*)ZetaSdk_buildZetaClient(&buildConfig, disableTls);
+    ZetaSdk_Client*     zetaSdkClient  = (ZetaSdk_Client*)ZetaSdk_buildZetaClient(&buildConfig);
                                                             // Erstellen des ZetaHttpClient Objekts
     ZetaSdk_HttpClient* zetaHttpClient = (ZetaSdk_HttpClient*)ZetaSdk_buildHttpClient(zetaSdkClient);
 
@@ -754,7 +781,7 @@ the sample project picks up the package automatically after packing.
 Publish to NuGet feed:
 
 ```bash
-dotnet nuget push nupkg/ZetaSdk.Client.0.5.0.nupkg \
+dotnet nuget push nupkg/ZetaSdk.Client.1.2.0.nupkg \
   --source "https://gitlab...." \
   --api-key GITLAB_TOKEN
 ```
@@ -768,15 +795,37 @@ var config = new ZetaClientConfig
 {
     Resource       = Env("FACHDIENST_URL"),                     // Fachdienst-URL
     ProductId      = "demo-client",                             // Produkt ID
-    ProductVersion = "0.5.0",                                   // Produkt Version
+    ProductVersion = "1.2.0",                                   // Produkt Version
     ClientName     = "sdk-client",                              // Client-Name
     Storage = new ZetaStorageConfig                             // Storage Konfiguration
     {
+        CustomStorage = new InMemoryStorage(),                  // eigene Storage-Implementierung
         AesB64Key = Env("STORAGE_AES_KEY"),                     // Base64-kodierter AES-256 Schlüssel
     },
     Logger   = (level, tag, message) =>                         // Optionaler Log-Provider
         Console.WriteLine($"[{level}] [{tag ?? "Zeta"}] {message}"),
     LogLevel = ZetaLogLevel.Info,                               // Log-Level — Standard ist Error
+    /*Proxy = new ZetaProxyConfig
+        {
+            Host     = "127.0.0.1",                                // Proxy Host
+            Port     = 8080,                                       // Proxy Port
+            Username = "user",                                     // Username, null falls nicht benötigt
+            Password = "password",                                 // Password, null falls nicht benötigt
+            Type     = ZetaProxyType.Http                          // Typ: Http oder Socks
+        },*/
+       Security = new SecurityConfig
+       {
+          /*AdditionalCaPem = [
+                    """
+            -----BEGIN CERTIFICATE-----
+            ...
+            -----END CERTIFICATE-----
+            """
+                ],*/
+          // AdditionalCaFile = "/path/to/ca.crt",
+          DisableServerValidation = false,                  // Nur für Tests
+          SslVerbose = false,                               // Nur für Debugging
+      },
     Auth = new ZetaAuthConfig                                   // Authentication Konfiguration
     {
         Scopes = ["zero:audience"],                             // scopes
@@ -788,7 +837,9 @@ var config = new ZetaClientConfig
             Alias        = Env("SMB_KEYSTORE_ALIAS"),
             Password     = Env("SMB_KEYSTORE_PASSWORD")
         },
-                                                                // optionale SMC-B Konfiguration
+        // CustomSmcb = new MyCustomConnector(),              // optionale eigene Konnektor-Anbindung
+        RequiredRoleOid = Env("REQUIRED_ROLE_OID"),           // OID die im ASL Zertifikat erwartet wird
+        // optionale SMC-B Konfiguration
         Smcb = string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SMCB_BASE_URL")) ? null
             : new ZetaSmcbConfig
             {                                                   // Konnektor-Parameter
@@ -805,7 +856,7 @@ var config = new ZetaClientConfig
 
 Erstellung des ZetaSdkClients:
 ````
-    using var client = ZetaClient.Build(config, disableTls);
+    using var client = ZetaClient.Build(config);
 ````
 
 Erstellung des ZetaHttpClient: hier gibt es zwei Möglichkeiten - einmal eine Version mit synchronen Aufrufen,
@@ -825,5 +876,4 @@ var getResp = await http.GetAsync("hellozeta", headers);
 Als Rückgabewert gibt es ein `ZetaHttpResponse` Objekt (siehe ZetaHttpClient.cs Datei).
 
 Eine Beispielimplementerung ist hier im [gematik zeta-sdk Repository](https://github.com/gematik/zeta-sdk/blob/main/zeta-client-csharp/sample/)
-
 

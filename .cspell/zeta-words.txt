@@ -42,8 +42,10 @@ JWS
 JWE
 OAuth
 OIDC
+oidc
 OpenID
 DPoP
+dpop
 PKCE
 mTLS
 TLS
@@ -55,6 +57,7 @@ DCR
 DCRP
 TSL
 ECC
+ECDH
 RSA
 SHA256
 ES256

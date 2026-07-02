@@ -23,11 +23,21 @@ Anforderungen ergänzt werden.
 Nach gematik Anforderung A_28961 sind die OWASP Top 10 für Kubernetes Installationen durch den Anbieter eines TI 2.0 Dienstes abzudecken.
 Informationen zu den kubernetes OWASP Top Ten finden sich hier: https://owasp.org/www-project-kubernetes-top-ten/
 
+## Schutzmaßnahmen gegen die OWASP Top 10 Risiken
+
+Als Schutzmaßnahme gegen DoS-Attacken des ZETA Guards muss das Rate-Limit entsprechend den erwarteten Nutzungsszenarien
+konfiguriert werden.
+
+Die Konfigurationsmöglichkeiten sind hier beschrieben: https://github.com/gematik/zeta/blob/main/docs/user-manual/Anleitungen/Wie_Sie_ZETA_Guard_in_Kubern…
+
 ## Crypto
 
 - A_25402	ZETA Guard - Schutz der transportierten Daten
 (Sicherung aller Endpunkte mit TLS)
 bei Nutzung einer betreiberspezifischen Lösung für mTLS
+- Seitens der Anbieter ist sicherzustellen, dass in allen Containern die Devices
+/dev/random und /dev/urandom Zufallszahlen entsprechend den Anforderungen aus
+BSI-TR-03116-1, 3.8 liefern.
 
 ## Storage
 
