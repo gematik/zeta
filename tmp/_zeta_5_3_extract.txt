@@ -947,7 +947,7 @@ Version: 1.3.0 © gematik - öffentlich Stand: 17.04.2026
 Registrierungsdaten werden unter dieser ID in einem temporären Cache zwischengespeichert.
 (12): Das OTP wird Out-of-Band (per E-Mail) an den Nutzer gesendet.
 (13): Der AuthS antwortet dem Client mit einem 202 Accepted, der transaction_id und der Aufforderung, das OTP
-einzugeben (siehe Schema [register-response-202.yaml]).
+einzugeben (siehe Schema [dcr-response-202.yaml]).
 (14 - 15): Der Nutzer tippt das OTP in die App ein. Die App sendet einen POST /register/verify Request, der die
 transaction_id und den code enthält (siehe [verify-request.yaml]).
 (16): Der Server verifiziert den Code gegen den Cache.
