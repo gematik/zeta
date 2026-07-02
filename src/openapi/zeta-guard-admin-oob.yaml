@@ -50,15 +50,11 @@ info:
     ## Standards & normative basis
       * Mutual-TLS client authentication — RFC 8705.
       * Problem Details for HTTP APIs (`application/problem+json`) — RFC 9457.
-      * Normative basis: A_ZGTOFU_110–A_ZGTOFU_117 (out-of-band deletion) and
-        A_ZGTOFU_120–A_ZGTOFU_121 (audit logging, channel protection) in
+      * Normative basis: A_29940 - A_29947 (out-of-band deletion) and
+        A_29948 and A_29949 (audit logging, channel protection) in
         `gemSpec_ZETA_TOFU_Anforderungen_DRAFT.md`.
 
     This is a design draft, not a normative gematik specification.
-
-externalDocs:
-  description: Normative TOFU requirements (A_ZGTOFU_*)
-  url: ./gemSpec_ZETA_TOFU_Anforderungen_DRAFT.md
 
 servers:
   - url: https://{adminHost}/realms/{realm}/zeta/admin
@@ -199,13 +195,13 @@ paths:
       summary: Initiate an OOB deletion request
       description: |
         Requires a high-assurance, IDP-independent identity proof (`oob_proof`, assurance
-        level MUST be high) — A_ZGTOFU_111. The guard SHOULD first check that no factor
-        survives and otherwise refer the user to self-recovery (A_ZGTOFU_117). With dual
+        level MUST be high) — A_29941. The guard SHOULD first check that no factor
+        survives and otherwise refer the user to self-recovery (A_29947). With dual
         control enabled (policy), the request lands in `awaiting_approval` and must be approved
-        by a different operator before the veto window starts (A_ZGTOFU_116); otherwise it goes
+        by a different operator before the veto window starts (A_29946); otherwise it goes
         straight to `scheduled`. The scheduled deletion runs only after a veto window with
-        channel notification (A_ZGTOFU_112); execution merely tombstones the identity — it
-        never grants access or re-pins a factor (A_ZGTOFU_110, A_ZGTOFU_114).
+        channel notification (A_29942); execution merely tombstones the identity — it
+        never grants access or re-pins a factor (A_29940, A_29944).
       security:
         - mutualTLS: []
           operatorAuth: [zeta.oob.initiate]
@@ -367,13 +363,13 @@ components:
       type: mutualTLS
       description: |
         Client-certificate mutual TLS on the privileged admin channel (RFC 8705).
-        Mandated by A_ZGTOFU_121.
+        Mandated by A_29949.
     operatorAuth:
       type: oauth2
       description: |
         Operator identity and role, from an IDP-INDEPENDENT operator identity provider
-        (deliberately not the SEK-IDP; A_ZGTOFU_121). Scopes map to roles enforcing separation
-        of duties (A_ZGTOFU_115, A_ZGTOFU_116).
+        (deliberately not the SEK-IDP; A_29949). Scopes map to roles enforcing separation
+        of duties (A_29945, A_29946).
       flows:
         clientCredentials:
           tokenUrl: https://operators.internal/oauth2/token
