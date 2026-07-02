@@ -1,8 +1,10 @@
 # Wie Sie ein Observability-Backend an ZETA-Guard anschließen
 
-Der Telemetrie-Daten Service kann Monitoring-Daten der ZETA Guard-Komponenten an das Monitoring des TI 2.0 Dienst-Anbieters senden. D.h. TI-2.0-Dienst-Anbieter und -Hersteller dürfen eigene Observability-Backends
-(w.z. B. Prometheus) an ZETA-Guard anschließen. Für jedes Observability-Backend
-muss ein neuer OpenTelemetry-Exporter im Telemetry-Gateway konfiguriert werden.
+Der Telemetrie-Daten Service kann Monitoring-Daten der ZETA Guard-Komponenten an
+das Monitoring des TI 2.0 Dienst-Herstellers senden. D.h.
+TI-2.0-Dienst-Hersteller dürfen eigene Observability-Backends (w.z. B.
+Prometheus) an ZETA-Guard anschließen. Für jedes Observability-Backend muss ein
+neuer OpenTelemetry-Exporter im Telemetry-Gateway konfiguriert werden.
 Verbindungen zwischen dem Telemetry-Gateway und ZETA-Guard-externen Diensten
 müssen über mTLS abgesichert werden. Wenn Ihr Cluster kein Service-Mesh für mTLS
 verwendet, müssen ihr Receiver und der Exporter im Telemetry-Gateway für mTLS
@@ -22,13 +24,13 @@ nachschlagen.
 title: Vereinfachtes Komponentendiagramm für den Telemetrie-Export
 ---
 flowchart LR
-    DienstAnbieterMonitoring["`**TI 2.0 Dienst Anbieter
+    DienstAnbieterMonitoring["`**TI 2.0 Dienst Hersteller
      Monitoring**
      [OTelCol]
      verteilt Telemetrie an
       Observability-Backends
-       des Anbieters`"]
-    DienstAnbieterSiem["`**TI 2.0 Dienst Anbieter
+       des Herstellers`"]
+    DienstAnbieterSiem["`**TI 2.0 Dienst Hersteller
      SIEM**`"]
     Gateway["`**ZETA Guard
      Telemetry-Gateway**
@@ -55,7 +57,7 @@ Die Konfiguration des Telemetry-Gateways erfolgt über die Values des
 telemetry-gateway:
     config:
         exporters:
-            otlp_grpc/an-anbieter:
+            otlp_grpc/dienst_hersteller:
                 endpoint: otelcol2:4317 # Zieladresse muss angepasst werden
                 tls:
                     ca_file: "/etc/tls/ca.pem"
@@ -63,30 +65,15 @@ telemetry-gateway:
                     key_file: "/etc/tls/client-key.pem"
         service:
             pipelines:
-                logs/an-anbieter:
-                    receivers:
-                        # Receiver aus Pipeline "logs" hinzufügen
-                    processors:
-                        # Prozessoren aus Pipeline "logs" hinzufügen
-                        - redaction/betreiber
+                logs/dienst_hersteller:
                     exporters:
-                        - otlp_grpc/an-anbieter
-                metrics/an-anbieter:
-                    receivers:
-                        # Receiver aus Pipeline "metrics" hinzufügen
-                    processors:
-                        # Prozessoren aus Pipeline "metrics" hinzufügen
-                        - redaction/betreiber
+                        - otlp_grpc/dienst_hersteller
+                metrics/dienst_hersteller:
                     exporters:
-                        - otlp_grpc/an-anbieter
-                traces/an-anbieter:
-                    receivers:
-                        # Receiver aus Pipeline "traces" hinzufügen
-                    processors:
-                        # Prozessoren aus Pipeline "traces" hinzufügen
-                        - redaction/betreiber
+                        - otlp_grpc/dienst_hersteller
+                traces/dienst_hersteller:
                     exporters:
-                        - otlp_grpc/an-anbieter
+                        - otlp_grpc/dienst_hersteller
     extraVolumeMounts:
         -   name: tls
             mountPath: "/etc/tls"
@@ -101,17 +88,9 @@ Dieses Beispiel erwartet einen einzigen Zielpunkt für Logs, Metriken und Traces
 der als Verteiler an die eigentlichen Backends (z.B. Prometheus, OpenSearch und
 Jaeger) dient. Das Beispiel verwendet
 einen [OTLP gRPC Exporter](https://github.com/open-telemetry/opentelemetry-collector/blob/main/exporter/otlpexporter/README.md)
-mit [mTLS-Konfiguration](https://opentelemetry.io/docs/collector/configuration/#mtls-configuration-mutual-tls)
-und
-einen [Redaction-Processor](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/redactionprocessor),
-und zeigt keine vorkonfigurierten Exporter, Pipelines usw. aus dem
-"zeta-guard"-Chart.
-
-Die Beispielkonfiguration definiert drei neue Pipelines (`logs/an-anbieter`,
-`metrics/an-anbieter`und `traces/an-anbieter`) mit einem neuen Exporter
-(`otlp_grpc/an-anbieter`). Der Prozessor `redaction/betreiber`ist im Chart
-definiert und zensiert Telemetrie mit einem Katalog regulärer Ausdrücke für
-personenbezogene Daten und Tokens. Achten Sie darauf, alle Receiver und
-Prozessoren aus dem `zeta-guard`-Chart zu nennen. Das Secret
-`telemetry-gateway-mtls` ist ebenfalls nicht Teil des `zeta-guard`-Helm-Charts,
-und muss vom Anbieter erzeugt und verwaltet werden.
+mit [mTLS-Konfiguration](https://opentelemetry.io/docs/collector/configuration/#mtls-configuration-mutual-tls),
+und fügt ihn zu den im Helm-Chart vorkonfigurierten Pipelines
+`logs/dienst_hersteller`, `metrics/dienst_hersteller` und
+`traces/dienst_hersteller` hinzu. Das Secret `telemetry-gateway-mtls` ist
+ebenfalls nicht Teil des `zeta-guard`-Helm-Charts, und muss von Ihnen erzeugt
+und verwaltet werden.
