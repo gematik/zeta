@@ -17,6 +17,7 @@
       - [Verschlüsselte Verbindung in die VAU](#verschlüsselte-verbindung-in-die-vau)
     - [Konfiguration und Austausch von optionalen Komponenten](#konfiguration-und-austausch-von-optionalen-komponenten)
     - [Konfiguration von ZETA Guard](#konfiguration-von-zeta-guard)
+    - [Native mobile Apps: Universal Links / App Links für mehrere Clients](#native-mobile-apps-universal-links--app-links-für-mehrere-clients)
   - [Lokaler Cache der Artifact Registry](#lokaler-cache-der-artifact-registry)
   - [Tests der gematik](#tests-der-gematik)
 
@@ -140,6 +141,23 @@ Die Konfiguration von ZETA Guard erfolgt über das mitgelieferte Helm-Chart und 
 - **HSM-Anbindung:** Für höchste Sicherheitsanforderungen kann der ZETA Guard Authorization Server an ein Hardware-Sicherheitsmodul (HSM) angebunden werden, um das Schlüsselmaterial für die Signatur von Token zu schützen. Der Anbieter ist für die Bereitstellung und Konfiguration des HSM sowie des zugehörigen Kubernetes-Plugins (CSI-Treiber) verantwortlich.
 - **Telemetriedaten-Erfassung:** ZETA Guard produziert umfangreiche Telemetriedaten (Metriken, Logs, Traces). Die Konfiguration des Exports dieser Daten an zentrale SIEM- und Monitoring-Systeme der gematik ist bereits vorkonfiguriert. Exports an die Anbieter-Systeme können vom Anbieter ergänzt werden.
 - **Mehrere Resource Server:** Eine einzelne ZETA Guard-Instanz kann den Zugriff auf mehrere unterschiedliche Resource Server (Fach- und Mehrwertdienste) absichern. Dies wird über die Konfiguration der `audiences` und der entsprechenden OPA-Policies gesteuert. In diesem Fall wird pro Resource Server ein eigener PEP des ZETA Guard verwendet. _Disclaimer: Es gibt noch keine Festlegung, wie die Zulassung und der Change Prozess für mehrere Resource Server bei einem ZETA Guard gehandhabt wird._
+
+### Native mobile Apps: Universal Links / App Links für mehrere Clients
+
+Mehrere native Apps auf demselben Endgerät können denselben ZETA Guard Authorization Server und Resource Server nutzen. Jede App ist dabei ein eigener OAuth-Client mit eigener `client_id` und eigener `redirect_uris`-Registrierung (siehe DCR, [`POST /register`](../../../src/schemas/dcr-request.yaml)).
+
+Damit das mobile Betriebssystem die OIDC-Redirection (`302 Found` an die `redirect_uri`) eindeutig der richtigen App zustellt, gelten folgende Empfehlungen gemäß [RFC 8252](https://www.rfc-editor.org/info/rfc8252) (OAuth 2.0 for Native Apps):
+
+- **Claimed HTTPS Redirect-URIs (Universal Links / App Links):** Die `redirect_uri` ist eine HTTPS-URL auf der AuthS-Domain (zugleich Redirection-Endpunkt der OIDC Relying Party).
+- **Ein eigener Pfad je App:** Jede App registriert eine `redirect_uri` mit unterschiedlichem Pfad auf derselben AuthS-Domain (z. B. `https://<AuthS-FQDN>/cb/app-a` und `https://<AuthS-FQDN>/cb/app-b`). Die App-Zuordnung erfolgt über Host und Pfad – **nicht** über Query-Parameter wie `client_id`. Bei der Autorisierung muss die übergebene `redirect_uri` exakt (String-Vergleich) mit einer registrierten URI übereinstimmen.
+- **OS-seitige Verknüpfung (Domain-Ownership):** Auf der AuthS-Domain wird je Plattform eine Verknüpfungsdatei bereitgestellt, die App-Identitäten den jeweiligen Pfaden zuordnet:
+  - iOS/iPadOS/macOS: `https://<AuthS-FQDN>/.well-known/apple-app-site-association`
+  - Android: `https://<AuthS-FQDN>/.well-known/assetlinks.json`
+
+  Beide Dateien können mehrere Apps (App IDs bzw. Package-Namen + Signatur-Fingerprints) enthalten. Dies ist eine **Deployment-Konfiguration** auf der AuthS-Domain und kein Laufzeit-Flow; der Anbieter ist für die Bereitstellung und Pflege dieser Dateien verantwortlich.
+- **Fallback „App nicht installiert":** Da die `redirect_uri` eine reguläre HTTPS-URL ist, wird sie bei nicht installierter App im System-Browser geöffnet und kann serverseitig vom AuthS verarbeitet werden bzw. eine Hinweis-/Installationsseite ausliefern.
+
+Die `redirect_uri` ist ein Client-Attribut und wird vom Client bestimmt und per DCR beim AuthS registriert. Sie wird **nicht** über das AuthS-`.well-known` (RFC 8414) verteilt; dort sind ausschließlich Server-Endpunkte (`authorization_endpoint`, `token_endpoint`, `registration_endpoint`, `jwks_uri` usw.) enthalten.
 
 ## Lokaler Cache der Artifact Registry
 

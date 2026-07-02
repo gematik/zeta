@@ -1,5 +1,6 @@
 # Schema for the OAuth protected resource server .well-known JSON object
 $schema: "http://json-schema.org/draft-07/schema#"
+schemaVersion: "1.0.0"
 title: OAuth Protected Resource Server .well-known JSON Object
 description: Schema for the .well-known JSON object used by OAuth Protected Resource Servers.
 type: object
@@ -117,8 +118,8 @@ properties:
     description: >-
       Boolean value indicating whether the protected resource requires DPoP-bound
       access tokens [RFC9449] for all authorized requests. If omitted, the default
-      value is `false`.
-    default: false # Explicitly adding default for clarity.
+      value is `true`.
+    default: true # Explicitly adding default for clarity.
   signed_metadata:
     type: string
     description: >-

@@ -46,6 +46,46 @@ reasons[msg] if {
 #	msg := "One or more requested audiences are not allowed"
 #}
 
+reasons[msg] if {
+	not http_method_is_allowed
+	msg := "HTTP method is not allowed"
+}
+
+reasons[msg] if {
+	ip_is_tor_exit_node
+	msg := "Source IP address is a known TOR exit node"
+}
+
+reasons[msg] if {
+	ip_is_vpn_endpoint
+	msg := "Source IP address is a known VPN endpoint"
+}
+
+reasons[msg] if {
+	ip_is_in_blocked_range
+	msg := "Source IP address is in a blocked IP range"
+}
+
+reasons[msg] if {
+	country_is_blocked
+	msg := "Source IP address originates from a blocked country"
+}
+
+reasons[msg] if {
+	user_is_blocked
+	msg := "User is on the blocklist"
+}
+
+# Allowlist: Nur erzwingen, wenn mindestens ein Eintrag vorhanden ist UND
+# die angeforderte Audience in 'audiences_for_user_allowlist' enthalten ist.
+# Eine leere Allowlist bedeutet "keine Einschränkung" und nicht "alle gesperrt".
+reasons[msg] if {
+	audience_requires_user_allowlist
+	count(data.user_allowlist.allowed_users) > 0
+	not user_is_allowlisted
+	msg := "User is not on the allowlist"
+}
+
 # --- HELPER-REGELN ---
 
 user_profession_is_allowed if {
@@ -71,4 +111,59 @@ audience_is_allowed if {
 	requested_audience_set := {audience | audience := input.authorization_request.audience[_]}
 	count(requested_audience_set) > 0
 	requested_audience_set - allowed_audience_set == set()
+}
+
+http_method_is_allowed if {
+	some i
+	input.authorization_request.http_method == data.http_methods.allowed_http_methods[i]
+}
+
+# --- IP-SPERRLISTEN-HILFSFUNKTIONEN ---
+
+# Trifft für einen einzelnen Eintrag (IP oder CIDR) zu.
+ip_matches_entry(entry) if entry == input.authorization_request.ip_address
+ip_matches_entry(entry) if net.cidr_contains(entry, input.authorization_request.ip_address)
+
+# Trifft zu wenn mindestens ein Eintrag der übergebenen Liste passt.
+any_ip_matches(blocklist) if {
+	some entry in blocklist
+	ip_matches_entry(entry)
+}
+
+# TOR-Exitknoten-Sperrliste
+ip_is_tor_exit_node if any_ip_matches(data.ip_blocklist_tor.blocked_ips)
+
+# VPN-Endpunkt-Sperrliste
+ip_is_vpn_endpoint if any_ip_matches(data.ip_blocklist_vpn.blocked_ips)
+
+# Generische IP/Range-Sperrliste
+ip_is_in_blocked_range if any_ip_matches(data.ip_blocklist.blocked_ips)
+
+# Länder-Sperrliste (country_code wird von AuthS per GeoIP befüllt)
+country_is_blocked if {
+	input.authorization_request.country_code in data.ip_blocklist_countries.blocked_countries
+}
+
+# Nutzer-spezifische Sperrliste
+user_is_blocked if {
+	user_id := input.user_info.identifier
+	user_blocklist := data.user_blocklist.blocked_users[user_id]
+	user_blocklist == true
+}
+
+# --- NUTZER-FREIGABELISTE (ALLOWLIST) ---
+
+# Trifft zu, wenn der Nutzer explizit in der Allowlist freigegeben ist.
+# allowed_users ist eine Liste von User-IDs (Strings).
+user_is_allowlisted if {
+	input.user_info.identifier in data.user_allowlist.allowed_users
+}
+
+# Trifft zu, wenn mindestens eine angeforderte Audience in der Liste der
+# Audiences steht, für die die Nutzer-Freigabeliste erzwungen werden soll.
+# Nur dann wird die Allowlist-Prüfung wirksam.
+audience_requires_user_allowlist if {
+	requested_audience_set := {audience | audience := input.authorization_request.audience[_]}
+	allowlist_audience_set := {a | a := data.audiences_for_user_allowlist.audiences[_]}
+	count(requested_audience_set & allowlist_audience_set) > 0
 }

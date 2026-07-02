@@ -2,6 +2,7 @@
 # The Client Statement is used in the Client Assertion JWT with the ZETA Guard AuthServer.
 # It contains information about the client instance.
 $schema: "http://json-schema.org/draft-07/schema#"
+schemaVersion: "1.0.0"
 title: Client Statement
 description: The client statement contains information about the client instance.
 type: object

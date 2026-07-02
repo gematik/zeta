@@ -1,0 +1,72 @@
+@startuml "Abb-ZETA-OIDC-Token-Bezug"
+!include ../puml-layout.txt
+
+
+' Teildiagramm (C): Token-Bezug beim sektoralen IDP, Policy-Entscheidung und Ausstellung der ZETA Token
+' Teil von Abb-ZETA-OIDC-Authentifizierung-mobiler-Clients
+
+box "Mobile App" DEVICE_COLOR
+  participant Client as "ZETA Client" <<zeta>>
+end box
+
+box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
+  box "ZETA Guard" ZETA_GUARD_COLOR
+    participant AuthS as "PDP\nAuthorization Server\n(OIDC Relying Party)" <<zeta>>
+    participant OPA as "PDP\nPolicy Engine" <<zeta>>
+  end box
+end box
+
+box "TI-Föderation" #EAF2FF
+  participant IDP as "Sektoraler IDP\n(Token-Endpunkt)"
+end box
+
+Client++
+note over Client, IDP: Der ZETA Client hat aus Teildiagramm (B) den AUTHORIZATION_CODE (IDP) erhalten.
+
+== Innerer Flow: Token-Bezug beim sektoralen IDP ==
+
+note over Client, AuthS
+  Beide Auth Code Flows enden über denselben App-Link/Universal-Link in der App. Der ZETA
+  Client erkennt anhand des Pfads der redirect_uri, welcher AuthS-Endpunkt zu verwenden ist:
+  - oidc_redirect_uri (/cb/<app>/oidc) → redirection_endpoint des AuthS (aus as-well-known),
+    nicht der /token-Endpunkt → SekIDP Auth Code Flow (innerer Flow).
+  - app_redirect_uri (/cb/<app>/app) → /token-Endpunkt des AuthS → ZETA Guard Auth Code Flow (äußerer Flow).
+end note
+
+Client -> AuthS++: GET <redirection_endpoint der OIDC Relying Party>\nFolgt der 302-Redirection aus Teildiagramm (B)\nRuft redirection_endpoint aus as-well-known auf\n{code=AUTH_CODE_IDP, state=state_as}
+AuthS -> IDP++: POST /token (mTLS, self_signed_tls_client_auth)\n{grant_type=authorization_code, code=AUTH_CODE_IDP,\ncode_verifier=code_verifier_as, client_id, oidc_redirect_uri}
+IDP -> IDP: Prüfe TLS-Clientzertifikat,\nverifiziere code_verifier_as gegen code_challenge_as (S256),\ninvalidiere AUTHORIZATION_CODE
+IDP --> AuthS--: 200 OK\n{id_token (JWE: ECDH-ES/A256GCM, signiert ES256),\naccess_token, token_type=Bearer, expires_in}
+AuthS -> AuthS: Entschlüssele ID Token, verifiziere Signatur (kid/x5c),\nprüfe iss/aud/nonce/exp, extrahiere Claims (KVNR, acr, amr, ...)
+
+== Äußerer Flow: Policy-Entscheidung & Ausstellung der ZETA Token ==
+
+AuthS -> AuthS: Erzeuge AUTHORIZATION_CODE (AS)
+AuthS --> Client: 302 Found\nLocation: <app_redirect_uri>?code=AUTH_CODE_AS&state=state_app
+Client -> Client: Erzeuge DPoP Key Pair (PrK.DPoP.Sig, PuK.DPoP.Sig)\nund DPoP Proof
+Client -> AuthS: POST /token  dpop: <dpop_proof>\n{grant_type=authorization_code, code=AUTH_CODE_AS,\ncode_verifier=code_verifier_app, client_id, app_redirect_uri,\nclient_assertion (JWT, PrK.Client.Sig signiert)}
+AuthS -> AuthS: Verifiziere code_verifier_app gegen code_challenge_app (S256),\nDPoP Proof und Client Assertion (Key Binding aus DCR)
+
+AuthS -> AuthS: Erzeuge Policy Engine Input\n(Identitäts-Claims, Posture, Kontext)
+AuthS -> OPA++: POST /v1/data/authz {Policy Engine Input}
+OPA --> AuthS--: Policy Decision
+
+alt Policy Decision allow
+    alt Hardware Attestation  (Android TEE oder StrongBox / SE)
+        AuthS -> AuthS: Create ZETA Guard Attestation Token (zeta_attestation_token)
+        AuthS --> Client: 200 OK {Access Token, Refresh Token, zeta_attestation_token, token_type=DPoP, expires_in}
+    else Software Attestation (Fallback)
+        AuthS --> Client: 200 OK {Access Token, Refresh Token, token_type=DPoP, expires_in}
+    end
+
+else Policy Decision deny
+    AuthS --> Client: 403 Forbidden {"reasons": ["..."]}
+end
+
+note over Client, AuthS
+  Der ZETA Client besitzt nun ein DPoP-gebundenes Access Token und kann auf den Resource Server zugreifen
+  (siehe Abb-ZETA-Zugriff-auf-RS-mit-ASL bzw. Abb-ZETA-Zugriff-auf-RS-ohne-ASL).
+  Die Session-Erneuerung erfolgt über Abb-ZETA-Token-Exchange-mit-Refresh-Token.
+end note
+
+@enduml

@@ -1,0 +1,68 @@
+@startuml
+!include ../puml-layout.txt
+
+box "Mobiles Endgerät" DEVICE_COLOR
+    participant "FdV App\n" as App
+    participant "ZETA Client Modul / SDK\n[ZH]" as SDK <<zeta>>
+end box
+
+participant "Apple (APNs) / Google (FCM)\nPush-Infrastruktur" as PushInfra
+participant "Push Gateway\n[AP]" as PG
+
+box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
+  box "optionale VAU (Betriebsvariante A)" #MintCream
+    box "ZETA Guard" ZETA_GUARD_COLOR
+        participant "Notification Service\n[ZH] (SW) / [FD] (Betrieb)" as NS <<zeta>>
+    end box
+    participant "Resource Server\n(Fachdienst) [FD]" as RS <<provider>>
+  end box
+end box
+
+
+== Registrierung / Schlüssel / Channel / Historie ==
+SDK++
+NS++
+RS++
+SDK -> NS: Aufruf zur Registrierung von Pushern,\nSchlüsselverwaltung & Channel-Konfiguration\n//[Auth: Dienstspezifisches ZETA-Zugriffstoken (DPoP)]//
+NS --> SDK: Registrierungsbestätigung
+
+== Abfrage aktive Channel (optional) ==
+
+opt Optionaler Schritt
+    RS -> NS: Abfrage der aktiven Channel
+    NS --> RS: Rückgabe aktive Channel
+end
+
+== Push-Zustellungsweg ==
+
+RS -> NS: Push-Nachricht an aktive Channel
+note over NS
+  NS verschlüsselt Payload nur, wenn dieses zentral pro ZETA-Guard-Instanz aktiv ist. Andernfalls unverschlüsselte Weitergabe.
+end note
+
+alt Verschlüsselung aktiv
+    NS -> PG++: Versand verschlüsselte Push-Nachricht\nEndpunkt: /notifyEncrypted/batch [Auth: mTLS]
+else Verschlüsselung inaktiv
+    NS -> PG: Versand unverschlüsselte Push-Nachricht\nEndpunkt: /notify oder /notify/batch [Auth: mTLS]
+end
+
+PG -> PushInfra++: Zustellung an Push-Infrastruktur
+PG--
+PushInfra -> App++: Zustellung an FdV App auf dem Gerät
+PushInfra--
+== Verarbeitung im Endgerät ==
+
+App -> SDK: Weitergabe der Push-Nachricht an das SDK
+note over SDK: Verarbeitung & Entschlüsselung\nder Nachricht
+SDK --> App: Übergabe Klartext-Payload
+
+note over App: Anzeige der Benachrichtigung\nin der Benutzeroberfläche
+
+opt Optionales Feature: Nachrichten-Historie
+    App -> SDK: Abruf älterer/zugestellter Benachrichtigungen (/history/*)
+    SDK -> NS: Abruf älterer/zugestellter Benachrichtigungen (/history/*)
+    NS --> SDK: Rückgabe Nachrichten-Historie
+    SDK --> App--: Rückgabe Nachrichten-Historie
+end
+
+@enduml

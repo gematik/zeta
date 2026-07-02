@@ -1,6 +1,7 @@
 # Schema for the AccessToken JSON object. Issuer is a PDP authorization server.
 # See also https://www.rfc-editor.org/rfc/rfc9068.html
 $schema: "http://json-schema.org/draft-07/schema#"
+schemaVersion: "1.1.0"
 title: Access Token
 description: Schema for the Access Token issued by the PDP authorization server, as defined in RFC 9068.
 type: object
@@ -44,19 +45,30 @@ properties:
             items:
               type: string
           - type: string
-        description: The intended recipients (audiences) of the token.
+        description: >-
+          The intended recipient(s) of the token, expressed as a stable, logical,
+          deployment-independent audience identifier of the target service (e.g.
+          "n_resource", "cm_resource"). For tokens issued under contract version 2
+          (`ver: 2`) this value is determined by the Policy Engine (OPA) decision
+          and MUST NOT be the environment-specific resource URL; the canonical
+          RFC 9728 resource identifier is conveyed via the `resource` request
+          parameter (RFC 8707) and bound to the request via the DPoP `htu` claim
+          (RFC 9449) instead. For legacy tokens (`ver` absent or `1`) the value is
+          taken verbatim from the client-supplied `audience` request parameter.
       sub:
         type: string
         description: "The subject of the token; Telematik-ID, KVNR or other unique identifier"
       profession_oid:
         type: string
-        description: "Profession identifier (OID)"
+        description: >-
+          Profession identifier (OID)
+          Is required for tokens with authenticated users (Token Exchange and OIDC flows).
       common_name:
         type: string
         description: "Common name of the subject"
       organization_name:
         type: string
-        description: "Organization name of the subject"
+        description: "Organization name of the subject or IK-Nummer of the health insurance company"
       client_id:
         type: string
         description: The client identifier of the OAuth 2.0 client that requested the token.
@@ -77,6 +89,7 @@ properties:
           - apple
           - windows
           - linux
+          - other
       iat:
         type: integer
         description: Issued at time of the token as a Unix timestamp.
@@ -86,6 +99,18 @@ properties:
       scope:
         type: string
         description: The permissions that this token grants.
+      ver:
+        type: integer
+        description: >-
+          Token-issuance contract version. `1` (or absent) indicates the legacy
+          contract where `aud` is taken verbatim from the client-supplied
+          `audience` parameter. `2` indicates the new contract where the client
+          sends a `resource` indicator (RFC 8707) and the `aud` claim is
+          determined by the Policy Engine (OPA) decision. The PEP uses this value
+          to select the correct audience-matching rule during the transition.
+        enum:
+          - 1
+          - 2
       cnf:
         type: object
         description: The confirmation claim binding the token to the public key.
@@ -102,8 +127,8 @@ properties:
       - iss
       - exp
       - aud
+      - scope
       - sub
-      - profession_oid
       - client_id
       - ip_address
       - product_id

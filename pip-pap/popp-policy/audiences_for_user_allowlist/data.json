@@ -1,0 +1,8 @@
+{
+  "audiences_for_user_allowlist": [
+    "https://popp-server:30300",
+    "https://192.168.49.2:30300",
+    "https://popp-ru-dev-interim.int.epa.rise-link.de:443",
+    "https://popp-ru-dev-interim.int.epa.rise-link.de:8443"
+  ]
+}
