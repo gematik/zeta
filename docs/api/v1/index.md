@@ -348,7 +348,7 @@ Content-Type: application/json
 ##### 4.1.4.2 Dynamic Client Registration Response
 
 **Antwort-Beispiel (202 Accepted):**
-*Response-Schema:* [register-response-202.yaml](../../../src/schemas/register-response-202.yaml)
+*Response-Schema:* [dcr-response-202.yaml](../../../src/schemas/dcr-response-202.yaml)
 
 ```http
 HTTP/1.1 202 Accepted
