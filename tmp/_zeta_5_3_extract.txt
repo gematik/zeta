@@ -324,7 +324,7 @@ PuK.Client.Sig
 signed_Hash_PuK.Client.Sig
 Der Authorization Server validiert die Zertifikatskette von C.EK.Enc sowie signed_Hash_PuK.Client.Sig. Anschließ
 end erzeugt er ein CredentialBlob gemäß dem TPM 2.0 Befehl MakeCredential (vgl. TCG TPM Library Part 3,
-Section 12.5) und antwortet mit 202 Accepted {CredentialBlob}.
+Section 12.5) und antwortet mit 202 Accepted {challenge_type, tpm_credential_blob, tpm_encrypted_secret}.
 Der ZETA Client leitet das CredentialBlob an den ZAS weiter. Der ZAS führt TPM2_ActivateCredential aus und
 erhält das entschlüsselte Secret. Das Secret wird an den Authorization Server via POST /register/verify
 {Secret} übermittelt. Nach erfolgreicher Prüfung gelten PuK.Client.Sig und PuK.AK.Sig als hardware-gebunden.
@@ -364,7 +364,7 @@ Verfügt der ZETA Client über ein gültiges ZETA Guard Attestation Token aus ei
 erneute Registrierung beschleunigt erfolgen:
 POST /register
 {
- attestation_type = "fast_path"
+ attestation_type = "zeta_attestation_token"
  ZETA Guard Attestation Token
  PuK.Client.Sig
  signed_Hash_PuK.Client.Sig

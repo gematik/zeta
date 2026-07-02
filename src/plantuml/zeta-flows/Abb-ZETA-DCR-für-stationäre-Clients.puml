@@ -22,7 +22,7 @@ alt Kein ZETA Guard Attestation Token
         Client -> AuthS++: POST /register\n{attestation_type="tpm", PuK.EK.Enc, C.EK.Enc,\nPuK.AK.Sig, PuK.Client.Sig, signed_Hash_PuK.Client.Sig}
         AuthS -> AuthS: Validiere C.EK.Enc-Chain & signed_Hash_PuK.Client.Sig
         AuthS -> AuthS: CredentialBlob = MakeCredential(...);\n(TPM 2.0 Commands, Section 12.5)
-        AuthS --> Client: 202 Accepted {CredentialBlob}
+        AuthS --> Client: 202 Accepted {challenge_type, tpm_credential_blob, tpm_encrypted_secret}
 
         Client -> ZAS++: Activate(CredentialBlob)
         ZAS -> TPM++: TPM2_ActivateCredential\n(CredentialBlob)
