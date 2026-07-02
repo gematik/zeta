@@ -124,7 +124,7 @@ alt Hardware Attestation
       - TPM oder Secure Enclave
     end note
 
-    AuthS --> Client: Access Token + zg_att_token
+    AuthS --> Client: Access Token + zeta_attestation_token
 
 else Software Attestation
 

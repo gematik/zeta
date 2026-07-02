@@ -1,0 +1,39 @@
+@startuml "Abb-ZETA-DCR-für-mobile-Clients"
+!include ../puml-layout.txt
+
+actor User as "Nutzer"
+
+box "Device" DEVICE_COLOR
+  box "App" PRIMAERSYSTEM_COLOR
+    participant Client as "ZETA Client" <<zeta>>
+  end box
+end box
+
+box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
+  box "ZETA Guard" ZETA_GUARD_COLOR
+    participant AuthS as "PDP\nAuthorization Server" <<zeta>>
+  end box
+end box
+
+
+group Account Recovery: Verlust von E-Mail-Zugang UND Gerät
+    note over User, AuthS
+      Der Nutzer hat weder Zugriff auf sein altes Gerät (mobile Client) noch auf sein
+      altes E-Mail-Konto. Mit dem zuvor erhaltenen recovery_code registriert er einen
+      neuen Client mit NEUER E-Mail-Adresse. Die Hardware-Attestierung des neuen Geräts
+      läuft wie oben (Apple/Android/TPM); statt der OTP-Verifikation dient der
+      recovery_code als Besitz-/Identitätsnachweis für den bestehenden Nutzer-Account.
+    end note
+    User++
+    User -> Client++: Startet Wiederherstellung, gibt recovery_code\nund neue E-Mail-Adresse ein
+    Client -> AuthS++: POST /register\n{attestation_type, <Hardware-Attestation des neuen Geräts>,\nPuK.Client.Sig, signed_hash_puk_client_sig, redirect_uris,\nuser_email=<neue E-Mail>, recovery_code}
+    AuthS -> AuthS: Validiere Hardware-Attestation (wie beim normalen DCR-Flow)
+    AuthS -> AuthS: Verifiziere recovery_code gegen gespeicherten Hash
+    AuthS -> AuthS: Binde neuen Client & neue E-Mail an bestehenden Nutzer-Account,\ninvalidiere alten recovery_code
+    AuthS -> AuthS: Generiere neuen recovery_code, speichere neuen Hash
+    AuthS --> User: neuer recovery_code (Out-of-Band, einmalige Anzeige)
+    AuthS --> Client--: 201 Created {client_id}
+    Client --> User--: Wiederherstellung abgeschlossen
+end
+
+@enduml

@@ -1,0 +1,54 @@
+@startuml "Abb-ZETA-Schlüsselgenerierung-Apple"
+!include ../puml-layout.txt
+
+participant Apple
+box "Device" DEVICE_COLOR
+  participant "Secure Enclave" as SE LEI_COMPONENT_COLOR
+  participant "AppleOS (macOS, iOS, iPadOS)" as AppleOS LEI_COMPONENT_COLOR
+  box "App" PRIMAERSYSTEM_COLOR
+    participant "ZETA Client" as Client <<zeta>>
+  end box
+end box
+
+Client++
+AppleOS++
+Client --> Client: Installation (User Space)
+
+alt Secure Enclave
+== Client Instance Key Pair (PrK.Client.Sig; PuK.Client.Sig) ==
+      Client -> AppleOS: SecKeyCreateRandomKey\n(für PrK.Client.Sig, PuK.Client.Sig in SE)
+    note left of Client: Generierung des primären Schlüssels\nfür Client Assertions.
+      AppleOS -> SE++: Generiere Schlüssel (Client.Sig)
+      SE --> AppleOS--: keyId (Referenz für PrK.Client.Sig)
+      AppleOS --> Client: keyId (Referenz für PrK.Client.Sig)
+
+    == Hardware-Attestierung (Attestation Key, App Attest) ==
+    note left of Client: Generierung des dedizierten Attestation Keys\nund einmalige Attestierung gegen Apple CA.
+    Client -> AppleOS: DCAppAttestService.shared.generateKey()
+    AppleOS -> SE++: Generiere AK-Schlüsselpaar in SE
+    SE --> AppleOS--: keyId_AK (Handle für PrK.AK.Sig)
+    AppleOS --> Client: keyId_AK
+    Client -> Client: Berechne challenge =\nSHA-256(PuK.Client.Sig)
+
+    Client -> AppleOS: DCAppAttestService.shared.attestKey(\n  keyId_AK, clientDataHash = challenge)
+    AppleOS -> SE++: Erstelle Hardware-Signatur über challenge
+    SE --> AppleOS--: Hardware-Signatur
+    AppleOS -> Apple++: Verifiziere Signatur & erstelle CBOR\n(X.509-Kette + Receipt)
+    Apple --> AppleOS--: apple_attestation_object
+    AppleOS --> Client: apple_attestation_object
+
+== Expliziter Besitznachweis (Proof of Possession) ==
+    note left of Client
+      Besitznachweis des Client Instance Keys. Das apple_attestation_object beweist die HW-Bindung;
+      diese Signatur beweist den physischen Besitz von PrK.Client.Sig.
+    end note
+    Client -> AppleOS: SecKeyCreateSignature(\n  PrK.Client.Sig, SHA-256(PuK.Client.Sig))
+    AppleOS -> SE++: Signiere Hash mit PrK.Client.Sig
+    SE --> AppleOS--: ECDSA Signatur
+    AppleOS --> Client: signed_hash_puk_client_sig
+
+else Fallback
+  Client -> Client: Generiere PrK.Client.Sig,\nPuK.Client.Sig
+end
+
+@enduml

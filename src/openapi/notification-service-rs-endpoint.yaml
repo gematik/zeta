@@ -1,0 +1,653 @@
+# Copyright 2026 Gematik GmbH
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+openapi: 3.1.0
+info:
+  title: ZETA Notification Service – Resource Server API
+  description: |-
+    Server-to-server interface offered by the **ZETA Notification Service** to a
+    **Resource Server (Fachdienst)**. It allows a Resource Server to
+
+      * query the **active channels** of a given user (identified by KVNR or Telematik-ID), and
+      * submit a **push notification** for a specific channel. The Notification Service
+        forwards accepted notifications through the configured **Push Gateway** to the user's
+        registered devices (APNs / FCM).
+
+    This API aligns with the gematik *gem-push-notifications-concept* (Client-FD Push API and
+    Push Gateway API) and reuses its channel and message semantics.
+
+    ## Processing model (asynchronous)
+
+    Notification submission is **strictly asynchronous**. A successful submission only confirms
+    that the notification was **accepted for processing** (`202 Accepted`); it does **not**
+    confirm delivery to the device. Final delivery to the device through APNs / FCM is best-effort
+    and cannot be guaranteed by this interface.
+
+    ## User existence and device binding
+
+    A user is **known** to the Notification Service if, and only if, it has **at least one
+    registered device** (pusher). Channel configuration is **bound to a device** (pusher): in the
+    underlying *gem-push-notifications-concept* the channel status (`enabled` / `disabled` /
+    `not_set`) is maintained **per device** (per `pushkey`, via `GET`/`POST /channels/{pushkey}`).
+    The Notification Service does **not** keep a standalone user record without any device;
+    consequently, an identifier for which no device is registered is treated as **unknown**
+    (`404`), not as a known user with zero devices.
+
+    A notification is therefore only dispatched if the target **channel is active** (status
+    `enabled`) on **at least one** of the user's registered devices. A user may have several
+    devices with different channel selections. The user-level view of this interface is therefore
+    an **aggregation across all of the user's devices**: a channel counts as active for the user
+    when it is `enabled` on at least one device, and the notification is dispatched to **every**
+    device on which the channel is `enabled`.
+
+    This precondition is evaluated **synchronously** during submission. If the channel is not
+    active on any registered device, the notification is **not dispatched**: the `202 Accepted`
+    response already carries the terminal status `no_active_channel`. If no device is registered
+    for the identifier at all, the request is rejected with `404` (see above). Submissions that
+    pass the precondition are confirmed with status `accepted`/`queued` and handed to the Push
+    Gateway asynchronously; the final dispatch outcome is **not** reported back through this
+    interface.
+
+    ## Encryption
+
+    The Resource Server **does not** decide whether a notification payload is encrypted.
+    Whether and how the notification content is encrypted is a **configuration of the
+    Notification Service instance** (set per Fachdienst / ZETA Guard instance by the operator) and
+    is applied transparently before the notification is handed over to the Push Gateway. The
+    configurability is bounded by the specification of the respective Fachdienst (e.g. mandatory
+    for ePA and E-Rezept, optional for TIM).
+
+    ## Authentication and trust
+
+    All requests are authenticated using a **technical user** secured by **mutual TLS (mTLS)**.
+    Both the client certificate (Resource Server) and the server certificate (Notification
+    Service) are issued and managed by the respective operators of the Resource Server and the
+    Notification Service.
+
+    If the Notification Service is operated **inside a Vertrauenswürdige Ausführungsumgebung (VAU)**,
+    this mTLS-based service-to-service authentication MUST be **terminated within the trust
+    boundary of the VAU**: the mutual TLS handshake and certificate validation are performed by an
+    endpoint that is itself part of the attested VAU trust space, so that neither the technical
+    credentials nor the (potentially decrypted) notification content are exposed outside the VAU.
+
+    ## Identifier handling (internal)
+
+    The user identifiers (KVNR / Telematik-ID) accepted by this interface are an **input** to the
+    Notification Service only. How they are stored internally depends on the **deployment variant**
+    of the Notification Service (see requirement `A_NS_DEPLOY_01`):
+
+      * **Variant (A) – with VAU:** the identifiers are **not stored in clear text**. The
+        Notification Service persists and indexes them exclusively as a **pseudonym** (keyed HMAC,
+        with the pseudonymization key generated in the VAU and HSM-sealed; the HMAC computed
+        **within the VAU**), and all stored configuration/status data is **encrypted at rest**
+        using HSM-sealed keys. **Pseudonymization and HSM-backed at-rest encryption take place
+        only in this VAU-based variant.**
+      * **Variant (B) – without VAU:** the HSM-backed pseudonymization and at-rest encryption
+        described above are **not** available. Variant (B) is therefore only permitted where no
+        personal user identifiers (KVNR / Telematik-ID) are persisted; protection of any persisted
+        data relies on the operator's general organizational and operational measures.
+
+    This is an internal property of the Notification Service and does not affect the
+    request/response contract of this API.
+
+    ## Notification history
+
+    This interface intentionally does **not** expose a notification *content* history. The
+    persistence of notification content for later retrieval by the insured person is the
+    responsibility of the **Resource Server (Fachdienst)** via its own `/history/*` endpoints, as
+    described in the *gem-push-notifications-concept* (optional feature "Historie"). The optional
+    `reference` field of a notification corresponds to the concept's unencrypted `identifier`
+    property: the Notification Service forwards it to the Push Gateway so that a FdV-operator
+    internal service can build a cross-service list of received notifications. Because this value
+    leaves the encrypted channel, it **MUST NOT contain personal data** (no KVNR, name, or message
+    content). The `notification_id` returned on submission serves correlation and operational
+    logging only and is subject to a short retention period.
+  version: 1.0.0
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+servers:
+  - url: "{protocol}://{hostname}{basePath}"
+    variables:
+      protocol:
+        enum:
+          - https
+        default: https
+      hostname:
+        default: localhost:8443
+      basePath:
+        default: /notification-service/v1
+security:
+  - mtls: []
+tags:
+  - name: Channels
+    description: Query of the active channels of a user.
+  - name: Notifications
+    description: Submission of push notifications.
+paths:
+  /users/{userId}/channels:
+    get:
+      operationId: getActiveChannels
+      summary: Get the active channels of a user
+      description: |-
+        Returns the channels of the user identified by `userId` together with their current status
+        and device registration information. By default only channels with status `enabled` are
+        returned; set `include_inactive=true` to receive all known channels of the user.
+
+        The user is **known** only if it has at least one registered device (pusher); if no device
+        is registered for the identifier, the operation returns `404`. Consequently, in the `200`
+        response `has_registered_devices` is always `true` and `registered_device_count` is always
+        `≥ 1`. These fields are retained for explicitness and to convey the exact device count.
+
+        Channel configuration is **bound to a device** (pusher / `pushkey`); a user may have several
+        devices with different channel selections. The status reported here is therefore an
+        **aggregation across all of the user's devices**: a channel is reported as `enabled` when it
+        is enabled on **at least one** registered device.
+
+        The user is identified by the combination of `userId` (the identifier value) and the
+        required `id_type` query parameter, which declares whether the value is a **KVNR** or a
+        **Telematik-ID**.
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: The identifier value of the user (KVNR or Telematik-ID, as declared by `id_type`).
+          schema:
+            $ref: "#/components/schemas/UserIdValue"
+          examples:
+            kvnr:
+              value: "X110411675"
+            telematikId:
+              value: "5-2-KH-AKA-1234567890"
+        - name: id_type
+          in: query
+          required: true
+          description: The type of the identifier provided in `userId`.
+          schema:
+            $ref: "#/components/schemas/UserIdType"
+        - name: include_inactive
+          in: query
+          required: false
+          description: |-
+            If `true`, all known channels of the user are returned regardless of status.
+            If `false` (default), only channels with status `enabled` are returned.
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: The active channels of the user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActiveChannelsResponse"
+              examples:
+                response:
+                  value:
+                    user:
+                      id_type: "kvnr"
+                      value: "X110411675"
+                    has_registered_devices: true
+                    registered_device_count: 2
+                    channels:
+                      - id: "epa.documents.new"
+                        status: "enabled"
+                      - id: "epa.consent.changed"
+                        status: "enabled"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: No user is known to the Notification Service for the given identifier.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                response:
+                  value:
+                    errorCode: "USER_NOT_FOUND"
+                    errorDetail: "No user is known to the Notification Service for the given identifier."
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      tags:
+        - Channels
+  /notifications:
+    post:
+      operationId: submitNotification
+      summary: Submit a push notification for a channel
+      description: |-
+        Submits a push notification for a specific `channel` of the addressed user. Processing is
+        **asynchronous**: the Notification Service validates the request, queues the notification
+        and returns `202 Accepted` with a `notification_id` for correlation.
+
+        The notification is only dispatched if the target channel is **active** (`enabled`) for the
+        user. Because channel configuration is **bound to a device** (per `pushkey`), "channel
+        active for the user" means the channel is `enabled` on **at least one** registered device;
+        the notification is then dispatched to **every** device on which the channel is `enabled`.
+        This precondition is checked **synchronously**: if the channel is not active on any
+        registered device, the `202 Accepted` response already carries the terminal status
+        `no_active_channel` and no dispatch occurs. If no device is registered for the identifier at
+        all, the user is **unknown** and the request is rejected with `404`. Clients that want to
+        avoid submitting in these cases SHOULD first query `GET /users/{userId}/channels`.
+
+        The request MUST NOT contain any encryption instructions. Whether the payload is encrypted
+        before being handed to the Push Gateway is determined solely by the Notification Service
+        instance configuration (set per Fachdienst / ZETA Guard instance).
+
+        The optional `reference` is forwarded to the Push Gateway as the unencrypted `identifier`
+        property (see *gem-push-notifications-concept*) and therefore MUST NOT contain personal
+        data.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationRequest"
+            examples:
+              request:
+                value:
+                  user:
+                    id_type: "kvnr"
+                    value: "X110411675"
+                  channel: "epa.documents.new"
+                  prio: "high"
+                  payload:
+                    trigger_id: "abc"
+                    message: "Neues Dokument verfügbar"
+                    document_id: "123"
+                  reference: "evt-2026-0001"
+      responses:
+        "202":
+          description: |-
+            The notification was accepted for asynchronous processing. The response contains the
+            `notification_id` and the initial status. Acceptance does not guarantee delivery.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationAccepted"
+              examples:
+                accepted:
+                  summary: Accepted for processing
+                  value:
+                    notification_id: "9b5f3f2e-4c2a-4d3b-9c1e-6a0f1b2c3d4e"
+                    status: "accepted"
+                    channel: "epa.documents.new"
+                    accepted_at: "2026-06-09T05:00:00Z"
+                queued:
+                  summary: Accepted and queued for dispatch
+                  value:
+                    notification_id: "9b5f3f2e-4c2a-4d3b-9c1e-6a0f1b2c3d4e"
+                    status: "queued"
+                    channel: "epa.documents.new"
+                    accepted_at: "2026-06-09T05:00:00Z"
+                noActiveChannel:
+                  summary: Accepted but not dispatched (channel not active)
+                  value:
+                    notification_id: "9b5f3f2e-4c2a-4d3b-9c1e-6a0f1b2c3d4e"
+                    status: "no_active_channel"
+                    channel: "epa.documents.new"
+                    accepted_at: "2026-06-09T05:00:00Z"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: No user is known to the Notification Service for the given identifier.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                response:
+                  value:
+                    errorCode: "USER_NOT_FOUND"
+                    errorDetail: "No user is known to the Notification Service for the given identifier."
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "413":
+          description: |-
+            The notification payload exceeds the maximum allowed size. Implementations MUST support
+            a notification payload of at least 3 KB.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                response:
+                  value:
+                    errorCode: "PAYLOAD_TOO_LARGE"
+                    errorDetail: "The notification payload exceeds the maximum allowed size of 3 KB."
+        "422":
+          description: |-
+            The request was syntactically valid but cannot be processed, e.g. the referenced
+            `channel` is unknown for the user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                unknownChannel:
+                  value:
+                    errorCode: "UNKNOWN_CHANNEL"
+                    errorDetail: "The referenced channel does not exist for the user."
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+      tags:
+        - Notifications
+components:
+  securitySchemes:
+    mtls:
+      description: |-
+        Mutual TLS authentication of a technical user. The Notification Service verifies the
+        client (Resource Server) certificate and rejects the connection if it is invalid. When the
+        Notification Service runs inside a VAU, the mTLS termination and certificate validation are
+        performed within the VAU trust boundary.
+      type: mutualTLS
+  responses:
+    BadRequest:
+      description: The request was invalid (e.g. missing or malformed parameters).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            response:
+              value:
+                errorCode: "INVALID_PARAM"
+                errorDetail: "The parameter 'id_type' is required."
+    Unauthorized:
+      description: The client is not authenticated.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            response:
+              value:
+                errorCode: "UNAUTHENTICATED"
+                errorDetail: "Missing or invalid mutual TLS (mTLS) client certificate."
+    Forbidden:
+      description: |-
+        The client is authenticated but not authorized for the requested operation or resource
+        (e.g. the technical user is not permitted to send for this Fachdienst, channel or user).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            response:
+              value:
+                errorCode: "FORBIDDEN"
+                errorDetail: "The technical user is not authorized for this operation."
+    RateLimited:
+      description: This request was rate-limited.
+      headers:
+        Retry-After:
+          description: The number of seconds the client should wait before retrying.
+          schema:
+            type: integer
+            minimum: 0
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            response:
+              value:
+                errorCode: "RATE_LIMITED"
+                errorDetail: "Too many requests."
+    ServiceUnavailable:
+      description: |-
+        The Notification Service is temporarily unavailable (e.g. overloaded, in maintenance or a
+        downstream dependency such as the Push Gateway is unavailable). The client SHOULD retry
+        later.
+      headers:
+        Retry-After:
+          description: The number of seconds the client should wait before retrying.
+          schema:
+            type: integer
+            minimum: 0
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            response:
+              value:
+                errorCode: "SERVICE_UNAVAILABLE"
+                errorDetail: "The Notification Service is temporarily unavailable."
+    InternalServerError:
+      description: A generic error occurred on the Notification Service.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            response:
+              value:
+                errorCode: "INTERNAL_ERROR"
+                errorDetail: "Unexpected failure during processing."
+  schemas:
+    UserIdType:
+      type: string
+      title: UserIdType
+      description: The type of identifier used to address a user.
+      enum:
+        - kvnr
+        - telematik-id
+    UserIdValue:
+      type: string
+      title: UserIdValue
+      description: |-
+        The identifier value of a user. The accepted format depends on `id_type`:
+          * **KVNR** – 10 characters: an uppercase letter followed by 9 digits (e.g. `X110411675`).
+          * **Telematik-ID** – a dot/hyphen-structured identifier up to 128 characters
+            (e.g. `5-2-KH-AKA-1234567890`).
+      minLength: 1
+      maxLength: 128
+      pattern: "^([A-Z][0-9]{9}|[0-9A-Za-z][0-9A-Za-z._-]{0,127})$"
+      examples:
+        - "X110411675"
+        - "5-2-KH-AKA-1234567890"
+    UserIdentifier:
+      type: object
+      title: UserIdentifier
+      description: Identifies a user by KVNR or Telematik-ID.
+      required:
+        - id_type
+        - value
+      properties:
+        id_type:
+          $ref: "#/components/schemas/UserIdType"
+        value:
+          $ref: "#/components/schemas/UserIdValue"
+    ChannelStatus:
+      type: string
+      title: ChannelStatus
+      description: |-
+        Aggregated status of a channel for the user across all of the user's registered devices.
+        The underlying channel configuration is maintained **per device** (per `pushkey`); this
+        value summarizes it at user level: `enabled` means the channel is enabled on **at least
+        one** device (the user actively receives notifications for this channel); `disabled` means
+        no device has it enabled (every device opted out); `not_set` means no device made an
+        explicit choice and the channel default applies.
+      enum:
+        - enabled
+        - disabled
+        - not_set
+    Channel:
+      type: object
+      title: Channel
+      description: A channel and its current status for the user, aggregated across the user's devices.
+      required:
+        - id
+        - status
+      properties:
+        id:
+          type: string
+          description: The identifier of the channel.
+          example: "epa.documents.new"
+        status:
+          $ref: "#/components/schemas/ChannelStatus"
+    ActiveChannelsResponse:
+      type: object
+      title: ActiveChannelsResponse
+      description: The channels of a user together with device registration information.
+      required:
+        - user
+        - has_registered_devices
+        - channels
+      properties:
+        user:
+          $ref: "#/components/schemas/UserIdentifier"
+        has_registered_devices:
+          type: boolean
+          description: |-
+            Indicates whether the user has at least one registered device (pusher). Because a user
+            is only known to the Notification Service while it has at least one device, this is
+            always `true` in a `200` response (the absence of any device yields `404`). Retained
+            for explicitness.
+        registered_device_count:
+          type: integer
+          minimum: 1
+          description: The number of registered devices (pushers) of the user (always ≥ 1 in a `200` response).
+        channels:
+          type: array
+          description: The channels of the user.
+          items:
+            $ref: "#/components/schemas/Channel"
+    NotificationRequest:
+      type: object
+      title: NotificationRequest
+      description: |-
+        A push notification to be sent to a specific channel of a user. The request MUST NOT
+        contain any encryption instructions; encryption is governed by the Notification Service
+        instance configuration (set per Fachdienst / ZETA Guard instance).
+      additionalProperties: false
+      required:
+        - user
+        - channel
+        - payload
+      properties:
+        user:
+          $ref: "#/components/schemas/UserIdentifier"
+        channel:
+          type: string
+          description: The identifier of the target channel.
+          example: "epa.documents.new"
+        prio:
+          $ref: "#/components/schemas/Priority"
+        payload:
+          type: object
+          description: |-
+            Use-case specific payload of the notification. This interface does **not** prescribe a
+            schema for the payload: the available properties are **defined by the specification of
+            the originating Fachdienst** (see *gem-push-notifications-concept*, where the message
+            payload is "use-case specific" and "to be defined by the backends specification").
+
+            This content is what the Notification Service will (optionally, per its instance
+            configuration) encrypt and forward to the device. When the encryption feature is
+            active, the notification is delivered through the Push Gateway's encrypted endpoint
+            (`/notifyEncrypted/batch`), where the serialized payload becomes the fixed-size
+            `ciphertext`: the *gem-push-notifications-concept* mandates a plaintext block of exactly
+            **1024 bytes** before encryption. The Fachdienst MUST therefore keep the serialized
+            payload within this 1024-byte limit for encrypted delivery (this is independent of the
+            larger request-size limit of this interface, which applies to the unencrypted RS→NS
+            hop).
+          additionalProperties: true
+          example:
+            trigger_id: "abc"
+            message: "Neues Dokument verfügbar"
+            document_id: "123"
+        reference:
+          type: string
+          description: |-
+            Optional Fachdienst-side reference to correlate this notification with an originating
+            event. It is forwarded to the Push Gateway as the unencrypted `identifier` property
+            (see *gem-push-notifications-concept*) to support the FdV notification history. It is
+            not required to be unique and **MUST NOT contain personal data** (no KVNR, name or
+            message content).
+          maxLength: 128
+    Priority:
+      type: string
+      title: Priority
+      description: The delivery priority requested for the notification.
+      enum:
+        - high
+        - normal
+      default: normal
+    NotificationStatusValue:
+      type: string
+      title: NotificationStatusValue
+      description: |-
+        The acceptance status of a notification as reported synchronously in the `202 Accepted`
+        response. The final dispatch outcome is processed asynchronously and is **not** reported
+        back through this interface.
+
+          * `accepted` – accepted for processing, validation pending or in progress.
+          * `queued` – queued for dispatch to the Push Gateway.
+          * `no_active_channel` – not dispatched: the channel is not active (`enabled`) for the user.
+      enum:
+        - accepted
+        - queued
+        - no_active_channel
+    NotificationAccepted:
+      type: object
+      title: NotificationAccepted
+      description: Confirmation that a notification was accepted for asynchronous processing.
+      required:
+        - notification_id
+        - status
+        - channel
+        - accepted_at
+      properties:
+        notification_id:
+          type: string
+          format: uuid
+          description: The unique identifier assigned to the accepted notification.
+        status:
+          $ref: "#/components/schemas/NotificationStatusValue"
+        channel:
+          type: string
+          description: The target channel of the notification.
+        accepted_at:
+          type: string
+          format: date-time
+          description: The point in time the notification was accepted.
+    Error:
+      type: object
+      title: Error
+      description: Error object with additional information about the occurred error.
+      required:
+        - errorCode
+      properties:
+        errorCode:
+          type: string
+          description: A short, machine-readable error identifier.
+          example: "INVALID_PARAM"
+        errorDetail:
+          type: string
+          description: Additional details regarding the error condition (if applicable).
+          example: "The parameter 'id_type' is required."

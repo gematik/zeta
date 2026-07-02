@@ -1,0 +1,39 @@
+@startuml ZG-Client-Dienst-zu-Dienst-Kommunikation
+!include ../puml-layout.txt
+
+participant "Zieldienst\n(Anbieter B)" as ZDB
+participant "Secure Token Service\n(Anbieter B)" as STSB
+
+box "Anbieter" PROVIDER_COLOR
+  box "ZETA Guard" ZETA_GUARD_COLOR
+    participant "ZG Client" as ZGC <<zeta>>
+    participant "PDP\nPolicy Engine" as PE
+    participant "PDP\nAuthorization Server\n(Anbieter A)" as ASA
+  end box
+  participant "Fachkomponente\n(z. B. Resource Server,\notel-collector)" as FK <<provider>>
+end box
+
+== Konfigurationsbezug ==
+ZGC++
+ZGC -> PE++ : Konfiguration abrufen\n(zulässige Zieldienste, Scopes, Token-Endpunkte)
+PE --> ZGC-- : Konfiguration
+
+== Fachlicher Request ==
+FK++
+FK -> ZGC : Fachlicher Request (Ziel: externer Dienst)
+
+alt Access Token im Cache gültig
+    ZGC -> ZGC : gültiges Access Token aus Cache verwenden
+else Access Token fehlt oder abgelaufen
+    ZGC -> ASA++ : Subject Token anfordern
+    ASA --> ZGC-- : Subject Token
+    ZGC -> STSB++ : Token Exchange\n(Subject Token gegen Access Token)
+    STSB --> ZGC-- : 200 OK, Access Token
+    ZGC -> ZGC : Access Token cachen
+end
+
+ZGC -> ZDB++ : Fachlicher Request + Access Token (Authorization Header)
+ZDB --> ZGC-- : Antwort
+ZGC --> FK : Antwort (unverändert)
+
+@enduml

@@ -1,0 +1,235 @@
+@startuml "Abb-ZETA-Notification-Service-RS-Schnittstelle"
+!include ../puml-layout.txt
+
+title Schnittstelle Resource Server <-> ZETA Notification Service\n(Aktive Channels abfragen + asynchroner Push-Versand)
+
+box "TI 2.0 Dienst Anbieter" PROVIDER_COLOR
+  box "optionale VAU (Vertrauensgrenze)" ZETA_GUARD_COLOR
+    participant "Resource Server\n(Fachdienst)" as RS <<provider>>
+    participant "Notification\nService" as NS <<zeta>>
+    database "Notification Svc DB\n(Pusher / Channel)" as NSDB <<zeta>>
+    participant "ZETA HSM Proxy\n(gRPC -> HSM)" as HSM <<zeta>>
+  end box
+end box
+
+box "App-Anbieter" #GhostWhite
+  participant "Push Gateway" as PGW <<provider>>
+end box
+
+note over RS, NS #lightblue
+  **Authentisierung (alle Aufrufe RS -> NS)**
+  Technischer Nutzer per **mTLS** (gegenseitige TLS-Auth).
+  Client-/Server-Zertifikate werden durch die Betreiber von
+  RS und Notification Service ausgestellt und verwaltet.
+  Bei VAU-Betrieb: mTLS-Terminierung und Zertifikatsprüfung
+  **innerhalb der VAU-Vertrauensgrenze** -> weder technische
+  Credentials noch (entschlüsselter) Inhalt verlassen die VAU.
+end note
+
+note over NS, HSM #lightyellow
+  **HSM-Zugriff** ausschließlich über die gRPC-Schnittstelle
+  des **ZETA HSM Proxy** ([hsm-proxy.proto], gemSpec_ZETA A_28829)
+  in **bestehender Form** (Encrypt/Decrypt, kein MAC-RPC).
+  Zugriff nur durch **attestierte/gepairte** VAU-Instanz,
+  Beschränkung nach Komponente + key_id per **mTLS/ABAC**
+  (A_28746-A_28748, A_28830). Der KEK bleibt im HSM; **DEK** und
+  **HMAC-Schlüssel** werden in der VAU erzeugt und HSM-KEK-
+  versiegelt (via Encrypt/Decrypt) gespeichert.
+end note
+
+RS ++
+
+== (Optional) Aktive Channels eines Nutzers abfragen ==
+
+RS -> NS ++ : GET /users/{userId}/channels?id_type={kvnr|telematik-id}&include_inactive={false}
+note right of RS #lightblue
+  Nutzer wird per **KVNR** oder **Telematik-ID**
+  identifiziert (id_type deklariert den Typ).
+  include_inactive=true liefert alle Channels
+  (Default: nur Status "enabled").
+end note
+
+note over NS, HSM #lightyellow
+  **At-rest-Schutz (nur VAU-Betrieb, A_NS_DEPLOY_01):**
+  **Alle** persistierten Daten liegen **verschlüsselt** vor
+  (Envelope: DEK, KEK-gewrappt im HSM; Identifikatoren als
+  Keyed-HMAC-Pseudonym). Vor **jedem** DB-Zugriff werden die
+  benötigten Schlüssel **über das HSM** entwrappt (Decrypt).
+  Gecacht (flüchtig im VAU-Speicher) wird nur der **langlebige**
+  Schlüssel: der **HMAC-Schlüssel** bzw. der **Single-DEK**
+  (resp. der **VAU-Wrapping-Key** bei Per-Record-DEK) -> HSM-
+  Decrypt nur bei **Cache-Miss** (A_NS_HSM_02/03). Bei Per-Record-
+  DEK werden die einzelnen **Record-DEK lokal in der VAU** (ohne
+  HSM) ent-/gewrappt und nur **transient** verwendet (nicht gecacht).
+  Ent-/Verschlüsselung erfolgt **in der VAU**.
+  **AES-GCM:** **eindeutige Nonce** je DEK-Operation, DEK-Rotation
+  vor GCM-Mengengrenze; **empfohlen Per-Record-DEK** (Crypto-
+  Shredding bei Löschung) -> KEK bleibt im HSM (A_NS_HSM_02).
+  **Ohne VAU** entfallen die HSM-/Krypto-Schritte.
+end note
+
+' --- 1) HMAC-Schlüssel über HSM entwrappen (nur bei Cache-Miss), dann Pseudonym bilden ---
+opt HMAC-Schlüssel nicht im VAU-Cache (Cache-Miss)
+  NS -> HSM ++ : Decrypt(key_id=KEK, wrapped HMAC-Key, AES_256_GCM)
+  HSM --> NS -- : HMAC-Schlüssel (entwrappt) -> **im VAU-Cache** halten
+end opt
+NS -> NS : Pseudonym berechnen\n(Keyed-HMAC in der VAU, HMAC_SHA256)
+note right of NS #lightblue
+  Die Klartext-Identität (KVNR/T-ID) wird **nicht**
+  in der DB gehalten. Das deterministische **Pseudonym**
+  dient als Lookup-Schlüssel.
+end note
+
+' --- 2) verschlüsselte Datensätze lesen ---
+NS -> NSDB ++ : Lookup Channels & Pusher\n(per Pseudonym)
+NSDB --> NS -- : **verschlüsselte** Channel-/Pusher-Daten (ggf. **leer**)
+
+' --- 3) Langlebigen At-rest-Schlüssel über HSM entwrappen (nur bei Cache-Miss), dann Daten entschlüsseln ---
+opt Langlebiger At-rest-Schlüssel nicht im VAU-Cache (Cache-Miss)
+  NS -> HSM ++ : Decrypt(key_id=KEK, wrapped Single-DEK bzw. VAU-Wrapping-Key,\n  AES_256_GCM, associated_data=Schlüssel-Kontext)
+  HSM --> NS -- : entwrappter Schlüssel -> **im VAU-Cache** halten
+end opt
+NS -> NS : Channel-/Pusher-Daten **entschlüsseln** (in der VAU;\nbei Per-Record-DEK Record-DEK **lokal** entwrappen, transient;\nAAD=Pseudonym/Record-ID bindet Ciphertext an Datensatz)
+
+alt Kein Pusher zum Pseudonym vorhanden (Nutzer unbekannt)
+  NS -->> RS : 404 Not Found\n{ errorCode: "USER_NOT_FOUND" }
+  note left of NS #FFCCCC
+    Ein Nutzer ist dem NS **nur bekannt**, solange
+    **mind. ein** registriertes Gerät (Pusher) existiert.
+    Kein Gerät = **unbekannter Nutzer** -> **404**.
+  end note
+else >= 1 Pusher vorhanden
+  NS -> NS : Channels über **alle pushkeys** des Nutzers\naggregieren (enabled, wenn >= 1 Gerät enabled)
+  note right of NS #lightblue
+    Channel-Konfiguration ist gemäß Push-Spec
+    **geräteindividuell je pushkey** (GET/POST
+    /channels/{pushkey}). Die Nutzer-Sicht hier ist
+    nur eine **Aggregation** über alle Geräte des
+    Nutzers (A_NS_API_03/A_NS_API_09).
+  end note
+
+  NS -->> RS : 200 OK\n{ user, has_registered_devices=true,\n  registered_device_count (>=1), channels[] }
+  note left of NS #lightgreen
+    RS kann vorab prüfen, ob ein Versand
+    überhaupt sinnvoll ist (ist der Channel aktiv?).
+    has_registered_devices ist im 200-Fall stets true.
+  end note
+end alt
+
+deactivate NS
+
+== Push-Notification absenden (strikt asynchron) ==
+
+RS -> NS ++ : POST /notifications\n{ user, channel, prio?, payload, reference? }
+note right of RS #lightblue
+  **Keine** Verschlüsselungs-Anweisung im Request.
+  Ob/wie verschlüsselt wird, entscheidet die
+  Konfiguration des Notification Service.
+  **reference** = unverschlüsselter identifier für die
+  FdV-Historie -> **keine** personenbezogenen Daten.
+end note
+
+NS -> NS : Request validieren\n(Schema, bekannter Channel)
+
+' --- HMAC-Schlüssel über HSM entwrappen (nur bei Cache-Miss), dann Pseudonym bilden ---
+opt HMAC-Schlüssel nicht im VAU-Cache (Cache-Miss)
+  NS -> HSM ++ : Decrypt(key_id=KEK, wrapped HMAC-Key, AES_256_GCM)
+  HSM --> NS -- : HMAC-Schlüssel (entwrappt) -> **im VAU-Cache** halten
+end opt
+NS -> NS : Pseudonym berechnen\n(Keyed-HMAC in der VAU, HMAC_SHA256)
+
+' --- Langlebigen At-rest-Schlüssel über HSM entwrappen (für Schreiben + Lesen; nur bei Cache-Miss) ---
+opt Langlebiger At-rest-Schlüssel nicht im VAU-Cache (Cache-Miss)
+  NS -> HSM ++ : Decrypt(key_id=KEK, wrapped Single-DEK bzw. VAU-Wrapping-Key,\n  AES_256_GCM, associated_data=Schlüssel-Kontext)
+  note right of HSM #lightblue
+    Der **HSM Proxy** entwrappt den **langlebigen** at-rest-Schlüssel
+    mit dem HSM-**KEK** (Sealing); der KEK verlässt das HSM nicht.
+    **Single-DEK:** ein globaler DEK wird gecacht. **Empfohlen
+    (A_NS_HSM_02): Per-Record-DEK** - hier wird nur der **VAU-
+    Wrapping-Key** gecacht; die einzelnen **Record-DEK** werden
+    **lokal in der VAU** (kein HSM-Aufruf je Datensatz) entwrappt
+    und nur **transient** verwendet (nicht gecacht).
+  end note
+  HSM --> NS -- : entwrappter Schlüssel -> **im VAU-Cache** halten
+end opt
+
+' --- Channel/Pusher lesen und entschlüsseln (vor jeder Prüfung) ---
+NS -> NSDB ++ : Channel-Status + **verschlüsselte** Pusher laden\n(per Pseudonym)
+NSDB --> NS -- : verschlüsselte Channel-/Pusher-Daten (ggf. **leer**)
+
+alt Kein Pusher zum Pseudonym vorhanden (Nutzer unbekannt)
+  NS -->> RS : 404 Not Found\n{ errorCode: "USER_NOT_FOUND" }
+  note left of NS #FFCCCC
+    Ein Nutzer ist dem NS **nur bekannt**, solange
+    **mind. ein** registriertes Gerät (Pusher) existiert
+    (geräte-/pushkey-gebundene Haltung). Kein Gerät =
+    **unbekannter Nutzer** -> **404**. **Keine** Persistierung
+    (Datensparsamkeit, A_NS_RETENTION_01).
+  end note
+else >= 1 Pusher vorhanden
+  NS -> NS : Channel-Status + Pusher-Daten **entschlüsseln** (in der VAU;\nbei Per-Record-DEK Record-DEK **lokal** entwrappen, transient;\nAAD=Pseudonym/Record-ID)
+
+  NS -> NS : Prüfen: ist der **Channel aktiv**\n(enabled) für den Nutzer?
+  note right of NS #lightblue
+    Channel-Status wird **je pushkey** ausgewertet
+    (geräteindividuell, Push-Spec). "Channel aktiv für
+    den Nutzer" = enabled für **mind. ein** Gerät;
+    Versand erfolgt an **jeden** pushkey mit enabled.
+  end note
+
+  alt Channel aktiv (enabled für >= 1 Gerät)
+    ' --- Erst jetzt (echter Versand) wird ein Datensatz angelegt ---
+    NS -> NS : Notification-Datensatz **verschlüsseln** (Record-/Single-DEK, in der VAU,\n**eindeutige GCM-Nonce**, AAD=Pseudonym/Record-ID; A_NS_HSM_02)
+    NS -> NSDB ++ : Notification anlegen\n(**verschlüsselt**, initialer Status "accepted")
+    NSDB --> NS -- : gespeichert
+    opt Verschlüsselung aktiviert (NS-Konfiguration)
+      NS -> NS : **Payload verschlüsseln**\n(AES/GCM in der VAU, transparent für den RS)
+    end opt
+    NS -->> RS : 202 Accepted\n{ notification_id, status: "accepted" }
+    note left of NS #lightgreen
+      202 = **angenommen zur Verarbeitung**,
+      **nicht** = zugestellt.
+    end note
+    alt Verschlüsselung aktiviert
+      NS -> PGW ++ : POST /notifyEncrypted/batch\n(mTLS, EncryptedNotification[], identifier = reference)
+      note right of NS #lightyellow
+        Verschlüsselte Nachrichten gibt es in der
+        Push-Spec **nur als Batch** (/notifyEncrypted/batch);
+        ein Einzel-Endpunkt existiert **nicht**.
+      end note
+      PGW --> NS -- : BatchNotificationResponse\n(results[].status + results[].rejected[], summary)
+    else unverschlüsselt
+      NS -> PGW ++ : POST /notify  bzw.  /notify/batch\n(mTLS, PlainNotification(s), identifier = reference)
+      note right of NS #lightyellow
+        Unverschlüsselt: **Einzel** (/notify -> { rejected[] })
+        **oder** Batch (/notify/batch -> BatchNotificationResponse).
+      end note
+      PGW --> NS -- : rejected[]  bzw.  BatchNotificationResponse
+    end alt
+    opt rejected/abgelehnte Pushkeys vorhanden
+      NS -> NSDB ++ : **Zugehörige Pusher entfernen**\n(rejected Pushkeys, Pusher-Konfig **verschlüsselt**)
+      NSDB --> NS -- : aktualisiert
+      note right of NS #FFCCCC
+        Push-Spec (RejectedPushKeys, gemF A_27374):
+        Client **MUSS** den Versand an diese Pushkeys
+        einstellen **und die zugehörigen Pusher entfernen**.
+        Gilt auch retroaktiv (frühere Notification kann
+        ursächlich gewesen sein).
+      end note
+    end opt
+  else Channel nicht aktiv
+    NS -->> RS : 202 Accepted\n{ notification_id, status: "no_active_channel" }
+    note left of NS #FFCCCC
+      Terminaler Status **synchron** in der Antwort.
+      **Kein** Versand und **keine** Persistierung
+      (Datensparsamkeit, A_NS_RETENTION_01) -
+      notification_id nur transient erzeugt.
+    end note
+  end alt
+end alt
+
+deactivate NS
+
+RS --
+
+@enduml

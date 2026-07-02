@@ -35,8 +35,8 @@ alt Validation successful
     alt Policy Decision allow
         AuthS -> AuthS: Create Token (Access Token, Refresh Token)
         alt Hardware Attestation  (TPM / SE)
-            AuthS -> AuthS: Create ZETA Guard Attestation Token (zg_att_token)
-            AuthS --> Client: 200 OK {Access Token, Refresh Token, zg_att_token}
+            AuthS -> AuthS: Create ZETA Guard Attestation Token (zeta_attestation_token)
+            AuthS --> Client: 200 OK {Access Token, Refresh Token, zeta_attestation_token}
         else Software Attestation (Fallback)
             AuthS --> Client: 200 OK {Access Token, Refresh Token}
         end

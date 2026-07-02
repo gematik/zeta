@@ -1,16 +1,16 @@
-# ZETA API v1.3.1-2
+# ZETA API v2.0.0-draft
 
 ## Dokumenten- und Versionsübersicht
 
-|                               |                               |
-| ----------------------------- | ----------------------------- |
-| Dokumenttitel                 | ZETA API v1.3.1-2             |
-| Dokumentversion               | 1.3.1-2                       |
-| Stand                         | 03.06.2026                    |
-| Status                        | Draft                         |
-| Verantwortlich                | gematik                       |
-| Gültigkeitsbereich            | ZETA Guard API                |
-| Spezifikationsgrundlage       | gemSpec_ZETA, Version 1.3.1   |
+|                               |                                   |
+| ----------------------------- | --------------------------------- |
+| Dokumenttitel                 | ZETA API v2.0.0-draft             |
+| Dokumentversion               | 2.0.0-draft                       |
+| Stand                         | 17.06.2026                        |
+| Status                        | Draft                             |
+| Verantwortlich                | gematik                           |
+| Gültigkeitsbereich            | ZETA Guard API                    |
+| Spezifikationsgrundlage       | gemSpec_ZETA, Version 2.0.0-draft |
 
 ---
 
@@ -183,6 +183,7 @@ ETag: "w/98d41-xyz98765"
   "issuer": "https://auth.example.com",
   "authorization_endpoint": "https://auth.example.com/auth",
   "token_endpoint": "https://auth.example.com/token",
+  "redirection_endpoint": "https://auth.example.com/redirect",
   "registration_endpoint": "https://auth.example.com/register",
   "jwks_uri": "https://auth.example.com/certs",
   "grant_types_supported": [
@@ -244,7 +245,7 @@ Die folgende Abbildung zeigt den Attestierungsablauf im Überblick und die Unter
 | **Access Token** | 300 s (5 min) | Über Refresh Token oder neuen Token Exchange | DPoP-gebunden (an `PuK.DPoP.Sig`) |
 | **Refresh Token** | 86 400 s (24 h) | Einmalig einlösbar (Rotation bei Nutzung) | An `client_id` gebunden |
 | **DPoP Proof** | Einmalig verwendbar | Jeder Request benötigt neuen Proof | An HTTP-Methode + URI gebunden |
-| **ZETA Guard Attestation Token** (`zg_att_token`) | Unbegrenzt | Neuer Token Exchange mit Hardware Attestation | An `PuK.AK.Sig` gebunden |
+| **ZETA Guard Attestation Token** (`zeta_attestation_token`) | Unbegrenzt | Neuer Token Exchange mit Hardware Attestation | An `PuK.AK.Sig` gebunden |
 | **Nonce** | 300 s (5 min) | Neuer `GET /nonce` Aufruf | Einmalig verwendbar |
 
 ---
@@ -297,7 +298,7 @@ Die Dynamic Client Registration ermöglicht die Registrierung neuer Clients beim
 
 - **Verwendete Endpunkt-Pfade (Windows/Linux):** `POST /register` und `POST /register/verify`
 - *(01) POST /register:* Der ZETA Client sendet die Registrierungsanfrage gemäß Schema [dcr-request.yaml](../../../src/schemas/dcr-request.yaml) an den PDP AuthS. Der Body enthält `attestation_type: "tpm"`, `PuK.Client.Sig`, `PuK.AK.Sig`, `PuK.EK.Enc`, `C.EK.Enc` und `signed_hash_puk_client_sig`.
-- *(02)–(03) MakeCredential:* Der AuthS validiert die EK-Zertifikatskette gegen die Hersteller-CA. Zur Verifikation des Schlüsselbesitzes generiert er ein verschlüsseltes `CredentialBlob` per `TPM2_MakeCredential` (verschlüsselt mit `PuK.EK.Enc`, gebunden an `PuK.AK.Sig`) und antwortet mit `202 Accepted {CredentialBlob}`.
+- *(02)–(03) MakeCredential:* Der AuthS validiert die EK-Zertifikatskette gegen die Hersteller-CA. Zur Verifikation des Schlüsselbesitzes generiert er ein verschlüsseltes `CredentialBlob` per `TPM2_MakeCredential` (verschlüsselt mit `PuK.EK.Enc`, gebunden an `PuK.AK.Sig`) und antwortet mit `202 Accepted {challenge_type, tpm_credential_blob, tpm_encrypted_secret}`.
 - *(04)–(08) ActivateCredential:* Der ZETA Client leitet das `CredentialBlob` an den ZAS weiter. Der ZAS führt im TPM `TPM2_ActivateCredential` aus — dieser Befehl gelingt nur, wenn EK und AK im selben TPM vorhanden sind. Das entschlüsselte Secret wird an den Client zurückgegeben.
 - *(09)–(10) POST /register/verify:* Der Client sendet das Secret an den AuthS. Der AuthS verifiziert das Secret und schließt die Registrierung ab: `201 Created {client_id}` mit Status `pending_attestation`.
 
@@ -347,7 +348,7 @@ Content-Type: application/json
 ##### 4.1.4.2 Dynamic Client Registration Response
 
 **Antwort-Beispiel (202 Accepted):**
-*Response-Schema:* [register-response-202.yaml](../../../src/schemas/register-response-202.yaml)
+*Response-Schema:* [dcr-response-202.yaml](../../../src/schemas/dcr-response-202.yaml)
 
 ```http
 HTTP/1.1 202 Accepted
@@ -426,7 +427,7 @@ Der Token Exchange ist der zentrale Schritt zur Erlangung eines DPoP-gebundenen 
 - *(03) Validierung:* Der AuthS validiert Client Assertion, DPoP Proof, Subject Token, Nonce, Key-Bindings aus der DCR und den Sperrstatus (OCSP) der SM(C)-B.
 - *(04) TPM Attestation Prüfung:* Verifizierung der Hardware-Signatur (Quote) gegen die extrahierte Nonce mit PCR-Replay via Event Log.
 - *(05) Policy Engine:* Bei erfolgreicher Validierung wird der Policy Engine Input erstellt und an die OPA Policy Engine übermittelt (`POST /v1/data/authz`).
-- *(06) Token-Erstellung:* Bei positiver Policy Decision erstellt der AuthS Access Token, Refresh Token und (bei Hardware Attestation) das `zg_att_token`.
+- *(06) Token-Erstellung:* Bei positiver Policy Decision erstellt der AuthS Access Token, Refresh Token und (bei Hardware Attestation) das `zeta_attestation_token`.
 
 ![Abbildung 7: Token Exchange mit Attestation](../../../images/zeta-flows/Abb-ZETA-Token-Exchange-Subject-Token.svg)
 
@@ -460,7 +461,7 @@ Content-Type: application/json
   "token_type": "DPoP",
   "expires_in": 3600,
   "refresh_token": "rt-desktop-8a7b6c5d4e3f2a1b",
-  "zg_att_token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS5jb20iLCJhdHRfdHlwZSI6InRwbSJ9.signature"
+  "zeta_attestation_token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS5jb20iLCJhdHRfdHlwZSI6InRwbSJ9.signature"
 }
 ```
 
@@ -502,8 +503,8 @@ Die Registrierung für macOS Clients nutzt das `Apple Attestation Object`, um di
 - **Verwendete Endpunkt-Pfade:** `POST /register`
 - *(01) POST /register:* Der Client sendet die Registrierungsanfrage mit `attestation_type: "apple"`, `PuK.AK.Sig`, dem `Apple_Attestation_Object` (CBOR-kodiert), `PuK.Client.Sig` und `signed_Hash_PuK.Client.Sig`.
 - *(02) Validierung:* Der AuthS verifiziert das Apple Attestation Object gegen die Apple App Attest Root CA und prüft, dass `PuK.AK.Sig` mit dem Blatt-Zertifikat (`x5c[0]`) des Objekts übereinstimmt.
-- *(03) Alternativ — ZETA Attestation Token:* Liegt bereits ein gültiges `zg_att_token` aus einer früheren Attestierung vor, kann dieses anstelle des Apple Attestation Objects vorgelegt werden (Fast-Path).
-- *(04) Registrierung:* Der AuthS speichert den Client mit Status `pending_user_binding` und antwortet mit `201 Created {client_id}`.
+- *(03) Alternativ — ZETA Attestation Token:* Liegt bereits ein gültiges `zeta_attestation_token` aus einer früheren Attestierung vor, kann dieses anstelle des Apple Attestation Objects vorgelegt werden (Fast-Path).
+- *(04) Registrierung:* Der AuthS speichert den Client mit Status `pending_verification` und antwortet mit `201 Created {client_id}`.
 
 ![Abbildung 9: DCR für stationäre Apple Clients](../../../images/zeta-flows/Abb-ZETA-DCR-für-stationäre-Apple-Clients.svg)
 
@@ -555,7 +556,7 @@ Content-Type: application/json
 ```json
 {
   "client_id": "zeta-client-macos-a1b2c3",
-  "status": "pending_user_binding",
+  "status": "pending_verification",
   "client_id_issued_at": 1748520000
 }
 ```
@@ -604,7 +605,7 @@ Die Registrierung bei Software-basierter Attestation erfordert kein Challenge-Re
 
 - **Verwendete Endpunkt-Pfade:** `POST /register`
 - *(01) POST /register:* Der Client sendet `client_name`, `grant_types`, `jwks` (mit `PuK.Client.Sig`) und `token_endpoint_auth_method`.
-- *(02) Registrierung:* Der AuthS speichert den Client mit Status `pending_user_binding` und antwortet mit `201 Created {client_id}`.
+- *(02) Registrierung:* Der AuthS speichert den Client mit Status `pending_verification` und antwortet mit `201 Created {client_id}`.
 
 ![Abbildung 12: DCR für stationäre Software-Attestation Clients](../../../images/zeta-flows/Abb-ZETA-DCR-für-stationäre-SW-Att-Clients.svg)
 
@@ -654,7 +655,7 @@ Content-Type: application/json
 ```json
 {
   "client_id": "zeta-client-sw-fallback-x9y8z7",
-  "status": "pending_user_binding",
+  "status": "pending_verification",
   "client_id_issued_at": 1748520000
 }
 ```
@@ -678,7 +679,7 @@ Der Token Exchange erfolgt analog zu Kapitel [4.1.6 Token Exchange](#416-token-e
 
 - Es erfolgt **keine** Hardware-Signaturprüfung (kein TPM Quote, keine App Attest Assertion).
 - Die Policy Engine wird mit entsprechend niedrigerem Vertrauensniveau aufgerufen.
-- Bei positiver Policy Decision antwortet der AuthS mit Access Token und Refresh Token, jedoch **ohne** `zg_att_token`.
+- Bei positiver Policy Decision antwortet der AuthS mit Access Token und Refresh Token, jedoch **ohne** `zeta_attestation_token`.
 
 Siehe [Abbildung 7: Token Exchange mit Attestation](#416-token-exchange-post-token) — der Ablauf ist für alle stationären Client-Typen einheitlich (Pfad "Software Attestation (Fallback)").
 
@@ -757,7 +758,7 @@ curl -X GET https://$RESOURCE_SERVER/api/resource \
 
 ## 5. Mobile Clients (Android, iOS, iPadOS)
 
-> **Preview** — Dieses Kapitel beschreibt den geplanten Ablauf für mobile Clients. Die Implementierung ist noch nicht abgeschlossen. Änderungen an Endpunkten, Payloads und Abläufen sind vorbehalten. Die hier beschriebenen Abläufe umfassen ausschließlich die Dynamic Client Registration (DCR). Die Authentifizierung der Nutzer erfolgt per OIDC und wird in einer späteren Version ergänzt.
+> **Preview** — Dieses Kapitel beschreibt den geplanten Ablauf für mobile Clients. Die Implementierung ist noch nicht abgeschlossen. Änderungen an Endpunkten, Payloads und Abläufen sind vorbehalten. Die hier beschriebenen Abläufe umfassen die Dynamic Client Registration (DCR) sowie die anschließende OIDC-basierte Nutzerauthentifizierung.
 
 ### Quick Start: Welches Kapitel betrifft mich?
 
@@ -772,7 +773,7 @@ curl -X GET https://$RESOURCE_SERVER/api/resource \
 1. **[ ] Discovery**: FQDN des Resource Servers → PDP-Metadaten laden ([Kapitel 3](#3-discovery-und-konfiguration))
 2. **[ ] Keys generieren**: Client Instance Key (`PuK.Client.Sig`) im TEE / StrongBox (Android) bzw. in der Secure Enclave (iOS) erstellen.
 3. **[ ] DCR aufrufen**: Registrierung absenden (`POST /register`) → TOFU-OTP per E-Mail empfangen → `POST /register/verify` mit OTP-Code.
-4. **[ ] Nutzer authentifizieren**: OIDC Authorization Code Flow mit PKCE *(wird in späterer Version ergänzt)*.
+4. **[ ] Nutzer authentifizieren**: OIDC Authorization Code Flow mit PAR und PKCE (siehe [5.1.3](#513-authentifizierung--autorisierung-oidc-flow)).
 5. **[ ] RS anfragen**: DPoP-gebundenes Token im Header mitsenden und die Ziel-API aufrufen ([Kapitel 7](#7-zugriff-auf-den-resource-server)).
 
 ---
@@ -797,7 +798,7 @@ Mobile Clients binden den Registrierungsprozess an eine interaktive Benutzeriden
 - *(04) 202 Accepted:* Der AuthS antwortet mit `{transaction_id, message="OTP sent"}` — zu diesem Zeitpunkt existiert noch keine `client_id`.
 - *(05) OTP-Eingabe:* Der Nutzer gibt den OTP-Code in der App ein.
 - *(06) POST /register/verify:* Der Client sendet `{transaction_id, code}` zur Verifikation.
-- *(07) 201 Created:* Bei korrektem OTP wird die Registrierung abgeschlossen mit `{client_id, status="pending_attestation"}`.
+- *(07) 201 Created:* Bei korrektem OTP wird die Registrierung abgeschlossen mit `{client_id, status="pending_attestation"}`. Zusätzlich stellt der AuthS einen `zeta_attestation_token` aus (signiert, an `PuK.AK.Sig` gebunden über `cnf`, enthält die registrierten `redirect_uris`; siehe [zeta-attestation-token.yaml](../../../src/schemas/zeta-attestation-token.yaml)). Dieser Token kann bei einer erneuten Registrierung im Fast-Path (`attestation_type="zeta_attestation_token"`) vorgelegt werden, sodass Hardware-Attestierung und `redirect_uris` nicht erneut übertragen werden müssen — der AuthS übernimmt die `redirect_uris` dann aus dem Token.
 
 ![Abbildung 15: DCR für mobile Apple Clients mit Hardware Attestation](../../../images/zeta-flows/Abb-ZETA-DCR-für-mobile-Apple-HW-Att-Clients.svg)
 
@@ -880,15 +881,78 @@ Content-Type: application/json
 {
   "client_id": "zeta-client-ios-d4e5f6",
   "status": "pending_attestation",
-  "client_id_issued_at": 1748520000
+  "client_id_issued_at": 1748520000,
+  "zeta_attestation_token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9...<signiertes JWT, siehe zeta-attestation-token.yaml>...=="
 }
 ```
 
 #### 5.1.3 Authentifizierung & Autorisierung (OIDC Flow)
 
-Der Token-Bezug für mobile Benutzer erfolgt über den standardisierten **OpenID Connect (OIDC) Authorization Code Flow** unter Einbindung von **PKCE** (RFC 7636).
+Der Token-Bezug für mobile Benutzer erfolgt über den standardisierten **OpenID Connect (OIDC) Authorization Code Flow** mit **Pushed Authorization Requests (PAR, RFC 9126)** und **PKCE (RFC 7636)**. Der ZETA Guard Authorization Server (AuthS) agiert dabei als **OIDC Relying Party** gegenüber dem sektoralen IDP der TI-Föderation. Der nachfolgend beschriebene Ablauf ist für alle mobilen Client-Varianten (Apple, Android, Software) identisch.
 
-> **Hinweis:** Der detaillierte OIDC-Ablauf für mobile Clients wird in einer späteren Version dieses Dokuments ergänzt.
+**Vorbedingungen:**
+
+- Die Service Discovery ist abgeschlossen; der Client kennt die Endpunkte des AuthS (siehe [Kapitel 3](#3-discovery-und-konfiguration)).
+- Der Client wurde per DCR registriert und besitzt `PrK.Client.Sig` / `PuK.Client.Sig` sowie zwei registrierte `redirect_uris` – `oidc_redirect_uri` (Pfad `.../oidc`, SekIDP-Flow) und `app_redirect_uri` (Pfad `.../app`, ZETA-Guard-Flow) (siehe [5.4](#54-native-mobile-apps-universal-links--app-links-für-mehrere-clients)).
+- Der AuthS ist als Relying Party beim Federation Master registriert.
+- App-Link / Universal-Link für ZETA Client und Authenticator-Modul sind im Betriebssystem registriert.
+
+Der Gesamtablauf gliedert sich in drei Teilflows (A–C):
+
+![Abbildung 16: Übersicht OIDC-Authentifizierung mobiler Clients](../../../images/zeta-flows/Abb-ZETA-OIDC-Authentifizierung-mobiler-Clients.svg)
+
+##### 5.1.3.1 Teilflow (A): Authorization Request mit PAR
+
+Der ZETA Client startet die Autorisierung. Der AuthS reicht den Request als Pushed Authorization Request (PAR) beim sektoralen IDP ein. Client und AuthS verwenden jeweils eigenes PKCE-Material.
+
+- *(01) PKCE erzeugen:* Der Client erzeugt `code_verifier_app`, `code_challenge_app = S256(code_verifier_app)` sowie `state_app`.
+- *(02) GET Authorization Request:* Der Client ruft den `authorization_endpoint` des AuthS auf mit `{response_type=code, client_id, app_redirect_uri, code_challenge_app, code_challenge_method=S256, scope, state_app, idp_iss}`.
+- *(03) PKCE des AuthS:* Der AuthS erzeugt eigenes PKCE-Material (`code_verifier_as`, `code_challenge_as`), `state_as` und `nonce`.
+- *(04) Optional – Entity Statement des IDP:* Ist das Entity Statement des IDP unbekannt, lädt der AuthS es über `GET /.well-known/openid-federation`, validiert die Trust Chain über den Federation Master und importiert Signaturschlüssel sowie OP-Metadaten (PAR-, Authorization-, Token-Endpunkt).
+- *(05) POST /PAR:* Der AuthS sendet den Pushed Authorization Request (mTLS, `self_signed_tls_client_auth`) mit `{client_id, oidc_redirect_uri, response_type=code, code_challenge_as, code_challenge_method=S256, scope, claims, acr_values, nonce, state_as}` an den IDP. `oidc_redirect_uri` ist der für den SekIDP-Flow bestimmte Redirection-Endpunkt der OIDC Relying Party (AuthS) und wird im **Entity Statement des AuthS** geführt.
+- *(06) Optional – Entity Statement des Fachdienstes:* Bei Bedarf validiert der IDP analog die Trust Chain des Fachdienstes (Automatic Registration) und importiert dessen Schlüssel.
+- *(07) 201 Created:* Der IDP validiert den PAR – u. a. prüft er `oidc_redirect_uri` gegen die im **AS-Entity-Statement** geführten `redirect_uris` –, erzeugt eine `request_uri` und antwortet mit `{request_uri, expires_in}` (max. 90 s).
+- *(08) 302 Found:* Der AuthS leitet den Client an den `authorization_endpoint` des IDP weiter (`?client_id&request_uri`).
+
+![Abbildung 17: OIDC Authorization Request mit PAR](../../../images/zeta-flows/Abb-ZETA-OIDC-Authorization-Request-mit-PAR.svg)
+
+##### 5.1.3.2 Teilflow (B): Nutzerauthentisierung am sektoralen IDP
+
+Die Authentisierung des Nutzers erfolgt über das Authenticator-Modul des sektoralen IDP. Das Ergebnis wird per App-Link / Universal-Link an den ZETA Client zurückgegeben.
+
+- *(01) Authenticator öffnen:* Der Client öffnet das Authenticator-Modul (Deep-Link / Universal-Link) mit `{client_id, request_uri}`.
+- *(02) GET /auth:* Das Authenticator-Modul ruft den Authorization-Endpunkt des IDP mit `{client_id, request_uri}` auf.
+- *(03) Consent:* Der IDP prüft die `request_uri` (Bezug zum PAR) und stellt die Consent-Abfrage gemäß Claims zusammen.
+- *(04) Authentisierung:* Der Nutzer authentisiert sich (eGK+PIN / eID) und gibt den Consent frei.
+- *(05) Code-Erzeugung:* Der IDP erzeugt den `AUTHORIZATION_CODE (IDP)` (Gültigkeit max. 90 s).
+- *(06) 302 Found:* Der IDP antwortet mit `Location: <oidc_redirect_uri>?code=AUTH_CODE_IDP&state=state_as`.
+- *(07) App-Link Rücksprung:* Das Betriebssystem stellt den App-Link / Universal-Link der ZETA Client App zu (`{code=AUTH_CODE_IDP, state=state_as}`). Der Client prüft `state_as` auf Übereinstimmung.
+
+![Abbildung 18: OIDC Nutzerauthentisierung am sektoralen IDP](../../../images/zeta-flows/Abb-ZETA-OIDC-Nutzerauthentisierung.svg)
+
+##### 5.1.3.3 Teilflow (C): Token-Bezug und Ausstellung der ZETA Token
+
+Im inneren Flow löst der AuthS den IDP-Code ein und gewinnt die Identitäts-Claims. Im äußeren Flow trifft die Policy Engine die Zugriffsentscheidung und der AuthS stellt die DPoP-gebundenen ZETA Token aus.
+
+**Innerer Flow – Token-Bezug beim sektoralen IDP:**
+
+> Beide Auth Code Flows enden über denselben App-/Universal-Link in der App. Der ZETA Client erkennt am **Pfad** der eingehenden `redirect_uri`, welcher AuthS-Endpunkt zu verwenden ist: `.../oidc` (`oidc_redirect_uri`) → `redirection_endpoint` (aus `as-well-known`, **nicht** `/token`) für den SekIDP-Flow; `.../app` (`app_redirect_uri`) → `token_endpoint` für den ZETA-Guard-Flow.
+
+- *(01) GET <oidc_redirect_uri>:* Der Client folgt der Redirection an den `redirection_endpoint` des AuthS (nicht `/token`) mit `{code=AUTH_CODE_IDP, state=state_as}`.
+- *(02) POST /token:* Der AuthS löst den Code beim IDP ein (mTLS) mit `{grant_type=authorization_code, code=AUTH_CODE_IDP, code_verifier=code_verifier_as, client_id, oidc_redirect_uri}`.
+- *(03) 200 OK:* Der IDP prüft das TLS-Clientzertifikat und `code_verifier_as`, invalidiert den `AUTHORIZATION_CODE` und liefert `{id_token (JWE, ECDH-ES/A256GCM, signiert ES256), access_token, token_type=Bearer, expires_in}`.
+- *(04) ID Token verarbeiten:* Der AuthS entschlüsselt und verifiziert das ID Token (Signatur via `kid`/`x5c`, `iss`/`aud`/`nonce`/`exp`) und extrahiert die Identitäts-Claims (KVNR, `acr`, `amr`, ...).
+
+**Äußerer Flow – Policy-Entscheidung & ZETA Token:**
+
+- *(05) POST /v1/data/authz:* Der AuthS erstellt den Policy Engine Input (Identitäts-Claims, Posture, Kontext) und ruft die Policy Engine (OPA) auf.
+- *(06) Policy Decision:* Bei `allow` erzeugt der AuthS den `AUTHORIZATION_CODE (AS)` und leitet den Client per `302 Found` (`Location: <app_redirect_uri>?code=AUTH_CODE_AS&state=state_app`) zurück. Bei `deny` antwortet der AuthS mit `403 Forbidden` und einer Begründung.
+- *(07) POST /token (DPoP):* Der Client erzeugt ein DPoP-Schlüsselpaar (`PrK.DPoP.Sig` / `PuK.DPoP.Sig`) und einen DPoP Proof und ruft den `token_endpoint` des AuthS mit dem `dpop`-Header sowie `{grant_type=authorization_code, code=AUTH_CODE_AS, code_verifier=code_verifier_app, client_id, app_redirect_uri, client_assertion}` auf.
+- *(08) 200 OK:* Der AuthS verifiziert `code_verifier_app` (gegen `code_challenge_app`), den DPoP Proof und die Client Assertion (Key Binding aus DCR) und stellt `{access_token (DPoP-gebunden), refresh_token, token_type=DPoP, expires_in}` aus.
+
+Der ZETA Client besitzt nun ein DPoP-gebundenes Access Token und kann auf den Resource Server zugreifen (siehe [Kapitel 7](#7-zugriff-auf-den-resource-server)). Die Session-Erneuerung erfolgt über den Refresh Token.
+
+![Abbildung 19: OIDC Token-Bezug und Ausstellung der ZETA Token](../../../images/zeta-flows/Abb-ZETA-OIDC-Token-Bezug.svg)
 
 ---
 
@@ -904,7 +968,7 @@ Android-Clients nutzen den **Android Keystore** mit **TEE (Trusted Execution Env
 - *(04) Besitznachweis:* Der Client signiert `hash_puk_client_sig` mit `PrK.AK.Sig` → `signed_hash_puk_client_sig`.
 - *(05) Play Integrity (optional):* Über `requestIntegrityToken(nonce = hash_puk_client_sig)` wird ein Geräte- und App-Integritätstoken eingeholt.
 
-![Abbildung 16: Schlüsselgenerierung auf Android](../../../images/zeta-flows/Abb-ZETA-Schlüsselgenerierung-Android.svg)
+![Abbildung 20: Schlüsselgenerierung auf Android](../../../images/zeta-flows/Abb-ZETA-Schlüsselgenerierung-Android.svg)
 
 #### 5.2.2 Dynamic Client Registration (DCR) mit TOFU
 
@@ -912,9 +976,9 @@ Auch Android-Clients durchlaufen den TOFU-Prozess mit OTP-Verifikation.
 
 - *(01) POST /register:* Der Client sendet `attestation_type: "android"`, `PuK.AK.Sig`, `android_key_attestation_certificate_chain`, `PuK.Client.Sig`, `signed_hash_puk_client_sig` und optional `play_integrity_token`.
 - *(02) Validierung:* Der AuthS validiert die Zertifikatskette gegen die Google Hardware Attestation Root CA, prüft `signed_hash_puk_client_sig` und wertet optional die Play Integrity Verdicts aus.
-- *(03)–(07) TOFU OTP:* Identischer Ablauf wie bei Apple-Clients (OTP-Generierung, E-Mail-Versand, Nutzer-Eingabe, Verifikation).
+- *(03)–(07) TOFU OTP:* Identischer Ablauf wie bei Apple-Clients (OTP-Generierung, E-Mail-Versand, Nutzer-Eingabe, Verifikation). Mit der `201 Created` stellt der AuthS zudem einen `zeta_attestation_token` aus (signiert, an `PuK.AK.Sig` gebunden über `cnf`, enthält die registrierten `redirect_uris`; siehe [zeta-attestation-token.yaml](../../../src/schemas/zeta-attestation-token.yaml)), der im Fast-Path wiederverwendet werden kann — die `redirect_uris` müssen dann nicht erneut übertragen werden.
 
-![Abbildung 17: DCR für mobile Android Clients mit Hardware Attestation](../../../images/zeta-flows/Abb-ZETA-DCR-für-mobile-Android-HW-Att-Clients.svg)
+![Abbildung 21: DCR für mobile Android Clients mit Hardware Attestation](../../../images/zeta-flows/Abb-ZETA-DCR-für-mobile-Android-HW-Att-Clients.svg)
 
 ##### 5.2.2.1 Dynamic Client Registration Request
 
@@ -999,15 +1063,14 @@ Content-Type: application/json
 {
   "client_id": "zeta-client-android-g7h8i9",
   "status": "pending_attestation",
-  "client_id_issued_at": 1748520000
+  "client_id_issued_at": 1748520000,
+  "zeta_attestation_token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9...<signiertes JWT, siehe zeta-attestation-token.yaml>...=="
 }
 ```
 
 #### 5.2.3 Authentifizierung & Autorisierung (OIDC Flow)
 
-Der Token-Bezug für mobile Benutzer erfolgt über den standardisierten **OpenID Connect (OIDC) Authorization Code Flow** unter Einbindung von **PKCE** (RFC 7636).
-
-> **Hinweis:** Der detaillierte OIDC-Ablauf für mobile Clients wird in einer späteren Version dieses Dokuments ergänzt.
+Der OIDC-Ablauf (Authorization Request mit PAR, Nutzerauthentisierung am sektoralen IDP, Token-Bezug und Ausstellung der ZETA Token) ist für alle mobilen Client-Varianten identisch und in [5.1.3](#513-authentifizierung--autorisierung-oidc-flow) vollständig beschrieben.
 
 ---
 
@@ -1019,7 +1082,7 @@ Mobile Clients ohne verfügbare Hardware-Sicherheitsmodule (kein TEE/StrongBox a
 
 Die Schlüsselgenerierung erfolgt rein softwarebasiert, identisch zu stationären Clients (siehe [4.3.1 Schlüsselgenerierung SW-Att](#431-client-installation-und-schlüsselgenerierung)).
 
-![Abbildung 18: Schlüsselgenerierung bei Software-basierter Attestation](../../../images/zeta-flows/Abb-ZETA-Schlüsselgenerierung-SW-Att.svg)
+![Abbildung 22: Schlüsselgenerierung bei Software-basierter Attestation](../../../images/zeta-flows/Abb-ZETA-Schlüsselgenerierung-SW-Att.svg)
 
 #### 5.3.2 Dynamic Client Registration (DCR) mit TOFU
 
@@ -1028,7 +1091,7 @@ Die Registrierung erfolgt wie bei der stationären Software-Attestation, ergänz
 - *(01) POST /register:* Der Client sendet `client_name`, `grant_types`, `jwks` (mit `PuK.Client.Sig`) und `token_endpoint_auth_method` — ohne Attestation-spezifische Felder.
 - *(02)–(06) TOFU OTP:* Identischer Ablauf wie bei den Hardware-Attestation-Varianten (OTP-Generierung, E-Mail-Versand, Nutzer-Eingabe, Verifikation).
 
-![Abbildung 19: DCR für mobile Clients mit Software Attestation](../../../images/zeta-flows/Abb-ZETA-DCR-für-mobile-SW-Att-Clients.svg)
+![Abbildung 23: DCR für mobile Clients mit Software Attestation](../../../images/zeta-flows/Abb-ZETA-DCR-für-mobile-SW-Att-Clients.svg)
 
 ##### 5.3.2.1 Dynamic Client Registration Request
 
@@ -1111,9 +1174,32 @@ Content-Type: application/json
 
 #### 5.3.3 Authentifizierung & Autorisierung (OIDC Flow)
 
-Der Token-Bezug für mobile Benutzer erfolgt über den standardisierten **OpenID Connect (OIDC) Authorization Code Flow** unter Einbindung von **PKCE** (RFC 7636).
+Der OIDC-Ablauf (Authorization Request mit PAR, Nutzerauthentisierung am sektoralen IDP, Token-Bezug und Ausstellung der ZETA Token) ist für alle mobilen Client-Varianten identisch und in [5.1.3](#513-authentifizierung--autorisierung-oidc-flow) vollständig beschrieben.
 
-> **Hinweis:** Der detaillierte OIDC-Ablauf für mobile Clients wird in einer späteren Version dieses Dokuments ergänzt.
+---
+
+### 5.4 Native mobile Apps: Universal Links / App Links für mehrere Clients
+
+Mehrere native Apps auf demselben Endgerät können denselben ZETA Guard Authorization Server und Resource Server nutzen. Jede App ist dabei ein eigener OAuth-Client mit eigener `client_id` und eigener `redirect_uris`-Registrierung (siehe DCR, [`POST /register`](../../../src/schemas/dcr-request.yaml)).
+
+Je App werden **zwei** `redirect_uris` registriert – eine je Auth Code Flow (siehe [5.1.3](#513-authentifizierung--autorisierung-oidc-flow)):
+
+- `oidc_redirect_uri` (Pfad `.../oidc`) für den SekIDP Auth Code Flow,
+- `app_redirect_uri` (Pfad `.../app`) für den ZETA Guard Auth Code Flow.
+
+Beide Callbacks enden über denselben App-/Universal-Link in der App. Damit das mobile Betriebssystem die OIDC-Redirection (`302 Found` an die `redirect_uri`) eindeutig der richtigen App zustellt und der ZETA Client den richtigen AuthS-Endpunkt anspricht, gelten folgende Festlegungen gemäß [RFC 8252](https://www.rfc-editor.org/info/rfc8252) (OAuth 2.0 for Native Apps):
+
+- **Claimed HTTPS Redirect-URIs (Universal Links / App Links):** Die `redirect_uris` sind HTTPS-URLs auf einer **vom App-Hersteller kontrollierten Domain** – nicht auf der AuthS-Domain. Die App kennt den AuthS-FQDN zur Entwicklungszeit nicht; er wird erst zur Laufzeit über `opr-well-known`/`as-well-known` aufgelöst. Die `redirect_uris` müssen daher AuthS-unabhängig sein.
+- **Vorab-Registrierung bei der gematik:** Der Hersteller registriert die `redirect_uris` vorab bei der gematik. Nur so können sie (a) im AuthS hinterlegt werden – beim DCR (`POST /register`) prüft der AuthS, ob die übergebenen `redirect_uris` registriert sind (exakter String-Vergleich) – und (b) in das **Entity Statement des AuthS** aufgenommen werden, gegen das der sektorale IDP `oidc_redirect_uri` beim PAR prüft.
+- **Ein eigener Pfad je App und je Flow:** Jede App registriert ihre `redirect_uris` mit unterschiedlichem Pfad (z. B. `https://<App-FQDN>/cb/app-a/as` und `https://<App-FQDN>/cb/app-a/app`). Die App-Zuordnung erfolgt über Host und Pfad – **nicht** über Query-Parameter wie `client_id`. Der **letzte Pfad-Abschnitt** (`as` | `app`) bestimmt den Flow: Bei `.../oidc` reicht der ZETA Client den empfangenen Code an den `redirection_endpoint` des AuthS weiter (nicht `/token`), bei `.../app` an den `token_endpoint`.
+- **OS-seitige Verknüpfung (Domain-Ownership):** Auf der App-Hersteller-Domain wird je Plattform eine Verknüpfungsdatei bereitgestellt, die App-Identitäten den jeweiligen Pfaden zuordnet:
+  - iOS/iPadOS/macOS: `https://<App-FQDN>/.well-known/apple-app-site-association`
+  - Android: `https://<App-FQDN>/.well-known/assetlinks.json`
+
+  Beide Dateien können mehrere Apps (App IDs bzw. Package-Namen + Signatur-Fingerprints) enthalten. Dies ist eine **Deployment-Konfiguration** auf der App-Hersteller-Domain und kein Laufzeit-Flow; der App-Hersteller ist für die Bereitstellung und Pflege dieser Dateien verantwortlich.
+- **Fallback „App nicht installiert":** Da die `redirect_uris` reguläre HTTPS-URLs sind, werden sie bei nicht installierter App im System-Browser geöffnet und können auf der App-Hersteller-Domain serverseitig verarbeitet werden (z. B. Hinweis-/Installationsseite).
+
+Die `redirect_uris` sind ein Client-Attribut (auf der App-Hersteller-Domain) und werden per DCR beim AuthS registriert. Sie sind zu unterscheiden vom `redirection_endpoint` des AuthS: Dieser ist ein Server-Endpunkt **auf der AuthS-Domain**, an den der ZETA Client den im `.../oidc`-Callback erhaltenen IDP-Code weiterreicht; er wird – wie `authorization_endpoint`, `token_endpoint`, `registration_endpoint`, `jwks_uri` – über das AuthS-`.well-known` (RFC 8414) verteilt. Die `redirect_uris` selbst werden **nicht** über das AuthS-`.well-known` verteilt.
 
 ---
 
@@ -1123,7 +1209,7 @@ Für die sichere Maschine-zu-Maschine Interaktion zwischen Backends wird die **W
 
 ### 6.1 POST /token (Client Credentials & Token Exchange)
 
-*Siehe auch [Abbildung 20: Dienst-zu-Dienst Kommunikation](../../../images/zeta-flows/Abb-ZETA-Dienst-zu-Dienst-Kommunikation.svg)*
+*Siehe auch [Abbildung 24: Dienst-zu-Dienst Kommunikation](../../../images/zeta-flows/Abb-ZETA-Dienst-zu-Dienst-Kommunikation.svg)*
 
 **Anfrage-Beispiel:**
 
@@ -1159,7 +1245,7 @@ Nach erfolgreichem Erhalt der Access-Token sendet der ZETA-Client Anfragen an de
 
 ### 7.1. Option A: Zugriff mit ZETA/ASL (Tunnelverschlüsselung)
 
-![Abbildung 21: Zugriff auf RS mit ASL](../../../images/zeta-flows/Abb-ZETA-Zugriff-auf-RS-mit-ASL.svg)*
+![Abbildung 25: Zugriff auf RS mit ASL](../../../images/zeta-flows/Abb-ZETA-Zugriff-auf-RS-mit-ASL.svg)*
 
 Erfordert der Fachdienst eine dedizierte Verschlüsselung (ASL), baut der Client einen verschlüsselten Tunnel auf. Der Client sendet die verschlüsselten Fachdaten per HTTP `POST` an den Endpoint `/ASL` des PEP Proxys.
 
@@ -1179,7 +1265,7 @@ DPoP: eyJhbGciOiJFUzI1NiIsInR5cCI6ImRwb3Arand0IiwiandrIjp7...
 
 ### 7.2. Option B: Direkter Zugriff ohne ZETA/ASL
 
-*![Abbildung 22: Zugriff auf RS ohne ASL](../../../images/zeta-flows/Abb-ZETA-Zugriff-auf-RS-ohne-ASL.svg)*
+*![Abbildung 26: Zugriff auf RS ohne ASL](../../../images/zeta-flows/Abb-ZETA-Zugriff-auf-RS-ohne-ASL.svg)*
 
 Der Client sendet den Request direkt an den PEP mit dem Access Token im `Authorization`-Header (DPoP-gebunden) und dem DPoP-Proof im `DPoP`-Header.
 
