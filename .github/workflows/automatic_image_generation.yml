@@ -6,7 +6,14 @@ on:
       - 'src/plantuml/**'
       - 'src/drawio/**'
       - '.github/workflows/automatic_image_generation.yml'
+      - '.github/scripts/generate-images.sh'
   workflow_dispatch:
+
+# Läufe pro Branch serialisieren, damit sich parallele Läufe nicht gegenseitig
+# die Pushes abweisen.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   generate_images:
@@ -18,133 +25,100 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v6
 
+    - name: Determine files to generate
+      id: changes
+      env:
+        EVENT_NAME: ${{ github.event_name }}
+        BEFORE_SHA: ${{ github.event.before }}
+        AFTER_SHA: ${{ github.sha }}
+      run: |
+        set -euo pipefail
+        NULL_SHA=0000000000000000000000000000000000000000
+        FULL_RUN=false
+        CHANGED=""
+
+        # Git erhält keine Datei-Zeitstempel, daher werden die zu generierenden
+        # Dateien aus dem Push-Diff bestimmt. Ohne verwertbaren Diff
+        # (workflow_dispatch, neuer Branch, Force-Push, Workflow/Skript
+        # geändert) wird alles generiert; ob committet wird, entscheidet
+        # ohnehin der Commit-Step anhand des tatsächlichen Diffs.
+        if [ "$EVENT_NAME" != "push" ] || [ -z "$BEFORE_SHA" ] || [ "$BEFORE_SHA" = "$NULL_SHA" ]; then
+          echo "Kein Push-Diff verfügbar (Event: $EVENT_NAME) - alle Bilder werden generiert."
+          FULL_RUN=true
+        elif ! git fetch --depth=1 origin "$BEFORE_SHA"; then
+          echo "Before-Commit $BEFORE_SHA nicht abrufbar (Force-Push?) - alle Bilder werden generiert."
+          FULL_RUN=true
+        else
+          CHANGED=$(git diff --name-only --diff-filter=d "$BEFORE_SHA" "$AFTER_SHA")
+          if grep -qE '^\.github/(workflows/automatic_image_generation\.yml|scripts/generate-images\.sh)$' <<< "$CHANGED"; then
+            echo "Workflow oder Generierungsskript geändert - alle Bilder werden generiert."
+            FULL_RUN=true
+          fi
+        fi
+
+        if [ "$FULL_RUN" = true ]; then
+          find src/plantuml -name '*.puml' | sort > "$RUNNER_TEMP/puml_files.txt"
+          find src/drawio -name '*.drawio' | sort > "$RUNNER_TEMP/drawio_files.txt"
+        else
+          grep -E '^src/plantuml/.*\.puml$' <<< "$CHANGED" > "$RUNNER_TEMP/puml_files.txt" || true
+          grep -E '^src/drawio/.*\.drawio$' <<< "$CHANGED" > "$RUNNER_TEMP/drawio_files.txt" || true
+        fi
+
+        echo "Zu generieren: $(wc -l < "$RUNNER_TEMP/puml_files.txt") PlantUML-Datei(en), $(wc -l < "$RUNNER_TEMP/drawio_files.txt") Draw.io-Datei(en)."
+        echo "puml=$([ -s "$RUNNER_TEMP/puml_files.txt" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+        echo "drawio=$([ -s "$RUNNER_TEMP/drawio_files.txt" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
     - name: Set up JDK 11
+      if: steps.changes.outputs.puml == 'true'
       uses: actions/setup-java@v5
       with:
         distribution: 'temurin'
         java-version: '11'
 
-    - name: Install dependencies and draw.io
+    - name: Install PlantUML and Graphviz
+      if: steps.changes.outputs.puml == 'true'
       run: |
-        set -e
+        set -euo pipefail
         sudo apt-get update
-        sudo apt-get install -y jq
-        sudo apt-get install -y --no-install-recommends graphviz xvfb libasound2t64
+        sudo apt-get install -y --no-install-recommends graphviz
+
+        wget --quiet https://github.com/plantuml/plantuml/releases/latest/download/plantuml.jar -O /tmp/plantuml.jar
+        if [ ! -s /tmp/plantuml.jar ]; then
+          echo "::error::Failed to download plantuml.jar"
+          exit 1
+        fi
+        echo "PlantUML JAR downloaded."
+
+    - name: Install draw.io
+      if: steps.changes.outputs.drawio == 'true'
+      run: |
+        set -euo pipefail
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends xvfb libasound2t64
 
         echo "Finding latest draw.io .deb release URL..."
         DRAWIO_LATEST_URL=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
           https://api.github.com/repos/jgraph/drawio-desktop/releases \
           | jq -r '[.[] | .assets[] | select(.name | contains("amd64") and endswith(".deb")) | .browser_download_url] | first')
 
-
         if [[ -z "$DRAWIO_LATEST_URL" || "$DRAWIO_LATEST_URL" == "null" ]]; then
           echo "::error::Could not find any recent draw.io release with a .deb file. API response may be rate limited or malformed."
           curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/rate_limit
           exit 1
         fi
-        
+
         echo "Downloading draw.io from: $DRAWIO_LATEST_URL"
         wget --quiet "$DRAWIO_LATEST_URL" -O /tmp/drawio.deb
-        
+
         echo "Installing draw.io..."
         sudo apt-get install -y /tmp/drawio.deb
-        
-    - name: Download PlantUML jar
-      id: download_plantuml
-      run: |
-        wget --quiet https://github.com/plantuml/plantuml/releases/latest/download/plantuml.jar -O /tmp/plantuml.jar
-        if [ ! -f /tmp/plantuml.jar ]; then
-          echo "::error::Failed to download plantuml.jar"
-          exit 1
-        fi
-        echo "PlantUML JAR downloaded."
 
-    - name: Generate images from PlantUML files
-      id: generate_plantuml
-      run: |
-        set -e
-        SUCCESSFUL_GENERATIONS=0
-        shopt -s nullglob
-
-        # Git erhält keine Datei-Zeitstempel, daher ist ein mtime-Vergleich im CI
-        # unzuverlässig. Es wird immer generiert; ob committet wird, entscheidet
-        # der Commit-Step anhand des tatsächlichen Diffs.
-        echo "Generating images for PlantUML files..."
-        while IFS= read -r -d $'\0' file; do
-          output_dir="$PWD/$(dirname "$file" | sed 's|^src/plantuml|images|')"
-          image_base=$(basename "$file" .puml)
-          png_path="$output_dir/$image_base.png"
-          svg_path="$output_dir/$image_base.svg"
-
-          echo "-> Generating images for PlantUML file: $file"
-          mkdir -p "$output_dir"
-
-          # In das Quellverzeichnis wechseln (Subshell), damit relative '!include'-Pfade
-          # aufgelöst werden; die Ausgabepfade sind absolut.
-          file_dir=$(dirname "$file")
-          file_name=$(basename "$file")
-
-          echo "Generating PNG: $png_path"
-          (cd "$file_dir" && cat "$file_name" | java -jar /tmp/plantuml.jar -p -tpng -scale 4 -graphvizdot /usr/bin/dot > "$png_path")
-
-          echo "Generating SVG: $svg_path"
-          (cd "$file_dir" && cat "$file_name" | java -jar /tmp/plantuml.jar -p -tsvg -graphvizdot /usr/bin/dot > "$svg_path")
-
-          if [ -f "$png_path" ] && [ -f "$svg_path" ]; then
-             SUCCESSFUL_GENERATIONS=$((SUCCESSFUL_GENERATIONS + 1))
-          else
-             echo "::error::File generation failed unexpectedly for $file. Output files are missing."
-             exit 1
-          fi
-        done < <(find src/plantuml -name "*.puml" -print0)
-
-        echo "PlantUML generation finished. Successfully generated for $SUCCESSFUL_GENERATIONS file(s)."
-
-        if [ "$SUCCESSFUL_GENERATIONS" -gt 0 ]; then
-          echo "plantuml_generated=true" >> $GITHUB_OUTPUT
-        else
-          echo "plantuml_generated=false" >> $GITHUB_OUTPUT
-        fi
-      shell: bash
-    - name: Generate images from drawio files
-      id: generate_drawio
-      run: |
-        set -e
-        SUCCESSFUL_GENERATIONS=0
-        shopt -s nullglob
-
-        echo "Generating images for Draw.io files..."
-        while IFS= read -r -d $'\0' file; do
-          output_dir="$(dirname "$file" | sed 's|^src/drawio|images|')"
-          image_base=$(basename "$file" .drawio)
-          png_path="$output_dir/$image_base.png"
-          svg_path="$output_dir/$image_base.svg"
-
-          echo "-> Generating images for Draw.io file: $file"
-          mkdir -p "$output_dir"
-
-          xvfb-run --auto-servernum drawio --no-sandbox --export --format png --scale 4 --output "$png_path" "$file"
-          xvfb-run --auto-servernum drawio --no-sandbox --export --format svg --output "$svg_path" "$file"
-
-          if [ -f "$png_path" ] && [ -f "$svg_path" ]; then
-             SUCCESSFUL_GENERATIONS=$((SUCCESSFUL_GENERATIONS + 1))
-          else
-             echo "::error::File generation failed unexpectedly for $file. Output files are missing."
-             exit 1
-          fi
-        done < <(find src/drawio -name "*.drawio" -print0)
-
-        echo "Draw.io generation finished. Successfully generated for $SUCCESSFUL_GENERATIONS file(s)."
-
-        if [ "$SUCCESSFUL_GENERATIONS" -gt 0 ]; then
-          echo "drawio_generated=true" >> $GITHUB_OUTPUT
-        else
-          echo "drawio_generated=false" >> $GITHUB_OUTPUT
-        fi
-      shell: bash
+    - name: Generate images
+      if: steps.changes.outputs.puml == 'true' || steps.changes.outputs.drawio == 'true'
+      run: bash .github/scripts/generate-images.sh "$RUNNER_TEMP/puml_files.txt" "$RUNNER_TEMP/drawio_files.txt"
 
     - name: Commit and push generated images
-      if: github.ref_type == 'branch' && (steps.generate_plantuml.outputs.plantuml_generated == 'true' || steps.generate_drawio.outputs.drawio_generated == 'true')
+      if: github.ref_type == 'branch' && (steps.changes.outputs.puml == 'true' || steps.changes.outputs.drawio == 'true')
       env:
         TARGET_BRANCH: ${{ github.ref_name }}
       run: |
@@ -181,26 +155,8 @@ jobs:
           git fetch origin "$TARGET_BRANCH"
           git reset --hard "origin/$TARGET_BRANCH"
 
-          # regenerate to match latest source state
-          while IFS= read -r -d $'\0' file; do
-            output_dir="$(dirname "$file" | sed 's|^src/drawio|images|')"
-            image_base=$(basename "$file" .drawio)
-            mkdir -p "$output_dir"
-            xvfb-run --auto-servernum drawio --no-sandbox --export --format png --scale 4 --output "$output_dir/$image_base.png" "$file"
-            xvfb-run --auto-servernum drawio --no-sandbox --export --format svg --output "$output_dir/$image_base.svg" "$file"
-          done < <(find src/drawio -name "*.drawio" -print0)
+          bash .github/scripts/generate-images.sh "$RUNNER_TEMP/puml_files.txt" "$RUNNER_TEMP/drawio_files.txt"
 
-          while IFS= read -r -d $'\0' file; do
-            output_dir="$PWD/$(dirname "$file" | sed 's|^src/plantuml|images|')"
-            image_base=$(basename "$file" .puml)
-            file_dir=$(dirname "$file")
-            file_name=$(basename "$file")
-            mkdir -p "$output_dir"
-            (cd "$file_dir" && cat "$file_name" | java -jar /tmp/plantuml.jar -p -tpng -scale 4 -graphvizdot /usr/bin/dot > "$output_dir/$image_base.png")
-            (cd "$file_dir" && cat "$file_name" | java -jar /tmp/plantuml.jar -p -tsvg -graphvizdot /usr/bin/dot > "$output_dir/$image_base.svg")
-          done < <(find src/plantuml -name "*.puml" -print0)
-
-          # create fresh commit if anything changed
           if ! commit_if_changed; then
             echo "No changes after refresh/regeneration."
             exit 0
