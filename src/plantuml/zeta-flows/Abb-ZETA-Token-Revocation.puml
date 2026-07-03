@@ -1,0 +1,39 @@
+@startuml "Abb-ZETA-Token-Revocation"
+!include ../puml-layout.txt
+
+
+' title Token Revocation (RFC 7009)
+
+!pragma teoz true
+
+box "Device" DEVICE_COLOR
+  box "Primärsystem" PRIMAERSYSTEM_COLOR
+    participant Client as "ZETA Client" <<zeta>>
+  end box
+end box
+
+box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
+  box "ZETA Guard" ZETA_GUARD_COLOR
+    participant AuthS as "PDP\nAuthorization Server" <<zeta>>
+  end box
+end box
+
+Client++
+
+Client -> Client : Create DPoP Proof (without Nonce)
+Client -> Client : Create Client Assertion JWT (without Attestation)
+Client -> AuthS++: POST /revoke dpop: dpop_proof\n{client_assertion (JWT, PrK.Client.Sig signiert),\ntoken (Refresh Token),\ntoken_type_hint=refresh_token}
+AuthS -> AuthS : Validate Client Authentication\n(Client Assertion, DPoP Proof)
+alt Client Authentication successful
+  AuthS -> AuthS: Invalidate Refresh Token\n(Grant beenden)
+  note right of AuthS
+    RFC 7009: Antwort 200 OK unabhängig davon,
+    ob das Token gültig oder bekannt war
+    (keine Preisgabe der Token-Existenz).
+  end note
+  AuthS --> Client: 200 OK
+else Client Authentication fehlerhaft
+  AuthS --> Client--: 401 Unauthorized
+end alt
+
+@enduml

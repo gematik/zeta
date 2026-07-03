@@ -10,3 +10,4 @@ poetry.lock
 dist/
 *.pdf
 tmp/
+.claude

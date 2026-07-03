@@ -21,6 +21,13 @@
   "token_endpoint_auth_signing_alg_values_supported": [
     "ES256"
   ],
+  "revocation_endpoint": "https://auth-server.example.de/revoke",
+  "revocation_endpoint_auth_methods_supported": [
+    "private_key_jwt"
+  ],
+  "revocation_endpoint_auth_signing_alg_values_supported": [
+    "ES256"
+  ],
   "code_challenge_methods_supported": [
     "S256"
   ]
