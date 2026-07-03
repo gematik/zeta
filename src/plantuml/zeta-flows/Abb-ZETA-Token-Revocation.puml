@@ -6,6 +6,8 @@
 
 !pragma teoz true
 
+actor User as "Nutzer"
+
 box "Device" DEVICE_COLOR
   box "Primärsystem" PRIMAERSYSTEM_COLOR
     participant Client as "ZETA Client" <<zeta>>
@@ -18,22 +20,50 @@ box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
   end box
 end box
 
-Client++
+User -> Client++: Abmeldung (Logout) / Session beenden
+note over User, AuthS
+  A_31016: Der ZETA Client widerruft bei nutzerinitiierter Abmeldung sein Refresh Token
+  serverseitig, damit aus dem lokalen Logout eine echte Grant-Terminierung wird.
+end note
 
 Client -> Client : Create DPoP Proof (without Nonce)
 Client -> Client : Create Client Assertion JWT (without Attestation)
-Client -> AuthS++: POST /revoke dpop: dpop_proof\n{client_assertion (JWT, PrK.Client.Sig signiert),\ntoken (Refresh Token),\ntoken_type_hint=refresh_token}
-AuthS -> AuthS : Validate Client Authentication\n(Client Assertion, DPoP Proof)
-alt Client Authentication successful
-  AuthS -> AuthS: Invalidate Refresh Token\n(Grant beenden)
-  note right of AuthS
-    RFC 7009: Antwort 200 OK unabhängig davon,
-    ob das Token gültig oder bekannt war
-    (keine Preisgabe der Token-Existenz).
-  end note
-  AuthS --> Client: 200 OK
-else Client Authentication fehlerhaft
-  AuthS --> Client--: 401 Unauthorized
+Client -> AuthS++: POST /revoke  dpop: dpop_proof\n{client_assertion (JWT, PrK.Client.Sig signiert),\ntoken=<Refresh Token>,\ntoken_type_hint=refresh_token}
+
+AuthS -> AuthS : Client-Authentifizierung prüfen\n(Client Assertion [RFC7523], DPoP Proof [RFC9449]) — wie am Token-Endpunkt
+
+alt Client-Authentifizierung erfolgreich (A_31011)
+  alt token_type_hint = refresh_token bzw. Refresh Token erkannt
+    AuthS -> AuthS: Widerrufe übergebenes Refresh Token und ALLE der Session\nzugeordneten (auch rotierten) Refresh Token, terminiere Session (A_31012, analog A_29855)
+    AuthS -> AuthS: Revisionssichere Protokollierung\n(Trace-Id, Session-Id, Trigger-Source, Reason-Code, Zeitpunkt) (A_29857)
+    note right of AuthS
+      A_31013 (RFC 7009 §2.2): Antwort 200 OK unabhängig davon,
+      ob das Token gültig, bereits ungültig oder unbekannt war
+      (keine Preisgabe der Token-Existenz).
+      Folge-Refresh-Requests werden gemäß A_29856 mit
+      refresh_token_revoked abgelehnt.
+    end note
+    AuthS --> Client: 200 OK
+  else Access Token übergeben (außerhalb Geltungsbereich, A_31014)
+    note right of AuthS
+      Access Token sind kurzlebig, DPoP-gebunden und werden zustandslos
+      geprüft; ihr Widerruf ist nicht Zweck dieses Endpunkts.
+    end note
+    AuthS --> Client: 200 OK (ohne serverseitige Wirkung)\nalternativ 400 Bad Request {"error": "unsupported_token_type"}
+  end
+  Client -> Client: Lösche lokale Access-/Refresh Token\nund DPoP-Schlüssel (A_31016)
+  Client --> User: Abmeldung abgeschlossen
+else Client-Authentifizierung fehlerhaft (A_31011)
+  AuthS --> Client--: 401 Unauthorized {"error": "invalid_client"}
 end alt
+
+deactivate Client
+
+note over AuthS, Client
+  Endpunkt POST /revoke gemäß [RFC7009] (A_31010), bekanntgegeben im
+  as-well-known-Dokument (revocation_endpoint*, [RFC8414] / [as-well-known.yaml], A_31017).
+  Client-Authentifizierung wie am Token-Endpunkt; ein Client kann nur eigene Token widerrufen.
+  Fehler-Body gemäß [zeta-error.yaml].
+end note
 
 @enduml
