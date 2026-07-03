@@ -11,6 +11,8 @@ on:
 jobs:
   generate_images:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
     - name: Checkout repository
@@ -62,51 +64,41 @@ jobs:
       run: |
         set -e
         SUCCESSFUL_GENERATIONS=0
-        FAILED_GENERATIONS=0
         shopt -s nullglob
 
-        echo "Checking PlantUML files..."
+        # Git erhält keine Datei-Zeitstempel, daher ist ein mtime-Vergleich im CI
+        # unzuverlässig. Es wird immer generiert; ob committet wird, entscheidet
+        # der Commit-Step anhand des tatsächlichen Diffs.
+        echo "Generating images for PlantUML files..."
         while IFS= read -r -d $'\0' file; do
           output_dir="$PWD/$(dirname "$file" | sed 's|^src/plantuml|images|')"
           image_base=$(basename "$file" .puml)
           png_path="$output_dir/$image_base.png"
           svg_path="$output_dir/$image_base.svg"
-          should_generate=false
 
-          if [ ! -f "$png_path" ] || [ ! -f "$svg_path" ] || { [ -f "$png_path" ] && [ "$file" -nt "$png_path" ]; } || { [ -f "$svg_path" ] && [ "$file" -nt "$svg_path" ]; }; then
-             should_generate=true
-          fi
+          echo "-> Generating images for PlantUML file: $file"
+          mkdir -p "$output_dir"
 
-          if [ "$should_generate" = true ]; then
-            echo "-> Generating images for PlantUML file: $file"
-            mkdir -p "$output_dir"
-            
-            # --- BEGINN DER ÄNDERUNG ---
-            # Wir wechseln in das Verzeichnis der Quelldatei, um relative '!include' Pfade
-            # korrekt aufzulösen. Wir tun dies in einer Subshell (...), um das Hauptskript nicht zu beeinflussen.
-            # Die Pfade für die Ausgabe ($png_path, $svg_path) sind absolut und funktionieren weiterhin.
-            
-            file_dir=$(dirname "$file")
-            file_name=$(basename "$file")
+          # In das Quellverzeichnis wechseln (Subshell), damit relative '!include'-Pfade
+          # aufgelöst werden; die Ausgabepfade sind absolut.
+          file_dir=$(dirname "$file")
+          file_name=$(basename "$file")
 
-            echo "Generating PNG: $png_path"
-            (cd "$file_dir" && cat "$file_name" | java -jar /tmp/plantuml.jar -p -tpng -scale 4 -graphvizdot /usr/bin/dot > "$png_path")
-            
-            echo "Generating SVG: $svg_path"
-            (cd "$file_dir" && cat "$file_name" | java -jar /tmp/plantuml.jar -p -tsvg -graphvizdot /usr/bin/dot > "$svg_path")
-            # --- ENDE DER ÄNDERUNG ---
+          echo "Generating PNG: $png_path"
+          (cd "$file_dir" && cat "$file_name" | java -jar /tmp/plantuml.jar -p -tpng -scale 4 -graphvizdot /usr/bin/dot > "$png_path")
 
-            if [ -f "$png_path" ] && [ -f "$svg_path" ]; then
-               SUCCESSFUL_GENERATIONS=$((SUCCESSFUL_GENERATIONS + 1))
-            else
-               echo "::error::File generation failed unexpectedly for $file. Output files are missing."
-               FAILED_GENERATIONS=$((FAILED_GENERATIONS + 1))
-               exit 1
-            fi
+          echo "Generating SVG: $svg_path"
+          (cd "$file_dir" && cat "$file_name" | java -jar /tmp/plantuml.jar -p -tsvg -graphvizdot /usr/bin/dot > "$svg_path")
+
+          if [ -f "$png_path" ] && [ -f "$svg_path" ]; then
+             SUCCESSFUL_GENERATIONS=$((SUCCESSFUL_GENERATIONS + 1))
+          else
+             echo "::error::File generation failed unexpectedly for $file. Output files are missing."
+             exit 1
           fi
         done < <(find src/plantuml -name "*.puml" -print0)
 
-        echo "PlantUML generation finished. Successful: $SUCCESSFUL_GENERATIONS, Failed: $FAILED_GENERATIONS."
+        echo "PlantUML generation finished. Successfully generated for $SUCCESSFUL_GENERATIONS file(s)."
 
         if [ "$SUCCESSFUL_GENERATIONS" -gt 0 ]; then
           echo "plantuml_generated=true" >> $GITHUB_OUTPUT
@@ -121,31 +113,24 @@ jobs:
         SUCCESSFUL_GENERATIONS=0
         shopt -s nullglob
 
-        echo "Checking Draw.io files..."
+        echo "Generating images for Draw.io files..."
         while IFS= read -r -d $'\0' file; do
           output_dir="$(dirname "$file" | sed 's|^src/drawio|images|')"
           image_base=$(basename "$file" .drawio)
           png_path="$output_dir/$image_base.png"
           svg_path="$output_dir/$image_base.svg"
-          should_generate=false
 
-          if [ ! -f "$png_path" ] || [ ! -f "$svg_path" ] || { [ -f "$png_path" ] && [ "$file" -nt "$png_path" ]; } || { [ -f "$svg_path" ] && [ "$file" -nt "$svg_path" ]; }; then
-              should_generate=true
-          fi
+          echo "-> Generating images for Draw.io file: $file"
+          mkdir -p "$output_dir"
 
-          if [ "$should_generate" = true ]; then
-            echo "-> Generating images for Draw.io file: $file"
-            mkdir -p "$output_dir"
+          xvfb-run --auto-servernum drawio --no-sandbox --export --format png --scale 4 --output "$png_path" "$file"
+          xvfb-run --auto-servernum drawio --no-sandbox --export --format svg --output "$svg_path" "$file"
 
-            xvfb-run --auto-servernum drawio --no-sandbox --export --format png --scale 4 --output "$png_path" "$file"
-            xvfb-run --auto-servernum drawio --no-sandbox --export --format svg --output "$svg_path" "$file"
-
-            if [ -f "$png_path" ] && [ -f "$svg_path" ]; then
-               SUCCESSFUL_GENERATIONS=$((SUCCESSFUL_GENERATIONS + 1))
-            else
-               echo "::error::File generation failed unexpectedly for $file. Output files are missing."
-               exit 1
-            fi
+          if [ -f "$png_path" ] && [ -f "$svg_path" ]; then
+             SUCCESSFUL_GENERATIONS=$((SUCCESSFUL_GENERATIONS + 1))
+          else
+             echo "::error::File generation failed unexpectedly for $file. Output files are missing."
+             exit 1
           fi
         done < <(find src/drawio -name "*.drawio" -print0)
 
@@ -159,29 +144,68 @@ jobs:
       shell: bash
 
     - name: Commit and push generated images
-      if: steps.generate_plantuml.outputs.plantuml_generated == 'true' || steps.generate_drawio.outputs.drawio_generated == 'true'
+      if: github.ref_type == 'branch' && (steps.generate_plantuml.outputs.plantuml_generated == 'true' || steps.generate_drawio.outputs.drawio_generated == 'true')
+      env:
+        TARGET_BRANCH: ${{ github.ref_name }}
       run: |
-        echo "Checking for changes in 'images' directory to commit..."
+        set -euo pipefail
         git config --global user.name 'github-actions[bot]'
         git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
-        git add images
+        commit_if_changed () {
+          git add images
+          if git diff --staged --quiet -- images; then
+            echo "No staged changes in images."
+            return 1
+          fi
+          git commit -m "chore: Generate/update images from source files" -m "Generated by GitHub Action."
+          return 0
+        }
 
-        if git diff --staged --quiet -- images; then
-          echo "No staged changes detected in 'images' directory after 'git add'. Nothing to commit."
+        # initial commit attempt
+        if ! commit_if_changed; then
           exit 0
         fi
 
-        echo "Staged changes found. Committing..."
-        git commit -m "chore: Generate/update images from source files" -m "Generated by GitHub Action."
-
-        echo "Pushing changes..."
         for i in 1 2 3; do
-          git push && break || {
-            echo "Push failed. Retrying in 5 seconds... (Attempt $i/3)"
-            sleep 5
-            git pull --rebase
-          }
+          if git push origin "HEAD:$TARGET_BRANCH"; then
+            echo "Push successful."
+            exit 0
+          fi
+
+          if [ "$i" = 3 ]; then
+            break
+          fi
+
+          echo "Push rejected (attempt $i/3). Refreshing from origin/$TARGET_BRANCH and regenerating images..."
+          git fetch origin "$TARGET_BRANCH"
+          git reset --hard "origin/$TARGET_BRANCH"
+
+          # regenerate to match latest source state
+          while IFS= read -r -d $'\0' file; do
+            output_dir="$(dirname "$file" | sed 's|^src/drawio|images|')"
+            image_base=$(basename "$file" .drawio)
+            mkdir -p "$output_dir"
+            xvfb-run --auto-servernum drawio --no-sandbox --export --format png --scale 4 --output "$output_dir/$image_base.png" "$file"
+            xvfb-run --auto-servernum drawio --no-sandbox --export --format svg --output "$output_dir/$image_base.svg" "$file"
+          done < <(find src/drawio -name "*.drawio" -print0)
+
+          while IFS= read -r -d $'\0' file; do
+            output_dir="$PWD/$(dirname "$file" | sed 's|^src/plantuml|images|')"
+            image_base=$(basename "$file" .puml)
+            file_dir=$(dirname "$file")
+            file_name=$(basename "$file")
+            mkdir -p "$output_dir"
+            (cd "$file_dir" && cat "$file_name" | java -jar /tmp/plantuml.jar -p -tpng -scale 4 -graphvizdot /usr/bin/dot > "$output_dir/$image_base.png")
+            (cd "$file_dir" && cat "$file_name" | java -jar /tmp/plantuml.jar -p -tsvg -graphvizdot /usr/bin/dot > "$output_dir/$image_base.svg")
+          done < <(find src/plantuml -name "*.puml" -print0)
+
+          # create fresh commit if anything changed
+          if ! commit_if_changed; then
+            echo "No changes after refresh/regeneration."
+            exit 0
+          fi
         done
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+        echo "::error::Failed to push generated images after 3 attempts."
+        exit 1
