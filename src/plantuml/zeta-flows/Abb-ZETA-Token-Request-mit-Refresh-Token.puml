@@ -1,8 +1,8 @@
-@startuml "Abb-ZETA-Token-Exchange-mit-Refresh-Token"
+@startuml "Abb-ZETA-Token-Request-mit-Refresh-Token"
 !include ../puml-layout.txt
 
 
-' title Token Exchange with Refresh Token
+' title Token Request with Refresh Token
 
 !pragma teoz true
 
