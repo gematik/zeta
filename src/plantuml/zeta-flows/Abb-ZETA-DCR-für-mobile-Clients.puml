@@ -74,11 +74,14 @@ alt Kein ZETA Attestation Token
     AuthS -> AuthS: Generiere recovery_code (einmalig),\nspeichere nur Hash (SHA-256) gebunden an Nutzer-Account
     AuthS --> User: recovery_code (Out-of-Band, einmalige Anzeige)
     note right of AuthS
-      Der recovery_code ist ein Wiederherstellungscode (Backup-Code). Er wird dem Nutzer
-      einmalig zugestellt/angezeigt und muss sicher (offline) aufbewahrt werden. Der AuthS
-      speichert nur den Hash. Mit dem recovery_code kann der Nutzer bei Verlust von
-      E-Mail-Zugang UND Gerät später einen neuen Client mit NEUER E-Mail-Adresse
-      registrieren (siehe Gruppe "Account Recovery"), ohne erneute OTP-Verifikation.
+      Der recovery_code ist ein Wiederherstellungscode (Backup-Code, überlebender Faktor F3).
+      Er wird dem Nutzer einmalig zugestellt/angezeigt und muss sicher (offline) aufbewahrt
+      werden. Der AuthS speichert nur den (salted) Hash. Mit dem recovery_code kann der Nutzer
+      bei Geräteverlust später einen neuen Instanzschlüssel an seinen bestehenden Nutzer-Account
+      binden (siehe Abb-ZETA-DCR-Account-Recovery). Die Recovery erfordert gemäß A_29928 BEIDES:
+      eine IDP-(Step-up-)Authentisierung UND diesen überlebenden Faktor; sie ändert dabei die
+      identitätsgebundene E-Mail-Adresse (F1) NICHT (A_29931). Ein E-Mail-Wechsel läuft separat
+      über A_29911.
     end note
 
 
