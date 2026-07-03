@@ -53,7 +53,7 @@ alt Validation successful
             AuthS --> Client: 200 OK {Access Token, Refresh Token}
         end
     else Policy Decision deny
-        AuthS --> Client--: 403 Forbidden {"error": "access_denied", "reasons": [...]}
+        AuthS --> Client: 403 Forbidden {"error": "access_denied", "reasons": [...]}
     end
 else Validation fehlerhaft
     alt Client-Authentifizierung fehlgeschlagen (Client Assertion)
