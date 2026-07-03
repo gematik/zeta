@@ -1,39 +1,89 @@
-@startuml "Abb-ZETA-DCR-für-mobile-Clients"
+@startuml "Abb-ZETA-DCR-Account-Recovery"
 !include ../puml-layout.txt
 
 actor User as "Nutzer"
 
-box "Device" DEVICE_COLOR
+box "Device (Ersatzgerät)" DEVICE_COLOR
   box "App" PRIMAERSYSTEM_COLOR
     participant Client as "ZETA Client" <<zeta>>
   end box
 end box
 
+box "Authenticator" LEI_COMPONENT_COLOR
+  participant AM as "Authenticator-Modul\n(sektoraler IDP)"
+end box
+
 box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
   box "ZETA Guard" ZETA_GUARD_COLOR
-    participant AuthS as "PDP\nAuthorization Server" <<zeta>>
+    participant AuthS as "PDP\nAuthorization Server\n(OIDC Relying Party)" <<zeta>>
   end box
 end box
 
+box "TI-Föderation" #EAF2FF
+  participant IDP as "Sektoraler IDP"
+end box
 
-group Account Recovery: Verlust von E-Mail-Zugang UND Gerät
-    note over User, AuthS
-      Der Nutzer hat weder Zugriff auf sein altes Gerät (mobile Client) noch auf sein
-      altes E-Mail-Konto. Mit dem zuvor erhaltenen recovery_code registriert er einen
-      neuen Client mit NEUER E-Mail-Adresse. Die Hardware-Attestierung des neuen Geräts
-      läuft wie oben (Apple/Android/TPM); statt der OTP-Verifikation dient der
-      recovery_code als Besitz-/Identitätsnachweis für den bestehenden Nutzer-Account.
+
+group Account Recovery: Verlust des Geräts (Neubindung eines Instanzschlüssels)
+    note over User, IDP
+      Der Nutzer hat den Zugriff auf sein altes registriertes Gerät verloren und bindet mit dem
+      zuvor erhaltenen recovery_code (überlebender Faktor F3) einen neuen Instanzschlüssel auf
+      dem Ersatzgerät an seinen bestehenden Nutzer-Account.
+      Recovery erfordert gemäß A_29928 BEIDES: eine IDP-(Step-up-)Authentisierung UND mindestens
+      einen überlebenden Faktor aus {F1, F2, F3}. Hier ist der überlebende Faktor der recovery_code (F3).
+      Die identitätsgebundene E-Mail-Adresse (F1) wird bei der Recovery NICHT verändert (A_29931).
     end note
+
     User++
-    User -> Client++: Startet Wiederherstellung, gibt recovery_code\nund neue E-Mail-Adresse ein
-    Client -> AuthS++: POST /register\n{attestation_type, <Hardware-Attestation des neuen Geräts>,\nPuK.Client.Sig, signed_hash_puk_client_sig, redirect_uris,\nuser_email=<neue E-Mail>, recovery_code}
-    AuthS -> AuthS: Validiere Hardware-Attestation (wie beim normalen DCR-Flow)
-    AuthS -> AuthS: Verifiziere recovery_code gegen gespeicherten Hash
-    AuthS -> AuthS: Binde neuen Client & neue E-Mail an bestehenden Nutzer-Account,\ninvalidiere alten recovery_code
-    AuthS -> AuthS: Generiere neuen recovery_code, speichere neuen Hash
-    AuthS --> User: neuer recovery_code (Out-of-Band, einmalige Anzeige)
+    User -> Client++: Startet Wiederherstellung, gibt recovery_code ein
+    Client -> Client: Erzeuge/lade Instanzschlüssel (PrK/PuK.Client.Sig)\nund Hardware-Attestation des Ersatzgeräts (Apple/Android/TPM, wie beim normalen DCR)
+
+    ' Bedingung 1 aus A_29928: IDP-(Step-up-)Authentisierung
+    ref over User, IDP
+      **IDP-(Step-up-)Authentisierung** am sektoralen IDP
+      (Abb-ZETA-OIDC-Nutzerauthentisierung, eGK/PIN o. ä.)
+      Ergebnis: AUTHORIZATION_CODE (IDP) für den AuthS als Relying Party
+    end ref
+    AM -> Client: App-Link / Universal-Link {code=AUTH_CODE_IDP}
+
+    ' Bedingung 2 aus A_29928: überlebender Faktor (F3 = recovery_code)
+    Client -> AuthS++: POST /zeta/recover\n{attestation_type, <Hardware-Attestation des Ersatzgeräts>,\nPuK.Client.Sig, signed_hash_puk_client_sig, recovery_code,\ncode=AUTH_CODE_IDP}
+    note right of AuthS
+      Kein user_email-Parameter: Die Recovery ändert die E-Mail-Bindung (F1) nicht (A_29931).
+    end note
+
+    AuthS -> IDP++: Token-Bezug (OIDC Code Flow) für AUTHORIZATION_CODE (IDP)
+    IDP --> AuthS--: id_token (Identität + acr/amr)
+    AuthS -> AuthS: Validiere IDP-(Step-up-)Authentisierung:\nid_token-Signatur, acr erreicht gefordertes Niveau,\nIdentität == bestehender Nutzer-Account
+    AuthS -> AuthS: Validiere Hardware-Attestation des Ersatzgeräts (wie beim normalen DCR-Flow)
+    AuthS -> AuthS: Prüfe signed_hash_puk_client_sig mit PuK.Client.Sig
+    AuthS -> AuthS: Verifiziere recovery_code (F3) gegen gespeicherten salted Hash
+
+    note right of AuthS
+      Brute-Force-Schutz (A_29930): Ratenbegrenzung je Identität/Quelle, ansteigender
+      Backoff/Lockout nach mehreren Fehlversuchen, Protokollierung. F3 ist bei
+      kompromittiertem IDP die letzte Barriere und DARF NICHT unbegrenzt geraten werden.
+    end note
+
+    AuthS -> AuthS: Recovery-Schwellwert erfüllt (A_29928):\nIDP-Step-up UND überlebender Faktor F3 nachgewiesen
+    AuthS -> AuthS: Binde NEUEN Instanzschlüssel (PuK.Client.Sig) an bestehenden Nutzer-Account (A_29931).\nE-Mail-Bindung (F1) bleibt unverändert.
+    AuthS -> AuthS: Invalidiere verwendeten recovery_code unmittelbar (A_29929)
+
+    opt Neuen Recovery-Codesatz ausgeben (A_29929 KANN)
+        AuthS -> AuthS: Generiere neuen Codesatz (>=128 Bit Gesamtentropie, A_29932),\nspeichere nur salted Hash
+        AuthS --> User: neuer recovery_code-Satz (Out-of-Band, einmalige Anzeige)
+    end
+
     AuthS --> Client--: 201 Created {client_id}
     Client --> User--: Wiederherstellung abgeschlossen
+
+    note over User, AuthS
+      Hat der Nutzer zusätzlich den Zugriff auf die gebundene E-Mail (F1) verloren, erfolgt die
+      E-Mail-Änderung SEPARAT nach der Recovery vom nun wiederhergestellten Gerät über den
+      Prozess A_29911 (POST /zeta/identity/email), der seinerseits Step-up + überlebenden Faktor
+      verlangt. Empfehlung A_29933: Bei noch vorhandenem Bestandsgerät zuerst dort die E-Mail
+      ändern (A_29911) und erst danach das Ersatzgerät registrieren.
+    end note
 end
 
 @enduml

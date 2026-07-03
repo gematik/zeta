@@ -90,6 +90,16 @@ properties:
           - windows
           - linux
           - other
+      acr:
+        type: string
+        description: >-
+          Authentication Context Class Reference — das nachgewiesene
+          Authentifizierungsniveau. Wird vom PEP für die Step-up-Entscheidung
+          (A_28525-02) mit dem für die Route konfigurierten Mindestniveau
+          verglichen. Wertebereich gemäß gematik-LoA (A_29820).
+        enum:
+          - gematik-ehealth-loa-substantial
+          - gematik-ehealth-loa-high
       iat:
         type: integer
         description: Issued at time of the token as a Unix timestamp.
@@ -133,6 +143,7 @@ properties:
       - ip_address
       - product_id
       - product_version
+      - acr
       - iat
       - jti
       - cnf

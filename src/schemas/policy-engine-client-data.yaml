@@ -246,9 +246,6 @@ properties:
               self-signed Public Key) erfolgreich verifiziert wurde. Quelle:
               posture-software.yaml → attestation_challenge (vom AuthS geprüft).
 
-    required:
-      - platform
-
 required:
   - client_id
   - product_id
