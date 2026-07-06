@@ -23,7 +23,7 @@ Client++
 
 Client -> Client : Create DPoP Proof (without Nonce)
 Client -> Client : Create Client Assertion JWT (without Attestation)
-Client -> AuthS++: POST /token dpop: dpop_proof\n{client_assertion (JWT, PrK.Client.Sig signiert), refresh_token}
+Client -> AuthS++: POST /token dpop: dpop_proof\nclient_assertion (JWT, PrK.Client.Sig signiert), refresh_token\ngrant_type=refresh_token, resource, scope
 AuthS -> AuthS : Validate Request (Client Assertion, DPoP Proof, Refresh Token)
 AuthS -> AuthS: Invalidate Refresh token
 note right of AuthS
