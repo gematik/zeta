@@ -108,7 +108,7 @@ definitions:
               quote_verified: 
                 type: boolean
 
-  jk:
+  AppleAttestationToken:
     type: object
     allOf:
       - $ref: "#/definitions/BaseTokenProperties"
