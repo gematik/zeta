@@ -101,7 +101,7 @@ properties:
       - ip_address
       - previous_ip_address
       - grant_type
-      - amr
+      - acr
   delegation_context:
     description: The delegation context if the client is acting on behalf of a user.
     type: [ "object", "null" ]
