@@ -1,0 +1,61 @@
+@startuml "Abb-ZETA-Token-Request-mit-Refresh-Token"
+!include ../puml-layout.txt
+
+
+' title Token Request with Refresh Token
+
+!pragma teoz true
+
+box "Device" DEVICE_COLOR
+  box "Primärsystem" PRIMAERSYSTEM_COLOR
+    participant Client as "ZETA Client" <<zeta>>
+  end box
+end box
+
+box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
+  box "ZETA Guard" ZETA_GUARD_COLOR
+    participant AuthS as "PDP\nAuthorization Server" <<zeta>>
+    participant OPA as "PDP\nPolicy Engine" <<zeta>>
+  end box
+end box
+
+Client++
+
+Client -> Client : Create DPoP Proof (without Nonce)
+Client -> Client : Create Client Assertion JWT (without Attestation)
+Client -> AuthS++: POST /token dpop: dpop_proof\nclient_assertion (JWT, PrK.Client.Sig signiert), refresh_token\ngrant_type=refresh_token, resource, scope
+AuthS -> AuthS : Validate Request (Client Assertion, DPoP Proof, Refresh Token)
+AuthS -> AuthS: Invalidate Refresh token
+note right of AuthS
+  Refresh Token Rotation (Einmalnutzung). Die Vorlage eines bereits
+  rotierten/invalidierten Refresh Token gilt als Diebstahl-Indikator und
+  MUSS die gesamte Token-Familie/Session terminieren (400 invalid_grant).
+end note
+alt Validation successful
+  AuthS -> AuthS: Policy Engine Input erstellen
+  AuthS -> OPA++: POST /v1/data/authz {Policy Engine Input}
+  OPA --> AuthS--: Policy Decision
+  alt Policy Decision allow
+    AuthS --> Client: 200 OK {Access Token, Refresh Token}
+  else Policy Decision deny
+    AuthS --> Client: 403 Forbidden {"error": "access_denied"}
+  end alt
+else Validation fehlerhaft
+  alt Client-Authentifizierung fehlgeschlagen (Client Assertion)
+    AuthS --> Client: 401 Unauthorized {"error": "invalid_client"}
+  else DPoP-Proof ungültig
+    AuthS --> Client: 400 Bad Request {"error": "invalid_dpop_proof"}
+  else Refresh Token ungültig/abgelaufen/wiederverwendet
+    AuthS --> Client--: 400 Bad Request {"error": "invalid_grant"}
+  end
+end alt
+
+note over AuthS, Client
+  Fehlercodes gemäß [RFC6749]#section-5.2 (Refresh Grant §6):
+  400 = technischer Grant-/Request-Fehler (invalid_grant, invalid_dpop_proof/use_dpop_nonce [RFC9449]),
+  401 = Client-Authentifizierung fehlgeschlagen (invalid_client),
+  403 = Policy-Ablehnung bei gültigen Credentials (access_denied) bzw. session_terminated / refresh_token_revoked.
+  Response-Body gemäß [zeta-error.yaml].
+end note
+
+@enduml

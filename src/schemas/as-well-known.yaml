@@ -91,6 +91,33 @@ properties:
     description: "The signing algorithms supported at the token endpoint."
     items:
       type: string
+  revocation_endpoint:
+    type: string
+    format: uri
+    description: >-
+      The URL of the token revocation endpoint (RFC 7009). In ZETA this endpoint
+      is primarily intended for revoking refresh tokens, turning the otherwise
+      client-side-only logout into a real server-side termination of the grant
+      (aligned with the `refresh_token_revoked` error). Because access tokens are
+      short-lived, DPoP-bound (RFC 9449) and validated statelessly by the resource
+      server, revoking an access token here has limited effect and is not the
+      purpose of this endpoint. Revocation requests MUST be client-authenticated
+      in the same way as requests to the token endpoint, so that a client can only
+      revoke its own tokens.
+  revocation_endpoint_auth_methods_supported:
+    type: array
+    description: >-
+      The client authentication methods supported at the revocation endpoint
+      (RFC 7009 / RFC 8414). Mirrors token_endpoint_auth_methods_supported.
+    items:
+      type: string
+  revocation_endpoint_auth_signing_alg_values_supported:
+    type: array
+    description: >-
+      The signing algorithms supported for client authentication at the revocation
+      endpoint. Mirrors token_endpoint_auth_signing_alg_values_supported.
+    items:
+      type: string
   service_documentation:
     type: string
     format: uri
@@ -147,3 +174,4 @@ required:
   - token_endpoint_auth_methods_supported
   - token_endpoint_auth_signing_alg_values_supported
   - code_challenge_methods_supported
+  - revocation_endpoint
