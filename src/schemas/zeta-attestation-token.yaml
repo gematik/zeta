@@ -67,19 +67,6 @@ definitions:
           type: string
           format: uri
           pattern: '^https://.+/(oidc|app)$'
-      recovery_code_hash:
-        type: string
-        description: >-
-          SHA-256-Hash (Base64url-kodiert) des aktuell gültigen Wiederherstellungscodes
-          (recovery_code), den der AuthS dem Nutzer nach der initialen TOFU-Bindung
-          Out-of-Band zugestellt hat. Der Klartext-recovery_code wird NICHT in den Token
-          aufgenommen. Der Hash dient der Account-Kontinuität: Er wird in den Token
-          übernommen, damit bei einer erneuten Registrierung im Fast-Path
-          (attestation_type=zeta_attestation_token) die Bindung an den bestehenden
-          Nutzer-Account erhalten bleibt und der AuthS einen bei der
-          Wiederherstellungs-Registrierung übermittelten recovery_code prüfen kann.
-          Wird ein neuer recovery_code ausgestellt, ändert sich dieser Hash entsprechend.
-          Für stationäre Clients i. d. R. nicht gesetzt.
       cnf:
         type: object
         description: Confirmation Claim nach RFC 7800 (Proof-of-Possession).
