@@ -84,7 +84,6 @@ definitions:
           - "urn:ietf:params:oauth:token-type:jwt"
     required:
       - access_token
-      - refresh_token
       - token_type
       - expires_in
   denyResponse:
