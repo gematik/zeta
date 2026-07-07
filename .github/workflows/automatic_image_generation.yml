@@ -49,7 +49,10 @@ jobs:
           echo "Before-Commit $BEFORE_SHA nicht abrufbar (Force-Push?) - alle Bilder werden generiert."
           FULL_RUN=true
         else
-          CHANGED=$(git diff --name-only --diff-filter=d "$BEFORE_SHA" "$AFTER_SHA")
+          # core.quotePath=false, damit Pfade mit Nicht-ASCII-Zeichen (z.B.
+          # Umlauten) als rohes UTF-8 ausgegeben werden statt quoted/escaped,
+          # sonst matchen die Grep-Muster unten nicht.
+          CHANGED=$(git -c core.quotePath=false diff --name-only --diff-filter=d "$BEFORE_SHA" "$AFTER_SHA")
           if grep -qE '^\.github/(workflows/automatic_image_generation\.yml|scripts/generate-images\.sh)$' <<< "$CHANGED"; then
             echo "Workflow oder Generierungsskript geändert - alle Bilder werden generiert."
             FULL_RUN=true
