@@ -1,77 +1,55 @@
 openapi: 3.1.0
 info:
-  title: ZETA Guard — SDK HTTP API
+  title: ZETA Guard — Client Registration and Management API
   version: 0.1.0-draft
   description: |
-    Network interface between the ZETA client SDK and a single ZETA Guard
-    (one independent guard / Keycloak realm per Fachdienst — no central registry).
+    Client Registration and Management API of a single ZETA Guard (one guard = one realm =
+    one Fachdienst; no central registry). Covers Dynamic Client Registration (A_29658) and the
+    factor-bound TOFU lifecycle built on it.
 
-    Trust model: the adversary of record is a compromised SEK-IDP; the protected asset is
-    existing client registrations. IDP authentication is necessary but never sufficient —
-    every control-transferring operation additionally requires a factor pinned at first use
-    (F1 verified email, F2 instance-key proof-of-possession, F3 recovery code). Peer
-    attestation is deliberately NOT a factor (the factor set is {F1, F2, F3}).
+    Trust model: the adversary is a compromised SEK-IDP; IDP authentication is necessary but
+    never sufficient. Every control-transferring operation additionally requires a factor
+    pinned at first use — F1 (verified email) or F2 (instance-key proof-of-possession); the
+    factor set is {F1, F2} (peer attestation is NOT a factor). Scope is mobile TOFU clients
+    bound to a TI identity (KVNR, A_29893); stationary SMC-B (A_25762) and identity-less
+    clients (A_29733) are out of scope for the identity-bound `/zeta/*` operations (email,
+    enrolled-client management, veto; A_29894). EXCEPTION: the key rollover (A_29921 ff.)
+    applies to ALL client classes (A_29895) — `PUT /register/{client_id}` with
+    `application/zeta-rollover+jws` and `HEAD /zeta/rollover-nonce` are also available to
+    identity-less clients, since rollover only requires possession of the current instance
+    key. An identity-less client that loses its instance key has NO recovery path and MUST
+    re-register (A_29895).
 
-    Scope: this surface governs **mobile** TOFU client registrations bound to a TI identity
-    (KVNR), per A_29893. Stationary SMC-B clients (A_25762) and identity-less clients
-    (A_29733; governed by F2 + platform attestation via JWT-bearer, RFC 7523) are out of scope
-    for the factor-bound `/zeta/*` operations — see A_29894 / A_29895.
+    Registration (A_29658, A_25432-01): `POST /register` (body `dcr-request.yaml`) →
+    `202 Accepted` (`dcr-response-202.yaml`, email OTP) → `POST /register/verify` →
+    `201 Created` (`client_id`, status `pending_user_binding`). Identity binding derives from
+    the OIDC user authentication, not from a realm-wide token (A_29903).
 
-    Alignment with the defined client-registration API: first-use client registration and the
-    email-OTP TOFU challenge are ALREADY defined normatively in gemSpec_ZETA (chapters 5.3.2 /
-    5.5, requirements A_29658 and A_25432-01) as `POST /register` (request body
-    `dcr-request.yaml`) -> `202 Accepted` (`register-response-202.yaml`,
-    `challenge_type: email_otp`, `transaction_id`) -> `POST /register/verify` (OTP) ->
-    `201 Created` with the final `client_id` (status `pending_user_binding`). The platform
-    fast-path via `attestation_type: zeta_attestation_token` (identity-less clients, F2 +
-    platform attestation) skips the OTP; it is a DISTINCT value from the cross-guard fast path
-    (`attestation_type: zeta_cross_guard`, see below) and MUST NOT be conflated with it. This
-    SDK surface does NOT redefine
-    that flow; it references it and adds only the TOFU lifecycle EXTENSIONS not yet covered
-    there: RFC 7592 registration management (`/register/{client_id}`), instance-key rollover,
-    identity-scoped email change, recovery (F3), enrolled-client management and the client-side
-    deletion veto. Registration/verify therefore implement A_29904 / A_29909 /
-    A_29910 via the defined `/register` + `/register/verify` operations.
-    Cross-guard fast-path onboarding (A_29913-A_29919): a client that already holds a valid,
-    factor-backed registration at one guard can onboard the SAME identity at ANOTHER guard
-    without repeating the email-OTP first use. The source guard issues a short-lived signed
-    bootstrap assertion (`POST /zeta/bootstrap-grants`) carrying the verified email (F1) and a
-    confirmation of the requesting instance key (`cnf`/`jkt`, RFC 7638); the target guard
-    consumes it on the DEFINED `POST /register` (attestation_type `zeta_cross_guard`) together
-    with a FRESH proof-of-possession of that same key. The assertion is authorised by
-    instance-key possession (F2) — not derivable from an IDP compromise — so the fast path is at
-    least as strong as an email-OTP first use. The assertion carries no recovery secrets and no
-    portable recovery verifier; the target guard stores the recovery factor (F3) under its OWN
-    per-guard salt, so stored verifiers are never identical across guards (correlation resistance,
-    A_29917). The target guard establishes its own recovery factor (F3) via its own
-    server-generated recovery codes (A_29904 und A_29908); no recovery secret is shared across
-    guards. Email (F1) and recovery (F3) then
-    evolve independently per guard: a later email change (A_29911) or recovery-code
-    regeneration (A_29908) is never propagated, and divergence across guards is expected and
-    permitted (A_29918). On a successful cross-guard onboarding the target guard MUST notify
-    the pinned email (F1) over the Notification Service (A_29920) — since ANY approved guard
-    can sign an assertion, that notification is the identity owner's primary detection of a
-    misused vouch. The bootstrap is client-mediated only; guards never exchange state
-    directly (A_29898/A_29899).
-    Runtime token acquisition is NOT part of this surface: it uses the stock OIDC token endpoint
-    (`POST /protocol/openid-connect/token`, Keycloak) unchanged, sender-constrained to the
-    instance key via a DPoP proof (RFC 9449). It is referenced here,
-    not redefined.
+    Fast path (`attestation_type: zeta_attestation_token`): the client presents a ZETA
+    Attestation Token (`zeta-attestation-token.yaml`), issued by this guard's token endpoint
+    after hardware attestation plus successful user authentication (A_29842), and skips the
+    OTP. For cross-guard onboarding the token carries
+    the identity and verified email (F1), so a target guard adopts them without a fresh first
+    use (A_29913–A_29916, A_29918/A_29919). The token is long-lived and reusable (never consumed); each
+    registration is bound to a fresh instance key via the DCR possession proof
+    (`signed_hash_puk_client_sig`, A_29915/A_29916), so replay is useless without the private
+    key. Every cross-guard onboarding MUST notify the F1 email (A_29920) — the primary
+    abuse-detection control (accepted residual risk; the PoP is not challenge-bound).
 
-    Standards baseline:
-      * RFC 7591 / RFC 7592 — OAuth 2.0 Dynamic Client Registration & management.
-      * RFC 9449 — DPoP sender-constrained runtime tokens (F2 binding).
-      * RFC 7638 — JWK thumbprints (`jkt` key identity).
-      * RFC 8707 — Resource Indicators (per-Fachdienst audience).
-      * RFC 9457 — Problem Details (`application/problem+json`).
+    Extensions on top of registration: RFC 7592 management (`/register/{client_id}`),
+    instance-key rollover, identity-scoped email change, enrolled-client management and the
+    client-side deletion veto (A_29909 ff.). Recovery after total loss (all devices and the
+    email) is NOT self-service — it goes solely through the operator OOB deletion path.
 
-    Scope boundary: this specification covers only the **client/SDK-facing** surface. The
-    operator-facing out-of-band deletion escape hatch (initiate / approve / abort / re-register
-    confirmation) is defined separately in the privileged **Admin OOB API**
-    (`zeta-guard-admin-oob.yaml`). The only OOB operation reachable from this surface is
-    the client-side **veto** of an already-scheduled deletion, performed with a surviving factor.
+    Authentication: per-client management uses the RFC 7592 Registration Access Token (RAT) as
+    `Authorization: Bearer`; first-use registration carries its own credentials (attestation /
+    OTP). The RAT (or an IDP login) is necessary but never sufficient — a factor from {F1, F2}
+    in the request body is also required (A_29896/A_29902). Runtime/resource access uses
+    DPoP-bound tokens (RFC 9449) and is out of scope.
 
-    This is a design draft, not a normative gematik specification.
+    The operator-facing OOB deletion (initiate/approve/abort/re-register) lives in the separate
+    Admin OOB API (`zeta-guard-admin-oob.yaml`); only the client-side veto is reachable here.
+    Design draft, not a normative gematik specification.
   contact:
     name: ZETA Guard design
 
@@ -87,33 +65,151 @@ servers:
 tags:
   - name: registration
     description: >-
-      RFC 7592 registration management (key rollover, read, self-deregister). First-use
-      registration and the email-OTP TOFU challenge are the DEFINED API (`POST /register`,
-      `POST /register/verify`; see gemSpec_ZETA 5.3.2/5.5, A_29658/A_25432-01) and are not
-      redefined here.
+      Dynamic Client Registration and RFC 7592 registration management: first-use registration
+      and the email-OTP TOFU challenge (`POST /register`, `POST /register/verify`; gemSpec_ZETA
+      5.3.2/5.5, A_29658/A_25432-01, request body `dcr-request.yaml`), plus per-client read,
+      metadata update / key rollover and self-deregistration on `/register/{client_id}`.
   - name: keys
     description: Instance-key rollover (proof-of-possession)
   - name: email
     description: Email verification (F1) and identity-scoped email change
-  - name: recovery
-    description: Recovery after factor loss (F3)
   - name: devices
     description: Listing and deletion of the identity's enrolled clients
   - name: oob
     description: >-
       Client-side veto of a pending out-of-band deletion. Operator-initiated deletion lives in
       the separate Admin OOB API (zeta-guard-admin-oob.yaml).
-  - name: bootstrap
-    description: >-
-      Cross-guard fast-path onboarding. Issues a short-lived, signed bootstrap assertion that
-      lets the same identity register at ANOTHER ZETA Guard without a fresh email-OTP first use
-      (A_29913 - A_29919, A_29920). Client-mediated only; no server-to-server sync
-      (A_29898/A_29899).
 
 security:
   - registrationAccessToken: []
 
 paths:
+
+  /register:
+    post:
+      tags: [registration]
+      summary: Register a client (Dynamic Client Registration, first use / TOFU)
+      description: |
+        Base client-registration operation (RFC 7591 Dynamic Client Registration), defined
+        normatively by A_29658 (gemSpec_ZETA 5.3.2 / 5.5). The request body is the attestation
+        variant union in `dcr-request.yaml` (TPM, Apple, Android, ZETA attestation-token
+        fast-path, or software).
+
+        Flow by client class:
+          * **Mobile TOFU (identity-bound)** — the guard stores the client as
+            `pending_verification`, generates an email OTP and a `transaction_id`, sends the OTP
+            out of band, and answers `202 Accepted` (`dcr-response-202.yaml`,
+            `challenge_type: email_otp`). The client then calls `POST /register/verify`
+            (A_29658, A_25432-01). Recovery of a lost identity (all devices and email lost) is
+            not self-service; it is handled only via the operator OOB deletion path.
+          * **Fast path** — `attestation_type: zeta_attestation_token` skips the email OTP and
+            answers `201 Created` directly. The client presents a valid ZETA Attestation Token
+            (`zeta-attestation-token.yaml`): for platform re-registration it proves hardware
+            attestation and the confirmed key; for cross-guard onboarding it additionally
+            carries the identity and verified email (F1), so the target guard adopts them
+            without a fresh email-OTP first use (A_29913, A_29915). Key possession (F2) is
+            proven by the standard DCR possession proof (`signed_hash_puk_client_sig`) binding
+            the new instance key to the token's attestation key (A_29916). The token is
+            long-lived and REUSABLE — it MAY be redeemed repeatedly and at multiple guards (it is
+            the same attestation token used for platform re-registration); the guard does NOT
+            consume it. Because each registration is bound to a fresh instance key that only the
+            genuine attestation key can sign, a replayed redemption can only re-register that same
+            key (useless to a replayer without its private key). Every successful cross-guard
+            onboarding MUST notify the F1 email (A_29920), which is the primary abuse-detection
+            control; the PoP is not challenge-bound (no server nonce) — an accepted residual risk
+            (A_29915).
+
+        Identity binding is derived from the OIDC user authentication (status
+        `pending_user_binding`); a realm-wide initial access token without identity reference
+        is NOT sufficient (A_29903). Full scope/audiences are withheld until email verification
+        completes (A_29905).
+      security:
+        - {}   # No RAT yet; the request carries its own credentials (attestation / email),
+               # and the identity binding is established by the OIDC user authentication (A_29903).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '../schemas/dcr-request.yaml' }
+      responses:
+        '201':
+          description: |
+            Client registered (fast path, or after a completed challenge). Returns the final
+            `client_id` and the RFC 7592 registration access token.
+          headers:
+            Location:
+              description: RFC 7592 registration URI of the new client (`/register/{client_id}`).
+              schema: { type: string, format: uri }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClientRegistration' }
+        '202':
+          description: |
+            Registration accepted; an asynchronous challenge must be solved before the final
+            `client_id` is issued (email OTP for TOFU, or TPM activation). The client resolves
+            it via `POST /register/verify`.
+          content:
+            application/json:
+              schema: { $ref: '../schemas/dcr-response-202.yaml' }
+        '400':
+          description: invalidAttestation | malformed registration request
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: registrationForbidden — the client is not permitted to register at this guard
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: registrationConflict — a client with the same identity/key already exists
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /register/verify:
+    post:
+      tags: [registration]
+      summary: Complete a registration by answering its challenge (OTP / TPM activation)
+      description: |
+        Second step of the first-use registration (A_29658, A_25432-01). Submits the answer to
+        the challenge issued by the `202 Accepted` response of `POST /register` — the email OTP
+        (`verify_type: email_otp`) or the TPM ActivateCredential secret
+        (`verify_type: tpm_activation`) — together with the `transaction_id`. On success the
+        guard issues the final `client_id` (status `pending_user_binding`).
+      security:
+        - {}   # Authenticated by the challenge answer + transaction_id, not by a RAT.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '../schemas/verify-request.yaml' }
+      responses:
+        '201':
+          description: |
+            Verified and registered. Returns the final `client_id` and registration access
+            token.
+          headers:
+            Location:
+              description: RFC 7592 registration URI of the new client (`/register/{client_id}`).
+              schema: { type: string, format: uri }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClientRegistration' }
+        '400':
+          description: invalidOtp | challengeExpired | invalid challenge response
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Unknown or expired transaction_id
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Error' }
 
   /register/{client_id}:
     parameters:
@@ -132,19 +228,30 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
     put:
-      tags: [registration, keys]
+      tags: [registration]
       summary: Update metadata, or roll over the instance key (PoP)
       description: |
         RFC 7592 registration management. Two modes, distinguished by Content-Type:
-          * application/json — metadata-only update (e.g. audiences/resources). The RAT alone
-            is sufficient for non-key changes.
+          * application/json — metadata-only update. Narrowed to renaming the client
+            (`client_name`, A_29909, A_30005); the RAT alone suffices for this single change. It MUST
+            NOT change the instance key (F2 — use the rollover mode below), the bound email
+            (F1 — use `POST /zeta/identity/email`, A_29911), the authorised audiences (governed
+            by policy per client instance, A_29901) or DCR parameters (`jwks`, `redirect_uris`,
+            `grant_types`). Any such field is rejected (`additionalProperties: false`).
           * application/zeta-rollover+jws — instance-key rollover (A_29921). Body is the
             nested JWS: outer signed by the OLD key = authorization (A_29922), inner signed
             by the NEW key = anti-substitution. Requires a fresh Replay-Nonce from
             `HEAD /zeta/rollover-nonce` bound to HTTP method+URI and guard audience
             (A_29923). The RAT alone is NEVER sufficient to change a key (A_29921).
             After success the old key stays valid for resource access only, during a
-            grace/overlap window (A_29924, A_29925). Key thumbprints follow RFC 7638.
+            grace/overlap window (A_29924, A_29925); it can no longer authorize management
+            operations, including another rollover (A_29924). Rollover requires possession of
+            the current key — if it was lost, re-enrol via a new registration when another
+            device (F2) or the bound email (F1) still survives (A_29910); only if ALL of
+            {F1, F2} are lost is self-recovery impossible and the identity can be re-established
+            solely via the operator OOB deletion path (A_29927).
+            A rollover MUST NOT be coupled with an email (F1) change
+            (A_29926). Key thumbprints follow RFC 7638.
       security:
         - registrationAccessToken: []
       requestBody:
@@ -153,9 +260,7 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/MetadataUpdate' }
           application/zeta-rollover+jws:
-            schema:
-              type: string
-              description: Compact-serialized nested JWS rollover envelope.
+            schema: { $ref: '#/components/schemas/RolloverEnvelope' }
       responses:
         '200':
           description: Updated registration (on rollover, new key active; old key in grace)
@@ -190,7 +295,7 @@ paths:
       summary: Deregister THIS client (self, client-plane only)
       description: |
         RFC 7592 client deletion. Removes the calling client's own registration. Client-plane
-        only — the identity record, pinned email (F1) and recovery codes (F3) are untouched
+        only — the identity record and the pinned email (F1) are untouched
         (A_29934, A_29938). To delete another device use
         `DELETE /zeta/clients/{target_client_id}`; to remove the identity use the OOB path.
       security:
@@ -205,7 +310,11 @@ paths:
     head:
       tags: [keys]
       summary: Obtain a single-use rollover Replay-Nonce
-      description: Guard-scoped, single-use, short-lived. Required before a key-rollover PUT.
+      description: |
+        Guard-scoped, single-use, short-lived. Required before a key-rollover PUT (A_29923).
+        Unlike the identity-bound `/zeta/*` operations, this endpoint is available to ALL
+        client classes, including identity-less clients (A_29895) — the rollover requires
+        only possession of the current instance key.
       security:
         - registrationAccessToken: []
       responses:
@@ -221,12 +330,35 @@ paths:
       tags: [email]
       summary: Change the identity-scoped email (affects all clients at this FD)
       description: |
-        Requires IDP step-up AND a surviving factor (instance-key PoP F2, or proof of control
-        of the old email F1) — A_29911. Issues a verification challenge for the new
-        address; the change takes effect once verified and applies identity-wide
-        (A_29912). No server-side sync across FDs — repeat per guard (A_29899).
+        Changes the identity-bound email (F1). Per A_29911 this requires THREE things together:
+          1. an enrolled, valid client — the RAT (`Authorization: Bearer`, A_29902);
+          2. a fresh, stepped-up IDP user authentication (`idp_step_up`); and
+          3. a surviving factor — instance-key PoP (F2, `pop`) OR proof of control of the old
+             email (F1, `old_email_proof`).
+
+        Step-up follows RFC 9470 and reuses the guard's REGULAR user authentication — no
+        separate step-up protocol: if the presented user authentication is missing or below the
+        required assurance/freshness, the guard answers `401` with a `WWW-Authenticate` header
+        (`error="insufficient_user_authentication"`, `acr_values`, optionally `max_age`). The
+        client then runs the standard ZETA Authorization Code Flow (PAR → `GET /authorize` →
+        sectoral-IDP login → `POST /token`) requesting those `acr_values`; the guard brokers the
+        SekIDP login, takes `acr`/`amr` from the SekIDP ID token (A_29994) and issues a fresh
+        DPoP-bound access token reflecting them. The client retries ONCE with that token as
+        `idp_step_up` (DPoP proof in the `DPoP` header); then the operation is aborted.
+
+        On success the guard issues a verification challenge for the new address; the change
+        takes effect once verified and applies identity-wide (A_29912). No server-side sync
+        across Fachdienste — repeat per guard (A_29899).
       security:
         - registrationAccessToken: []
+      parameters:
+        - name: DPoP
+          in: header
+          required: false
+          schema: { type: string }
+          description: >-
+            DPoP proof (RFC 9449) for the access token presented in `idp_step_up`, bound to
+            this request (htm/htu). Required whenever `idp_step_up` is presented.
       requestBody:
         required: true
         content:
@@ -234,145 +366,50 @@ paths:
             schema: { $ref: '#/components/schemas/EmailChangeRequest' }
       responses:
         '202':
-          description: New email accepted; verification challenge issued
+          description: >-
+            New email accepted; email-OTP challenge issued to the NEW address. Same challenge
+            shape as the registration flow (`dcr-response-202.yaml`, `challenge_type:
+            email_otp`, `transaction_id`); completed via `POST /zeta/identity/email/verify`.
+          content:
+            application/json:
+              schema: { $ref: '../schemas/dcr-response-202.yaml#/definitions/OtpChallengeResponse' }
+        '401':
+          $ref: '#/components/responses/StepUpRequired'
+
+  /zeta/identity/email/verify:
+    post:
+      tags: [email]
+      summary: Verify the new email address (completes the email change)
+      description: |
+        Completes the identity-scoped email change (A_29911 "die neue Adresse verifizieren"):
+        submits the OTP sent to the NEW address together with the `transaction_id` from the
+        `202` response of `POST /zeta/identity/email`. Reuses the DEFINED email-OTP verify
+        payload of the registration flow (`verify-request.yaml`, `verify_type: email_otp`;
+        A_25432-01) — only the response differs: no new registration is created. On success the
+        change takes effect identity-wide for all clients at this Fachdienst (A_29912) and the
+        OLD address is notified (A_25750).
+      security:
+        - registrationAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '../schemas/verify-request.yaml#/definitions/OtpVerifyRequest' }
+      responses:
+        '200':
+          description: New email verified; change now effective identity-wide (A_29912)
           content:
             application/json:
               schema: { $ref: '#/components/schemas/EmailStatus' }
-        '401':
-          description: Missing step-up or surviving factor
+        '400':
+          description: invalidOtp | challengeExpired
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Error' }
-
-  /zeta/recover:
-    post:
-      tags: [recovery]
-      summary: Recover after factor loss (re-pin a new instance key)
-      description: |
-        Used on a fresh install after device loss. Requires an identity-scoped registration
-        token (fresh IDP login) AND the surviving factor recovery code (F3). Re-pins the
-        supplied new key; IDP alone is never sufficient (A_29928). Recovery-code checks are
-        rate-limited with an increasing lockout after repeated failures (A_29930) — since a
-        compromised IDP yields the registration token freely, F3 is the last barrier. A
-        successful recovery does NOT change the identity-bound email F1 (A_29931). If the
-        bound email was also lost, use the replacement-device path from an existing device first
-        (A_29933).
-      security:
-        - registrationToken: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/RecoverRequest' }
-      responses:
-        '200':
-          description: Recovered; new client registration returned
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/ClientRegistration' }
-        '401':
-          description: No valid surviving factor presented
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Error' }
-        '429':
-          description: tooManyAttempts — recovery-code rate limit / lockout (A_29930)
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Error' }
-
-  /zeta/recovery-codes:
-    post:
-      tags: [recovery]
-      summary: (Re)generate recovery codes for this identity at this FD
-      description: |
-        Requires an enrolled client (RAT) plus IDP step-up (A_29908). The guard generates
-        the codes and returns them once; only salted hashes are stored (A_29906). The
-        previous set is fully invalidated. Codes use a CSPRNG with adequate entropy
-        (A_29932) under the guard's OWN per-guard salt (A_29917), so stored verifiers
-        stay distinct and non-correlatable across guards (A_29899). Recovery-code checks are
-        rate-limited with lockout (A_29930). Recovery material is never synced server-side;
-        each guard establishes and evolves F3 independently.
-      security:
-        - registrationAccessToken: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [idp_step_up]
-              properties:
-                idp_step_up:
-                  type: string
-                  description: Step-up assertion / token.
-      responses:
-        '200':
-          description: New recovery codes (shown once)
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [recovery_codes]
-                properties:
-                  recovery_codes:
-                    type: array
-                    items: { type: string }
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '429':
-          description: tooManyAttempts — recovery-code rate limit / lockout (A_29930)
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Error' }
-
-  /zeta/bootstrap-nonce:
-    head:
-      tags: [bootstrap]
-      summary: Obtain a single-use nonce for the bootstrap instance-key PoP
-      description: >-
-        Guard-scoped, single-use, short-lived. The returned `Replay-Nonce` MUST be embedded in
-        the instance-key PoP presented to `POST /zeta/bootstrap-grants`, binding it to a fresh
-        server challenge and preventing replay (A_29914).
-      security:
-        - registrationAccessToken: []
-      responses:
-        '200':
-          description: Nonce issued (in header)
-          headers:
-            Replay-Nonce:
-              required: true
-              schema: { type: string }
-
-  /zeta/bootstrap-grants:
-    post:
-      tags: [bootstrap]
-      summary: Issue a cross-guard bootstrap assertion for onboarding at another guard
-      description: |
-        Source-guard side of the cross-guard fast path (A_29914). An enrolled, valid client
-        (RAT) proves possession of its instance key (F2) and receives a short-lived, signed
-        assertion (JWS) it can present to ANOTHER ZETA Guard's `POST /register`
-        (attestation_type `zeta_cross_guard`). The assertion carries the identity subject, the
-        verified email (F1) and a confirmation (`cnf`/`jkt`, RFC 7638) of THIS client's instance
-        key; it NEVER carries recovery secrets (F3) or a portable recovery verifier, and is
-        audience-restricted to ZETA Guards
-        with a short expiry and a single-use `jti` (A_29914). Client-mediated only — the
-        guards never exchange state directly (A_29898, A_29899).
-      security:
-        - registrationAccessToken: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/BootstrapGrantRequest' }
-      responses:
-        '201':
-          description: Bootstrap assertion issued
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/BootstrapGrant' }
-        '401':
-          description: Missing RAT or instance-key PoP (F2)
+        '404':
+          description: Unknown or expired transaction_id
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -408,10 +445,11 @@ paths:
         `target_client_id` belongs to the SAME identity as the calling RAT and reject a
         non-matching target with `403` (`forbiddenTarget`, A_29939) — possession of the
         object reference alone is never authorisation (BOLA / OWASP API1). Removes the target's
-        client record and notifies the pinned email F1 (A_29935). Never touches
-        identity-scoped factors F1/F3 (A_29934). Deleting the LAST remaining sibling or bulk
-        deletion requires IDP step-up; such a request is scheduled with a veto window rather than
-        executed immediately (A_29936).
+        client record and notifies the pinned email F1 (A_29935). Never touches the
+        identity-scoped factor F1 (A_29934). Deleting the LAST remaining sibling requires
+        IDP step-up; such a request is scheduled with a veto window rather than executed
+        immediately (A_29936). Bulk deletion is not a server operation — a client deletes
+        multiple siblings by repeating this call.
       security:
         - registrationAccessToken: []
       parameters:
@@ -419,12 +457,15 @@ paths:
           in: header
           required: false
           schema: { type: string }
-          description: Required when deleting the last sibling or in bulk.
+          description: >-
+            Required when deleting the last remaining sibling (A_29936): the fresh, DPoP-bound
+            access token from the guard's step-up Authorization Code Flow, as for
+            `POST /zeta/identity/email` (RFC 9470).
       responses:
         '204':
           description: Deleted (routine sibling deletion)
         '202':
-          description: Scheduled with veto window (last-sibling/bulk); email notified
+          description: Scheduled with veto window (last-sibling deletion); email notified
           content:
             application/json:
               schema: { $ref: '#/components/schemas/PendingDeletion' }
@@ -439,59 +480,53 @@ paths:
   /zeta/deletions/{deletion_id}/veto:
     post:
       tags: [oob]
-      summary: Cancel a pending OOB deletion using any surviving factor
+      summary: Cancel a pending OOB deletion using a surviving enrolled client
       description: |
         Client-side counterpart to the operator-initiated deletion defined in the Admin OOB
-        API. While a deletion is in its veto window, any surviving factor cancels it
-        (A_29943): an enrolled client authenticates with its RAT, or — if no client
-        remains — a recovery code (F3) is supplied. The two authorisation paths are genuine
-        alternatives (RAT OR recovery code); the recovery-code path is rate-limited and subject
-        to lockout per A_29930. The operator surface never performs this veto.
+        API. While a deletion is in its veto window, a surviving enrolled client cancels it by
+        authenticating with its RAT (surviving factor F2, A_29943). A veto by control of the
+        bound email (F1) alone is NOT offered: if no enrolled client remains, the user must
+        first register a new device (Folgeregistrierung, which re-verifies the bound email F1,
+        A_29910) and then veto with that client. Only if all factors {F1, F2} are lost does the
+        deletion proceed. The operator surface never performs this veto.
       security:
-        - registrationAccessToken: []   # surviving enrolled client (RAT)
-        - {}                            # no client remains: authorised by recovery_code (F3) in body, rate-limited (A_29930)
+        - registrationAccessToken: []   # surviving enrolled client (RAT / F2)
       parameters:
         - name: deletion_id
           in: path
           required: true
           schema: { type: string }
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                recovery_code:
-                  type: string
-                  description: Alternative surviving factor (F3) if no enrolled client remains; rate-limited (A_29930).
       responses:
         '200':
           description: Deletion cancelled
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
           description: No such pending deletion
-        '429':
-          description: tooManyAttempts — recovery-code veto attempts rate-limited/locked out (A_29930)
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Error' }
 
 components:
 
   securitySchemes:
-    registrationToken:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-      description: >-
-        Identity-scoped token obtained from a brokered SEK-IDP login (Authorization Code + PKCE)
-        at this guard - the same identity binding the defined `POST /register` flow establishes
-        (status `pending_user_binding` until the OIDC user flow completes). Carries the resolved
-        KVNR/Telematik-ID and is used as the bearer for `POST /zeta/recover`.
     registrationAccessToken:
       type: http
       scheme: bearer
-      description: RFC 7592 per-client Registration Access Token (RAT). Necessary, not sufficient, for key/email change.
+      description: |
+        RFC 7592 per-client Registration Access Token (RAT), presented as
+        `Authorization: Bearer <RAT>` on the per-client management operations
+        (`/register/{client_id}`, `/zeta/*`).
+
+        Issuance & lifecycle:
+          * Issued at registration and returned in the registration response
+            (`registration_access_token`, alongside `registration_client_uri`).
+          * Opaque to the client (no defined format); scoped to exactly ONE client instance.
+          * MAY be rotated by the guard: a management response can return a new
+            `registration_access_token` that supersedes the previous one (RFC 7592).
+
+        The RAT is NECESSARY but NEVER SUFFICIENT for a control-transferring change: a key
+        rollover additionally requires instance-key proof-of-possession (A_29921) and an email
+        change requires IDP step-up plus a surviving factor (A_29911). Management is only
+        accepted from an enrolled, valid client (A_29902); a successful IDP authentication alone
+        is not enough (A_29896).
 
   parameters:
     ClientId:
@@ -508,6 +543,23 @@ components:
           schema: { $ref: '#/components/schemas/Error' }
     Unauthorized:
       description: Missing or invalid credentials/factor
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Error' }
+    StepUpRequired:
+      description: |
+        Additional authentication required. Either the user authentication is missing or below
+        the required assurance/freshness (`insufficientUserAuthentication`) — per RFC 9470 the
+        client runs the guard's regular Authorization Code Flow (PAR → `GET /authorize` →
+        `POST /token`) with the `acr_values` named in `WWW-Authenticate`, obtains a fresh
+        DPoP-bound access token and retries once — or a required surviving factor was not
+        presented (`factorRequired`).
+      headers:
+        WWW-Authenticate:
+          description: >-
+            Present for the step-up case (RFC 9470), e.g.
+            `Bearer error="insufficient_user_authentication", acr_values="<required>", max_age=<seconds>`.
+          schema: { type: string }
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Error' }
@@ -543,12 +595,48 @@ components:
 
     MetadataUpdate:
       type: object
-      description: Non-key metadata update (RAT sufficient).
+      description: >-
+        Non-key metadata update via RFC 7592 `PUT` (application/json). Deliberately narrowed to
+        the only RAT-sufficient client-management change on this endpoint: renaming the client
+        (A_29909, A_30005). Key material (F2), the bound email (F1), the authorised
+        audiences (A_29901) and DCR parameters cannot be changed here — they have dedicated
+        operations or require proof-of-possession / step-up.
+      additionalProperties: false
+      required: [client_name]
       properties:
-        client_name: { type: string }
-        resource:
-          type: array
-          items: { type: string, format: uri }
+        client_name:
+          type: string
+          description: New human-readable name for this client instance.
+
+    RolloverEnvelope:
+      type: string
+      description: |
+        Compact-serialized NESTED JWS authorizing an instance-key rollover (A_29921, A_29922).
+        This is a string (a JWS), not a JSON object; the guard verifies BOTH signature layers
+        before applying the change. Sent as the request body with
+        `Content-Type: application/zeta-rollover+jws`.
+
+        Structure (the outer JWS wraps the inner JWS as its payload):
+          * OUTER JWS — signed by the OLD (currently active) instance key = AUTHORISATION,
+            i.e. proof-of-possession of the key being replaced (A_29921). Its protected header
+            identifies the old key by its RFC 7638 thumbprint (`kid`/`jkt`) and sets
+            `cty: "JWT"` to mark the nested payload.
+          * INNER JWS — signed by the NEW instance key = ANTI-SUBSTITUTION, i.e. proof the
+            caller controls the key being pinned (A_29922). Its protected header carries the
+            full NEW public key as a `jwk`.
+
+        Claims in the (inner) payload bind the request against replay and misdirection
+        (A_29923):
+          * `nonce` — the single-use value from `HEAD /zeta/rollover-nonce`.
+          * `htm`   — the HTTP method of this request (`PUT`).
+          * `htu`   — the target URI of this request (`/register/{client_id}`).
+          * `aud`   — the guard audience (this ZETA Guard's identity).
+          * `iat`   — issue time, for freshness.
+
+        The envelope MUST NOT carry an email (F1) change; that is a separate operation
+        (A_29911, A_29926).
+      contentMediaType: application/zeta-rollover+jws
+      example: "eyJhbGciOiJFUzI1NiIsImN0eSI6IkpXVCIsImtpZCI6Ii4uLm9sZC1qa3QifQ.<inner-jws>.<outer-sig>"
 
     ClientRegistration:
       type: object
@@ -569,11 +657,9 @@ components:
           properties:
             required: { type: boolean }
             status: { type: string, enum: [pending, verified] }
-            challenge_id: { type: string }
-        recovery_codes:
-          type: array
-          items: { type: string }
-          description: Present only on first-use registration; shown once.
+            transaction_id:
+              type: string
+              description: Email-OTP transaction of the registration challenge (dcr-response-202.yaml).
         key_overlap:
           type: object
           description: Present after a rollover.
@@ -583,8 +669,11 @@ components:
 
     EmailStatus:
       type: object
+      description: Verification state of an email-change transaction.
       properties:
-        challenge_id: { type: string }
+        transaction_id:
+          type: string
+          description: The email-OTP transaction this status refers to (from the `202` challenge).
         status: { type: string, enum: [pending, verified, expired] }
 
     EmailChangeRequest:
@@ -594,58 +683,21 @@ components:
         new_email: { type: string, format: email }
         idp_step_up:
           type: string
-          description: Step-up assertion/token.
+          description: >-
+            Proof of the stepped-up user authentication: the FRESH access token issued by THIS
+            guard's own token endpoint after completing the step-up Authorization Code Flow
+            (RFC 9470 challenge → PAR / `GET /authorize` / `POST /token` with the required
+            `acr_values`). The guard validates its own token signature, the `acr`/`amr` claims
+            it took from the SekIDP ID token (A_29994), a recent `auth_time`, and the DPoP
+            binding (proof in the `DPoP` request header). Note the client never holds the SekIDP
+            ID token itself — it is encrypted to the guard; the guard-issued access token is the
+            only step-up artefact available to the client.
         pop:
           type: string
           description: Instance-key PoP signature (F2) — or use old_email_proof.
         old_email_proof:
           type: string
           description: Proof of control of the old email (F1) as the surviving factor.
-
-    RecoverRequest:
-      type: object
-      required: [jwks, recovery_code]
-      properties:
-        jwks:
-          $ref: '#/components/schemas/Jwks'
-          description: New instance public key to pin (identified by its RFC 7638 thumbprint).
-        recovery_code:
-          type: string
-          description: Surviving factor F3 — checked against the stored salted hash; single-use.
-
-    BootstrapGrantRequest:
-      type: object
-      required: [pop]
-      properties:
-        pop:
-          type: string
-          description: >-
-            Fresh instance-key proof-of-possession (F2) of the requesting client — a JWS/DPoP
-            proof over this request, bound to method+URI and a single-use guard nonce obtained
-            from `HEAD /zeta/bootstrap-nonce`. Authorises issuance (A_29914, A_29916).
-        audience:
-          type: string
-          description: >-
-            Optional hint restricting the assertion to one target guard. When omitted the
-            assertion is valid for any gematik-approved ZETA Guard (audience class).
-
-    BootstrapGrant:
-      type: object
-      required: [assertion, expires_in]
-      properties:
-        assertion:
-          type: string
-          description: >-
-            Compact-serialized signed JWS. Claims: iss (source guard), sub (KVNR/Telematik-ID),
-            verified_email + email_verified, cnf.jkt (RFC 7638 thumbprint of the requesting
-            instance key), aud (ZETA-Guard audience class), jti (single-use), iat, exp (short).
-            Contains NO recovery secrets or portable recovery verifier (A_29914, A_29917).
-            Presented to the target guard's
-            `POST /register` with attestation_type `zeta_cross_guard` plus a fresh PoP of the
-            same key (A_29915).
-        expires_in:
-          type: integer
-          description: Assertion lifetime in seconds (short-lived).
 
     ClientSummary:
       type: object
@@ -690,10 +742,12 @@ components:
             - tombstoned
             - factorRequired
             - stepUpRequired
-            - bootstrapInvalid
-            - bootstrapExpired
-            - bootstrapAudience
             - forbiddenTarget
-            - tooManyAttempts
+            - insufficientUserAuthentication
+            - invalidAttestation
+            - registrationForbidden
+            - registrationConflict
+            - invalidOtp
+            - challengeExpired
         title: { type: string }
         detail: { type: string }
