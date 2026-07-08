@@ -68,18 +68,6 @@ alt Kein ZETA Attestation Token
     Client -> AuthS++: POST /register/verify {transaction_id, code}
     AuthS -> AuthS: Verifiziere OTP-Code gegen Cache
 
-    ' Recovery Code Vergabe (Trust On First Use)
-    AuthS -> AuthS: Generiere recovery_code (einmalig), speichere nur Hash (SHA-256) gebunden an Nutzer-Account
-    AuthS --> User: recovery_code (Out-of-Band, einmalige Anzeige)
-    note right of AuthS
-      Der recovery_code ist ein Wiederherstellungscode (Backup-Code, überlebender Faktor F3). Er wird dem Nutzer einmalig zugestellt/angezeigt
-      und muss sicher (offline) aufbewahrt werden. Der AuthS speichert nur den (salted) Hash. Mit dem recovery_code kann der Nutzer bei
-      Geräteverlust später einen neuen Instanzschlüssel an seinen bestehenden Nutzer-Account binden (siehe Abb-ZETA-DCR-Account-Recovery).
-      Die Recovery erfordert gemäß A_29928 BEIDES: eine IDP-(Step-up-)Authentisierung UND diesen überlebenden Faktor; sie ändert dabei die
-      identitätsgebundene E-Mail-Adresse (F1) NICHT (A_29931). Ein E-Mail-Wechsel läuft separat über A_29911.
-    end note
-
-
 else ZETA Attestation Token vorhanden (Fast-Path)
     Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token", client_name, zeta_attestation_token,\njwks (enthält PuK.Client.Sig), signed_hash_puk_client_sig, attestation_pop}
     AuthS -> AuthS: Prüfe Token-Signatur & Vertrauensstellung
