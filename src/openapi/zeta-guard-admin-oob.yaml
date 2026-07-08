@@ -4,8 +4,8 @@ info:
   version: 0.1.0-draft
   description: |
     Privileged, operator-facing interface for the **out-of-band (OOB) deletion** escape hatch:
-    the last resort when a user has lost ALL online factors (instance key, email, recovery
-    codes) and therefore cannot self-recover via the SDK API.
+    the last resort when a user has lost ALL online factors (instance key, email) and therefore
+    cannot self-recover via the SDK API.
 
     This is a separate interface from the SDK HTTP API on purpose:
       * Audience: human operators / an operator console — never the client SDK.
@@ -14,14 +14,14 @@ info:
         potentially compromised; the whole point of OOB is to not depend on it).
 
     The client-facing counterpart lives in `zeta-guard-client-management.yaml`. It exposes exactly
-    one OOB operation — the **veto** (`POST /zeta/deletions/{deletion_id}/veto`), by which any
-    surviving factor cancels a scheduled deletion. No operator action in this spec is reachable
+    one OOB operation — the **veto** (`POST /zeta/deletions/{deletion_id}/veto`), by which a
+    surviving enrolled client (F2) cancels a scheduled deletion. No operator action in this spec is reachable
     from the SDK surface, and the veto is never performed by an operator.
 
     ## Guarantees this interface must preserve
       * It can ONLY tombstone an identity — it never grants access and never re-pins a factor.
       * Deletion is scheduled with a veto window, not executed immediately; all surviving
-        pinned channels are notified, and any surviving factor can veto (via the SDK side).
+        pinned channels are notified, and a surviving enrolled client (F2) can veto (via the SDK side).
       * Separation of duties: the second approval (dual control) and the re-registration
         confirmation MUST be performed by a DIFFERENT operator than the initiator/executor.
       * Re-acquiring access after deletion requires a fresh first-use ceremony plus a SECOND
@@ -32,11 +32,11 @@ info:
     ```
        (initiate) ──► awaiting_approval ──(approve, different op)──► scheduled
                                 │                                      │
-                                │ abort                                │ veto (user, surviving factor)
-                                ▼                                      ▼
-                             aborted                                vetoed
+                                │ abort                                │
+                                ▼                                      │ (veto window elapses, no veto)
+                             aborted                                   │
                                                                        │
-                                              (veto window elapses, no veto)
+              vetoed ◄──(veto: user, surviving factor)─────────────────┤
                                                                        ▼
                                                                    executed  ──► identity TOMBSTONED
                                                                                   (cooling_off_until)
@@ -45,16 +45,6 @@ info:
                                                                                        ▼
                                                                           re-registration unblocked
     ```
-    If dual control is disabled by policy, `initiate` lands directly in `scheduled`.
-
-    ## Standards & normative basis
-      * Mutual-TLS client authentication — RFC 8705.
-      * Problem Details for HTTP APIs (`application/problem+json`) — RFC 9457.
-      * Normative basis: A_29940 - A_29947 (out-of-band deletion) and
-        A_29948 and A_29949 (audit logging, channel protection) in
-        `gemSpec_ZETA_TOFU_Anforderungen_DRAFT.md`.
-
-    This is a design draft, not a normative gematik specification.
 
 servers:
   - url: https://{adminHost}/realms/{realm}/zeta/admin
@@ -111,6 +101,11 @@ paths:
     get:
       tags: [identities]
       summary: Get identity status by reference
+      description: |
+        Returns the current lifecycle state of a single identity (active, pending deletion,
+        or tombstoned), together with which factors still survive and any cooling-off window.
+        Use it to track an identity across the OOB deletion lifecycle once its `identity_ref`
+        is known.
       security:
         - mutualTLS: []
           operatorAuth: [zeta.oob.read]
@@ -148,7 +143,9 @@ paths:
               required: [oob_proof, justification]
               properties:
                 oob_proof: { $ref: '#/components/schemas/OobProof' }
-                justification: { type: string }
+                justification:
+                  type: string
+                  description: Operator's reason for confirming re-registration; recorded in the audit trail.
       responses:
         '200':
           description: Re-registration unblocked for the cooling-off identity
@@ -170,6 +167,9 @@ paths:
     get:
       tags: [deletions]
       summary: List OOB deletion requests
+      description: |
+        Lists OOB deletion requests known to this guard, e.g. for an operator-console overview.
+        Results can be narrowed by lifecycle `status` and/or a specific `identity_ref`.
       security:
         - mutualTLS: []
           operatorAuth: [zeta.oob.read]
@@ -177,10 +177,12 @@ paths:
         - name: status
           in: query
           required: false
+          description: Restrict the result to deletion requests in this lifecycle state.
           schema: { $ref: '#/components/schemas/DeletionStatus' }
         - name: identity_ref
           in: query
           required: false
+          description: Restrict the result to deletion requests for this identity.
           schema: { type: string }
       responses:
         '200':
@@ -196,12 +198,12 @@ paths:
       description: |
         Requires a high-assurance, IDP-independent identity proof (`oob_proof`, assurance
         level MUST be high) — A_29941. The guard SHOULD first check that no factor
-        survives and otherwise refer the user to self-recovery (A_29947). With dual
-        control enabled (policy), the request lands in `awaiting_approval` and must be approved
-        by a different operator before the veto window starts (A_29946); otherwise it goes
-        straight to `scheduled`. The scheduled deletion runs only after a veto window with
-        channel notification (A_29942); execution merely tombstones the identity — it
-        never grants access or re-pins a factor (A_29940, A_29944).
+        survives and otherwise refer the user to self-recovery (A_29947). The request
+        lands in `awaiting_approval` and must be approved by a different operator
+        (dual control) before the veto window starts (A_29946). The scheduled deletion
+        runs only after a veto window with channel notification (A_29942); execution
+        merely tombstones the identity — it never grants access or re-pins a factor
+        (A_29940, A_29944).
       security:
         - mutualTLS: []
           operatorAuth: [zeta.oob.initiate]
@@ -217,6 +219,7 @@ paths:
           description: Deletion request created
           headers:
             Location:
+              description: URL of the newly created deletion request (`/deletions/{deletion_id}`).
               schema: { type: string }
           content:
             application/json:
@@ -240,6 +243,10 @@ paths:
     get:
       tags: [deletions]
       summary: Get a deletion request (with audit detail)
+      description: |
+        Returns a single deletion request as the extended detail view: the identity proof,
+        justification, any veto or abort record, and the chronological audit trail of every
+        action taken on the request.
       security:
         - mutualTLS: []
           operatorAuth: [zeta.oob.read]
@@ -274,7 +281,9 @@ paths:
             schema:
               type: object
               properties:
-                note: { type: string }
+                note:
+                  type: string
+                  description: Optional free-text note from the approving operator; recorded in the audit trail.
       responses:
         '200':
           description: Approved and scheduled
@@ -314,7 +323,9 @@ paths:
               type: object
               required: [reason]
               properties:
-                reason: { type: string }
+                reason:
+                  type: string
+                  description: Operator's reason for aborting the deletion; recorded in the audit trail.
       responses:
         '200':
           description: Aborted
@@ -331,6 +342,12 @@ paths:
     get:
       tags: [audit]
       summary: Query the OOB audit trail
+      description: |
+        Returns the immutable audit events recorded for OOB actions (initiation, approval,
+        scheduling, veto, abort, execution, and re-registration confirmation), per the
+        tamper-evident lifecycle-logging requirement A_29948 (timestamp, operator identity and
+        justification for operator-driven actions). Filter by
+        `identity_ref`, `deletion_id`, and/or a `since` timestamp.
       security:
         - mutualTLS: []
           operatorAuth: [zeta.oob.read]
@@ -338,15 +355,18 @@ paths:
         - name: identity_ref
           in: query
           required: false
+          description: Return only events for this identity.
           schema: { type: string }
         - name: deletion_id
           in: query
           required: false
+          description: Return only events for this deletion request.
           schema: { type: string }
         - name: since
           in: query
           required: false
-          schema: { type: integer, description: Unix epoch seconds }
+          description: Return only events at or after this time (Unix epoch seconds).
+          schema: { type: integer, format: int64 }
       responses:
         '200':
           description: Audit events
@@ -384,11 +404,13 @@ components:
       name: deletion_id
       in: path
       required: true
+      description: Server-assigned identifier of the OOB deletion request.
       schema: { type: string }
     IdentityRef:
       name: identity_ref
       in: path
       required: true
+      description: Opaque reference to an identity record at this guard (from GET /identities).
       schema: { type: string }
     IdempotencyKey:
       name: Idempotency-Key
@@ -401,6 +423,13 @@ components:
 
     DeletionStatus:
       type: string
+      description: |
+        Lifecycle state of an OOB deletion request:
+          * `awaiting_approval` - created; waiting for the second operator's dual-control approval.
+          * `scheduled` - approved; the veto window is running and channels have been notified.
+          * `vetoed` - cancelled during the veto window by a surviving factor (terminal).
+          * `aborted` - cancelled by an operator before execution (terminal).
+          * `executed` - the veto window elapsed with no veto; the identity is tombstoned (terminal).
       enum: [awaiting_approval, scheduled, vetoed, aborted, executed]
 
     OobProof:
@@ -410,6 +439,12 @@ components:
       properties:
         method:
           type: string
+          description: |
+            How the identity was proven out of band:
+              * `postal_ident` - postal identity verification (e.g. POSTIDENT).
+              * `in_person_kyc` - in-person know-your-customer check.
+              * `video_ident` - attended video identification.
+              * `other_attested` - another attested procedure documented in `evidence_ref`.
           enum: [postal_ident, in_person_kyc, video_ident, other_attested]
         evidence_ref:
           type: string
@@ -417,19 +452,26 @@ components:
         assurance_level:
           type: string
           enum: [high, substantial]
-          description: Must be 'high' for deletion; 'substantial' is rejected.
+          description: Assurance level of the proof. Must be 'high' for deletion; 'substantial' is rejected.
         proofed_at:
           type: integer
-          description: Unix epoch seconds.
+          format: int64
+          description: When the proofing was completed (Unix epoch seconds).
 
     OperatorRef:
       type: object
+      description: Identifies an operator acting on the privileged channel.
       properties:
-        operator_id: { type: string }
-        display_name: { type: string }
+        operator_id:
+          type: string
+          description: Stable identifier of the operator from the IDP-independent operator IDP.
+        display_name:
+          type: string
+          description: Human-readable operator name, for display in an operator console.
 
     DeletionRequest:
       type: object
+      description: Operator's request to initiate an out-of-band deletion for one identity.
       required: [identity_ref, justification, oob_proof]
       properties:
         identity_ref:
@@ -437,6 +479,7 @@ components:
           description: Obtained from GET /identities (avoids raw KVNR in the deletion record).
         justification:
           type: string
+          description: Operator's reason for the deletion; recorded in the audit trail.
         oob_proof:
           $ref: '#/components/schemas/OobProof'
         confirm_no_surviving_factor:
@@ -445,87 +488,156 @@ components:
 
     Deletion:
       type: object
+      description: State of an OOB deletion request as tracked by the guard.
       required: [deletion_id, identity_ref, status, scope, requested_by, requested_at]
       properties:
-        deletion_id: { type: string }
-        identity_ref: { type: string }
+        deletion_id:
+          type: string
+          description: Server-assigned identifier of the deletion request.
+        identity_ref:
+          type: string
+          description: Reference to the identity being deleted.
         status: { $ref: '#/components/schemas/DeletionStatus' }
         scope:
           type: string
           const: identity
+          description: Deletion scope. Always `identity` - OOB deletion only ever tombstones a whole identity.
         requested_by: { $ref: '#/components/schemas/OperatorRef' }
-        requested_at: { type: integer }
+        requested_at:
+          type: integer
+          format: int64
+          description: When the request was initiated (Unix epoch seconds).
         approved_by: { $ref: '#/components/schemas/OperatorRef' }
-        approved_at: { type: integer }
+        approved_at:
+          type: integer
+          format: int64
+          description: When the second operator approved the request; absent until approved (Unix epoch seconds).
         effective_after:
           type: integer
-          description: End of the veto window; set once scheduled.
-        executed_at: { type: integer }
+          format: int64
+          description: End of the veto window, after which execution may proceed; set once scheduled (Unix epoch seconds).
+        executed_at:
+          type: integer
+          format: int64
+          description: When the deletion was executed and the identity tombstoned; absent until executed (Unix epoch seconds).
         cooling_off_until:
           type: integer
-          description: Tombstone cooling-off end; set once executed.
+          format: int64
+          description: End of the tombstone cooling-off period; set once executed (Unix epoch seconds).
         notified_channels:
           type: array
+          description: Pinned channels notified when the deletion was scheduled (e.g. the bound email).
           items: { type: string }
 
     DeletionDetail:
+      description: |
+        Extended view of a deletion request: the base `Deletion` plus the sensitive
+        justification and proof, any veto or abort record, and the full audit trail.
       allOf:
         - $ref: '#/components/schemas/Deletion'
         - type: object
           properties:
-            justification: { type: string }
+            justification:
+              type: string
+              description: Operator's reason given when the deletion was initiated.
             oob_proof: { $ref: '#/components/schemas/OobProof' }
             veto:
               type: object
+              description: Present when the deletion was vetoed by a surviving factor.
               properties:
-                vetoed_at: { type: integer }
+                vetoed_at:
+                  type: integer
+                  format: int64
+                  description: When the veto was received (Unix epoch seconds).
                 via: { type: string, description: Which surviving factor vetoed. }
             abort:
               type: object
+              description: Present when the deletion was aborted by an operator.
               properties:
                 aborted_by: { $ref: '#/components/schemas/OperatorRef' }
-                aborted_at: { type: integer }
-                reason: { type: string }
+                aborted_at:
+                  type: integer
+                  format: int64
+                  description: When the abort was performed (Unix epoch seconds).
+                reason:
+                  type: string
+                  description: Operator's reason for the abort.
             events:
               type: array
+              description: Chronological audit trail of actions on this deletion request.
               items: { $ref: '#/components/schemas/AuditEvent' }
 
     IdentityStatus:
       type: object
+      description: Current lifecycle state of an identity record at this guard.
       required: [identity_ref, state]
       properties:
-        identity_ref: { type: string }
+        identity_ref:
+          type: string
+          description: Opaque reference to the identity record.
         state:
           type: string
+          description: |
+            Lifecycle state of the identity:
+              * `active` - usable; normal operation.
+              * `pending_deletion` - an OOB deletion is scheduled within its veto window.
+              * `tombstoned` - deleted; re-registration is blocked until a second OOB confirmation.
           enum: [active, pending_deletion, tombstoned]
-        client_count: { type: integer }
+        client_count:
+          type: integer
+          description: Number of client registrations currently bound to the identity.
         surviving_factors:
           type: object
           description: Whether each factor is still usable (informs whether OOB delete is warranted).
           properties:
-            pinned_email: { type: boolean }
-            recovery_codes: { type: boolean }
-            instance_key: { type: boolean }
+            pinned_email:
+              type: boolean
+              description: The bound email (F1) is still usable.
+            instance_key:
+              type: boolean
+              description: A registered client's instance key (F2) is still usable.
         cooling_off_until:
           type: integer
-          description: Present when tombstoned.
+          format: int64
+          description: End of the tombstone cooling-off period; present when tombstoned (Unix epoch seconds).
         reregister_confirmed:
           type: boolean
-          description: Whether the second OOB confirmation has been recorded.
+          description: Whether the second, independent OOB confirmation has been recorded.
 
     AuditEvent:
       type: object
+      description: A single immutable entry in the OOB audit trail.
       required: [event_id, type, at]
       properties:
-        event_id: { type: string }
-        deletion_id: { type: string }
-        identity_ref: { type: string }
+        event_id:
+          type: string
+          description: Server-assigned identifier of the audit event.
+        deletion_id:
+          type: string
+          description: Deletion request the event relates to, if any.
+        identity_ref:
+          type: string
+          description: Identity the event relates to, if any.
         type:
           type: string
+          description: |
+            Kind of action recorded:
+              * `requested` - a deletion was initiated.
+              * `approved` - a second operator approved the deletion.
+              * `scheduled` - the veto window started and channels were notified.
+              * `vetoed` - a surviving factor cancelled the deletion.
+              * `aborted` - an operator cancelled the deletion.
+              * `executed` - the identity was tombstoned.
+              * `reregister_confirmed` - the second OOB confirmation unblocked re-registration.
           enum: [requested, approved, scheduled, vetoed, aborted, executed, reregister_confirmed]
         operator: { $ref: '#/components/schemas/OperatorRef' }
-        at: { type: integer }
-        detail: { type: string }
+        at:
+          type: integer
+          format: int64
+          description: When the event occurred (Unix epoch seconds).
+        detail:
+          type: string
+          description: Optional free-text detail about the event.
 
     Error:
       type: object
@@ -536,6 +648,15 @@ components:
       properties:
         code:
           type: string
+          description: |
+            Machine-readable failure reason:
+              * `assuranceTooLow` - the identity proof's assurance level is below 'high'.
+              * `evidenceMissing` - required proof/evidence was missing or invalid.
+              * `survivingFactorPresent` - a usable factor still exists; use self-recovery instead.
+              * `duplicateActiveDeletion` - an active deletion already exists for this identity.
+              * `sameOperatorForbidden` - the acting operator must differ from the earlier one (separation of duties).
+              * `invalidState` - the request is not in a state that allows this action.
+              * `notTombstoned` - the identity is not in a tombstoned/cooling-off state.
           enum:
             - assuranceTooLow
             - evidenceMissing
@@ -544,5 +665,9 @@ components:
             - sameOperatorForbidden
             - invalidState
             - notTombstoned
-        title: { type: string }
-        detail: { type: string }
+        title:
+          type: string
+          description: Short, human-readable summary of the problem type.
+        detail:
+          type: string
+          description: Human-readable explanation specific to this occurrence.
