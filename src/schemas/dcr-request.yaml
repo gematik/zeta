@@ -51,7 +51,6 @@ oneOf:
           Öffentlicher Attestation Key (AK) des TPM (Base64-kodierte TPM2B_PUBLIC-Bytes).
           Wird vom AuthS zur Verifikation der TPM-Quote und von
           signed_hash_puk_client_sig verwendet.
-      recovery_code: { $ref: "#/definitions/recovery_code" }
       signed_hash_puk_client_sig:
         type: string
         description: >-
@@ -104,7 +103,6 @@ oneOf:
           (fmt: "apple-appattest"). Enthält attStmt (x5c-Zertifikatskette inkl.
           puk_ak_sig + receipt) sowie authData (rpIdHash, counter, credentialId).
           Base64-kodiert.
-      recovery_code: { $ref: "#/definitions/recovery_code" }
       signed_hash_puk_client_sig:
         type: string
         description: >-
@@ -162,7 +160,6 @@ oneOf:
           type: string
           description: Base64-kodiertes DER X.509-Zertifikat.
         minItems: 3
-      recovery_code: { $ref: "#/definitions/recovery_code" }
       signed_hash_puk_client_sig:
         type: string
         description: >-
@@ -290,22 +287,6 @@ definitions:
       Out-of-Band eine E-Mail mit einem OTP-Bestätigungscode, den der Nutzer
       anschließend über POST /register/verify bestätigt
       (siehe Abb-ZETA-DCR-für-mobile-Clients.puml).
-  recovery_code:
-    type: string
-    description: >-
-      Wiederherstellungscode (Backup-Code), den der AuthS dem Nutzer nach der
-      erfolgreichen initialen TOFU-Bindung einmalig Out-of-Band zustellt und der
-      sicher (offline) aufzubewahren ist. Der AuthS speichert nur dessen Hash
-      (SHA-256) gebunden an den Nutzer-Account. Verliert der Nutzer den Zugriff auf
-      SOWOHL sein E-Mail-Konto ALS AUCH sein Gerät (mobiler Client), kann er mit
-      diesem recovery_code einen neuen Client mit einer NEUEN E-Mail-Adresse
-      registrieren, ohne erneute OTP-Verifikation: Der AuthS verifiziert den
-      recovery_code gegen den gespeicherten Hash, bindet den neuen Client und die
-      neue E-Mail-Adresse an den bestehenden Nutzer-Account, invalidiert den alten
-      recovery_code und stellt einen neuen recovery_code aus. Das Feld wird bei der
-      initialen Registrierung NICHT gesendet, sondern nur bei einer
-      Wiederherstellungs-Registrierung (siehe Gruppe "Account Recovery" in
-      Abb-ZETA-DCR-für-mobile-Clients.puml).
   redirect_uris:
     type: array
     description: >-
