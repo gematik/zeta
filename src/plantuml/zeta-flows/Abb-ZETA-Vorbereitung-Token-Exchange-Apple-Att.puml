@@ -1,4 +1,4 @@
-@startuml "Abb-ZETA-Client-Statement-mit-Apple-AppAttest"
+@startuml "Abb-ZETA-Vorbereitung-Token-Exchange-Apple-Att"
 !include ../puml-layout.txt
 
 
@@ -46,6 +46,6 @@ Client -> OS: DCAppAttest.generateAssertion(\nkeyId: Handle_PrK.AK.Sig,  clientD
 OS -> SE: Erstelle Hardware-Signatur\nüber clientDataHash
 SE --> OS: Signatur + Authenticator Data (Counter)
 OS --> Client: dc_assertion\n(CBOR: Signatur + authenticatorData)
-Client -> Client: Generiere client-statement\n(Evidence = dc_assertion + Posture-Daten im Klartext)
+Client -> Client: Generiere client_statement\n(Evidence = dc_assertion + Posture-Daten im Klartext)
 
 @enduml

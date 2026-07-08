@@ -1,4 +1,4 @@
-@startuml "Abb-ZETA-Client-Statement-mit-TPM-Attestation"
+@startuml "Abb-ZETA-Vorbereitung-Token-Exchange-Win-Linux-TPM-Att"
 
 !include ../puml-layout.txt
 
@@ -46,7 +46,7 @@ ZAS -> TPM++ : TPM2_GetEventLog()
 TPM --> ZAS -- : tpm_event_log
 ZAS --> Client : Evidence {tpm_quote, tpm_event_log}
 
-Client -> Client: Generiere client-statement\n(OS und PS Daten, Evidence)
+Client -> Client: Generiere client_statement\n(OS und PS Daten, Evidence)
 Client -> Client: Erstelle Client Assertion (JWT, signiert mit PrK.Client.Sig)
 
 @enduml

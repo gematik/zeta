@@ -1,4 +1,4 @@
-@startuml ZG-Client-Dienst-zu-Dienst-Kommunikation
+@startuml "Abb-ZETA-Dienst-zu-Dienst-Kommunikation-mit-ZG-Client"
 !include ../puml-layout.txt
 
 participant "Zieldienst\n(Anbieter B)" as ZDB

@@ -35,9 +35,9 @@ alt Apple AppAttest Attestation
   OS -> SE: Erstelle Hardware-Signatur über clientDataHash
   SE --> OS: Signatur + Authenticator Data (Counter)
   OS --> Client: dc_assertion\n(CBOR: Signatur + authenticatorData)
-  Client -> Client: Generiere client-statement\n(Evidence = dc_assertion + Posture-Daten im Klartext)
+  Client -> Client: Generiere client_statement\n(Evidence = dc_assertion + Posture-Daten im Klartext)
 else Software Attestation (Fallback)
-  Client -> Client: Generiere client-statement\n(OS und PS Daten ungesichert)
+  Client -> Client: Generiere client_statement\n(OS und PS Daten ungesichert)
 end
 
 @enduml

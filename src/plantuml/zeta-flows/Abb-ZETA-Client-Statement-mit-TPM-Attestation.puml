@@ -34,9 +34,9 @@ alt TPM Attestation
   ZAS -> TPM++ : TPM2_GetEventLog()
   TPM --> ZAS -- : tpm_event_log
   ZAS --> Client : Evidence {tpm_quote, tpm_event_log}
-  Client -> Client: Generiere client-statement\n(OS und PS Daten, Evidence)
+  Client -> Client: Generiere client_statement\n(OS und PS Daten, Evidence)
 else Software Attestation (Fallback)
-  Client -> Client: Generiere client-statement\n(OS und PS Daten)
+  Client -> Client: Generiere client_statement\n(OS und PS Daten)
 end
 
 @enduml

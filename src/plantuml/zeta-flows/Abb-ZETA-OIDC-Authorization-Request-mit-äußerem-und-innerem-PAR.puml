@@ -1,4 +1,4 @@
-@startuml "Abb-ZETA-OIDC-Authorization-Request-mit-PAR"
+@startuml "Abb-ZETA-OIDC-Authorization-Request-mit-äußerem-und-innerem-PAR"
 !include ../puml-layout.txt
 
 

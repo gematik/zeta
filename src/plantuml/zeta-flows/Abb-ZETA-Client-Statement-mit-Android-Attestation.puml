@@ -44,9 +44,9 @@ Client -> Client: clientDataHash =\nSHA-256(Nonce || Posture-Daten || PuK.Client
     Client -> OS: IntegrityTokenProvider.request(\nrequestHash = clientDataHash)
     OS --> Client: integrityToken\n(JWS: deviceIntegrity + appIntegrity + accountDetails)
   end
-  Client -> Client: Generiere client-statement\n(Evidence = signed_client_data_hash,\nandroid_key_attestation_certificate_chain,\n[integrityToken], Posture-Daten im Klartext)
+  Client -> Client: Generiere client_statement\n(Evidence = signed_client_data_hash,\nandroid_key_attestation_certificate_chain,\n[integrityToken], Posture-Daten im Klartext)
 else Software Attestation (Fallback)
-  Client -> Client: Generiere client-statement\n(OS und PS Daten ungesichert)
+  Client -> Client: Generiere client_statement\n(OS und PS Daten ungesichert)
 end
 
 @enduml
