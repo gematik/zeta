@@ -45,7 +45,7 @@ note over Client, AuthS: Der ZETA Client benötigt für den Zugriff ein gültige
 
 ref over Client, FM
   **(A)** Authorization Request mit PAR
-  siehe **Abb-ZETA-OIDC-Authorization-Request-mit-PAR**
+  siehe **Abb-ZETA-OIDC-Authorization-Request-mit-äußerem-und-innerem-PAR**
 end ref
 
 ref over User, IDP
