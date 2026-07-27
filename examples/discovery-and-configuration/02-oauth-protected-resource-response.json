@@ -1,23 +1,19 @@
 {
   "resource": "https://erp.zentral.example.de",
-  "authorization_server": "https://auth-server.zeta.example.de",
-  "scopes": [
+  "authorization_servers": [
+    "https://auth-server.zeta.example.de"
+  ],
+  "scopes_supported": [
     "e-rezept",
     "e-rezept:read",
     "e-rezept:write"
   ],
-  "response_types_supported": [
-    "code"
+  "bearer_methods_supported": [
+      "header"
   ],
-  "grant_types_supported": [
-    "authorization_code",
-    "urn:ietf:params:oauth:grant-type:token-exchange"
+  "dpop_signing_alg_values_supported": [
+      "ES256"
   ],
-  "token_endpoint_auth_methods_supported": [
-    "private_key_jwt"
-  ],
-  "token_endpoint_auth_signing_alg_values_supported": [
-    "ES256"
-  ],
+  "dpop_bound_access_tokens_required":  true,
   "zeta_asl_use": "required"
 }
