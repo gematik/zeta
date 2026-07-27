@@ -1,9 +1,23 @@
-@startuml "Abb-ZETA-OIDC-Token-Bezug"
+@startuml "Abb-ZETA-OIDC-Token-Bezug-mit-Identitaetsbindung"
 !include ../puml-layout.txt
-
 
 ' Teildiagramm (C): Token-Bezug beim sektoralen IDP, Policy-Entscheidung und Ausstellung der ZETA Token
 ' Teil von Abb-ZETA-OIDC-Authentifizierung-mobiler-Clients
+
+' ============================================================================
+' ANGEPASST v2.0.1: mit eingefügter identitätsgebundener E-Mail-Bindung NACH dem OIDC-Flow.
+'
+' Einhängepunkt: im Zweig "Policy Decision allow", NACH Identitätsfeststellung
+' (KVNR aus ID-Token) und VOR Ausgabe der vollen Token (A_29905).
+' Token-Ausstellung: im Status pending_user_binding stellt der Token-Endpunkt ein
+' reduziertes Access Token aus (scope=zeta:email-binding, expliziter scope gem.
+' RFC 6749 §5.1, DPoP-gebunden, 5-15 Min, KEIN Refresh Token); nach der Bindung
+' tauscht der Client dieses Token per Token Exchange (RFC 8693) gegen volle Token.
+' Autorisierung der Bindeaufrufe: E-Mail-Binding-Token (DPoP, RFC 9449). Kein RAT,
+' keine transaction_id.
+' ============================================================================
+
+actor User as "Nutzer"
 
 box "Mobile App" DEVICE_COLOR
   participant Client as "ZETA Client" <<zeta>>
@@ -52,11 +66,75 @@ AuthS -> OPA++: POST /v1/data/authz {Policy Engine Input}
 OPA --> AuthS--: Policy Decision
 
 alt Policy Decision allow
+
+    ' ==== EINHÄNGEPUNKT (NEU): Identitätsbindung F1 vor Token-Ausstellung ====
+    AuthS -> AuthS: Ermittle Bindungszustand (F1) der Identität (KVNR/Telematik-ID) an diesem Guard\n(SERVERSEITIG: existiert bereits eine Registrierung/E-Mail für diese Identität?)
+
+    alt Status == pending_user_binding  (F1 noch NICHT gebunden)  — NEU (Reorder/Variante B)
+
+        note over Client, AuthS
+          A_29905: KEINE vollen Token (kein Refresh Token, keine Ressourcen-Scopes/Audiences)
+          vor der E-Mail-Verifikation. Der Token-Endpunkt stellt ein REDUZIERTES Access Token
+          aus: scope="zeta:email-binding" (explizit in der Antwort, RFC 6749 §3.3/§5.1),
+          DPoP-gebunden, expires_in 300-900 s, KEIN Refresh Token. Der AuthS entscheidet
+          SERVERSEITIG, ob eine E-Mail erhoben werden muss (Erstnutzung) oder ob das OTP an
+          die bereits gespeicherte Adresse geht (Folgeregistrierung), und teilt dies dem
+          Client als informatives "binding_mode" mit. Der Client rät NICHTS. Bindeaufrufe:
+          E-Mail-Binding-Token (DPoP-Proof pro Request, RFC 9449) — Korrelation über das
+          Token, KEINE transaction_id, KEIN RAT.
+          Dedizierte Endpunkte /zeta/identity/bind-email(/verify) — getrennt von der
+          Änderungs-Operation /zeta/identity/email (A_29911).
+        end note
+
+        alt [Server:] Identität NEU — keine E-Mail gebunden  → binding_mode=collect_email
+            AuthS --> Client: 200 OK {access_token (E-Mail-Binding-Token),\nscope: "zeta:email-binding", token_type: DPoP, expires_in,\nbinding_mode: "collect_email"}   (KEINE vollen Token)
+            Client -> User: Zur Eingabe der E-Mail-Adresse auffordern
+            User -> Client: E-Mail-Adresse
+            Client -> AuthS: POST /zeta/identity/bind-email {email}\nauthorization: DPoP <E-Mail-Binding-Token>  dpop: <dpop_proof>
+            AuthS -> AuthS: Prüfe Token (scope=zeta:email-binding) + DPoP-Proof;\ngeneriere OTP (max. eine offene Challenge pro Client)
+            AuthS -> User: E-Mail mit OTP an die gelieferte Adresse (TOFU-Pin)
+            AuthS --> Client: 202 Accepted {challenge_type: email_otp}
+        else [Server:] Identität BEKANNT — E-Mail bereits gebunden  → binding_mode=verify_otp
+            AuthS -> AuthS: Generiere OTP (Korrelation über das Token)
+            AuthS -> User: E-Mail mit OTP an die GESPEICHERTE Adresse (A_29910)
+            AuthS --> Client: 200 OK {access_token (E-Mail-Binding-Token),\nscope: "zeta:email-binding", token_type: DPoP, expires_in,\nbinding_mode: "verify_otp", email_hint: "a***@d***.de"}   (KEINE vollen Token)
+        end
+
+        Client -> User: Zur Eingabe des OTP-Codes auffordern (ggf. mit email_hint)
+        User -> Client: OTP-Code
+        Client -> AuthS: POST /zeta/identity/bind-email/verify\n{code, verify_type: email_otp}\nauthorization: DPoP <E-Mail-Binding-Token>  dpop: <dpop_proof>
+        AuthS -> AuthS: Prüfe Token + DPoP-Proof + OTP (F1);\npinne/verknüpfe F1; Status: pending_user_binding → bound
+        AuthS --> Client: 200 OK {status: bound}
+
+        note over Client, AuthS
+          Token Exchange (RFC 8693, im ZETA Guard bereits für SMC-B etabliert, A_25762):
+          Der kurzlebige AUTHORIZATION_CODE ist bereits eingelöst; die nutzergetaktete
+          OTP-Phase läuft innerhalb der Gültigkeit des E-Mail-Binding-Tokens (kein
+          serverseitiger Transaktionsspeicher). Nach /verify tauscht der Client das
+          E-Mail-Binding-Token gegen volle Token — nur im Status bound erfolgreich,
+          sonst 400 invalid_grant. Läuft das Token vorher ab → Neustart über OIDC.
+          DPoP-Key-Kontinuität: derselbe DPoP-Key wie beim initialen Token-Request.
+        end note
+        Client -> AuthS: POST /token  dpop: <dpop_proof>\n{grant_type=urn:ietf:params:oauth:grant-type:token-exchange,\nsubject_token=<E-Mail-Binding-Token>,\nsubject_token_type=urn:ietf:params:oauth:token-type:access_token,\nclient_assertion (private_key_jwt, PrK.Client.Sig)}
+        AuthS -> AuthS: Prüfe subject_token (client_id, Identität, DPoP-Key),\nClient Assertion (F2) und Status == bound
+
+    else Status == bound  (F1 bereits gebunden — Regelfall bei Folgeanmeldung)
+
+        note over Client, AuthS
+          KEIN Bindeschritt, KEIN OTP: Die Identität ist an diesem Guard bereits mit einer
+          verifizierten E-Mail (F1) verknüpft und dieser Client (F2) ist gebunden. Der
+          Token-Endpunkt stellt die vollen Token unmittelbar auf den initialen
+          Token-Request aus (unveränderter Pfad, kein Token Exchange nötig).
+        end note
+
+    end
+    ' ==== Ende Einhängepunkt ====
+
     alt Hardware Attestation  (Android TEE oder StrongBox / SE)
         AuthS -> AuthS: Create ZETA Guard Attestation Token (zeta_attestation_token)
-        AuthS --> Client: 200 OK {Access Token, Refresh Token, zeta_attestation_token, token_type=DPoP, expires_in}
+        AuthS --> Client: 200 OK {Access Token (voll), Refresh Token, zeta_attestation_token, token_type=DPoP, expires_in}
     else Software Attestation (Fallback)
-        AuthS --> Client: 200 OK {Access Token, Refresh Token, token_type=DPoP, expires_in}
+        AuthS --> Client: 200 OK {Access Token (voll), Refresh Token, token_type=DPoP, expires_in}
     end
 
 else Policy Decision deny
@@ -64,9 +142,11 @@ else Policy Decision deny
 end
 
 note over Client, AuthS
-  Der ZETA Client besitzt nun ein DPoP-gebundenes Access Token und kann auf den Resource Server zugreifen
-  (siehe Abb-ZETA-Zugriff-auf-RS-mit-ASL bzw. Abb-ZETA-Zugriff-auf-RS-ohne-ASL).
-  Die Session-Erneuerung erfolgt über Abb-ZETA-Token-Exchange-mit-Refresh-Token.
+  Ergebnis: Bei bereits gebundener Identität (Status bound) wird das Access Token unmittelbar
+  ausgegeben. Nur bei pending_user_binding stellt der Token-Endpunkt zunächst ein reduziertes 
+  E-Mail-Binding-Token aus (scope=zeta:email-binding, kein Refresh Token); nach der F1-Bindung 
+  (E-Mail-Binding-Token + OTP) werden Access + Refresh Token über den Token Exchange (RFC 8693) 
+  ausgegeben.
 end note
 
 @enduml

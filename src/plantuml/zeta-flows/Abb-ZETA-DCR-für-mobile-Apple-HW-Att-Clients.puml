@@ -1,7 +1,13 @@
 @startuml "Abb-ZETA-DCR-für-mobile-Apple-HW-Att-Clients"
 !include ../puml-layout.txt
 
-actor User as "Nutzer"
+' ============================================================================
+' ANGEPASST v2.0.1: E-Mail-OTP ist NICHT mehr Teil von /register. Kein OTP-Versand,
+' kein /register/verify (email_otp), keine Nutzerinteraktion. Die identitaetsgebundene
+' E-Mail-Bindung erfolgt NACH dem OIDC-Flow ueber /zeta/identity/bind-email(/verify)
+' (siehe Abb-ZETA-OIDC-Token-Bezug). /register etabliert nur Instanzschluessel +
+' Apple-Attestierung; Status danach: pending_user_binding.
+' ============================================================================
 
 box "mobile Apple Device" DEVICE_COLOR
   box "App" PRIMAERSYSTEM_COLOR
@@ -33,36 +39,21 @@ alt Kein ZETA Attestation Token vorhanden
       Der ZETA Client unterscheidet den zu nutzenden AuthS-Endpunkt anhand des Pfads.
     end note
 
-    AuthS -> AuthS: Store Client Placeholder (state: pending_verification)
-
-    ' Trust On First Use (TOFU)
-    AuthS -> AuthS: Generiere OTP & transaction_id\nSpeichere Request im temporären Cache
-    AuthS -> User: E-Mail mit OTP-Bestätigungscode (Out-of-Band)
-    
-    ' Server antwortet mit 202, noch KEINE client_id!
-    AuthS --> Client--: 202 Accepted {transaction_id, message="OTP sent"}
-
-    ' Warte auf Nutzer-Eingabe
-    User -> Client: Gibt OTP-Bestätigungscode ein
-    
-    ' Verifikation mit der temporären ID
-    Client -> AuthS++: POST /register/verify\n{transaction_id, code}
-    AuthS -> AuthS: Verifiziere OTP-Code gegen Cache
-    AuthS -> AuthS: Stelle ZETA Guard Attestation Token aus\n(attestation_type="apple", signiert, cnf=PuK.AK.Sig,\nenthält die registrierten redirect_uris)
-
+    AuthS -> AuthS: Store Client (state: pending_user_binding)
+    AuthS --> Client--: 201 Created {client_id, status: pending_user_binding}
 
 else ZETA Attestation Token vorhanden (Fast-Path)
     Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token",\nzeta_attestation_token, PuK.Client.Sig,\nBesitznachweis (Signatur/Assertion)}
     AuthS -> AuthS: Prüfe Token-Signatur & Vertrauensstellung
     AuthS -> AuthS: Extrahiere PuK.AK.Sig aus Token, verifiziere Besitznachweis
     AuthS -> AuthS: Übernimm registrierte redirect_uris aus dem Token\n(kein erneutes Senden im Fast-Path)
+    AuthS --> Client: 201 Created {client_id}
 end
 
 note over Client, AuthS
   Der zeta_attestation_token zertifiziert die erfolgreiche Apple App Attest Attestierung, ist an PuK.AK.Sig gebunden (cnf) und enthält die registrierten
-  redirect_uris. Er kann bei einer erneuten Registrierung im Fast-Path vorgelegt werden, sodass Hardware-Attestierung und redirect_uris nicht erneut übertragen werden müssen.
+  redirect_uris. Er wird NICHT mehr bei /register ausgestellt, sondern erst nach der identitätsgebundenen E-Mail-Bindung im Token-Flow (siehe Abb-ZETA-OIDC-Token-Bezug).
+  Er kann bei einer erneuten Registrierung im Fast-Path vorgelegt werden, sodass Hardware-Attestierung und redirect_uris nicht erneut übertragen werden müssen.
 end note
-
-AuthS --> Client--: 201 Created {client_id,\nzeta_attestation_token (bei HW-Attestierung ausgestellt)}
 
 @enduml

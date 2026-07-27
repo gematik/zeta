@@ -1,7 +1,13 @@
 @startuml "Abb-ZETA-DCR-für-mobile-SW-Att-Clients"
 !include ../puml-layout.txt
 
-actor User as "Nutzer"
+' ============================================================================
+' ANGEPASST v2.0.1: E-Mail-OTP ist NICHT mehr Teil von /register. Kein OTP-Versand,
+' kein /register/verify (email_otp), keine Nutzerinteraktion. Die identitaetsgebundene
+' E-Mail-Bindung erfolgt NACH dem OIDC-Flow ueber /zeta/identity/bind-email(/verify)
+' (siehe Abb-ZETA-OIDC-Token-Bezug). /register etabliert nur Instanzschluessel +
+' Software-Attestierung; Status danach: pending_user_binding.
+' ============================================================================
 
 box "mobile Device" DEVICE_COLOR
   box "App" PRIMAERSYSTEM_COLOR
@@ -32,24 +38,7 @@ note right of AuthS
   redirect_uris registriert sind.
 end note
 
-    AuthS -> AuthS: Store Client Placeholder (state: pending_verification)
-
-    ' Trust On First Use (TOFU)
-    AuthS -> AuthS: Generiere OTP & transaction_id\nSpeichere Request im temporären Cache
-    AuthS -> User: E-Mail mit OTP-Bestätigungscode (Out-of-Band)
-    
-    ' Server antwortet mit 202, noch KEINE client_id!
-    AuthS --> Client--: 202 Accepted {transaction_id, message="OTP sent"}
-
-    ' Warte auf Nutzer-Eingabe
-    User -> Client: Gibt OTP-Bestätigungscode ein
-    
-    ' Verifikation mit der temporären ID
-    Client -> AuthS++: POST /register/verify\n{transaction_id, code}
-    AuthS -> AuthS: Verifiziere OTP-Code gegen Cache
-
-
-
-AuthS --> Client--: 201 Created {client_id}
+    AuthS -> AuthS: Store Client (state: pending_user_binding)
+    AuthS --> Client--: 201 Created {client_id, status: pending_user_binding}
 
 @enduml

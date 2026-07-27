@@ -20,15 +20,19 @@ info:
     key. An identity-less client that loses its instance key has NO recovery path and MUST
     re-register (A_29895).
 
-    Registration (A_29658, A_25432-01): `POST /register` (body `dcr-request.yaml`) →
-    `202 Accepted` (`dcr-response-202.yaml`, email OTP) → `POST /register/verify` →
-    `201 Created` (`client_id`, status `pending_user_binding`). Identity binding derives from
+    Registration (A_29658, A_25432-01): `POST /register` (body `dcr-request.yaml`). For mobile
+    TOFU clients this returns `201 Created` (`client_id`, status `pending_user_binding`)
+    directly — the email OTP is NOT part of `/register` anymore; the identity-bound F1 email
+    verification is performed AFTER the OIDC user authentication (see the token flow,
+    `Abb-ZETA-OIDC-Token-Bezug`). Only the stationary TPM ActivateCredential challenge still
+    uses the asynchronous `202 Accepted` (`dcr-response-202.yaml`) → `POST /register/verify`
+    (`verify_type: tpm_activation`) → `201 Created` handshake. Identity binding derives from
     the OIDC user authentication, not from a realm-wide token (A_29903).
 
     Fast path (`attestation_type: zeta_attestation_token`): the client presents a ZETA
     Attestation Token (`zeta-attestation-token.yaml`), issued by this guard's token endpoint
     after hardware attestation plus successful user authentication (A_29842), and skips the
-    OTP. For cross-guard onboarding the token carries
+    post-OIDC F1 email verification. For cross-guard onboarding the token carries
     the identity and verified email (F1), so a target guard adopts them without a fresh first
     use (A_29913–A_29916, A_29918/A_29919). The token is long-lived and reusable (never consumed); each
     registration is bound to a fresh instance key via the DCR possession proof
@@ -66,9 +70,10 @@ tags:
   - name: registration
     description: >-
       Dynamic Client Registration and RFC 7592 registration management: first-use registration
-      and the email-OTP TOFU challenge (`POST /register`, `POST /register/verify`; gemSpec_ZETA
-      5.3.2/5.5, A_29658/A_25432-01, request body `dcr-request.yaml`), plus per-client read,
-      metadata update / key rollover and self-deregistration on `/register/{client_id}`.
+      (`POST /register`; gemSpec_ZETA 5.3.2/5.5, A_29658/A_25432-01, request body
+      `dcr-request.yaml`) with the stationary TPM ActivateCredential challenge resolved via
+      `POST /register/verify`, plus per-client read, metadata update / key rollover and
+      self-deregistration on `/register/{client_id}`.
   - name: keys
     description: Instance-key rollover (proof-of-possession)
   - name: email
@@ -97,17 +102,22 @@ paths:
 
         Flow by client class:
           * **Mobile TOFU (identity-bound)** — the guard stores the client as
-            `pending_verification`, generates an email OTP and a `transaction_id`, sends the OTP
-            out of band, and answers `202 Accepted` (`dcr-response-202.yaml`,
-            `challenge_type: email_otp`). The client then calls `POST /register/verify`
-            (A_29658, A_25432-01). Recovery of a lost identity (all devices and email lost) is
-            not self-service; it is handled only via the operator OOB deletion path.
-          * **Fast path** — `attestation_type: zeta_attestation_token` skips the email OTP and
+            `pending_user_binding` and answers `201 Created` directly. The email OTP is NOT
+            part of `/register` anymore; the identity-bound F1 email verification is performed
+            AFTER the OIDC user authentication (see the token flow, `Abb-ZETA-OIDC-Token-Bezug`),
+            so no inline `202`/`transaction_id` challenge is issued here. Recovery of a lost
+            identity (all devices and email lost) is not self-service; it is handled only via
+            the operator OOB deletion path.
+          * **TPM activation (stationary)** — the guard answers `202 Accepted`
+            (`dcr-response-202.yaml`, `challenge_type: tpm_activation`) and the client completes
+            the ActivateCredential handshake via `POST /register/verify` (A_29658, A_25432-01).
+          * **Fast path** — `attestation_type: zeta_attestation_token` skips the F1 email
+            verification and
             answers `201 Created` directly. The client presents a valid ZETA Attestation Token
             (`zeta-attestation-token.yaml`): for platform re-registration it proves hardware
             attestation and the confirmed key; for cross-guard onboarding it additionally
             carries the identity and verified email (F1), so the target guard adopts them
-            without a fresh email-OTP first use (A_29913, A_29915). Key possession (F2) is
+            without a fresh F1 email first use (A_29913, A_29915). Key possession (F2) is
             proven by the standard DCR possession proof (`signed_hash_puk_client_sig`) binding
             the new instance key to the token's attestation key (A_29916). The token is
             long-lived and REUSABLE — it MAY be redeemed repeatedly and at multiple guards (it is
@@ -134,8 +144,9 @@ paths:
       responses:
         '201':
           description: |
-            Client registered (fast path, or after a completed challenge). Returns the final
-            `client_id` and the RFC 7592 registration access token.
+            Client registered (mobile TOFU direct, fast path, or after a completed TPM
+            ActivateCredential challenge). Returns the final `client_id` and the RFC 7592
+            registration access token.
           headers:
             Location:
               description: RFC 7592 registration URI of the new client (`/register/{client_id}`).
@@ -145,9 +156,11 @@ paths:
               schema: { $ref: '#/components/schemas/ClientRegistration' }
         '202':
           description: |
-            Registration accepted; an asynchronous challenge must be solved before the final
-            `client_id` is issued (email OTP for TOFU, or TPM activation). The client resolves
-            it via `POST /register/verify`.
+            Registration accepted; an asynchronous TPM ActivateCredential challenge must be
+            solved before the final `client_id` is issued. Only stationary TPM clients receive
+            this response — mobile TOFU clients get `201 Created` directly and perform F1 email
+            verification after the OIDC user authentication. The client resolves the challenge
+            via `POST /register/verify`.
           content:
             application/json:
               schema: { $ref: '../schemas/dcr-response-202.yaml' }
@@ -172,13 +185,14 @@ paths:
   /register/verify:
     post:
       tags: [registration]
-      summary: Complete a registration by answering its challenge (OTP / TPM activation)
+      summary: Complete a registration by answering its TPM ActivateCredential challenge
       description: |
-        Second step of the first-use registration (A_29658, A_25432-01). Submits the answer to
-        the challenge issued by the `202 Accepted` response of `POST /register` — the email OTP
-        (`verify_type: email_otp`) or the TPM ActivateCredential secret
-        (`verify_type: tpm_activation`) — together with the `transaction_id`. On success the
-        guard issues the final `client_id` (status `pending_user_binding`).
+        Second step of the first-use registration for stationary TPM clients (A_29658,
+        A_25432-01). Submits the answer to the TPM ActivateCredential challenge issued by the
+        `202 Accepted` response of `POST /register` (`verify_type: tpm_activation`) together
+        with the `transaction_id`. On success the guard issues the final `client_id` (status
+        `pending_user_binding`). Mobile TOFU clients do NOT use this endpoint for email OTP
+        anymore — their F1 email verification runs after the OIDC user authentication.
       security:
         - {}   # Authenticated by the challenge answer + transaction_id, not by a RAT.
       requestBody:
@@ -199,7 +213,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ClientRegistration' }
         '400':
-          description: invalidOtp | challengeExpired | invalid challenge response
+          description: invalidActivationSecret | challengeExpired | invalid challenge response
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -659,7 +673,7 @@ components:
             status: { type: string, enum: [pending, verified] }
             transaction_id:
               type: string
-              description: Email-OTP transaction of the registration challenge (dcr-response-202.yaml).
+              description: Transaction of the identity-bound F1 email verification performed after the OIDC user authentication.
         key_overlap:
           type: object
           description: Present after a rollover.
