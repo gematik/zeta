@@ -70,7 +70,7 @@ alt Policy Decision allow
     ' ==== EINHÄNGEPUNKT (NEU): Identitätsbindung F1 vor Token-Ausstellung ====
     AuthS -> AuthS: Ermittle Bindungszustand (F1) der Identität (KVNR/Telematik-ID) an diesem Guard\n(SERVERSEITIG: existiert bereits eine Registrierung/E-Mail für diese Identität?)
 
-    alt Status == pending_user_binding  (F1 noch NICHT gebunden)  — NEU (Reorder/Variante B)
+    alt Status == pending_user_binding  (F1 noch NICHT gebunden) 
 
         note over Client, AuthS
           A_29905: KEINE vollen Token (kein Refresh Token, keine Ressourcen-Scopes/Audiences)

@@ -55,7 +55,7 @@ else ZETA Attestation Token vorhanden (Fast-Path)
     AuthS -> AuthS: Prüfe Token-Signatur & Vertrauensstellung
     AuthS -> AuthS: Extrahiere PuK.AK.Sig aus Token, verifiziere Besitznachweis
     AuthS -> AuthS: Übernimm registrierte redirect_uris aus dem Token\n(kein erneutes Senden im Fast-Path)
-    AuthS --> Client: 201 Created {client_id}
+    AuthS --> Client: 201 Created {client_id, status: bound}
 end
 
 note over Client, AuthS
