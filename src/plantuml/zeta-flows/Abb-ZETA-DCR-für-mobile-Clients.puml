@@ -79,7 +79,7 @@ else ZETA Attestation Token vorhanden (Fast-Path)
       verifizierten Assertion-Counter je Attestation Key.
     end note
 
-    AuthS --> Client: 201 Created {client_id}
+    AuthS --> Client: 201 Created {client_id, status: bound}
 
 end
 
