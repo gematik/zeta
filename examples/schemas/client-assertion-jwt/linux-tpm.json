@@ -1,6 +1,6 @@
 {
   "header": {
-    "typ": "jwt",
+    "typ": "JWT",
     "alg": "ES256",
     "jwk": {
       "kty": "EC",
