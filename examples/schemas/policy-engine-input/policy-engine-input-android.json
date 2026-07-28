@@ -28,7 +28,8 @@
   },
   "user_info": {
     "identifier": "X123456789",
-    "professionOID": "1.2.276.0.76.4.49"
+    "professionOID": "1.2.276.0.76.4.49",
+    "commonName": "Arztpraxis Walter"
   },
   "delegation_context": {
     "principal_user_info": {
