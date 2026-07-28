@@ -19,11 +19,9 @@
         "product_id": "vsdm_test_client",
         "product_version": "0.1.0",
         "platform": "windows",
-        "acr": "gematik-ehealth-loa-high",
         "iat": 1740924000,
         "jti": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         "scope": "vsdservice",
-        "sid": "4c1a0db3-e67d-41db-aa46-b81b4c071de9",
         "cnf": {
             "jkt": "0ZcOCORZNYy-DWpqq30jZyJGHTN0d2HglBV3uiguA4I"
         }
