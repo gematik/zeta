@@ -1,10 +1,22 @@
 {
-  "decision_id": "0f5b7a1c-2d3e-4f56-9a8b-1c2d3e4f5a6b",  
-  "result": {
-     "allow": true,
-     "ttl": {
-       "access_token": 300,
-       "refresh_token": 86400
-     }
- }
+  "result": [
+    {
+      "expressions": [
+        {
+          "value": {
+            "allow": true,
+            "ttl": {
+              "access_token": 300,
+              "refresh_token": 86400
+            }
+          },
+          "text": "data.policies.zeta.authz.decision",
+          "location": {
+            "row": 1,
+            "col": 1
+          }
+        }
+      ]
+    }
+  ]
 }
