@@ -1,22 +1,10 @@
 {
-  "result": [
-    {
-      "expressions": [
-        {
-          "value": {
-            "allow": false,
-            "reasons": [
-              "User profession is not allowed",
-              "One or more requested audiences are not allowed"
-            ]
-          },
-          "text": "data.policies.zeta.authz.decision",
-          "location": {
-            "row": 1,
-            "col": 1
-          }
-        }
-      ]
-    }
-  ]
+  "decision_id": "0f5b7a1c-2d3e-4f56-9a8b-1c2d3e4f5a6b",
+  "result": {
+     "allow": false,
+     "reasons": {
+       "User profession is not allowed": true,
+       "One or more requested audiences are not allowed": true
+     }      
+  }   
 }
