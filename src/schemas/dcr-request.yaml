@@ -281,7 +281,7 @@ definitions:
       (TOFU) Bindung mobiler Clients. Wird NACH der OIDC-Nutzerauthentisierung über
       POST /zeta/identity/bind-email übermittelt (nur bei Erstnutzung einer Identität);
       bei Folgeregistrierung sendet der AuthS das OTP an die gespeicherte Adresse.
-      Siehe Abb-ZETA-DCR-Identitaetsbindung-mobile-Clients.puml.
+      Siehe Abb-ZETA-OIDC-Token-Bezug.puml.
   redirect_uris:
     type: array
     description: >-

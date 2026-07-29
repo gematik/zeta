@@ -3,7 +3,7 @@
 # DPoP-bound (RFC 9449) and follows access-token.yaml.
 # See also https://www.rfc-editor.org/rfc/rfc6749#section-5.1
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.1.0"
+schemaVersion: "1.2.0"
 title: Token Response
 description: >-
   Schema for the JSON response body returned by the token endpoint of the PDP
@@ -74,6 +74,17 @@ definitions:
         description: >-
           The scope of the issued access token as a space-delimited list of scope
           values. Present if the granted scope differs from the requested scope.
+      email_hint:
+        type: string
+        description: >-
+          Masked hint at the stored bound email address (F1) of the identity.
+          Optional; only present when the granted scope is "zeta:email-verify"
+          without "zeta:email-binding", i.e. when the OTP was already sent to the
+          stored address at token issuance (A_30085, subsequent registration).
+          The value MUST be masked so that at most the first character of the local
+          part, the first character of the domain label and the top-level domain
+          remain visible; the full address MUST NOT be disclosed.
+        example: "a***@d***.de"
       issued_token_type:
         type: string
         description: >-

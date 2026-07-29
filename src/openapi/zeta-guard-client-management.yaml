@@ -45,11 +45,21 @@ info:
     client-side deletion veto (A_29909 ff.). Recovery after total loss (all devices and the
     email) is NOT self-service — it goes solely through the operator OOB deletion path.
 
-    Authentication: per-client management uses the RFC 7592 Registration Access Token (RAT) as
-    `Authorization: Bearer`; first-use registration carries its own credentials (attestation /
-    OTP). The RAT (or an IDP login) is necessary but never sufficient — a factor from {F1, F2}
-    in the request body is also required (A_29896/A_29902). Runtime/resource access uses
-    DPoP-bound tokens (RFC 9449) and is out of scope.
+    Authentication: NO bearer secret exists in client management — the RFC 7592 Registration
+    Access Token is NOT used (A_30101). Per-client
+    management operations are authorised by a per-request `private_key_jwt` client assertion
+    signed with the instance key (F2, `Client-Assertion` header, RFC 7521/7523); the
+    identity-scoped listing (`GET /zeta/clients`) additionally requires a DPoP-bound access
+    token from the OIDC user authentication (RFC 9449). The `client_id` is a non-secret
+    selector. First-use registration carries its own credentials (attestation + key PoP); the
+    post-OIDC F1 email binding (`/zeta/identity/bind-email(/resend|/verify)`) is authorised
+    by the short-lived DPoP-bound email-binding token with the endpoint-specific scope
+    (`zeta:email-binding` to register a new address, `zeta:email-verify` to re-send and
+    confirm the OTP). A
+    client assertion (or an IDP login) is necessary but never sufficient for a
+    control-transferring change — key rollover and email change require their own proofs
+    (A_29896/A_29902). Runtime/resource access uses DPoP-bound tokens (RFC 9449) and is out
+    of scope.
 
     The operator-facing OOB deletion (initiate/approve/abort/re-register) lives in the separate
     Admin OOB API (`zeta-guard-admin-oob.yaml`); only the client-side veto is reachable here.
@@ -77,7 +87,10 @@ tags:
   - name: keys
     description: Instance-key rollover (proof-of-possession)
   - name: email
-    description: Email verification (F1) and identity-scoped email change
+    description: >-
+      Identity-bound F1 email binding after the OIDC user authentication
+      (`/zeta/identity/bind-email`) or the identity-scoped email change
+      (`/zeta/identity/email`)
   - name: devices
     description: Listing and deletion of the identity's enrolled clients
   - name: oob
@@ -86,7 +99,7 @@ tags:
       the separate Admin OOB API (zeta-guard-admin-oob.yaml).
 
 security:
-  - registrationAccessToken: []
+  - clientAssertion: []
 
 paths:
 
@@ -134,8 +147,8 @@ paths:
         is NOT sufficient (A_29903). Full scope/audiences are withheld until email verification
         completes (A_29905).
       security:
-        - {}   # No RAT yet; the request carries its own credentials (attestation / email),
-               # and the identity binding is established by the OIDC user authentication (A_29903).
+        - {}   # Self-authenticating request (attestation + instance-key PoP); the identity
+               # binding is established by the OIDC user authentication (A_29903).
       requestBody:
         required: true
         content:
@@ -145,11 +158,12 @@ paths:
         '201':
           description: |
             Client registered (mobile TOFU direct, fast path, or after a completed TPM
-            ActivateCredential challenge). Returns the final `client_id` and the RFC 7592
-            registration access token.
+            ActivateCredential challenge). Returns the final `client_id` — a non-secret
+            selector; NO registration access token is issued (A_30101). Subsequent
+            management operations are authorised by the per-request client assertion (F2).
           headers:
             Location:
-              description: RFC 7592 registration URI of the new client (`/register/{client_id}`).
+              description: Management URI of the new client (`/register/{client_id}`).
               schema: { type: string, format: uri }
           content:
             application/json:
@@ -194,7 +208,7 @@ paths:
         `pending_user_binding`). Mobile TOFU clients do NOT use this endpoint for email OTP
         anymore — their F1 email verification runs after the OIDC user authentication.
       security:
-        - {}   # Authenticated by the challenge answer + transaction_id, not by a RAT.
+        - {}   # Authenticated by the challenge answer + transaction_id.
       requestBody:
         required: true
         content:
@@ -203,11 +217,11 @@ paths:
       responses:
         '201':
           description: |
-            Verified and registered. Returns the final `client_id` and registration access
-            token.
+            Verified and registered. Returns the final `client_id` (status
+            `pending_user_binding`); NO registration access token is issued (A_30101).
           headers:
             Location:
-              description: RFC 7592 registration URI of the new client (`/register/{client_id}`).
+              description: Management URI of the new client (`/register/{client_id}`).
               schema: { type: string, format: uri }
           content:
             application/json:
@@ -230,9 +244,9 @@ paths:
       - $ref: '#/components/parameters/ClientId'
     get:
       tags: [registration]
-      summary: Read this client's registration (RFC 7592)
+      summary: Read this client's registration (RFC 7592-style)
       security:
-        - registrationAccessToken: []
+        - clientAssertion: []
       responses:
         '200':
           description: Current registration
@@ -245,9 +259,10 @@ paths:
       tags: [registration]
       summary: Update metadata, or roll over the instance key (PoP)
       description: |
-        RFC 7592 registration management. Two modes, distinguished by Content-Type:
+        RFC 7592-style registration management. Two modes, distinguished by Content-Type:
           * application/json — metadata-only update. Narrowed to renaming the client
-            (`client_name`, A_29909, A_30005); the RAT alone suffices for this single change. It MUST
+            (`client_name`, A_29909, A_30005); the client assertion (F2) alone suffices for
+            this single change (A_30101). It MUST
             NOT change the instance key (F2 — use the rollover mode below), the bound email
             (F1 — use `POST /zeta/identity/email`, A_29911), the authorised audiences (governed
             by policy per client instance, A_29901) or DCR parameters (`jwks`, `redirect_uris`,
@@ -256,7 +271,8 @@ paths:
             nested JWS: outer signed by the OLD key = authorization (A_29922), inner signed
             by the NEW key = anti-substitution. Requires a fresh Replay-Nonce from
             `HEAD /zeta/rollover-nonce` bound to HTTP method+URI and guard audience
-            (A_29923). The RAT alone is NEVER sufficient to change a key (A_29921).
+            (A_29923). The client assertion alone is NEVER sufficient to change a key — the
+            old-key PoP envelope is the authorisation (A_29921, A_30101).
             After success the old key stays valid for resource access only, during a
             grace/overlap window (A_29924, A_29925); it can no longer authorize management
             operations, including another rollover (A_29924). Rollover requires possession of
@@ -267,7 +283,7 @@ paths:
             A rollover MUST NOT be coupled with an email (F1) change
             (A_29926). Key thumbprints follow RFC 7638.
       security:
-        - registrationAccessToken: []
+        - clientAssertion: []
       requestBody:
         required: true
         content:
@@ -313,7 +329,7 @@ paths:
         (A_29934, A_29938). To delete another device use
         `DELETE /zeta/clients/{target_client_id}`; to remove the identity use the OOB path.
       security:
-        - registrationAccessToken: []
+        - clientAssertion: []
       responses:
         '204':
           description: Deregistered
@@ -328,9 +344,10 @@ paths:
         Guard-scoped, single-use, short-lived. Required before a key-rollover PUT (A_29923).
         Unlike the identity-bound `/zeta/*` operations, this endpoint is available to ALL
         client classes, including identity-less clients (A_29895) — the rollover requires
-        only possession of the current instance key.
+        only possession of the current instance key. Requiring the client assertion (instead
+        of an unauthenticated endpoint) prevents nonce farming.
       security:
-        - registrationAccessToken: []
+        - clientAssertion: []
       responses:
         '200':
           description: Nonce issued (in header)
@@ -339,13 +356,159 @@ paths:
               required: true
               schema: { type: string }
 
+  /zeta/identity/bind-email:
+    post:
+      tags: [email]
+      summary: Bind the identity-scoped email (F1) — register a new address (first use)
+      description: |
+        Identity-bound F1 email binding, performed AFTER the OIDC user authentication
+        (registration status `pending_user_binding`). Authorised by the
+        short-lived DPoP-bound email-binding token issued by the token endpoint with scope
+        `zeta:email-binding` (5–15 min, no refresh token); identity and `client_id` are
+        resolved from the token — no server-side transaction state and no `transaction_id`
+        (at most one open challenge per client). The granted scope encodes the mode:
+          * identity (token scope `zeta:email-binding zeta:email-verify`, TOFU): the
+            request carries the address to pin; the guard sends the OTP to it.
+          * identity (token scope `zeta:email-verify` only, A_29910): this endpoint
+            is NOT authorised (`403 insufficient_scope`) — the OTP was already sent to the
+            STORED bound address at token issuance; the client goes directly to
+            `POST /zeta/identity/bind-email/verify` (re-send via `…/resend`). A
+            client-supplied address is thus structurally excluded (least privilege).
+        After the successful verify the registration becomes `bound`; full access and
+        refresh tokens are then obtained via token exchange (RFC 8693) at the token
+        endpoint (A_29905). Distinct from the email CHANGE operation
+        (`POST /zeta/identity/email`, A_29911).
+
+        Calling this endpoint again REPLACES a still-open challenge (at most one open
+        challenge per client, A_30085) — this is the correction path for an address the user
+        mistyped, whose OTP therefore never arrives. Because every call sends mail to a
+        client-supplied address, the anti-abuse limits are shared with `…/resend`: a cooldown
+        between two sends (SHOULD: at least 60 s) and a common upper bound of sends per
+        email-binding token; a send beyond that is rejected with `429`.
+      security:
+        - dpopAccessToken: []   # email-binding token (scope zeta:email-binding, DPoP-bound)
+      parameters:
+        - $ref: '#/components/parameters/DPoPProof'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BindEmailRequest' }
+      responses:
+        '202':
+          description: >-
+            Email-OTP challenge issued. No `transaction_id` — correlation is via the
+            email-binding token; completed via `POST /zeta/identity/bind-email/verify`.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  challenge_type: { type: string, const: email_otp }
+                  expires_in:
+                    type: integer
+                    description: Challenge lifetime in seconds.
+        '400':
+          description: invalid address
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: >-
+            insufficientScope — the token does not carry `zeta:email-binding` (known
+            identity: the OTP was already sent to the stored address, A_29910)
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429':
+          description: >-
+            otpSendLimited — cooldown not yet elapsed or the maximum number of sends per
+            email-binding token reached (shared budget with `…/resend`, A_30085)
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /zeta/identity/bind-email/resend:
+    post:
+      tags: [email]
+      summary: Re-send the binding confirmation email (OTP) for the open challenge
+      description: |
+        Re-sends the confirmation email for the OPEN binding challenge (A_30085), e.g.
+        after a lost or filtered mail. Requires the email-binding token with scope
+        `zeta:email-verify`. No request body and no `transaction_id` — at most one
+        challenge is open per client, correlation is via the token; the OTP always goes to
+        the address of the open challenge (client-supplied at first use, stored address
+        otherwise). Anti-abuse: the guard enforces a cooldown between sends
+        (SHOULD: at least 60 s) and an upper bound of sends per email-binding token, shared
+        with `POST /zeta/identity/bind-email` (A_30085).
+      security:
+        - dpopAccessToken: []   # email-binding token (scope zeta:email-verify, DPoP-bound)
+      parameters:
+        - $ref: '#/components/parameters/DPoPProof'
+      responses:
+        '202':
+          description: Confirmation email re-sent to the address of the open challenge.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: noOpenChallenge — no open binding challenge for this client
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429':
+          description: >-
+            otpSendLimited — cooldown not yet elapsed or the maximum number of sends per
+            email-binding token reached (shared budget with `POST /zeta/identity/bind-email`)
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /zeta/identity/bind-email/verify:
+    post:
+      tags: [email]
+      summary: Verify the binding OTP (completes the F1 email binding)
+      description: |
+        Completes the identity-bound F1 email binding: submits the OTP sent by
+        `POST /zeta/identity/bind-email` (first use) or at token issuance (known identity,
+        A_29910). Requires the email-binding token with scope `zeta:email-verify`. Uses
+        the email-OTP verify payload
+        (`verify_type: email_otp`, `code`) WITHOUT a `transaction_id` — the
+        open challenge is resolved from the email-binding token. On success the
+        registration becomes `bound` (A_29905); the client then exchanges the email-binding
+        token for full access and refresh tokens (RFC 8693, token endpoint).
+      security:
+        - dpopAccessToken: []   # email-binding token (scope zeta:email-verify, DPoP-bound)
+      parameters:
+        - $ref: '#/components/parameters/DPoPProof'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BindEmailVerifyRequest' }
+      responses:
+        '200':
+          description: >-
+            F1 bound; registration status is now `bound` — full tokens available via token
+            exchange (RFC 8693).
+        '400':
+          description: invalidOtp | challengeExpired
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /zeta/identity/email:
     post:
       tags: [email]
       summary: Change the identity-scoped email (affects all clients at this FD)
       description: |
-        Changes the identity-bound email (F1). Per A_29911 this requires THREE things together:
-          1. an enrolled, valid client — the RAT (`Authorization: Bearer`, A_29902);
+        Changes the identity-bound email (F1). Distinct from the first-use binding
+        (`/zeta/identity/bind-email`). Per A_29911 this requires THREE things together:
+          1. an enrolled, valid client — the instance-key client assertion (F2,
+             `Client-Assertion` header, A_29902/A_30101);
           2. a fresh, stepped-up IDP user authentication (`idp_step_up`); and
           3. a surviving factor — instance-key PoP (F2, `pop`) OR proof of control of the old
              email (F1, `old_email_proof`).
@@ -364,15 +527,9 @@ paths:
         takes effect once verified and applies identity-wide (A_29912). No server-side sync
         across Fachdienste — repeat per guard (A_29899).
       security:
-        - registrationAccessToken: []
+        - clientAssertion: []
       parameters:
-        - name: DPoP
-          in: header
-          required: false
-          schema: { type: string }
-          description: >-
-            DPoP proof (RFC 9449) for the access token presented in `idp_step_up`, bound to
-            this request (htm/htu). Required whenever `idp_step_up` is presented.
+        - $ref: '#/components/parameters/StepUpDPoPProof'
       requestBody:
         required: true
         content:
@@ -403,7 +560,7 @@ paths:
         change takes effect identity-wide for all clients at this Fachdienst (A_29912) and the
         OLD address is notified (A_25750).
       security:
-        - registrationAccessToken: []
+        - clientAssertion: []
       requestBody:
         required: true
         content:
@@ -432,8 +589,18 @@ paths:
     get:
       tags: [devices]
       summary: List the identity's enrolled clients at this FD
+      description: |
+        Identity-scoped read: returns ALL enrolled clients of the calling identity. Requires
+        BOTH the calling client's assertion (F2) AND a DPoP-bound access token from the OIDC
+        user authentication (A_30101): the client assertion only proves possession
+        of ONE device, while the listing discloses the identity-wide record (all devices,
+        names, key thumbprints) — the additional user-identity proof prevents device
+        enumeration/reconnaissance by a stolen or compromised device without eGK/PIN.
       security:
-        - registrationAccessToken: []
+        - clientAssertion: []
+          dpopAccessToken: []
+      parameters:
+        - $ref: '#/components/parameters/DPoPProof'
       responses:
         '200':
           description: Enrolled clients
@@ -456,16 +623,19 @@ paths:
       summary: Delete another device / client of the same identity (client-plane only)
       description: |
         Allowed for any enrolled client of the identity. The guard MUST verify that
-        `target_client_id` belongs to the SAME identity as the calling RAT and reject a
+        `target_client_id` belongs to the SAME identity as the calling client (established by
+        its client assertion, F2) and reject a
         non-matching target with `403` (`forbiddenTarget`, A_29939) — possession of the
         object reference alone is never authorisation (BOLA / OWASP API1). Removes the target's
         client record and notifies the pinned email F1 (A_29935). Never touches the
         identity-scoped factor F1 (A_29934). Deleting the LAST remaining sibling requires
         IDP step-up; such a request is scheduled with a veto window rather than executed
         immediately (A_29936). Bulk deletion is not a server operation — a client deletes
-        multiple siblings by repeating this call.
+        multiple siblings by repeating this call. Deliberately authorised by the client
+        assertion (F2) alone — a security-response operation (locking out a lost/compromised
+        device) that must work without a fresh IDP login (A_30101, rationale).
       security:
-        - registrationAccessToken: []
+        - clientAssertion: []
       parameters:
         - name: idp_step_up
           in: header
@@ -475,6 +645,7 @@ paths:
             Required when deleting the last remaining sibling (A_29936): the fresh, DPoP-bound
             access token from the guard's step-up Authorization Code Flow, as for
             `POST /zeta/identity/email` (RFC 9470).
+        - $ref: '#/components/parameters/StepUpDPoPProof'
       responses:
         '204':
           description: Deleted (routine sibling deletion)
@@ -498,13 +669,15 @@ paths:
       description: |
         Client-side counterpart to the operator-initiated deletion defined in the Admin OOB
         API. While a deletion is in its veto window, a surviving enrolled client cancels it by
-        authenticating with its RAT (surviving factor F2, A_29943). A veto by control of the
+        authenticating with its instance-key client assertion (surviving factor F2, A_29943).
+        A veto by control of the
         bound email (F1) alone is NOT offered: if no enrolled client remains, the user must
         first register a new device (Folgeregistrierung, which re-verifies the bound email F1,
         A_29910) and then veto with that client. Only if all factors {F1, F2} are lost does the
         deletion proceed. The operator surface never performs this veto.
       security:
-        - registrationAccessToken: []   # surviving enrolled client (RAT / F2)
+        - clientAssertion: []   # surviving enrolled client (F2) — deliberately without F1:
+                                # emergency exit when the identity is compromised (A_29943)
       parameters:
         - name: deletion_id
           in: path
@@ -521,26 +694,57 @@ paths:
 components:
 
   securitySchemes:
-    registrationAccessToken:
-      type: http
-      scheme: bearer
+    clientAssertion:
+      type: apiKey
+      in: header
+      name: Client-Assertion
       description: |
-        RFC 7592 per-client Registration Access Token (RAT), presented as
-        `Authorization: Bearer <RAT>` on the per-client management operations
-        (`/register/{client_id}`, `/zeta/*`).
+        Per-request `private_key_jwt` client assertion (RFC 7521/7523, A_25767) signed with
+        the registered instance key (`PrK.Client.Sig`, F2) and sent in the `Client-Assertion`
+        header (the JWT alone; no `client_assertion_type` parameter — RFC 7521/7523 only
+        define form parameters, which the body-less operations `GET`/`HEAD`/`DELETE` cannot
+        carry). Payload per `client-assertion-jwt.yaml`. Sender-constrained — replaces the
+        RFC 7592 Registration Access Token; NO bearer secret exists in client management and
+        the `client_id` is a non-secret selector (A_30101).
 
-        Issuance & lifecycle:
-          * Issued at registration and returned in the registration response
-            (`registration_access_token`, alongside `registration_client_uri`).
-          * Opaque to the client (no defined format); scoped to exactly ONE client instance.
-          * MAY be rotated by the guard: a management response can return a new
-            `registration_access_token` that supersedes the previous one (RFC 7592).
+        The guard verifies the assertion against the instance key of the registration
+        addressed by `client_id` and rejects the request with `401` (`invalid_client`) if
+        (A_30101):
+          * `iss`/`sub` are not the `client_id`;
+          * `aud` does not identify this Authorization Server (its issuer);
+          * `htm`/`htu` do not match the HTTP method and target URI of this request
+            (RFC 9449 section 4.2) — this prevents replaying a read assertion against a
+            destructive endpoint;
+          * the lifetime exceeds 60 seconds;
+          * `jti` was already used within that lifetime (replay cache).
 
-        The RAT is NECESSARY but NEVER SUFFICIENT for a control-transferring change: a key
-        rollover additionally requires instance-key proof-of-possession (A_29921) and an email
-        change requires IDP step-up plus a surviving factor (A_29911). Management is only
-        accepted from an enrolled, valid client (A_29902); a successful IDP authentication alone
-        is not enough (A_29896).
+        Necessary but never sufficient for a control-transferring change: a key rollover
+        additionally requires the old-key PoP envelope plus the server nonce (A_29921 ff.,
+        A_29923) and an email change requires
+        IDP step-up plus a surviving factor (A_29911). Management is only accepted from an
+        enrolled, valid client (A_29902); a successful IDP authentication alone is not enough
+        (A_29896).
+
+        EXCEPTION: the post-OIDC F1 email binding (`/zeta/identity/bind-email(/resend|/verify)`)
+        is NOT authorised by a client assertion but by the DPoP-bound email-binding token
+        with the endpoint-specific scope (see `dpopAccessToken`) — the F2 proof was already
+        given at the token endpoint.
+    dpopAccessToken:
+      type: http
+      scheme: dpop
+      description: |
+        DPoP-bound access token (RFC 9449): `Authorization: DPoP <token>` plus a `DPoP` proof
+        header bound to this request (htm/htu). Two roles on this API:
+          * Identity-scoped read (`GET /zeta/clients`): a full access token from the OIDC
+            user authentication — proves the USER identity where the identity-wide record is
+            the authorisation object (A_30101 Nr. 2).
+          * F1 email binding (`/zeta/identity/bind-email(/resend|/verify)`): the short-lived
+            email-binding token (5–15 min, no refresh token) issued by the token endpoint in
+            status `pending_user_binding` (A_30085). The granted scope is state-dependent
+            and endpoint-specific: `zeta:email-binding` authorises `bind-email` (register a
+            new address, first use only), `zeta:email-verify` authorises `…/resend` and
+            `…/verify`. Full access and refresh tokens follow via token exchange (RFC 8693)
+            once `bound`.
 
   parameters:
     ClientId:
@@ -548,6 +752,25 @@ components:
       in: path
       required: true
       schema: { type: string }
+    DPoPProof:
+      name: DPoP
+      in: header
+      required: true
+      schema: { type: string }
+      description: >-
+        DPoP proof JWT (RFC 9449 section 4.2) for the DPoP-bound access token presented as
+        `Authorization: DPoP <token>`, bound to this request via `htm`/`htu`. OpenAPI cannot
+        express this companion header through the security scheme, so it is declared
+        explicitly on every operation secured by `dpopAccessToken`.
+    StepUpDPoPProof:
+      name: DPoP
+      in: header
+      required: false
+      schema: { type: string }
+      description: >-
+        DPoP proof (RFC 9449) for the step-up access token passed in `idp_step_up`, bound to
+        this request (htm/htu). Required whenever `idp_step_up` is presented (A_29911,
+        A_29936).
 
   responses:
     BadRequest:
@@ -610,9 +833,10 @@ components:
     MetadataUpdate:
       type: object
       description: >-
-        Non-key metadata update via RFC 7592 `PUT` (application/json). Deliberately narrowed to
-        the only RAT-sufficient client-management change on this endpoint: renaming the client
-        (A_29909, A_30005). Key material (F2), the bound email (F1), the authorised
+        Non-key metadata update via RFC 7592-style `PUT` (application/json). Deliberately
+        narrowed to the only change for which the client assertion (F2) alone is sufficient
+        on this endpoint: renaming the client
+        (A_29909, A_30005, A_30101). Key material (F2), the bound email (F1), the authorised
         audiences (A_29901) and DCR parameters cannot be changed here — they have dedicated
         operations or require proof-of-possession / step-up.
       additionalProperties: false
@@ -654,13 +878,14 @@ components:
 
     ClientRegistration:
       type: object
-      required: [client_id, registration_client_uri, registration_access_token]
+      required: [client_id]
       properties:
-        client_id: { type: string }
-        registration_client_uri: { type: string, format: uri }
-        registration_access_token:
+        client_id:
           type: string
-          description: RAT for subsequent RFC 7592 operations.
+          description: >-
+            Non-secret selector for the per-client management operations
+            (`/register/{client_id}`). Authorisation is always the per-request client
+            assertion (F2) — no registration access token exists (A_30101).
         client_id_issued_at: { type: integer }
         jwks: { $ref: '#/components/schemas/Jwks' }
         resource:
@@ -668,18 +893,53 @@ components:
           items: { type: string, format: uri }
         email_verification:
           type: object
+          description: >-
+            State of the identity-bound F1 email binding performed after the OIDC user
+            authentication (`/zeta/identity/bind-email`, A_30085). Correlation is via the
+            email-binding token — no transaction id.
           properties:
             required: { type: boolean }
             status: { type: string, enum: [pending, verified] }
-            transaction_id:
-              type: string
-              description: Transaction of the identity-bound F1 email verification performed after the OIDC user authentication.
         key_overlap:
           type: object
           description: Present after a rollover.
           properties:
             old_jkt: { type: string }
             grace_until: { type: integer }
+
+    BindEmailRequest:
+      type: object
+      description: >-
+        Body of `POST /zeta/identity/bind-email`. Only used at FIRST USE of an identity
+        (token scope includes `zeta:email-binding`): carries the address to pin (TOFU).
+        For a KNOWN identity (Folgeregistrierung) the endpoint is not authorised — the
+        token carries `zeta:email-verify` only and the OTP was already sent to the stored
+        bound address at token issuance (A_29910).
+      additionalProperties: false
+      required: [email]
+      properties:
+        email:
+          $ref: '../schemas/dcr-request.yaml#/definitions/user_email'
+
+    BindEmailVerifyRequest:
+      type: object
+      description: >-
+        Body of `POST /zeta/identity/bind-email/verify`. Same OTP payload as
+        `verify-request.yaml#/definitions/OtpVerifyRequest`, but WITHOUT `transaction_id`:
+        the open challenge is correlated via the email-binding token (at most one open
+        challenge per client, A_30085).
+      additionalProperties: false
+      required: [verify_type, code]
+      properties:
+        verify_type:
+          type: string
+          const: email_otp
+        code:
+          type: string
+          description: The confirmation code (OTP) entered by the user.
+          minLength: 4
+          maxLength: 10
+          example: "123456"
 
     EmailStatus:
       type: object
@@ -763,5 +1023,8 @@ components:
             - registrationConflict
             - invalidOtp
             - challengeExpired
+            - insufficientScope
+            - noOpenChallenge
+            - otpSendLimited
         title: { type: string }
         detail: { type: string }
