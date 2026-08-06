@@ -49,7 +49,7 @@ alt Client-Authentifizierung erfolgreich
       Access Token sind kurzlebig, DPoP-gebunden und werden zustandslos
       geprüft; ihr Widerruf ist nicht Zweck dieses Endpunkts.
     end note
-    AuthS --> Client: 200 OK (ohne serverseitige Wirkung)\nalternativ 400 Bad Request {"error": "unsupported_token_type"}
+    AuthS --> Client: 400 Bad Request {"error": "unsupported_token_type"}
   end
   Client -> Client: Lösche lokale Access-/Refresh Token\nund DPoP-Schlüssel
   Client --> User: Abmeldung abgeschlossen
