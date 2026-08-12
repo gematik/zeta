@@ -206,9 +206,17 @@ Cluster betrieben wird.
 #### Active-Active vs. Active-Passive
 
 Grundsätzlich ist die Architektur des ZETA-Guard für einen Active-Active Betrieb
-ausgelegt. Die Komponenten PEP und PDP synchronisieren sich rein über die
-Infinispan- und Postgres Datenbanken. Das jeweils gewählte Datenbank-Setup muss
-das gewählte Setup unterstützen.
+ausgelegt. Die PDP-Instanzen synchronisieren sich dabei rein über Infinispan
+(verteilter Cache des Authorization Servers) und die Postgres Datenbank. Das
+jeweils gewählte Datenbank-Setup muss das gewählte Setup unterstützen.
+
+Die PEP-Instanzen sind hiervon nicht betroffen: Sie greifen weder auf Infinispan
+noch auf die Postgres Datenbank zu und halten keinen instanzübergreifend
+geteilten Zustand. Einzige Ausnahme ist der ASL-Session-Cache, der pro Pod im
+nginx Shared Memory liegt und deshalb bei horizontaler Skalierung Sticky
+Sessions erfordert (siehe
+[ZETA-Guard und Datenbank-Skalierung](#zeta-guard-und-datenbank-skalierung)).
+Fachdienste ohne ASL-Nutzung benötigen keine Sticky Sessions.
 
 Die Infinispan und Postgres Datenbanken müssen in einem Cluster-Setup betrieben
 werden und sich innerhalb des Clusters synchronisieren (zum Thema Postgres
