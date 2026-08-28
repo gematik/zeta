@@ -2,6 +2,11 @@
 
 ## Keycloak Authserver (ZETA PDP)
 
+## Release 1.3.1
+
+### changed:
+- bump version of spree-integrity-provider (SPI) to 2.0.5
+
 ### Release 1.3.0
 
 #### added:
@@ -35,7 +40,7 @@
   maximum number of clients per SMC-B user was exceeded (see [Security-Events](../../Referenzen/Security-Events.md#event-authn_client_deletedclientid))
 - require certificate meta files, support expired CAs, enforce TSP binding
 - OTel integration for fraud detection
-- added security event logging for client registration and token exchange 
+- added security event logging for client registration and token exchange
 - configurable OCSP request timeout and optional fail-closed mode (`ocspFailClosed`, default off) for the SMC-B revocation check
 - Netty dependencies for Keycloak bumped to version 4.1.136 via override of Jar-Files in the OCI image
 - ENV-VAR `ZETA_OIDC_FLOW_ENABLED` (default `false`) — master switch for the OIDC client flow; off by default, so existing deployments behave as before
@@ -113,9 +118,9 @@
 ### Release 1.2.0
 
 #### added:
-- HSM token signing: refuse software-key fallback when HSM is enabled but unreachable (SPI option `failClosed`, default true); 
+- HSM token signing: refuse software-key fallback when HSM is enabled but unreachable (SPI option `failClosed`, default true);
   token-exchange returns `503 temporarily_unavailable` with `Retry-After: 30`
-- OPA policy enforcement on the refresh-token grant: each refresh authorizes via OPA before issuing a new token set; 
+- OPA policy enforcement on the refresh-token grant: each refresh authorizes via OPA before issuing a new token set;
   OPA-unreachable returns `503 temporarily_unavailable` with `Retry-After: 30`
 - Client assertion JWT `typ` header validation (`typ=JWT` required per A_25338-01); invalid values are rejected with `400 invalid_request` during client authentication
 - SMC-B certs are now subject to OCSP checks
@@ -129,7 +134,7 @@
 - Fixed: platform product id in client statement is now optional for Software and TPM attestation
 - Fixed: audience parameter is now required on token exchange
 - Fixed: audience claim of smc-b tokens is now required to equal the URL of the token endpoint
-- Fixed: typ claim of smc-b tokens is now not required to be "Bearer" anymore 
+- Fixed: typ claim of smc-b tokens is now not required to be "Bearer" anymore
 - Fixed: "urn:telematik:client-self-assessment" is not required anymore in client assertion jwt
 - Fixed: oauth-authorization-server Well-Known document now conforming to schema. Especialle the registration endoint is
   now present.
@@ -216,7 +221,7 @@
 ### Release 0.3.1
 
 #### changed:
-- update release notes 
+- update release notes
 
 ### Release 0.3.0
 
@@ -280,7 +285,7 @@
   mechanism as elsewhere (forwarded → x-forwarded-for → x-real-ip → socket addr)
 
 #### added
-- Session revocation (ZETAP-1010): with `pep_revocation_url` set, the PEP reports the
+- Session revocation: with `pep_revocation_url` set, the PEP reports the
   offending access token to the PDP when it detects an impossible-travel violation
   (`ip_address` claim != client ip), and subscribes to the PDP's block list as
   server-sent events — the connect delivers a snapshot, so a reconnect is also the
@@ -291,7 +296,7 @@
   list — **replicated across pods, query with `max`, never `sum`**),
   `zeta.blocked_request_count` and `zeta.impossible_travel_count` (both per-request,
   so `sum` is correct).
-- Implement otel traces,logs,metrics (ZETAP-907).
+- Implement otel traces,logs,metrics.
   W3C context is used to re-parent inner ASL requests, and forward tracecontext upstream.
   Metrics only cover items that could not be determined from spanmetrics already (e.g.
   upstream time histogram, /ASL→inner timings, etc.).
@@ -304,7 +309,7 @@
 - Bumps nginx-ingress version to 5.5.4
 - Bumps rust version to 1.97.1
 - Bumps headers more to 0.40
-- To fulfill A_25669-01 the authorization, dpop and popp headers are forwarded 
+- To fulfill A_25669-01 the authorization, dpop and popp headers are forwarded
   to the upstream and not overridden by PEP. In future versions this will be configurable.
 
 ### Release 1.2.0
@@ -315,7 +320,7 @@
 
 #### changed
 
-- Invalid access token headers (unparseable JWT) now return HTTP 401 instead of HTTP 500 (ZETAP-1003)
+- Invalid access token headers (unparseable JWT) now return HTTP 401 instead of HTTP 500
 - Missing or unsupported `kid`/`alg` in access token header now consistently return HTTP 401
 - Bumps nginx version to 1.31.2
 - Bumps nginx-ingress version to 5.5

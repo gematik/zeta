@@ -55,7 +55,7 @@ bedienen kann.
 > ASL-*Signaturschlüssel* wird weiterhin aus einer gemounteten Datei geladen.
 > Nur das ASL-*TLS* nutzt das HSM. Die Verlagerung des ASL-Signaturschlüssels
 > ins
-> HSM wird separat verfolgt (ZETAP-1364).
+> HSM wird separat verfolgt.
 
 > **HSM-Umfang:** Dieses Rezept beschreibt den vollen HSM-Ausbau (TLS an
 > Authserver, PEP, Infinispan und Ingress sowie Tokensignierung). Für reine
