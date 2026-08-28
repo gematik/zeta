@@ -1,10 +1,16 @@
 # Middleware- und Cloud-Primärsysteme mit ZETA Client — Szenarienanalyse
 
-**Stand:** 2026-08-28
+**Stand:** 2026-08-28 · **Revision 2**
 **Gegenstand:** Bewertung zweier Grundsatzoptionen für den Einsatzort des ZETA Clients:
 **Szenario 1** — Betrieb des ZETA Clients in einer Middleware bzw. in einem Cloud-Primärsystem wird unterstützt;
 **Szenario 2** — nicht unterstützt, jeder Client eines Endnutzers muss einen eigenen ZETA Client enthalten.
 Bewertet nach Entwicklung, Wartung, Betrieb, Auswirkung auf Nutzer und Sicherheit, mit abgeleiteter Empfehlung.
+
+**Revision 2:** Die SM(C)-B wird in allen betrachteten Varianten **je Mandant über einen eigenen
+TI-Gateway-Zugang** angebunden. Damit entfällt die zuvor als offen geführte Frage einer zentralen
+SM-B-Haltung beim Betreiber; Kapitel 2, 3, 4.3, 7.2, 8, 9 und 11 sind entsprechend angepasst. Die
+Auswirkung ist eine **Aufwertung der Variante M2** und eine zusätzliche Begründung für den
+Ausschluss von M3.
 
 **Grundlagen dieser Bewertung (Stand Repository):**
 
@@ -87,7 +93,8 @@ verändert werden und welche nicht.
 | Client Statement / Posture (`posture_type`, `product_id`, `product_version`, `os`) | Produkt und Version der laufenden Client-Software, Zustand der Plattform | **Ja** — beschreibt die Middleware-Plattform |
 | Hardware-Attestierung (TPM, geplant) | Integrität der Plattform, auf der der Client läuft | **Ja** — attestiert Server/VM statt Arbeitsplatz |
 | DPoP-Bindung des Access Token | Token nur mit dem Besitz des Instanzschlüssels nutzbar | **Ja** — Schlüssel liegt in der Middleware |
-| SM(C)-B Subject Token / sektorale IdP-Authentisierung | Identität von Institution bzw. Nutzer | **Teilweise** — Identität bleibt korrekt, aber der Besitznachweis wandert |
+| SM(C)-B Subject Token (Institution) | Institutionsidentität, kartengebunden | **Nein** — die SMC-B wird je Mandant über einen eigenen TI-Gateway-Zugang angebunden; Karte, Vertrag und Freischaltung bleiben bei der Institution. Die Middleware *nutzt* die Signaturfunktion, sie *hält* sie nicht |
+| Sektorale IdP-Authentisierung (Nutzer) | Nutzeridentität | **Teilweise** — Identität bleibt korrekt, der Besitznachweis der Sitzung wandert jedoch in die Middleware |
 | `country_code` (GeoIP der Quell-IP im PDP-Input) | Geografische Herkunft der Anfrage | **Ja** — es wird die Cloud-Region gemessen, nicht der Nutzerstandort |
 | PEP-Header-Hygiene, Ressourcenschutz am Fachdienst | Schutz vor client-gesetzten Credentials | Nein |
 
@@ -96,7 +103,17 @@ sondern die Aussage über den Endpunkt.** Wer zugreift, bleibt bekannt (SM(C)-B 
 und *womit* zugegriffen wird, ist nicht mehr belegt. Der Teil der Zero-Trust-Kette, der
 Endpunkt-Kompromittierung adressiert, endet an der Middleware.
 
-Zweite Beobachtung: Die Strecke **Endnutzer-Gerät → Middleware** ist damit nicht ungeschützt, sondern
+Zweite Beobachtung: Die Institutionsbindung bleibt intakt. Weil die SMC-B je Mandant über einen
+eigenen TI-Gateway-Zugang eingebunden wird, entsteht der Institutionsnachweis weiterhin an einer
+Karte, die der Institution zugeordnet ist und deren Freischaltung sie kontrolliert. Das
+**Fundament der Identitätsaussage** wird durch die Middleware also *nicht* berührt — betroffen ist
+allein die Aussage über den Endpunkt. Der Vorbehalt dazu: Ist die SMC-B im TI-Gateway-Betrieb
+dauerhaft freigeschaltet, kann die Middleware die Signaturfunktion für jede ihrer Sitzungen
+verwenden, ohne dass eine Nutzerpräsenz nachgewiesen wird. Die Kontrolle der Institution ist damit
+**organisatorisch-vertraglich, nicht transaktionsbezogen** — sie begrenzt, *wer* die Karte nutzen
+darf, nicht *wofür sie im Einzelfall* genutzt wird.
+
+Dritte Beobachtung: Die Strecke **Endnutzer-Gerät → Middleware** ist damit nicht ungeschützt, sondern
 **außerhalb der ZETA-Kontrolle**. Sie wird durch die Mittel des Herstellers gesichert (TLS,
 Session-Management, Web-App-Sicherheit, ggf. eigenes MDM). Das ist qualitativ derselbe Schutz, den
 heute jede Cloud-Fachanwendung bietet — nur eben nicht der, den ZETA zusichert.
@@ -113,6 +130,13 @@ konkreten Ausprägungen stark auseinanderfallen.
 | **M1 — Lokale Middleware** | ZETA Client als Dienst/Container in der Praxis-, Klinik- oder Apotheken-Infrastruktur, Fach-Clients auf Arbeitsplätzen im selben verwalteten Netz | in der Institution des Leistungserbringers | im LAN der Institution, unter deren Verantwortung |
 | **M2 — Hersteller-Cloud, ein Mandant je Instanz** | Cloud-PS, je Leistungserbringer eine dedizierte ZETA-Client-Instanz mit eigenem Instanzschlüssel | beim PS-Betreiber | Internet, Browser/Web-App |
 | **M3 — Hersteller-Cloud, geteilte Instanz** | Cloud-PS, eine ZETA-Client-Instanz bedient viele Leistungserbringer | beim PS-Betreiber | Internet, Browser/Web-App |
+
+**Gemeinsam für alle drei Varianten:** Die SMC-B ist je Mandant über einen eigenen
+TI-Gateway-Zugang angebunden. Der Mandantenschnitt ist damit auf der Ebene des
+Institutionsnachweises **bereits vorhanden** — er muss von der Middleware nur konsequent bis zum
+ZETA-Instanzschlüssel durchgezogen werden. Das macht M2 (eine Client-Instanz je Mandant) zur
+naheliegenden und billigen Ausgestaltung und M3 (geteilte Instanz) zur Variante, die einen bereits
+gezogenen Trennstrich wieder aufhebt.
 
 Sicherheitlich gilt: **M1 < M2 < M3** in aufsteigender Risikohöhe. M1 ist im Kern ein Umzug des
 Clients an einen anderen Ort *innerhalb derselben Verantwortungssphäre* — vergleichbar mit der
@@ -206,6 +230,10 @@ Diese Unterscheidung wird in den folgenden Kapiteln durchgehalten.
 - **`country_code` verliert seine Aussage.** Der PDP misst die Quell-IP der Middleware. Eine
   geografische Policy trifft die Cloud-Region, nicht den Nutzerstandort — ein Zugriff aus dem Ausland
   bleibt unsichtbar, wenn die Middleware in Deutschland steht.
+- **N TI-Gateway-Zugänge werden zum Betriebsgegenstand.** Der Betreiber verwaltet je Mandant einen
+  eigenen Zugang samt Verfügbarkeit, Zertifikaten und Störungsbearbeitung. Das ist beherrschbar,
+  aber es verschiebt eine bisher lokale Abhängigkeit der Institution in die Betriebsverantwortung
+  des Herstellers — mit entsprechender Fehler- und Eskalationskette bei Ausfall eines Zugangs.
 - **Skalierung kollidiert mit dem Instanzbegriff.** Horizontale Skalierung der Middleware bedeutet
   entweder viele Client-Instanzen (Registrierungs- und Schlüsselverwaltung wird zum Betriebsthema)
   oder geteiltes Instanz-Schlüsselmaterial über Pods hinweg (Bindungsaussage wird schwächer, HSM/KMS
@@ -390,14 +418,23 @@ Diese Unterscheidung wird in den folgenden Kapiteln durchgehalten.
 | Schlüsselmaterial verlässt die Institution | nein | **ja** | **ja** |
 | Verwechslung/Fehlzuordnung von Nutzeridentität zu Anfrage | gering | mittel | hoch |
 | Aggregierter Datenabfluss über eine Instanz unbemerkt | gering | mittel | **hoch** |
-| SM(C)-B-Nutzung ohne physische Kontrolle der Institution | gering (Konnektor lokal) | hoch (zentrale SM-B-Haltung) | hoch |
+| SM(C)-B-Nutzung ohne transaktionsbezogene Kontrolle der Institution | gering | **mittel** (Zugang je Mandant, Karte bleibt bei der Institution) | **mittel–hoch** (eine Instanz nutzt Zugänge mehrerer Mandanten) |
+| Fehlzuordnung eines Requests zum falschen TI-Gateway-Zugang / zur falschen SMC-B | n/a | gering | **hoch** |
 
-Der letzte Punkt verdient besondere Aufmerksamkeit: In der Cloud-Variante muss der Zugriff auf die
-SM(C)-B entweder über den Konnektor der Institution zurückgeführt werden (technisch aufwendig, aber
-sicherheitlich sauber) oder zentral als SM-B-Datei/HSM beim Betreiber erfolgen. Die zweite Lösung
-bedeutet, dass der Institutionsnachweis der TI ohne physische Kontrolle der Institution erzeugt wird
-— das berührt das Fundament der Identitätsaussage, nicht nur die Endpunktaussage, und ist der
-sicherheitlich schwerwiegendste Aspekt der Cloud-Variante.
+Zur SM(C)-B-Zeile: Weil die Karte je Mandant über einen eigenen TI-Gateway-Zugang angebunden ist,
+entfällt das ursprünglich schwerwiegendste Risiko der Cloud-Variante — eine zentrale SM-B-Haltung
+beim Betreiber, bei der der Institutionsnachweis der TI vollständig außerhalb der Kontrolle der
+Institution erzeugt würde. Das verbleibende Risiko ist enger und anders gelagert: Die Middleware
+kann die Signaturfunktion der (im Regelfall dauerhaft freigeschalteten) Karte für jede ihrer
+Sitzungen anstoßen, ohne dass die Institution den einzelnen Vorgang autorisiert. Wirksam dagegen
+sind Protokollierung der Kartennutzung je Mandant und die strikte Zuordnung einer ZETA-Client-Instanz
+zu genau einem TI-Gateway-Zugang.
+
+Die neu ergänzte Zeile zur **Fehlzuordnung** ist die eigentliche Verschärfung für M3: Bedient eine
+einzige Client-Instanz mehrere TI-Gateway-Zugänge, entscheidet ausschließlich die
+Anwendungslogik der Middleware darüber, welche SMC-B einen Vorgang signiert. Ein Zuordnungsfehler
+erzeugt dann einen fachlich gültigen Zugriff unter der Identität der falschen Institution — ein
+Fehler, den weder Guard noch Fachdienst erkennen können.
 
 ### 7.3 Was *nicht* verloren geht
 
@@ -421,13 +458,17 @@ verkleinern. Sie sind nach Wirksamkeit sortiert.
    sensitiver Operationen.
 3. **Eine Client-Instanz je Mandant (M3 ausschließen).** Getrennte Instanzschlüssel und getrennte
    Registrierungen je Leistungserbringer stellen die Sperrgranularität auf Institutionsebene wieder
-   her und begrenzen den Blast Radius.
+   her und begrenzen den Blast Radius. Da der TI-Gateway-Zugang ohnehin je Mandant besteht, ist die
+   Forderung **1 Mandant = 1 TI-Gateway-Zugang = 1 ZETA-Client-Instanz** ohne zusätzlichen
+   Architekturaufwand erfüllbar und schließt zugleich die Fehlzuordnung aus Kapitel 7.2 aus.
 4. **Durchreichen der Endnutzer-Kennung.** Ein von der Middleware attestierter, am Guard
    protokollierter Endnutzer-Bezug (Nutzerkennung, Arbeitsplatz-ID) stellt Nachvollziehbarkeit
    wieder her — mit dem ausdrücklichen Vorbehalt, dass diese Angabe **nicht** kryptografisch
    verifizierbar ist und nicht als Sicherheitsmerkmal, sondern als Forensikmerkmal zählt.
-5. **Schlüsselschutz im HSM/KMS** für Instanzschlüssel und SM-B-Zugriff, mit protokolliertem
-   Nutzungsnachweis.
+5. **Schlüsselschutz im HSM/KMS** für den Instanzschlüssel, sowie **Protokollierung jeder
+   SMC-B-Nutzung je Mandant** mit Bezug auf den auslösenden Endnutzer-Vorgang. Der SMC-B-Schlüssel
+   selbst liegt konstruktionsbedingt nicht beim Betreiber; zu schützen und nachzuweisen ist der
+   *Zugang* zu ihm.
 6. **Erhöhte Anforderungen an den Middleware-Betreiber.** Zulassung mit Nachweisen zu
    Mandantentrennung, Session-Sicherheit der Nord-Schnittstelle (OWASP ASVS-Niveau), Betriebssicherheit
    und Meldepflichten — analog den bestehenden Sicherheitsleistungen für Client-Hersteller, aber auf
@@ -471,6 +512,10 @@ Begründung:
 4. **Der Wartungsvorteil ist sicherheitsrelevant, nicht nur wirtschaftlich.** Zentrale Patchfähigkeit
    für SDK-Schwachstellen wiegt einen Teil des Attestierungsverlusts auf — Flottenrollouts über
    zehntausende Arbeitsplätze sind erfahrungsgemäß die längere Verwundbarkeitsperiode.
+5. **Die Institutionsbindung bleibt erhalten.** Mit der mandantenweisen TI-Gateway-Anbindung der
+   SMC-B betrifft der Verlust ausschließlich die Endpunktaussage, nicht die Identitätsaussage. Damit
+   ist der Eingriff in das Vertrauensmodell enger begrenzt, als es die Cloud-Variante zunächst
+   vermuten lässt — und er ist über Policies adressierbar, weil er genau eine Dimension betrifft.
 
 Konkrete Ausgestaltung der Empfehlung:
 
@@ -478,8 +523,8 @@ Konkrete Ausgestaltung der Empfehlung:
 |---|---|
 | **Endgeräte-Client** | bleibt **Regelfall** und Referenz; Ziel für alle Neuentwicklungen mit lokalem Client |
 | **M1 — Lokale Middleware in der Institution** | **zulassen**, mit Kennzeichnung; sicherheitlich weitgehend akzeptabel, da Verantwortungssphäre unverändert |
-| **M2 — Cloud-Middleware, eine Instanz je Mandant** | **zulassen unter Auflagen** (Kap. 8, Punkte 1–6), differenzierte Policies, Transparenzpflicht |
-| **M3 — Cloud-Middleware, geteilte Instanz über Mandanten** | **nicht zulassen**; Blast Radius und Mandantentrennungsrisiko sind nicht angemessen kompensierbar |
+| **M2 — Cloud-Middleware, eine Instanz je Mandant** | **zulassen unter Auflagen** (Kap. 8, Punkte 1–6), differenzierte Policies, Transparenzpflicht; durch die mandantenweise TI-Gateway-Anbindung sicherheitlich deutlich tragfähiger als zunächst angenommen |
+| **M3 — Cloud-Middleware, geteilte Instanz über Mandanten** | **nicht zulassen**; Blast Radius, Mandantentrennungsrisiko und die Gefahr der Fehlzuordnung zwischen Vorgang und SMC-B sind nicht angemessen kompensierbar — zumal die Trennung durch den mandantenweisen TI-Gateway-Zugang bereits vorliegt und nur beibehalten werden muss |
 | **ZETA-Funktion im Browser** | **nicht zulassen**; weder Schlüsselhaltung noch Attestierung tragfähig |
 
 Ergänzend wird eine **Perspektivklausel** empfohlen: Sobald die Hardware-Attestierung verfügbar ist,
@@ -513,9 +558,10 @@ sicherheitlich die schlechteste der drei Möglichkeiten.
 
 ## 11 Offene Punkte und Entscheidungsbedarf
 
-1. **SM(C)-B im Cloud-Betrieb:** Ist eine zentrale SM-B-Haltung beim PS-Betreiber zulässig, oder muss
-   der Konnektor der Institution eingebunden bleiben? Diese Frage ist für die Bewertung von M2
-   entscheidend und in dieser Analyse bewusst offengelassen.
+1. **Freischaltungsmodell der SMC-B:** Geklärt ist, dass die SMC-B je Mandant über einen eigenen
+   TI-Gateway-Zugang angebunden wird. Offen bleibt, ob die dauerhafte Freischaltung der Karte im
+   Middleware-Betrieb ohne zusätzliche Auflagen zulässig ist oder ob eine protokollierte, dem
+   Endnutzer-Vorgang zuordenbare Nutzung gefordert wird.
 2. **Rechtsrahmen:** Auftragsverarbeitung, Haftung und ggf. berufsrechtliche Aspekte beim Zugriff des
    PS-Betreibers auf Patientendaten sind zu klären; sie können die technische Bewertung überstimmen.
 3. **Skalierungsmodell der Middleware:** Wie wird der Instanzbegriff bei horizontaler Skalierung
