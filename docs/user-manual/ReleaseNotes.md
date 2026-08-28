@@ -2,7 +2,13 @@
 
 # Release Notes ZETA SDK und ZETA Guard Helm Charts
 
-## Release TODO
+## Release 1.3.1
+
+### changed
+
+- Korrektur der ReleaseNotes Version
+
+## Release 1.3.0
 
 ### added
 

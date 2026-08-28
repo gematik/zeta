@@ -84,7 +84,7 @@ Other new features are:
 
 #### Behavioural Changes
 
-- ZETAP-1387: Revocation caching configurable
+- Revocation caching configurable
 
 #### Bug Fixes
 
