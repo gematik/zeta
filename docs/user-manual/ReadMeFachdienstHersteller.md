@@ -48,6 +48,13 @@ Fachdienst-Komponenten – benötigt werden.
 
 ### Zugänge
 
+> **Begriffe:** „(ab) Umsetzungsstufe 2" bzw. „Stufe 2" bezeichnet die zweite
+> Ausbaustufe der ZETA-Spezifikation (u. a. Anmeldung von Versicherten über
+> sektorale IDPs); so markierte Punkte sind für den aktuellen Funktionsumfang
+> (Stufe 1) noch nicht erforderlich. „PIP/PAP" steht für Policy Information
+> Point / Policy Administration Point — die Bezugsquelle der signierten
+> OPA-Policy-Bundles.
+
 * Container images
 
 * TI Dienste (für Testsysteme)
@@ -67,7 +74,9 @@ Fachdienst-Komponenten – benötigt werden.
     * für die Bereitstellung der PIP/PAP images
 
 * anbietereigene Dienste (Abhängig vom Fachdienst, ab Umsetzungsstufe 2)
-    * Clientsystem Notification Service(s) – Apple Push Notifications, Firebase
+    * Clientsystem Notification Service(s) – Apple Push Notifications, Firebase;
+      als Vorschau verfügbar, siehe
+      [Wie der Notification Service funktioniert](Anleitungen/Wie_der_Notification_Service_funktioniert.md)
     * Email Confirmation-Code – Mailversand
 
     * Optional:
@@ -114,6 +123,24 @@ zu leisten sind.
 Diese Sicherheitsleistungen sind in [Sicherheitsleistungen Betreiber](SicherheitsanforderungenZETAGuardBetreiber.md)
 dargelegt.
 
+## Checkliste: Fachdienst mit ZETA-Guard integrieren und testen
+
+Die folgende Checkliste führt in der empfohlenen Reihenfolge zum getesteten
+Zusammenspiel von Fachdienst und ZETA-Guard. Die Spalte **Pflicht/Optional**
+bezieht sich auf das Test-/Integrationsszenario des Herstellers.
+
+| # | Schritt                                                                                       | Pflicht/Optional     | Anleitung/Referenz                                                                                                                                                                                  |
+|---|-----------------------------------------------------------------------------------------------|----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1 | Testszenario verstehen (ZETA als „Black Box" vor dem Fachdienst, Testdriver als Proxy-Client) | Pflicht              | dieses Dokument, [Betrachtete Nutzungsszenarien](#betrachtete-nutzungsszenarien)                                                                                                                    |
+| 2 | Zugänge und Material beschaffen: Container-Registry, Test-SM-B (p12), ggf. ASL-Zertifikat     | Pflicht              | dieses Dokument, [Systemvoraussetzungen](#systemvoraussetzungen)                                                                                                                                    |
+| 3 | Testcluster bereitstellen — beliebiges Kubernetes oder lokal mit KIND                         | Pflicht              | [ZETA-Guard Quickstart](Anleitungen/ZETA_Guard_Quickstart.md) bzw. [Wie Sie den Cluster lokal mit KIND aufsetzen](Anleitungen/Wie_Sie_den_Cluster_lokal_mit_KIND_aufsetzen.md)                      |
+| 4 | ZETA-Guard installieren und PDP konfigurieren (Terraform)                                     | Pflicht              | [ZETA-Guard Quickstart](Anleitungen/ZETA_Guard_Quickstart.md)                                                                                                                                       |
+| 5 | PEP auf den eigenen Fachdienst zeigen lassen (Proxy-Locations, Audience)                      | Pflicht              | [Wie Sie ZETA Guard in Kubernetes konfigurieren](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md), [Konfiguration des PEP Http Proxy](Referenzen/Konfiguration_des_PEP_Http_Proxy.md) |
+| 6 | Testdriver konfigurieren und Fachdienst-Aufrufe über `/proxy` testen                          | Pflicht              | [Wie Sie den Testdriver nutzen](Anleitungen/Wie_Sie_den_Testdriver_nutzen.md)                                                                                                                       |
+| 7 | Ende-zu-Ende-Integrationstest ausführen (Tiger-Testsuite, an eigenen Fachdienst anpassbar)    | Optional (empfohlen) | [Wie Sie einen Ende-zu-Ende-Integrationstest ausführen](Anleitungen/Wie_Sie_einen_Ende_zu_Ende_Integrationstest_ausführen.md)                                                                       |
+| 8 | Testdriver selbst bauen (nur bei eigenen Anpassungen)                                         | Optional             | [Wie Sie den Testdriver bauen](Anleitungen/Wie_Sie_den_Testdriver_bauen.md)                                                                                                                         |
+| 9 | Telemetrie/Observability im Testsetup nachvollziehen                                          | Optional             | [Wie Sie ein Observability-Backend anschließen](Anleitungen/Wie_Sie_ein_Observability-Backend_an_ZETA-Guard_anschließen.md)                                                                         |
+
 ## Relevante Anleitungen und Referenzen
 
 Die relevanten Anleitungen und Referenzen sind hier verlinkt:
@@ -138,6 +165,12 @@ Dokumente:
 
 Optionale Informationen:
 
+* Wie der Notification Service Push-Benachrichtigungen vom Fachdienst an
+  mobile Clients zustellt (Vorschau)
+  [Wie der Notification Service funktioniert](Anleitungen/Wie_der_Notification_Service_funktioniert.md)
+* Wie der eigene Fachdienst Benachrichtigungen über die RS-API des
+  Notification Service versendet (Vorschau)
+  [Wie Sie Benachrichtigungen aus dem Fachdienst versenden](Anleitungen/Wie_Sie_Benachrichtigungen_aus_dem_Fachdienst_versenden.md)
 * Für das Bauen des ZETA-Testdrivers (ein ZETA-Client, der als Proxy dient). Dies
   sollte bei Nutzung des Testdriver container images nicht nötig sein, ist aber
   bei eigenen Anpassungen nötig.
@@ -179,5 +212,9 @@ Optionale Informationen:
 
 ## Wartung
 
-Ein definierter Wartungsprozess ist vor Meilenstein 4 aktuell nicht umgesetzt.
-Updates werden über die Image- bzw. git-Repositories verbreitet.
+Updates und Sicherheitspatches werden als neue Chart- und Image-Releases über
+die Release-Repositories bereitgestellt; die Änderungen je Version sind in den
+[Release Notes des Helm-Chart-Repositories](https://github.com/gematik/zeta-guard-helm/blob/main/ReleaseNotes.md)
+dokumentiert. Die Melde- und Kommunikationswege für Schwachstellen, Fehler und
+Aktualisierungsbedarfe zwischen Hersteller/Betreiber und gematik sind über die
+etablierten ITSM-Prozesse abgestimmt.

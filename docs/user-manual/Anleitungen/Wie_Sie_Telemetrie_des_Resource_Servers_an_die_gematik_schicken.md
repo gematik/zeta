@@ -5,8 +5,8 @@ TI 2.0 Dienst und kann Daten vom SIEM und Monitoring des TI 2.0
 Dienst-Herstellers entgegennehmen und an den gematik-Telemetriedaten-Empfänger
 sowie das TI SIEM der gematik weiterleiten. Für den Empfang von Telemetrie muss
 ein OpenTelemetry-Receiver im Telemetry-Gateway verwendet werden. Für den Export
-von Telemetrie an die gematik ist bereits ein Exporter im Telemetry-Gateway
-vorkonfiguriert. Dieser Exporter wird sowohl für Hersteller-Telemetrie als auch
+von Telemetrie an die gematik sind bereits zwei Exporter im Telemetry-Gateway
+vorkonfiguriert. Diese Exporter werden sowohl für Hersteller-Telemetrie als auch
 ZETA-Guard-eigene Telemetrie verwendet. Verbindungen zwischen dem
 Telemetry-Gateway und ZETA-Guard-externen Diensten müssen über mTLS abgesichert
 werden.
@@ -27,7 +27,8 @@ flowchart LR
      zensiert Telemetrie`"]
     gematikMonitoring["`**gematik
      Telemetriedaten
-      Empfänger**`"]
+      Empfänger
+      (TI SIM)**`"]
     gematikSiem["`**gematik
      TI SIEM**`"]
     DienstAnbieterMonitoring -->|"`exportiert Telemetrie an
@@ -163,23 +164,26 @@ Das Secret `gematik-telemetrie-mtls` ist ebenfalls nicht Teil des `zeta-guard`
 -Helm-Charts, und muss von Ihnen mit den erforderlichen Dateien angelegt werden.
 
 Zusätzlich muss ihr Resource-Server
-den [OpenTelemetry Service-Name](https://opentelemetry.io/docs/specs/semconv/registry/attributes/service/#service-attributes) "
-resource server" verwenden. Die Pipelines `*/ti_sim` verwenden den Prozessor
-`filter/ti_sim`, der sich auf diesen Service-Namen verlässt, und Signale mit
-unbekannten Service-Namen entfernt. Der Service-Name lässt sich über die
+den [OpenTelemetry Service-Name](https://opentelemetry.io/docs/specs/semconv/registry/attributes/service/#service-attributes)
+"resource server" verwenden oder das Präfix "rs." besitzen. Die Pipelines
+`*/ti_sim` verwenden den Prozessor `filter/ti_sim`, der sich auf bekannte
+Service-Namen verlässt und Logs und Spans mit unbekannten Service-Namen
+entfernt. Die Pipelines `*/ti_siem` und den Prozessor `filter/ti_siem`
+funktionieren analog. Der Service-Name lässt sich über die
 Umgebungsvariable [OTEL_SERVICE_NAME](https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/#general-sdk-configuration)
 steuern.
 
 ## Wie Sie das Telemetry-Gateway für den Export an die gematik einrichten
 
-Das Telemetry-Gateway ist mit einem Exporter – `otlp_grpc/ti_sim` –
-vorkonfiguriert, durch den Logs, Metriken und Traces an die gematik exportiert
-werden. Der Exporter verwendet TLS statt mTLS, muss aber einen Bearer-Token an
-die gematik senden. Wenn Sie Workload-Identity-Federation zwischen ihrem Cluster
-und der gematik eingerichtet haben, wird dieses Token von dem CronJob
-`gematik-oidc-token-renewer-cronjob` erzeugt und regelmäßig erneuert, und in dem
-Secret `gematik-oidc-token` gespeichert. Das Telematik-Gateway liest dieses
-Secret aus, um den Bearer-Token zu erhalten.
+Das Telemetry-Gateway ist mit zwei Exportern – `otlp_grpc/ti_siem` und
+`otlp_grpc/ti_sim` – vorkonfiguriert, durch die Logs, Metriken und Traces an die
+gematik exportiert werden. Die Exporter verwenden TLS statt mTLS, müssen aber
+einen Bearer-Token mitsenden. Wenn Sie Workload-Identity-Federation zwischen
+ihrem Cluster und der gematik eingerichtet haben, werden diese Tokens von den
+CronJobs `ti-siem-token-renewer-cronjob` und `ti-sim-token-renewer-cronjob`
+erzeugt und regelmäßig erneuert, und in den Secrets `ti-siem-token`und
+`ti-sim-token` gespeichert. Das Telematik-Gateway liest diese Secrets aus, um
+die Bearer-Tokens zu erhalten.
 
 Wie Sie Workload-Identity-Federation zwischen ihrem Cluster und der
 gematik einrichten,
@@ -190,9 +194,17 @@ gematik konfigurieren. Die erforderliche Konfiguration erhalten Sie von der
 gematik. Die Values für den ZETA-Guard-Chart sehen so aus:
 
 ```yaml
+global:
+    # Öffentlicher FQDN Ihres Dienstes — wird als server.address in alle
+    # TI-SIEM-/TI-SIM-Daten gestempelt (Absender-Kennung bei der gematik)
+    clusterFQDN: "zeta.example.com"
 gematik:
-    idTokenAudience: "AUDIENCE_ZUR_TOKENERSTELLUNG"
-    serviceAccountEmailAddress: "SERVICE_ACCOUNT_FÜR_DIE_TI_TELEMETRIEDATEN"
+    tiSiem:
+        idTokenAudience: "AUDIENCE_ZUR_TOKENERSTELLUNG_FÜR_TI_SIEM"
+        serviceAccountEmailAddress: "SERVICE_ACCOUNT_ZUR_TOKENERSTELLUNG_FÜR_TI_SIEM"
+    tiSim:
+        idTokenAudience: "AUDIENCE_ZUR_TOKENERSTELLUNG_FÜR_TI_SIM"
+        serviceAccountEmailAddress: "SERVICE_ACCOUNT_ZUR_TOKENERSTELLUNG_FÜR_TI_SIM"
     workloadIdentityFederation:
         poolId: "POOL"
         projectNumber: "BETRIEBSUMGEBUNG"
@@ -200,5 +212,12 @@ gematik:
 opa:
     workloadIdentityFederation:
         sts:
-            sa: "SERVICE_ACCOUNT_FÜR_DIE_PRODUKTSPEZIFISCHE_POLICY"
+            sa: "SERVICE_ACCOUNT_ZUR_TOKENERSTELLUNG_FÜR_DIE_PRODUKTSPEZIFISCHE_POLICY"
 ```
+
+> **`global.clusterFQDN` nicht vergessen.** Das Telemetry-Gateway setzt diesen
+> Wert als `server.address`-Attribut auf alle Logs, Metriken und Traces, die an
+> TI-SIEM und TI-SIM exportiert werden — er identifiziert Ihren Dienst
+> gegenüber der gematik. Der Chart-Standard ist der Platzhalter `"REPLACE ME"`:
+> Bleibt er stehen, meldet sich Ihr Dienst bei der gematik mit dieser
+> Platzhalter-Kennung.

@@ -59,6 +59,8 @@ telemetry-gateway:
         exporters:
             otlp_grpc/dienst_hersteller:
                 endpoint: otelcol2:4317 # Zieladresse muss angepasst werden
+                sending_queue:
+                    storage: file_storage
                 tls:
                     ca_file: "/etc/tls/ca.pem"
                     cert_file: "/etc/tls/client-cert.pem"

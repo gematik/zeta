@@ -51,11 +51,8 @@ http {
 
     gzip  on;
 
-    pep_issuer https://my.zeta.service.de/auth/realms/zeta-guard;
+    pep_pdp_issuer https://my.zeta.service.de/auth/realms/zeta-guard;
     # optional http client config, defaults:
-    # pep_http_client_idle_timeout 30; # s
-    # pep_http_client_max_idle_per_host 64;
-    # pep_http_client_tcp_keepalive 30; # s
     # pep_http_client_connect_timeout 2; # s
     # pep_http_client_timeout 10; # s
     # pep_http_client_accept_invalid_certs off;
@@ -64,8 +61,8 @@ http {
         listen 80;
         server_name  pep-proxy-svc;
 
-        # Einmal serverweit einbinden: entfernt client-gesetzte Credentials/ZETA-* Header
-        # und setzt die vom PEP kontrollierten Header. Alle Locations erben dies automatisch
+        # Einmal serverweit einbinden: setzt die vom PEP kontrollierten ZETA-*-Header und
+        # verwirft client-gesetzte Kopien davon. Alle Locations erben dies automatisch
         # (siehe Abschnitt "Header-Behandlung und proxy_headers.conf").
         include           proxy_headers.conf;
 
@@ -84,9 +81,11 @@ http {
             # proxy_set_header-Direktiven deklariert (z.B. WebSocket-Upgrade) — dann greift
             # nginx' nicht-additive Vererbung (siehe Abschnitt unten).
 
-            # pep_require_aud_any  "account|other"; # optional, multiple values with |, any one match suffices
-            # pep_require_scope    "openid profile email"; # optional, exact string match
+            # pep_require_aud      "account other"; # optional, space-separated set, ALL must be present
+            # pep_require_scope    "openid profile email"; # optional, space-separated set, ALL must be present
             # pep_leeway           60; # s
+            # pep_require_popp     on;        # optional, requires and validates PoPP-Token
+            # pep_popp_validity    quarter;   # optional, quarter (Standard) or fixed duration (e.g. 1d, 86400)
 
             # potentially useful for some test installations
             # proxy_ssl_verify  off;
@@ -110,7 +109,7 @@ Proxy ohne nennenswerte Besonderheiten.
 Der Zugriff über `/pep_secured/` ist hierbei über die Direktive `pep on;` so
 gestaltet, dass PEP-spezifisches Verhalten eingeschaltet wird.
 Damit dies funktioniert, ist insbesondere die Direktive
-`pep_issuer https://my.zeta.service.de/auth/realms/zeta-guard;` wichtig, die die
+`pep_pdp_issuer https://my.zeta.service.de/auth/realms/zeta-guard;` wichtig, die die
 Verbindung zum PDP herstellt.
 
 ### Header-Behandlung und `proxy_headers.conf`
@@ -123,9 +122,14 @@ einmal im `server`-Block. Alle Locations erben es dann automatisch, sodass jede
 PEP-geschützte `proxy_pass`-Location die Header-Behandlung erhält, ohne dass Sie das
 Include pro Location wiederholen müssen. Inhaltlich bewirkt die Datei:
 
-- **Entfernen client-gesetzter Credentials:** `Authorization`, `dpop` und `popp`
-  authentisieren den Aufrufer nur *gegenüber dem PEP* und werden nicht an den
-  Upstream weitergereicht.
+- **Credentials `Authorization`, `dpop` und `popp` werden weitergereicht:** Diese
+  Header authentisieren den Aufrufer gegenüber dem PEP, werden aber zur Erfüllung
+  von A_25669-01 unverändert an den Upstream weitergegeben — der Fachdienst kann
+  Access-Token, DPoP-Proof und PoPP-Token damit selbst auswerten. Frühere
+  PEP-Versionen haben diese Header an der Upstream-Grenze entfernt; die
+  entsprechenden `proxy_set_header`-Zeilen sind in `proxy_headers.conf`
+  auskommentiert. Eine PEP-Direktive zur Steuerung dieses Verhaltens gibt es
+  nicht.
 - **ZETA-\* Header — der PEP ist die alleinige Quelle (A_25669-01):**
   `ZETA-User-Info`, `ZETA-Client-Data` und `ZETA-PoPP-Token-Content` werden
   ausschließlich vom PEP gesetzt; eine vom Client mitgeschickte Kopie dieser
@@ -139,23 +143,25 @@ Include pro Location wiederholen müssen. Inhaltlich bewirkt die Datei:
   Richtung Upstream entfernt.
 
 **Enforcement:** Erreicht eine Anfrage eine Location mit `pep on;` und `proxy_pass`,
-auf der die Strips nicht wirksam sind (weder geerbt noch lokal eingebunden),
-antwortet der PEP bewusst mit HTTP 500 (ProxyHeadersMissing), statt eine Anfrage
-zu autorisieren, deren Credentials anschließend ungewollt an den Upstream gelangen
-würden.
+auf der die Header-Behandlung nicht wirksam ist (weder geerbt noch lokal
+eingebunden), antwortet der PEP bewusst mit HTTP 500 (ProxyHeadersMissing), statt
+eine Anfrage zu autorisieren, deren ZETA-\*-Header anschließend ungefiltert an den
+Upstream gelangen würden. Technisch prüft der PEP dazu das Vorhandensein des
+Sentinel-Headers `x-zeta-headers-applied` im kompilierten Proxy-Header-Set der
+Location.
 
 > **Wichtig — nicht-additive Vererbung:** nginx vererbt `proxy_set_header` *nicht*
 > additiv. Eine Location, die eigene `proxy_set_header`-Direktiven deklariert
 > (z.B. für WebSocket-Upgrades oder einen Cookie-Strip), erbt das serverweite
 > `proxy_headers.conf` nicht und muss es selbst per `include proxy_headers.conf;`
-> erneut einbinden — sonst fehlen die Strips dort (und auf `pep on;`-Locations führt
-> das zum oben beschriebenen HTTP 500). Umgekehrt lässt sich eine Location über eine
-> eigene `proxy_set_header`-Deklaration auch gezielt von der Header-Behandlung
-> ausnehmen.
+> erneut einbinden — sonst fehlt dort die Header-Behandlung (und auf
+> `pep on;`-Locations führt das zum oben beschriebenen HTTP 500). Umgekehrt lässt
+> sich eine Location über eine eigene `proxy_set_header`-Deklaration auch gezielt
+> von der Header-Behandlung ausnehmen.
 
 ### Konfigurationsparameter (PEP-Basis)
 
-* `pep_issuer`
+* `pep_pdp_issuer`
     * Typ: string
     * Beschreibung: Konfiguriert den zu verifizierenden Issuer in den
       ZETA-Guard-Access-Tokens.
@@ -164,9 +170,35 @@ würden.
     * Pflichtfeld: Ja
     * Context: `http`
     * Standardwert: (muss je nach Umgebung gesetzt werden)
-* `pep_http_client_idle_timeout`, `pep_http_client_max_idle_per_host`,
-  `pep_http_client_tcp_keepalive`, `pep_http_client_connect_timeout`,
-  `pep_http_client_timeout`
+* `pep_revocation_url`
+    * Typ: string (URL)
+    * Beschreibung: Endpunkt der Session-Revocation-API des PDP. Die Direktive
+      wirkt in beide Richtungen:
+      Der PEP abonniert den Endpunkt als Server-Sent-Event-Stream und pflegt
+      daraus eine Block-List gesperrter Sessions. Bei jeder Anfrage prüft er den
+      `sid`-Claim des Access-Tokens dagegen und antwortet bei einem Treffer mit
+      `HTTP 401 Unauthorized` (`RevokedSession`).
+      Zusätzlich *meldet* der PEP über denselben Endpunkt per POST, wenn die
+      No-Travel-Prüfung (`pep_no_travel`) eine abweichende Client-IP feststellt.
+      Ohne gesetzte Direktive protokolliert der PEP beim Start eine Warnung und
+      der Revocation-Stream bleibt deaktiviert; No-Travel-Verstöße werden dann
+      weiterhin abgelehnt, nur nicht mehr an den PDP gemeldet.
+      Ein leerer oder nicht als URL interpretierbarer Wert wird beim Start
+      abgelehnt.
+    * Pflichtfeld: Nein (aber siehe Beschreibung)
+    * Context: `http`
+    * Standardwert: nicht gesetzt
+* `pep_popp_issuer`
+    * Typ: string
+    * Beschreibung: Issuer des PoPP-Servers. Der PEP ermittelt darüber dessen
+      Entity Statement und die Signaturschlüssel, mit denen er PoPP-Tokens
+      prüft. Erforderlich, sobald auf irgendeiner Location
+      `pep_require_popp on;` gesetzt ist. Ein leerer Wert wird beim Start
+      abgelehnt.
+    * Pflichtfeld: Nein (aber siehe Beschreibung)
+    * Context: `http`
+    * Standardwert: nicht gesetzt
+* `pep_http_client_connect_timeout`, `pep_http_client_timeout`
     * Typ: integer
     * Beschreibung: Konfigurationen für den pep-spezifischen HTTP client. Dieser
       wird *nicht* für nginx-native Verbindungen, wie zu upstream Servern
@@ -190,29 +222,34 @@ würden.
     * Beschreibung: Konfiguriert, ob der nginx auf diesem Endpunkt sich wie ein
       PEP verhält.
     * Pflichtfeld: Nein
-    * Context: `server`
+    * Context: `http`, `server`, `location`
     * Standardwert: `off`
-* `pep_require_aud_any`
-    * Typ: |-separierte Liste von Audiences. Beispiel: `audience1|audience2`
+* `pep_require_aud`
+    * Typ: leerzeichen-separierte Menge von Audiences. Beispiel:
+      `audience1 audience2`
     * Beschreibung: Prüft ZETA-Guard-Access-Tokens auf das Vorhandensein von
       `aud`-Claims.
-      Wenn mehr als eine Audience konfiguriert ist, ist die Anforderung "oder"
-      -verknüpft, d.h. das Ergebnis ist "HTTP 401 Unauthorized", wenn keine der
-      gelisteten Audiences in den Access-Token-Claims enthalten ist.
+      Die Anforderung ist "und"-verknüpft: **alle** konfigurierten Audiences
+      müssen im `aud`-Claim des Access-Tokens enthalten sein. Fehlt eine davon,
+      ist das Ergebnis "HTTP 401 Unauthorized".
       Wenn keine erforderlichen Audiences konfiguriert sind, wird die Prüfung
       übersprungen.
     * Pflichtfeld: Nein
-    * Context: `server`
+    * Context: `http`, `server`, `location`
     * Standardwert: `""`
 * `pep_require_scope`
-    * Typ: string
-    * Beschreibung: Konfiguriert den zu verifizierenden Scope in den
+    * Typ: leerzeichen-separierte Menge von Scopes. Beispiel:
+      `openid profile email`
+    * Beschreibung: Konfiguriert die zu verifizierenden Scopes in den
       ZETA-Guard-Access-Tokens.
-      Wenn konfiguriert, wird auf den exakten String geprüft.
+      Die Anforderung ist "und"-verknüpft: **alle** konfigurierten Scopes müssen
+      im `scope`-Claim des Access-Tokens enthalten sein, wobei die Reihenfolge
+      keine Rolle spielt. Fehlt einer davon, ist das Ergebnis
+      "HTTP 401 Unauthorized".
       Es kann nicht auf ein beliebiges aus einer Menge alternativer Scopes
       geprüft werden.
     * Pflichtfeld: Nein
-    * Context: `server`
+    * Context: `http`, `server`, `location`
     * Standardwert: `""`
 * `pep_leeway`
     * Typ: integer
@@ -221,16 +258,25 @@ würden.
       Hierüber soll eine Abweichung der Uhren zwischen Cluster und Client
       kompensiert werden.
     * Pflichtfeld: Nein
-    * Context: `server`
+    * Context: `http`, `server`, `location`
     * Standardwert: `60`
+* `pep_dpop_validity`
+    * Typ: integer
+    * Beschreibung: Gültigkeitsdauer eines DPoP-Proofs ab seinem
+      Ausstellungszeitpunkt (`iat`) in Sekunden. Der Proof wird akzeptiert,
+      solange `iat + pep_dpop_validity + pep_leeway` noch nicht überschritten
+      ist — die Toleranz aus `pep_leeway` kommt also zusätzlich hinzu.
+    * Pflichtfeld: Nein
+    * Context: `http`, `server`, `location`
+    * Standardwert: `300`
 * `pep_no_travel`
     * Typ: `on` | `off`
     * Beschreibung: Schaltet die No-Travel-Prüfung ein oder aus.
       Wenn die Prüfung eingeschaltet ist, müssen die IP-Adresse im
       Access-Token und die Client-IP des Aufrufers übereinstimmen.
     * Pflichtfeld: Nein
-    * Context: `server`
-    * Standardwert: `on`
+    * Context: `http`
+    * Standardwert: `off`
 * `pep_forward_client_data`
     * Typ: `on` | `off`
     * Beschreibung: Steuert, ob der `ZETA-Client-Data`-Header (Base64-URL-kodierte
@@ -239,38 +285,98 @@ würden.
       mitgeschickte Kopie wird in jedem Fall verworfen (siehe
       [Header-Behandlung und `proxy_headers.conf`](#header-behandlung-und-proxy_headersconf)).
     * Pflichtfeld: Nein
-    * Context: `server`, `location`
+    * Context: `http`, `server`, `location`
     * Standardwert: `off`
+* `pep_require_popp`
+    * Typ: `on` | `off`
+    * Beschreibung: Verlangt pro Endpunkt das Vorhandensein des `PoPP`-Request-Headers
+      und validiert das enthaltene PoPP-Token (A_26477). Geprüft werden u.a. die
+      Signatur des PoPP-Servers sowie die Übereinstimmung des Claims
+      `actorId` mit dem `sub` der zum Access-Token gehörenden Nutzer-Daten. Die
+      dekodierten Claims werden als Header `ZETA-PoPP-Token-Content` an den Upstream
+      weitergereicht.
+      Fehlt der `PoPP`-Header, obwohl er verlangt wird, antwortet der PEP mit
+      `HTTP 400 Bad Request`. Ist die Signatur ungültig oder schlägt eine der
+      anderen Prüfungen fehl, antwortet der PEP mit `HTTP 403 Forbidden`.
+      Der Issuer des PoPP-Servers wird global über `pep_popp_issuer` konfiguriert.
+    * Pflichtfeld: Nein
+    * Context: `http`, `server`, `location`
+    * Standardwert: `off`
+* `pep_popp_validity`
+    * Typ: `quarter` | duration
+    * Beschreibung: Legt pro Endpunkt die Dauer der Gültigkeit des PoPP-Tokens ab
+      Ausstellung (`iat`) fest (A_26477).
+      Der Wert `quarter` bedeutet, dass Ausstellungszeitpunkt und Prüfzeitpunkt im
+      selben Kalenderquartal (UTC) liegen müssen (siehe gemSpec_ZETA — A_26477).
+      Alternativ kann eine feste Dauer seit `iat` angegeben werden. Mögliche
+      Einheiten sind `d` Tage, `h` Stunden, `m` Minuten oder `s` Sekunden (Standard,
+      wenn keine Einheit angegeben ist), z.B. `1d` oder `86400`.
+      In beiden Fällen wird `pep_leeway` als Toleranz addiert.
+    * Pflichtfeld: Nein
+    * Context: `http`, `server`, `location`
+    * Standardwert: `quarter`
 
 ### Konfigurationsparameter (ASL)
 
 Diese Parameter werden nur benötigt, wenn tatsächlich ASL verwendet werden
 soll. Pflichtfeld ist in diesem Sinne zu verstehen.
 
+**Die Datei-Direktiven haben keinen eingebauten Standardwert.** Ohne Angabe
+bleibt der Wert leer; die Pfade in den Beispielen dieses Kapitels und im Helm
+Chart sind Konventionen des jeweiligen Deployments, nicht Vorbelegungen des
+Moduls. Weiterhin gilt für alle ASL-Direktiven:
+
+- **Leere Werte werden abgelehnt.** `pep_asl_ocsp ""` oder
+  `pep_asl_root_ca ""` führen zum Startfehler, statt als „nicht gesetzt"
+  behandelt zu werden. Eine Direktive, die nicht wirken soll, lässt man weg.
+- **Pfade dürfen relativ sein.** Relative Angaben löst der PEP gegen das
+  Konfigurationsverzeichnis des nginx auf (`<nginx-prefix>/conf`).
+- **Der ASL-Signer-Schlüssel kann im HSM bleiben.** Beginnt der Wert von
+  `pep_asl_signer_key` mit `store:`, lädt der PEP den Schlüssel nicht als Datei,
+  sondern über den OpenSSL-Provider `ossl_hsm` (`store:hsm:<key-id>`, im Helm
+  Chart über `pepproxy.asl_hsm_key` — siehe
+  [HSM-Konfiguration (ASL-Signaturschlüssel)](Referenz_des_Helm_Charts.md#hsm-konfiguration-asl-signaturschlüssel)).
+  Für Zertifikate und roots.json gilt das nicht — sie werden immer als Datei
+  gelesen.
+
+**Alle-oder-keine-Regel für die vier Datei-Direktiven** `pep_asl_signer_cert`,
+`pep_asl_signer_key`, `pep_asl_ca_cert` und `pep_asl_roots_json`:
+
+- Sind **alle vier** gesetzt, initialisiert der PEP ASL beim Start.
+- Ist **keine** gesetzt, bleibt ASL unkonfiguriert. Der PEP startet, kann aber
+  keine Location mit `asl on;` bedienen.
+- Fehlt **genau eine**, bricht der PEP den Start mit der Meldung
+  `must have either all or none of ASL signer_cert, signer_key, ca_cert, roots_json`
+  ab.
+
 * `asl`
     * Typ: `on` | `off`
     * Beschreibung: Konfiguriert, ob der nginx ASL spricht (i.d.R. auf `location /ASL`)
     * Pflichtfeld: Ja
-    * Context: `server`
+    * Context: `http`, `server`, `location`
     * Standardwert: `off`
 * `pep_asl_signer_key`, `pep_asl_signer_cert`, `pep_asl_ca_cert`
-    * Typ: string
-    * Beschreibung: Absoluter Pfad zu den Bestandteilen der
-      ASL-Signer-Identität im PEM-Format. Typischerweise ein Secret-Mount.
+    * Typ: string (Pfad oder `store:`-URI)
+    * Beschreibung: Bestandteile der ASL-Signer-Identität im PEM-Format —
+      privater Schlüssel, zugehöriges Signer-Zertifikat und Zertifikat der
+      ausstellenden CA. Typischerweise ein Secret-Mount.
     * Pflichtfeld: Ja
     * Context: `http`
-    * Standardwert: `/etc/nginx/signer_key.pem`, `/etc/nginx/signer_cert.pem`, `/etc/nginx/issuer_cert.pem`
+    * Standardwert: nicht gesetzt (das Helm Chart schreibt
+      `/etc/nginx/signer_key.pem`, `/etc/nginx/signer_cert.pem` und
+      `/etc/nginx/issuer_cert.pem` in die nginx.conf)
 * `pep_asl_roots_json`
-    * Typ: string
-    * Beschreibung: Absoluter Pfad zum Vertrauensanker roots.json.
+    * Typ: string (Pfad)
+    * Beschreibung: Pfad zum Vertrauensanker roots.json.
       Typischerweise ein Secret-Mount.
     * Pflichtfeld: Ja
     * Context: `http`
-    * Standardwert: `/etc/nginx/roots.json`
+    * Standardwert: nicht gesetzt (das Helm Chart schreibt
+      `/var/trust-data/roots.json` in die nginx.conf)
 * `pep_asl_testing`
     * Typ: `on` | `off`
     * Beschreibung: Muss eingeschaltet werden, wenn der PEP in der
-      Test/Refertenzumgebung der TI betrieben wird.
+      Test-/Referenzumgebung der TI betrieben wird.
     * Pflichtfeld: Nein (aber siehe Beschreibung)
     * Context: `http`
     * Standardwert: `off`
@@ -281,16 +387,19 @@ soll. Pflichtfeld ist in diesem Sinne zu verstehen.
       Normalerweise nur zu Testzwecken verwendet.
     * Pflichtfeld: Nein
     * Context: `http`
-    * Standardwert: `""`
+    * Standardwert: nicht gesetzt (es gilt GEM.RCA7)
 * `pep_asl_ocsp`
-    * Typ: string
-    * Beschreibung: Optionale OCSP-URL, die anstatt der URL in
-      `pep_asl_signer_cert` verwendet werden soll (Override).
-      Alternativ der Wert `off` um OCSP stapling zu deaktivieren.
-      Normalerweise nur zu Testzwecken verwendet.
+    * Typ: `off` | `cert` | URL
+    * Beschreibung: Steuert das OCSP Stapling für das ASL-Signer-Zertifikat.
+        * `cert` — der PEP verwendet die OCSP-URL aus dem Signer-Zertifikat
+          (AIA-Extension). Enthält das Zertifikat keine, findet kein Stapling
+          statt.
+        * Eine URL — Override dieser Adresse. Normalerweise nur zu Testzwecken.
+        * `off` — deaktiviert das OCSP Stapling. Normalerweise nur zu
+          Testzwecken.
     * Pflichtfeld: Nein
     * Context: `http`
-    * Standardwert: `""`
+    * Standardwert: `cert`
 * `pep_asl_ocsp_ttl`
     * Typ: duration
     * Beschreibung: Maximale Gültigkeit einer OCSP-Antwort im Cache bis ein

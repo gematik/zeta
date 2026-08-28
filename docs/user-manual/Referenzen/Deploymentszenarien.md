@@ -24,6 +24,7 @@ weiterhin den Betreibern der jeweiligen Fachdienste.
   - [VAU- und HSM-Nutzung](#vau--und-hsm-nutzung)
   - [Datenbank-Setup in der VAU](#datenbank-setup-in-der-vau)
   - [ZETA-Guard und Datenbank-Skalierung](#zeta-guard-und-datenbank-skalierung)
+  - [Notification Service (Vorschau)](#notification-service-vorschau)
   - [Einbindung in Infrastruktur und Anbindung des Fachdienstes](#einbindung-in-infrastruktur-und-anbindung-des-fachdienstes)
 - [Weitere Annahmen](#weitere-annahmen)
 - [Beschreibung der Deployment-Szenarien](#beschreibung-der-deployment-szenarien)
@@ -122,6 +123,16 @@ werden. Das mitgelieferte ZETA-Guard Helm Chart implementiert dies automatisch
 über den NGINX Ingress Controller (Cookie `zeta_route`, Consistent Hashing per
 Ketama). Bei alternativen Ingress-Controllern muss der Betreiber dies selbst
 sicherstellen.
+
+### Notification Service (Vorschau)
+
+Der Notification Service ist eine optionale Vorschau-Komponente und im Helm
+Chart standardmäßig deaktiviert (`notificationService.enabled: false`). Bei
+Aktivierung wird er als Split-Deployment ausgerollt — eine Variante für die
+Resource-Server-API (clusterintern) und eine für die Client-API hinter dem
+PEP — und erhält eine eigene, von der PDP-Datenbank getrennte
+CNPG-PostgreSQL-Datenbank. Details siehe
+[Konfiguration des Notification Service](Konfiguration_des_Notification_Service.md).
 
 ### Einbindung in Infrastruktur und Anbindung des Fachdienstes
 

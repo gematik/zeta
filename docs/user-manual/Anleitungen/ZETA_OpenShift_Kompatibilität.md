@@ -2,6 +2,13 @@
 
 Um ZETA-Guard auf OpenShift 4.x zu betreiben, sind folgende Konfigurationsänderungen erforderlich:
 
+> **Mindestversion:** Das Chart setzt mindestens Kubernetes 1.32 voraus, also **OpenShift 4.19
+> oder neuer**, und erzwingt das über `kubeVersion`. Auf dieser Untergrenze setzt unter anderem
+> `provisioningProcessor.schedule.enabled: true` auf, das einen Sidecar-Init-Container
+> (`restartPolicy: Always`) verwendet. Die Option ist standardmäßig aktiviert und muss in
+> Prod-Umgebungen aktiviert bleiben. Siehe
+> [Referenz des Helm Charts](../Referenzen/Referenz_des_Helm_Charts.md#zeitgesteuerte-aktualisierung-der-vertrauensanker).
+
 1. **OpenShift-Ingress mit TLS aktivieren:**
    Anstelle eines separaten OpenShift-Route-Objekts wird ein Standard-Kubernetes-Ingress
    mit TLS-Konfiguration verwendet. Der OpenShift-Ingress-to-Route-Controller erzeugt

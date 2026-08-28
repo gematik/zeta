@@ -4,15 +4,21 @@ Das ZETA Guard Helm Chart beinhaltet optionale Kubernetes-`NetworkPolicy`-Ressou
 (ausgehend/Egress), die den ausgehenden Netzwerkverkehr jedes ZETA-Guard-Pods auf
 explizit freigegebene Ziel-IP-Blöcke beschränken.
 
-Interner Cluster-Verkehr (DNS, Pod-zu-Pod-Kommunikation zwischen OPA, Datenbank,
+Interner Cluster-Verkehr (Pod-zu-Pod-Kommunikation zwischen OPA, Datenbank,
 Telemetry-Gateway) ist immer erlaubt und muss nicht gesondert konfiguriert werden.
+DNS ist ebenfalls immer erlaubt; der DNS-*Peer* ist jedoch über
+`networkPolicy.dns` konfigurierbar und muss auf OpenShift angepasst werden (siehe
+[DNS-Egress](#dns-egress)).
 
 ## Inhaltsverzeichnis
 
 - [Aktivieren](#aktivieren)
+- [DNS-Egress](#dns-egress)
+  - [OpenShift](#openshift)
 - [Konfigurierbare Egress-Kategorien](#konfigurierbare-egress-kategorien)
 - [IP-Blöcke konfigurieren](#ip-blöcke-konfigurieren)
   - [IP-Adressen ermitteln](#ip-adressen-ermitteln)
+- [Warum nur IP-Blöcke — keine DNS-Namen (FQDN)](#warum-nur-ip-blöcke--keine-dns-namen-fqdn)
 - [Anbieter-interner Verkehr](#anbieter-interner-verkehr)
 - [Egress-Bedarf je Pod](#egress-bedarf-je-pod)
 - [Verwandte Dokumentation](#verwandte-dokumentation)
@@ -26,6 +32,63 @@ zeta-guard:
 ```
 
 Solange `enabled: false` (Standard), werden keine NetworkPolicy-Ressourcen erzeugt.
+
+## DNS-Egress
+
+Jede Egress-NetworkPolicy erlaubt die DNS-Auflösung. Der DNS-Peer ist über
+`networkPolicy.dns` konfigurierbar und verweist standardmäßig auf den
+kube-dns-Dienst von Upstream-Kubernetes / KIND:
+
+```yaml
+zeta-guard:
+  networkPolicy:
+    dns:
+      namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+```
+
+Um den DNS-Egress auf einen anderen Dienst zu richten, setzen Sie
+`networkPolicy.dns.to` auf eine rohe Liste von `NetworkPolicyPeer`-Einträgen. Sie
+wird unverändert übernommen und überschreibt `namespaceSelector`/`podSelector`.
+
+> **Hinweis:** Überschreiben Sie `namespaceSelector`/`podSelector` nicht direkt.
+> Helm führt Maps tief zusammen, sodass Ihr Label zum Default `k8s-app: kube-dns`
+> hinzugefügt würde. Ein `matchLabels` verknüpft alle Labels mit logischem UND,
+> d. h. der Selektor träfe dann keinen Pod und die DNS-Auflösung bräche. Listen
+> wie `dns.to` werden dagegen vollständig ersetzt und überschreiben sauber.
+
+### OpenShift
+
+OpenShift betreibt kein kube-dns. DNS wird von CoreDNS-Pods im Namespace
+`openshift-dns` bereitgestellt, und da OVN-Kubernetes Egress nach dem DNAT
+auswertet, ist der am Pod ankommende Ziel-Port 5353 statt 53:
+
+```yaml
+zeta-guard:
+  networkPolicy:
+    dns:
+      to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: openshift-dns
+          podSelector:
+            matchLabels:
+              dns.operator.openshift.io/daemonset-dns: default
+      ports:
+        - port: 5353
+          protocol: UDP
+        - port: 5353
+          protocol: TCP
+```
 
 ## Konfigurierbare Egress-Kategorien
 
@@ -74,22 +137,51 @@ zeta-guard:
 ### IP-Adressen ermitteln
 
 - **gematik-Endpunkte** (telemetry, SIEM, PoPP): `dig +short <hostname>`
-- **Google Artifact Registry**: veröffentlichte CIDR-Bereiche unter
-  <https://www.gstatic.com/ipranges/cloud.json> (Filter: `europe-west3`),
-  siehe Stabilitätshinweis unten
+- **Google Artifact Registry**: veröffentlichte Edge-Bereiche von Google unter
+  <https://www.gstatic.com/ipranges/goog.json>. Die   Freigabe muss sowohl
+  `europe-west3-docker.pkg.dev` (Image-Manifest) als auch `storage.googleapis.com`
+  (Layer-Blobs) umfassen — siehe Stabilitätshinweis unten
 - **OCSP-Responder**: aus der AIA-Extension des jeweiligen Zertifikats:
   `openssl x509 -in <cert.pem> -text | grep -A2 "OCSP"` → `dig +short <ocsp-host>`
 
 > **Stabilitätshinweise:**
-> - `artifactRegistry` (`europe-west3-docker.pkg.dev`) wird über Google CDN/Anycast
->   ausgeliefert. Die per DNS aufgelöste IP kann sich ohne Ankündigung ändern. Für
->   Produktivumgebungen empfehlen sich die veröffentlichten CIDR-Bereiche statt
->   einzelner `/32`-Adressen.
+> - `artifactRegistry` wird über Google CDN/Anycast ausgeliefert, daher ist eine
+    einzelne `/32`-Adresse unzuverlässig — die aufgelöste IP unterscheidet sich je
+    nach Standort (z. B. `142.251.x` aus einem Netz, `74.125.x` aus einem anderen),
+    und Layer-Blobs kommen von `storage.googleapis.com` auf weiteren IPs. Geben Sie
+    Googles veröffentlichte Edge-Bereiche aus
+    <https://www.gstatic.com/ipranges/goog.json> frei. Bestätigt für beide Hosts
+    (2026-07): `74.125.0.0/16`, `142.250.0.0/15`, `192.178.0.0/15`,
+    `172.217.0.0/16`, `216.58.192.0/19`, `209.85.128.0/17`. Vor dem Einsatz erneut
+    gegen `goog.json` prüfen.
 > - `ocspSmcbTsp` (`ocsp.telematik.de`) und `ocspTiPki` (`ocsp.ti.telematik.de`)
->   lösen derzeit auf dieselbe IP auf — dies sind jedoch separate Dienste, deren
->   Adressen sich unabhängig voneinander ändern können. Die maßgebliche Adresse
->   ist jeweils die in der AIA-Extension des tatsächlich eingesetzten Zertifikats
->   eingebettete OCSP-URL.
+    lösen derzeit auf dieselbe IP auf und sind nur innerhalb des TI-Netzes
+    auflösbar — dies sind jedoch separate Dienste, deren Adressen sich unabhängig
+    voneinander ändern können. Die maßgebliche Adresse ist jeweils die in der
+    AIA-Extension des tatsächlich eingesetzten Zertifikats eingebettete OCSP-URL.
+
+## Warum nur IP-Blöcke — keine DNS-Namen (FQDN)
+
+Standard-Kubernetes-`NetworkPolicy` (`networking.k8s.io/v1`) unterstützt
+ausschließlich `ipBlock`-Peers (CIDR) — ein Abgleich des Egress über DNS-Namen /
+FQDN ist nicht möglich. Das ist eine Limitierung der Kubernetes-API selbst, keine
+Einschränkung von ZETA Guard, und der Grund, warum Betreiber IP-Bereiche auflösen
+und pflegen müssen.
+
+FQDN-basierter Egress erfordert einen Mechanismus jenseits der reinen
+NetworkPolicy, und jeder solche Mechanismus ist plattformabhängig:
+
+| Mechanismus                                                     | Verfügbarkeit                                                              |
+|-----------------------------------------------------------------|----------------------------------------------------------------------------|
+| Istio `ServiceEntry` (+ `outboundTrafficPolicy: REGISTRY_ONLY`) | Erfordert Istio. Der in der gemAnbT vorgesehene Weg; folgt separat.        |
+| OpenShift `EgressFirewall` (`k8s.ovn.org/v1`, `dnsName`)        | Nur OpenShift / OVN-Kubernetes. Anderer Ressourcentyp als NetworkPolicy.   |
+| Cilium `CiliumNetworkPolicy` `toFQDNs`                          | Erfordert die Cilium-CNI.                                                  |
+
+Da Anbieter unterschiedliche Plattformen und Service Meshes betreiben, liefert
+ZETA Guard keine universelle FQDN-Lösung. Entsprechend der gemAnbT stellt ZETA
+Guard die (Referenz-)NetworkPolicies bereit — perspektivisch die
+Istio-Ressourcen; bei einem anderen Service Mesh portiert der Anbieter die
+Policies.
 
 ## Anbieter-interner Verkehr
 

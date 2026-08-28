@@ -2,6 +2,14 @@
 # Inhaltsverzeichnis
 
 * [Übersicht und Einleitung](README.md)
+* [Release Notes](ReleaseNotes.md)
+* Einstiege nach Zielgruppe
+  * [Fachdienst-Betreiber](ReadMeFachdienstBetreiber.md)
+  * [Fachdienst-Hersteller](ReadMeFachdienstHersteller.md)
+  * [Primärsystem-Hersteller](ReadMePrimaersystemHersteller.md)
+* Sicherheitsanforderungen
+  * [Sicherheitsanforderungen an den Betreiber des ZETA-Guard](SicherheitsanforderungenZETAGuardBetreiber.md)
+  * [Sicherheitsanforderungen an den Client-Hersteller](SicherheitsanforderungenClientHersteller.md)
 * Anleitungen
   * [ZETA Guard Quickstart](Anleitungen/ZETA_Guard_Quickstart.md)
   * [Wie Sie den Cluster lokal mit KIND aufsetzen](Anleitungen/Wie_Sie_den_Cluster_lokal_mit_KIND_aufsetzen.md)
@@ -17,13 +25,32 @@
   * [Wie Sie ZETA Guard auf OpenShift betreiben](Anleitungen/ZETA_OpenShift_Kompatibilität.md)
   * [Wie Sie Telemetrie des Resource Servers an die gematik schicken](Anleitungen/Wie_Sie_Telemetrie_des_Resource_Servers_an_die_gematik_schicken.md)
   * [Wie Sie ein Observability-Backend anschließen](Anleitungen/Wie_Sie_ein_Observability-Backend_an_ZETA-Guard_anschließen.md)
-  * [Wie Sie einen Ende zu Ende Integrationstest ausführen](Anleitungen/Wie_Sie_einen_Ende_zu_Ende_Integrationstest_ausführen.md)
+  * [Wie Sie Telemetrie filtern](Anleitungen/Wie_Sie_Telemetrie_filtern.md)
+  * [Wie Sie einen Ende-zu-Ende-Integrationstest ausführen](Anleitungen/Wie_Sie_einen_Ende_zu_Ende_Integrationstest_ausführen.md)
   * [Wie Sie einen Forward Proxy konfigurieren](Anleitungen/Wie_Sie_einen_Forward_Proxy_konfigurieren.md)
+  * [Wie der mobile Client-Flow funktioniert](Anleitungen/Wie_der_mobile_Client-Flow_funktioniert.md)
+  * [Wie Sie den mobilen Client-Flow mit dem ZETA SDK umsetzen](Anleitungen/Wie_Sie_den_mobilen_Client-Flow_mit_dem_ZETA_SDK_umsetzen.md)
+  * [Wie die dynamische Client-Registrierung funktioniert](Anleitungen/Wie_die_dynamische_Client-Registrierung_funktioniert.md)
+  * [Wie der Client-Lebenszyklus verwaltet wird](Anleitungen/Wie_der_Client-Lebenszyklus_verwaltet_wird.md)
+  * [Wie der Notification Service funktioniert](Anleitungen/Wie_der_Notification_Service_funktioniert.md)
+  * [Wie Sie Benachrichtigungen aus dem Fachdienst versenden](Anleitungen/Wie_Sie_Benachrichtigungen_aus_dem_Fachdienst_versenden.md)
+  * [Wie Sie das SDK Notifications-Modul verwenden](Anleitungen/Wie_Sie_das_SDK_Notifications-Modul_verwenden.md)
+  * [Troubleshooting & Debugging](Anleitungen/Troubleshooting_und_Debugging.md)
+* Erklärungen
+  * [Wie der Telemetrie-Daten Service funktioniert](Erklärungen/Wie_der_Telemetrie-Daten_Service_funktioniert.md)
+* Release Notes
+  * [ZETA Guard](ReleaseNotes/ZetaGuard/ReleaseNotes.md)
+  * [ZETA SDK](ReleaseNotes/ZetaSDK/ReleaseNotes.md)
 * Referenzen
   * [Komponentenübersicht](Referenzen/Komponentenuebersicht.md)
   * [Deploymentszenarien](Referenzen/Deploymentszenarien.md)
   * [Referenz des Helm Charts](Referenzen/Referenz_des_Helm_Charts.md)
   * [Konfigurationshinweise](Referenzen/Konfigurationshinweise.md)
+  * [Konfiguration der Well-Known-Endpunkte](Referenzen/Konfiguration_der_Well-Known_Endpunkte.md)
   * [Konfiguration des PEP Http Proxy](Referenzen/Konfiguration_des_PEP_Http_Proxy.md)
   * [Konfiguration des PDP Services](Referenzen/Konfiguration_des_PDP_Services.md)
+  * [Konfiguration des Notification Service](Referenzen/Konfiguration_des_Notification_Service.md)
+  * [Konfiguration einer VAU mit verschlüsselter Datenbank](Referenzen/Konfiguration_VAU.md)
   * [SDK-Übersicht](Referenzen/SDK-Uebersicht.md)
+  * [Telemetrie-Attribute von ZETA-Guard](Referenzen/Telemetrie-Attribute.md)
+  * [Security-Events von ZETA-Guard](Referenzen/Security-Events.md)
