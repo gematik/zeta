@@ -27,6 +27,7 @@ Der Fokus liegt auf:
   - [Installationsschritte](#installationsschritte)
   - [1. Helm aufsetzen](#1-helm-aufsetzen)
   - [2. PDP konfigurieren](#2-pdp-konfigurieren)
+    - [Wann und wie oft die PDP-Konfiguration laufen muss](#wann-und-wie-oft-die-pdp-konfiguration-laufen-muss)
   - [3. PEP konfigurieren](#3-pep-konfigurieren)
 
 ## Installation
@@ -127,9 +128,13 @@ Terraform-Variable
 |-------------------------|-------------------------------------------|-----------------------------------------------|
 | **State-Backend**       | Kubernetes-Secret im Cluster              | Lokale `terraform.tfstate`-Datei              |
 | **Zugangsdaten**        | Aus Kubernetes-Secret `authserver-admin`  | Müssen explizit gesetzt werden                |
-| **Kubernetes-Provider** | Wird automatisch eingebunden              | Wird nicht benötigt                           |
+| **Kubernetes-Provider** | Wird konfiguriert und genutzt             | Wird nicht konfiguriert¹                      |
+| **Cluster-Zugang**      | Erforderlich (kubeconfig)                 | Nicht erforderlich                            |
 | **Typischer Einsatz**   | CI/CD-Pipelines, Cluster-Zugang vorhanden | Lokale Entwicklung, kein Cluster-Zugang nötig |
 | **Aktivierung**         | `use_kubernetes = true` (Standard)        | `use_kubernetes = false`                      |
+
+¹ Das Provider-*Plugin* wird von `terraform init` dennoch geladen — siehe
+[Backend initialisieren](#backend-initialisieren).
 
 #### Voraussetzungen
 
@@ -170,6 +175,53 @@ Insbesondere werden folgende Rechte vorausgesetzt:
 - Leases (`apiGroups: ["coordination.k8s.io"]`)
   Um parallele Ausführungen des Terraform-Moduls zu verhindern, wird ein Lock
   über Kubernetes-Leases realisiert.
+
+Ein `cluster-admin` ist dafür **nicht** erforderlich — alle benötigten Rechte
+sind Namespace-lokal. Als Vorlage:
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+    name: terraform-pdp-config
+    namespace: zeta-demo          # Ziel-Namespace des Deployments
+rules:
+    # Admin-Zugangsdaten lesen (Secret `authserver-admin`) sowie das
+    # State-Secret des kubernetes-Backends (`tfstate-<workspace>-state`)
+    # anlegen, lesen, fortschreiben und entfernen.
+    - apiGroups: [ "" ]
+      resources: [ "secrets" ]
+      verbs: [ "get", "list", "create", "update", "patch", "delete" ]
+    # State-Locking des kubernetes-Backends
+    # (Lease `lock-tfstate-<workspace>-state`).
+    - apiGroups: [ "coordination.k8s.io" ]
+      resources: [ "leases" ]
+      verbs: [ "get", "create", "update", "delete" ]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+    name: terraform-pdp-config
+    namespace: zeta-demo
+subjects:
+    - kind: ServiceAccount
+      name: terraform-runner     # ServiceAccount Ihres CI/CD-Runners
+      namespace: zeta-demo
+roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: Role
+    name: terraform-pdp-config
+```
+
+> **Grenze der Einschränkbarkeit:** Die Verben `list` und `create` lassen sich in
+> Kubernetes-RBAC nicht über `resourceNames` einschränken. Das
+> Backend muss Secrets im Namespace auflisten, um seine Workspaces zu finden —
+> die Rolle gewährt damit Leserechte auf **alle** Secrets des Namespace. Wenn das
+> nicht tragbar ist, bleiben zwei Wege: den Terraform-State in einen separaten,
+> ausschließlich dafür genutzten Namespace legen, oder ein Backend außerhalb von
+> Kubernetes verwenden (dann werden nur noch `get`-Rechte auf
+> `authserver-admin` benötigt — oder gar keine, wenn die Zugangsdaten über
+> `TF_VAR_keycloak_username` / `TF_VAR_keycloak_password` gesetzt werden).
 
 Fehlende Berechtigungen führen typischerweise zu Initialisierungsfehlern beim
 Backend (`terraform init`) oder zu Abbrüchen während `apply`.
@@ -223,6 +275,15 @@ pdp_scopes = ["zero:read", "zero:write"]   # Zusätzliche PDP-Scopes
 Die Variable `audience_scope_name` erlaubt es, den Namen des Audience-Scopes
 anzupassen, falls eine abweichende Scope-Namenskonvention verwendet wird.
 
+> **Hinweis:** Der Audience-Scope trägt die Mapper, die die vom PEP geforderten
+> Access-Token-Claims setzen (`aud`, `profession_oid`, `client_id`, `ip_address`,
+> `product_id`, `product_version`, `common_name`, `organization_name`). Der Client muss
+> diesen Scope anfragen. Verlangt ein Fachdienst einen bestimmten Scope-Namen — zum Beispiel
+> `vsdservice` für das VSDM (A_26744) —, setzen Sie `audience_scope_name` auf diesen Wert
+> und führen ihn **nicht** zusätzlich in `pdp_scopes` (doppelter Scope-Name → Fehler).
+> Sonst fehlen dem Token die Claims und der PEP lehnt die Anfrage vor der Policy ab
+> (`missing field 'aud'`).
+
 Siehe [demo.tfvars](https://github.com/gematik/zeta-guard-helm/blob/main/terraform/authserver/environments/demo.tfvars).
 
 #### Backend initialisieren
@@ -230,10 +291,17 @@ Siehe [demo.tfvars](https://github.com/gematik/zeta-guard-helm/blob/main/terrafo
 Vor der Konfiguration müssen `main.tf` und `providers.tf` generiert und das
 Backend initialisiert werden. Das Skript `generate-main-and-backend.sh` erzeugt
 aus Templates die passenden Dateien und die Backend-Konfiguration, abhängig vom
-gewählten Modus. Im lokalen Modus (`use_kubernetes = false`) wird der
-Kubernetes-Provider vollständig weggelassen — es ist keine
-Kubernetes-Installation
-erforderlich.
+gewählten Modus. Im lokalen Modus (`use_kubernetes = false`) entfallen der
+`provider "kubernetes"`-Block und der zugehörige `required_providers`-Eintrag —
+es wird also kein Cluster-Zugang und keine kubeconfig benötigt.
+
+> **Hinweis:** Das Provider-*Plugin* `hashicorp/kubernetes` wird trotzdem von
+> `terraform init` aufgelöst und heruntergeladen. Grund: `data.tf` deklariert die
+> Datenquelle `kubernetes_secret_v1` unbedingt, und Terraform leitet den
+> benötigten Provider aus dem Ressourcentyp-Präfix `kubernetes_` ab — `count = 0`
+> verhindert das nicht. Für Umgebungen mit Air-Gap oder
+> Registry-Whitelisting heißt das: `hashicorp/kubernetes` muss verfügbar sein,
+> auch wenn er im lokalen Modus nicht verwendet wird.
 
 ##### Kubernetes-Modus (Standard)
 
@@ -295,6 +363,52 @@ bestehenden State. Die angezeigten Unterschiede werden unterteilt in
 - _update_ (ändern)
 - _delete_ (löschen)
 - _replace_ (ersetzen, eine Kombination aus _delete_ und _create_)
+
+#### Wann und wie oft die PDP-Konfiguration laufen muss
+
+Die PDP-Konfiguration ist **kein** einmaliger Installationsschritt, aber auch
+kein Schritt, der bei jedem Helm-Upgrade nötig ist. Sie ist beliebig
+wiederholbar.
+
+##### Zwingend erforderlich
+
+- **Nach der Erstinstallation.** Ohne die Terraform-Konfiguration ist der
+  ZETA Guard nicht betriebsbereit — Realm, Scopes, Client-Registration-Policies
+  und Signaturschlüssel existieren erst danach.
+- **Nach Änderungen an den `*.tfvars`**, etwa an `pdp_scopes`,
+  `audience_scope_name`, `audience` oder `keycloak_url`.
+- **Nach einem Release-Upgrade, das die Terraform-Dateien ändert.** Die Release
+  Notes des Helm-Charts weisen solche Änderungen aus. Beispiel: kommt ein neuer
+  Event-Listener hinzu, muss `keycloak_realm_events` neu angewendet werden, sonst
+  ruft Keycloak den Listener nicht auf.
+- **Nach dem Aktivieren von Funktionen, die Realm-Konfiguration voraussetzen** —
+  HSM-Token-Signing, SekIdP/OIDC-Flow, VAU-DB-Verschlüsselung oder die Scopes des
+  Notification Service.
+- **Nachdem die Datenbank oder der Realm neu angelegt wurde.** Die interne
+  Realm-ID ändert sich dabei, wodurch auch die skriptbasierten Schritte erneut
+  ausgeführt werden.
+
+##### Nicht erforderlich
+
+Bei Chart-Änderungen ohne Realm-Bezug: Ressourcen-Limits, `replicaCount`,
+Image-Tags, NetworkPolicies, Ingress- oder TLS-Einstellungen. Ein zusätzlicher
+Lauf schadet hier zwar nicht, ändert aber nichts.
+
+##### Idempotenz
+
+Ein erneuter Lauf ist gefahrlos. Die Keycloak-Ressourcen sind deklarativ, das
+heißt Terraform gleicht nur Abweichungen aus. Die skriptbasierten Schritte
+(Schlüsselprovider, VAU-Schalter) laufen nur erneut, wenn sich ihre Auslöser
+ändern — die interne Realm-ID, der Inhalt des jeweiligen Skripts oder der
+zugehörige Funktionsschalter. Das Policy-Management-Skript läuft bei **jedem**
+Apply, prüft aber vor jeder Änderung den Istzustand.
+
+Zwei Nebenwirkungen sind beabsichtigt und sollten bekannt sein:
+
+- Die Liste der Event-Listener des Realms wird **vollständig** verwaltet. Manuell
+  ergänzte Listener werden bei jedem Lauf entfernt.
+- Die Keycloak-Standard-Policies `Trusted Hosts`, `Max Clients Limit` und
+  `Consent Required` werden bei jedem Lauf entfernt, falls vorhanden.
 
 ### 3. PEP konfigurieren
 

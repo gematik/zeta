@@ -28,7 +28,9 @@ Informationen zu den kubernetes OWASP Top Ten finden sich hier: https://owasp.or
 Als Schutzmaßnahme gegen DoS-Attacken des ZETA Guards muss das Rate-Limit entsprechend den erwarteten Nutzungsszenarien
 konfiguriert werden.
 
-Die Konfigurationsmöglichkeiten sind hier beschrieben: https://github.com/gematik/zeta/blob/main/docs/user-manual/Anleitungen/Wie_Sie_ZETA_Guard_in_Kubern…
+Die Konfigurationsmöglichkeiten sind im Abschnitt „Rate Limit einrichten" in
+[Wie Sie ZETA Guard in Kubernetes konfigurieren](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md#rate-limit-einrichten)
+beschrieben.
 
 ## Crypto
 
@@ -50,3 +52,10 @@ Diese Funktionaltät wird im HSM Proxy umgesetzt,
 der durch den Betreiber eines VAU-basierten Fachdienstes
 beizustellen ist.
 
+## Betrieb des Authservers in einer VAU-basierten Umgebung
+
+Wird der Authserver in einer VAU-basierten Umgebung betrieben und dessen Datenhaltung
+(Datenbank) außerhalb der VAU verortet, dürfen die Daten die VAU nur verschlüsselt
+verlassen. Dafür kann beim Authserver sowohl Verschlüsselung als auch eine zusätzliche
+Datenintegritätsprüfung aktiviert werden.
+Für Details siehe [Wie Sie ZETA Guard in Kubernetes konfigurieren](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md#10-besonderheiten-vau-und-keycloak-datenbank).

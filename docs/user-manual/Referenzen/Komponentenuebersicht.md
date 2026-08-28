@@ -15,6 +15,6 @@
 | Policy Engine                | [Open Policy Agent](https://www.openpolicyagent.org/docs)            |
 | **Andere Komponenten**       |                                                                      |
 | Service Mesh                 | TODO                                                                 |
-| Notification Service         | TI-M Notification Service (kommt in Meilenstein 2)                   |
+| Notification Service         | Push-Benachrichtigungs-Fassade zwischen Fachdienst, ZETA Client und gematik Push Gateway — Vorschau, standardmäßig deaktiviert ([Anleitung](../Anleitungen/Wie_der_Notification_Service_funktioniert.md), [Referenz](Konfiguration_des_Notification_Service.md)) |
 | Telemetriedaten Service      | [OpenTelemetry Collector](https://opentelemetry.io/docs/collector/)  |
 | Ingresscontroller            | [F5 nginx-ingress](https://docs.nginx.com/nginx-ingress-controller/) |

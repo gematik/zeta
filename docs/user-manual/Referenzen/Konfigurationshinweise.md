@@ -10,6 +10,7 @@ darstellen, um das Verständnis der Umsetzung zu erleichtern.
   - [Abstrakte Sicht](#abstrakte-sicht)
   - [Konkrete Konfiguration](#konkrete-konfiguration)
   - [Auslieferungsstand](#auslieferungsstand)
+    - [Variante mit separatem Admin-Hostnamen](#variante-mit-separatem-admin-hostnamen)
 
 ## Request-Routing
 
@@ -81,7 +82,12 @@ Unterpfad, welcher durch den Ingress umgesetzt wird.
 In der aktuellen Version sieht die Installation die Nutzung des ZETA-Guard
 unter einem einzigen Hostnamen vor.
 
-![Konfiguration in der Auslieferung](../assets/images/zeta-config-current.png)
+> **Die folgende Abbildung zeigt die Variante *ohne* `authserver.adminHostname`.**
+> Wird ein separater Admin-Hostname konfiguriert, kommt ein zweiter Hostname
+> hinzu und der Pfad `/auth/admin` wird auf dem Haupthostnamen gesperrt — siehe
+> [Variante mit separatem Admin-Hostnamen](#variante-mit-separatem-admin-hostnamen).
+
+![Konfiguration in der Auslieferung ohne Admin-Hostnamen](../assets/images/zeta-config-current.png)
 
 Hierbei ist zu beachten, dass der Ingress
 
@@ -124,3 +130,60 @@ Ein Aufruf durch den Test erfolgt dann wie folgt (anhand des VSDM als Beispiel):
    Pfad-Prefix `/pep` vom Ingress entfernt wird.
    Die `fachdienst-url` wird dabei in der Konfiguration des pepproxy in den helm
    charts konfiguriert.
+
+#### Variante mit separatem Admin-Hostnamen
+
+Wird `authserver.adminHostname` gesetzt, verteilt sich die Installation auf zwei
+Hostnamen. Das Routing der fachlichen Pfade bleibt dabei **unverändert** — die
+oben beschriebene Abbildung gilt weiter. Es kommen genau zwei Dinge hinzu: der
+Pfad `/auth/admin` wird auf dem Haupthostnamen gesperrt und die Admin-API wird
+über einen zweiten Hostnamen erreichbar.
+
+```mermaid
+---
+title: Routing mit separatem Admin-Hostnamen
+---
+flowchart LR
+    Client["`**Client**
+    (Primärsystem, ZETA SDK)`"]
+    Runner["`**Terraform / CI-CD**`"]
+
+    subgraph Pub["`Ingress — Haupthostname`"]
+        direction TB
+        pa["`**/auth/admin** → PEP → **403 Forbidden**`"]
+        pb["`/auth/... → Authserver (PDP)`"]
+        pc["`alle anderen Pfade → PEP → Fachdienst`"]
+    end
+
+    subgraph Adm["`Ingress — adminHostname`"]
+        aa["`/auth/... → Authserver (PDP),
+        einschließlich /auth/admin`"]
+    end
+
+    Client --> Pub
+    Runner --> Adm
+```
+
+Im Vergleich zum Auslieferungsstand:
+
+|                                 | ohne `adminHostname`       | mit `adminHostname`                                |
+|---------------------------------|----------------------------|----------------------------------------------------|
+| `/auth/**` am Haupthostnamen    | Ingress → Authserver       | Ingress → Authserver (unverändert)                 |
+| `/auth/admin` am Haupthostnamen | erreichbar                 | Ingress → PEP → `403`                              |
+| Zweiter Hostname                | nein                       | ja, mit eigenem Ingress und eigenem TLS-Zertifikat |
+| Zugang zur Admin-API            | über den Haupthostnamen    | ausschließlich über `adminHostname`                |
+| Alle übrigen Pfade              | Ingress → PEP → Fachdienst | unverändert                                        |
+
+Wichtig für das Verständnis: Der Discovery-Flow des Clients funktioniert in
+beiden Varianten identisch und immer über den Haupthostnamen. Die
+client-relevanten PDP-Endpunkte (Well-Known, Nonce, Token, Registration, JWKS)
+müssen unter der öffentlichen FQDN von außen erreichbar bleiben — ein
+vollständig internes Deployment des Authservers ist nicht möglich. Trennen lässt
+sich ausschließlich die Admin-API.
+
+Die Konfiguration, die Wirkungsweise der Sperre und ihre Grenzen beschreibt die
+[Helm-Chart-Referenz – Admin-API-Absicherung](Referenz_des_Helm_Charts.md#admin-api-absicherung).
+Für die Well-Known-Pfade in dieser Variante siehe
+[Konfiguration der Well-Known-Endpunkte](Konfiguration_der_Well-Known_Endpunkte.md).
+
+<!-- Quelle der Abbildung oben: ../drawio/zeta-guard-config-impl.drawio -->

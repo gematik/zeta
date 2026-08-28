@@ -1,4 +1,3 @@
-
 # Informationen für Fachdienst-Betreiber
 
 Fachdienst-Betreiber nutzen die Software der Fachdienst-Hersteller, ebenso
@@ -78,8 +77,11 @@ der Lastabhängigkeiten z.B. vom PDP zur Datenbank).
 
 Die beiden Domainen für Infinispan und die PDP Datenbank
 erfordern hierbei besondere Berücksichtigung, da sie Zustandsinformationen
-zwischen den Instanzen replizieren müssen, während die anderen
-Komponenten stateless, und damit unabhängig betreibbar/skalierbar sind.
+zwischen den Instanzen replizieren müssen. Zwei weitere Komponenten halten
+instanzlokalen, nicht replizierten Zustand und benötigen bei mehr als einer
+Replica daher Session-Affinität (siehe unten): der PEP (ASL-Sitzungen) und der
+Authorization Server (Nonce-Cache). Die übrigen Komponenten sind stateless und
+damit unabhängig betreibbar/skalierbar.
 
 Details dazu finden sich in der Dokumentation der [Deployment-Szenarien](Referenzen/Deploymentszenarien.md).
 
@@ -88,8 +90,26 @@ installiert. Die Nutzung externer Datenbanken ist
 in [Wie Sie ZETA Guard in Kubernetes konfigurieren](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md)
 beschrieben.
 
-Die genauen Bedingungen für bestimmte Skalierungen der Datenbanken
-(Infinispan und PDP Datenbank) befinden sich noch in der Entwicklung.
+Die Bedingungen für die Skalierung der zustandsbehafteten Komponenten sind in
+den jeweiligen Referenzen beschrieben:
+
+* **PDP-Datenbank (PostgreSQL/CloudNativePG):** Instanzen, Ressourcen und das
+  Zusammenspiel von Authserver-Replicas und Connection-Pool — siehe
+  [Helm-Chart-Referenz](Referenzen/Referenz_des_Helm_Charts.md)
+  (Abschnitte „CloudNativePG-Datenbankverbindung" und „Connection Pooling").
+* **Infinispan:** Anbindung eines externen, replizierten Infinispan — siehe
+  [Helm-Chart-Referenz](Referenzen/Referenz_des_Helm_Charts.md) (Abschnitt
+  „Infinispan").
+* **PEP:** Bei mehr als einer PEP-Replica ist Session-Affinität (Sticky
+  Sessions) zwingend erforderlich, da ASL-Sitzungen nur im lokalen Speicher der
+  jeweiligen Instanz liegen — siehe
+  [Wie Sie ZETA Guard in Kubernetes konfigurieren](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md).
+* **Authorization Server:** Nonce-Werte liegen im lokalen Cache der jeweiligen
+  Instanz. Bei mehr als einer Replica ist daher auch für die `/auth`-Pfade
+  Session-Affinität erforderlich; mit dem mitgelieferten F5 NIC konfiguriert
+  das Chart dies automatisch (consistent-hash über das `zeta_route`-Cookie),
+  bei anderen Ingress-Controllern muss eine äquivalente Affinität eingerichtet
+  werden.
 
 ## Systemvoraussetzungen
 
@@ -98,6 +118,13 @@ die nur für die ZETA-Komponenten (also ohne die eigentlichen Fachdienst-Kompone
 benötigt werden.
 
 ### Zugänge
+
+> **Begriffe:** „(ab) Umsetzungsstufe 2" bzw. „Stufe 2" bezeichnet die zweite
+> Ausbaustufe der ZETA-Spezifikation (u. a. Anmeldung von Versicherten über
+> sektorale IDPs); so markierte Punkte sind für den aktuellen Funktionsumfang
+> (Stufe 1) noch nicht erforderlich. „PIP/PAP" steht für Policy Information
+> Point / Policy Administration Point — die Bezugsquelle der signierten
+> OPA-Policy-Bundles.
 
 * Container images
 
@@ -120,7 +147,9 @@ benötigt werden.
     * Dienstanbieter-SIEM
 
 * anbietereigene Dienste (Abhängig vom Fachdienst, ab Umsetzungsstufe 2)
-    * Clientsystem Notification Service(s) – Apple Push Notifications, Firebase
+    * Clientsystem Notification Service(s) – Apple Push Notifications, Firebase;
+      als Vorschau verfügbar, siehe
+      [Wie der Notification Service funktioniert](Anleitungen/Wie_der_Notification_Service_funktioniert.md)
     * Email Confirmation-Code – Mailversand
 
 ### Infrastruktur
@@ -137,11 +166,10 @@ in der [Anleitung, einen ZETA-Guard im Kubernetes zu konfigurieren](Anleitungen/
 ### Konfiguration, Keys
 
 * Das ZETA-SDK benötigt zum Testen eine valide SM-B Datei aus dem verwendeten
-  Vertrauensraum im p12 Format, wie sie
-  von der gematik bezogen werden kann. Diese kann im Testdriver (proxy) Client
-  konfiguriert werden, um SM-B-basierte Authentifizierung vornehmen
-  zu können, und wird dann im PDP gegen den TI Vertrauensanker (Federation Master, TSL)
-  geprüft.
+  Vertrauensraum im p12 Format, wie sie von der gematik bezogen werden kann.
+  Diese kann im Testdriver (proxy) Client konfiguriert werden, um SM-B-basierte
+  Authentifizierung vornehmen zu können, und wird dann im PDP gegen den
+  TI-Vertrauensanker (Federation Master, TSL) geprüft.
 * Für ASL-Betrieb des PEP muss ein ECC-Schlüssel (Kurve P256) erstellt und ein
   entsprechendes Signatur-Zertifikat (Profil C.FD.AUT, technische Rolle
   oid_zeta-guard) von der gematik bestellt werden. Ferner wird das
@@ -156,19 +184,46 @@ Vertrauensanker-Container ist noch in Ausarbeitung der Spezifikation.
 Der ZETA-Guard wird als Softwarepaket geliefert, welches durch den Fachdienst-Hersteller
 in den Fachdienst integriert und durch den Fachdienst-Betreiber betrieben werden muss.
 
-Aus den gematik-Anforderungen ergeben sich (u.a.) Sicherheitsleistungen, die, je nach
-vertraglichem Verhältnis zwischen Fachdienst-Hersteller und -Betreiber von diesen
-zu leisten sind.
+Aus den gematik-Anforderungen ergeben sich (u.a.) Sicherheitsleistungen, die,
+je nach vertraglichem Verhältnis zwischen Fachdienst-Hersteller und -Betreiber
+von diesen zu leisten sind.
 
 Diese Sicherheitsleistungen sind in [Sicherheitsleistungen Betreiber](SicherheitsanforderungenZETAGuardBetreiber.md)
 dargelegt.
+
+## Inbetriebnahme-Checkliste
+
+Die folgende Checkliste führt in der empfohlenen Reihenfolge von den
+Voraussetzungen bis zum betriebsbereiten ZETA-Guard. Die Spalte
+**Pflicht/Optional** zeigt, ob der Schritt für einen produktiven Betrieb
+zwingend ist.
+
+| #  | Schritt                                                                                                 | Pflicht/Optional       | Anleitung/Referenz                                                                                                                                                                                                                                                                                  |
+|----|---------------------------------------------------------------------------------------------------------|------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1  | Deployment-Szenario für den eigenen Fachdienst wählen (Größe, Redundanz, Skalierung)                    | Pflicht                | [Deployment-Szenarien](Referenzen/Deploymentszenarien.md)                                                                                                                                                                                                                                           |
+| 2  | Zugänge und Material beschaffen: Container-Registry, TI-Dienste, SM-B (p12), ASL-Signatur-Zertifikat    | Pflicht                | dieses Dokument, [Systemvoraussetzungen](#systemvoraussetzungen)                                                                                                                                                                                                                                    |
+| 3  | Kubernetes-Infrastruktur vorbereiten (Cluster ≥ 1.32, Ingress-Controller, cert-manager/TLS, Operatoren) | Pflicht                | [Wie Sie ZETA Guard in Kubernetes konfigurieren](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md)                                                                                                                                                                                     |
+| 4  | Helm-Chart installieren                                                                                 | Pflicht                | testweise: [ZETA-Guard Quickstart](Anleitungen/ZETA_Guard_Quickstart.md); produktiv: [Wie Sie ZETA Guard in Kubernetes konfigurieren](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md) + [Helm-Chart-Referenz](Referenzen/Referenz_des_Helm_Charts.md)                                |
+| 5  | PDP konfigurieren (Terraform: Realm, Scopes, Policies)                                                  | Pflicht                | [Quickstart – PDP konfigurieren](Anleitungen/ZETA_Guard_Quickstart.md), [Konfiguration des PDP Services](Referenzen/Konfiguration_des_PDP_Services.md)                                                                                                                                              |
+| 6  | PEP an den Fachdienst anbinden (Proxy-Locations, Audience, Well-Known-Pfade)                            | Pflicht                | [Wie Sie ZETA Guard in Kubernetes konfigurieren](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md), [Konfiguration des PEP Http Proxy](Referenzen/Konfiguration_des_PEP_Http_Proxy.md), [Konfiguration der Well-Known-Endpunkte](Referenzen/Konfiguration_der_Well-Known_Endpunkte.md) |
+| 7  | OPA-Policy-Bezug aus dem PIP konfigurieren (WIF oder eigene Registry, Signaturprüfung)                  | Pflicht                | [Wie Sie OPA in ZETA Guard konfigurieren](Anleitungen/Wie_Sie_OPA_in_ZETA_Guard_konfigurieren.md); bei eigener Registry: [Wie Sie eine eigene OCI Registry verwenden](Anleitungen/Wie_Sie_eine_eigene_OCI_Registry_verwenden.md)                                                                    |
+| 8  | Telemetrie-Export an die gematik einrichten (TI-SIEM ist verpflichtend)                                 | Pflicht                | [Wie Sie Telemetrie des Resource Servers an die gematik schicken](Anleitungen/Wie_Sie_Telemetrie_des_Resource_Servers_an_die_gematik_schicken.md)                                                                                                                                                   |
+| 9  | Skalierung festlegen; bei mehr als einer PEP-Replica Session-Affinität aktivieren                       | Pflicht bei Skalierung | [Deployment-Szenarien](Referenzen/Deploymentszenarien.md), [Wie Sie ZETA Guard in Kubernetes konfigurieren](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md), [Wie Sie Ressourcen für ZETA Guard Pods verwalten](Anleitungen/Wie_Sie_Ressourcen_für_ZETA_Guard_Pods_verwalten.md)     |
+| 10 | Betriebsüberwachung einrichten: Logs, Metriken, Security-Events, Alarmierung                            | Pflicht                | [Troubleshooting & Debugging](Anleitungen/Troubleshooting_und_Debugging.md), [Security-Events](Referenzen/Security-Events.md)                                                                                                                                                                       |
+| 11 | Egress-NetworkPolicies aktivieren                                                                       | Optional (empfohlen)   | [Wie Sie Egress-NetworkPolicies konfigurieren](Anleitungen/Wie_Sie_Egress_NetworkPolicies_konfigurieren.md)                                                                                                                                                                                         |
+| 12 | Forward Proxy für ausgehende Verbindungen konfigurieren                                                 | Optional               | [Wie Sie einen Forward Proxy konfigurieren](Anleitungen/Wie_Sie_einen_Forward_Proxy_konfigurieren.md)                                                                                                                                                                                               |
+| 13 | Eigenes Observability-Backend anschließen                                                               | Optional               | [Wie Sie ein Observability-Backend anschließen](Anleitungen/Wie_Sie_ein_Observability-Backend_an_ZETA-Guard_anschließen.md)                                                                                                                                                                         |
+| 14 | Telemetrie filtern                                                                                      | Optional               | [Wie Sie Telemetrie filtern](Anleitungen/Wie_Sie_Telemetrie_filtern.md)                                                                                                                                                                                                                             |
+| 15 | Ende-zu-Ende-Test gegen den eigenen Fachdienst                                                          | Optional (empfohlen)   | [Wie Sie einen Ende-zu-Ende-Integrationstest ausführen](Anleitungen/Wie_Sie_einen_Ende_zu_Ende_Integrationstest_ausführen.md)                                                                                                                                                                       |
+| 16 | Notification Service aktivieren (Vorschau, abhängig vom Fachdienst)                                     | Optional               | [Wie der Notification Service funktioniert](Anleitungen/Wie_der_Notification_Service_funktioniert.md), [Konfiguration des Notification Service](Referenzen/Konfiguration_des_Notification_Service.md)                                                                                               |
 
 ## Relevante Anleitungen und Referenzen
 
 Die relevanten Anleitungen und Referenzen sind hier verlinkt:
 
-* Leitszenarien des Deployments des ZETA-Guard für unterschiedliche Fachdienste. Einstiegsdokument,
-  um die verschiedenen Deployment-Szenarien zu verstehen und für den eigenen Fachdienst auszuwählen.
+* Leitszenarien des Deployments des ZETA-Guard für unterschiedliche Fachdienste.
+  Einstiegsdokument, um die verschiedenen Deployment-Szenarien zu verstehen und
+  für den eigenen Fachdienst auszuwählen.
   [Deployment-Szenarien](Referenzen/Deploymentszenarien.md)
 
 Als Einstieg eignen sich folgende Dokumente besonders gut:
@@ -179,6 +234,9 @@ Als Einstieg eignen sich folgende Dokumente besonders gut:
   [Wie Sie den Cluster lokal mit KIND aufsetzen](Anleitungen/Wie_Sie_den_Cluster_lokal_mit_KIND_aufsetzen.md)
 * Konfigurationshinweise für den ZETA-Guard
   [Konfigurationshinweise](Referenzen/Konfigurationshinweise.md)
+* Wann und warum die Well-Known-Pfade angepasst werden müssen und wie doppelte
+  Well-Knowns vermieden werden
+  [Konfiguration der Well-Known-Endpunkte](Referenzen/Konfiguration_der_Well-Known_Endpunkte.md)
 
 Für den produktiven Betrieb des ZETA-Guard empfehlen sich zusätzlich folgende
 Dokumente:
@@ -187,26 +245,47 @@ Dokumente:
   [Wie Sie ZETA-Guard in Kubernetes konfigurieren](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md)
 * [Wie Sie Telemetrie des Resource Servers an die gematik schicken](Anleitungen/Wie_Sie_Telemetrie_des_Resource_Servers_an_die_gematik_schicken.md)
 * [Wie Sie ein Observability-Backend anschließen](Anleitungen/Wie_Sie_ein_Observability-Backend_an_ZETA-Guard_anschließen.md)
+* Wo sich Logs und Metriken finden, Log-Beispiele sowie Hinweise zu
+  Aufbewahrung, Rotation und Alarmierung
+  [Troubleshooting & Debugging](Anleitungen/Troubleshooting_und_Debugging.md)
+* Aufbau und Konfiguration des Notification Service (Vorschau, abhängig vom
+  Fachdienst):
+  [Wie der Notification Service funktioniert](Anleitungen/Wie_der_Notification_Service_funktioniert.md) und
+  [Konfiguration des Notification Service](Referenzen/Konfiguration_des_Notification_Service.md)
 
-* Administrative Aufgaben - diese Punkte werden noch weiter ausgeführt. Beispiele sind dafür:
-    * Festlegung der Skalierung
-    * Handhabung von Failover-Szenarien
-    * Auswertung von Logs
-    * ...
+* Administrative Aufgaben im laufenden Betrieb:
+    * Festlegung und Anpassung der Skalierung:
+      [Deployment-Szenarien](Referenzen/Deploymentszenarien.md) und
+      [Wie Sie Ressourcen für ZETA Guard Pods verwalten](Anleitungen/Wie_Sie_Ressourcen_für_ZETA_Guard_Pods_verwalten.md)
+    * Auswertung von Logs, Metriken und Security-Events sowie Alarmierung:
+      [Troubleshooting & Debugging](Anleitungen/Troubleshooting_und_Debugging.md) und
+      [Security-Events](Referenzen/Security-Events.md)
+    * Verwaltung von Client-Registrierungen (Limits, Ablauf, Widerruf von
+      Sitzungen):
+      [Wie der Client-Lebenszyklus verwaltet wird](Anleitungen/Wie_der_Client-Lebenszyklus_verwaltet_wird.md)
+    * Failover-Verhalten und Redundanz:
+      [Deployment-Szenarien](Referenzen/Deploymentszenarien.md) (Active-Active,
+      Skalierungsdomänen)
 
 ## Known Issues und Fehleranalysen
 
-Hier werden noch Informationen zu Rückmeldungen aus der Nutzung eingetragen.
+Bekannte Einschränkungen werden versioniert im Abschnitt „Known Issues" der
+[Release Notes des Helm-Chart-Repositories](https://github.com/gematik/zeta-guard-helm/blob/main/ReleaseNotes.md#known-issues)
+geführt — dort steht der jeweils für die eingesetzte Chart-Version gültige
+Stand. Prüfen Sie diesen Abschnitt vor jeder Installation und jedem Upgrade.
 
-### Besonderer Fehlersituationen
-
-Hier werden noch Informationen zu Rückmeldungen aus der Nutzung eingetragen.
-
-### Weitere Hinweise
-
-Hier werden noch Informationen zu Rückmeldungen aus der Nutzung eingetragen.
+Für die Analyse konkreter Fehlersituationen (typische Fehlerbilder,
+Diagnosepfade, Fundorte und Interpretation von Logs) siehe
+[Troubleshooting & Debugging](Anleitungen/Troubleshooting_und_Debugging.md).
 
 ## Wartung
 
-Ein definierter Wartungsprozess ist vor Meilenstein 4 aktuell nicht umgesetzt.
-Updates werden über die Image- bzw. git-Repositories verbreitet.
+Updates und Sicherheitspatches werden als neue Chart- und Image-Releases über
+die Release-Repositories bereitgestellt; die Änderungen je Version sind in den
+[Release Notes des Helm-Chart-Repositories](https://github.com/gematik/zeta-guard-helm/blob/main/ReleaseNotes.md)
+dokumentiert. Ein Upgrade erfolgt über `helm upgrade` auf die neue
+Chart-Version; ob zusätzlich die PDP-Konfiguration (Terraform) erneut
+angewendet werden muss, weisen die Release Notes aus. Die Melde- und
+Kommunikationswege für Schwachstellen, Fehler und Aktualisierungsbedarfe
+zwischen Hersteller/Betreiber und gematik sind über die etablierten
+ITSM-Prozesse abgestimmt.
