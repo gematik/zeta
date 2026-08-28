@@ -24,6 +24,7 @@
   * [Deploymentszenarien](Referenzen/Deploymentszenarien.md)
   * [Referenz des Helm Charts](Referenzen/Referenz_des_Helm_Charts.md)
   * [Konfigurationshinweise](Referenzen/Konfigurationshinweise.md)
+  * [Konzept: Laufzeitüberwachung](Referenzen/Konzept-Laufzeitueberwachung.md)
   * [Konfiguration des PEP Http Proxy](Referenzen/Konfiguration_des_PEP_Http_Proxy.md)
   * [Konfiguration des PDP Services](Referenzen/Konfiguration_des_PDP_Services.md)
   * [SDK-Übersicht](Referenzen/SDK-Uebersicht.md)

@@ -1,0 +1,212 @@
+# =============================================================================
+# BEISPIEL - NICHT NORMATIV, NICHT FUER DEN BETRIEB VERWENDEN
+# =============================================================================
+# Diese Datei demonstriert das Format nach src/schemas/egress-targets.yaml.
+#
+# Die verbindliche Liste wird NICHT ueber dieses Repository verteilt, sondern
+# als signiertes OCI-Artefakt aus der ZETA Artifact Registry bezogen - analog
+# zum Provisioning-Container und zu den OPA-Bundles. Gruende:
+#
+#   * Sie steuert eine Sicherheitsgrenze und muss signiert und pruefbar sein.
+#   * Der Betreiber hat ohnehin Egress zur Registry (Kategorie artifactRegistry)
+#     und muss nicht zusaetzlich GitHub freigeben.
+#   * Sie aendert sich unabhaengig vom Release-Zyklus der Dokumentation.
+#
+# Die TSP-Endpunkte unten sind bewusst durch Platzhalter ersetzt, damit diese
+# Datei nicht als inoffizielle Quelle missverstanden und kopiert wird.
+# =============================================================================
+
+apiVersion: zeta.gematik.de/v1
+kind: EgressTargets
+
+metadata:
+  environment: PU
+  status: example
+  generatedAt: "2026-08-27T06:00:00Z"
+  expiresAt: "2026-09-26T06:00:00Z"
+  tslSequenceNumber: 10322
+  note: >
+    TSP-Eintraege sind aus der TSL abgeleitet (source: cert-aia) oder vom TSP
+    benannt (source: declared). Die TSL selbst fuehrt fuer SMC-B nur
+    Zentralnetz-Adressen und Platzhalter; sie ist daher als alleinige Quelle
+    nicht ausreichend.
+
+targets:
+
+  # --- gematik-Dienste -------------------------------------------------------
+
+  - key: telemetry
+    purpose: Telemetriedaten-Empfaenger der gematik (OTLP)
+    owner: gematik
+    stability: stable
+    consumers: [telemetry-gateway]
+    endpoints:
+      - fqdn: otlp.v1.bd.prod.ccs.gematik.solutions
+        port: 4317
+        protocol: OTLP/gRPC
+        source: gematik-operated
+
+  - key: siem
+    purpose: TI SIEM der gematik
+    owner: gematik
+    stability: stable
+    consumers: [telemetry-gateway]
+    endpoints:
+      - fqdn: siem.example-gematik.invalid
+        port: 4317
+        protocol: OTLP/gRPC
+        source: gematik-operated
+
+  - key: pip
+    purpose: PIP - Quelle der OPA Policy Bundles
+    owner: gematik
+    stability: stable
+    consumers: [opa, opa-simulation]
+    endpoints:
+      - fqdn: pip.example-gematik.invalid
+        port: 443
+        protocol: HTTPS
+        source: gematik-operated
+
+  - key: popp
+    purpose: PoPP-Dienst (Proof of Patient Presence)
+    owner: gematik
+    stability: stable
+    consumers: [pep-proxy]
+    endpoints:
+      - fqdn: popp.example-gematik.invalid
+        port: 443
+        protocol: HTTPS
+        source: gematik-operated
+
+  # --- Registry --------------------------------------------------------------
+
+  - key: artifactRegistry
+    purpose: ZETA Artifact Registry (OCI-Images, OPA-Bundles, cosign-Signaturen)
+    owner: third-party
+    stability: volatile
+    consumers: [authserver, pep-proxy, opa, opa-simulation, provisioning-processor]
+    note: >
+      Anycast/CDN. Die per DNS aufgeloeste Adresse aendert sich ohne
+      Ankuendigung. Fuer Produktivumgebungen die von Google publizierten
+      CIDR-Bereiche verwenden (cloud.json, Filter europe-west3) statt der
+      Einzelaufloesung durch render-egress-values.sh. Mittelfristig ist
+      FQDN-basierter Egress die robustere Loesung.
+    endpoints:
+      - fqdn: europe-west3-docker.pkg.dev
+        port: 443
+        protocol: HTTPS
+        source: vendor-published
+
+  # --- OCSP: SMC-B -----------------------------------------------------------
+  #
+  # Diese Kategorie ist KEINE einzelne Adresse. SMC-B werden von mehreren TSP
+  # ausgegeben; der Authorization Server prueft den Zertifikatsstatus beim
+  # Responder des jeweils ausgebenden TSP. Fehlt ein TSP, ist das kein
+  # Netzwerkfehler, sondern eine Autorisierungsablehnung ausschliesslich fuer
+  # die Leistungserbringer dieses einen TSP.
+  #
+  # Beachte die abweichenden Ports - ein Grund, warum die Portangabe im Format
+  # verpflichtend ist.
+  #
+  # AUFRAEUMREGEL: Ein Endpunkt darf erst entfernt werden, wenn unter keiner der
+  # unter servesCa genannten CAs mehr gueltige Karten im Umlauf sind. SMC-B
+  # haben mehrjaehrige Laufzeiten; die Liste ist die Vereinigungsmenge ueber
+  # alle CA-Generationen, nicht die aktuelle Generation.
+
+  - key: ocspSmcbTsp
+    purpose: Im Internet erreichbare OCSP-Responder der zugelassenen SMC-B-TSP
+    owner: tsp
+    stability: stable
+    consumers: [authserver, pep-proxy]
+    endpoints:
+      - fqdn: ocsp-smcb.tsp-a.invalid
+        port: 8080
+        protocol: OCSP/HTTP
+        path: /ocsp
+        source: cert-aia
+        tsp: "TSP A"
+        servesCa:
+          - "TSPA.SMCB-CA1"
+        validUntil: "2031-06-30"
+      - fqdn: trustcenter.tsp-a.invalid
+        port: 80
+        protocol: OCSP/HTTP
+        path: /ocsp
+        source: cert-aia
+        tsp: "TSP A"
+        servesCa:
+          - "TSPA.SMCB-CA4"
+          - "TSPA.SMCB-CA10"
+      - fqdn: ocsp.smcb.tsp-b.invalid
+        port: 80
+        protocol: OCSP/HTTP
+        path: /ocspr
+        source: cert-aia
+        tsp: "TSP B"
+        servesCa:
+          - "TSPB.SMCB-CA1"
+          - "TSPB.SMCB-CA2"
+      - fqdn: ocsp.tsp-c.invalid
+        port: 443
+        protocol: OCSP/HTTPS
+        source: declared
+        tsp: "TSP C"
+        sourceRef: "Benennung TSP C im Zulassungsverfahren, <Dokument>, <Datum>"
+        note: >
+          Vom TSP benannt. Das OCSP-Signer-Zertifikat dieses TSP traegt keine
+          AIA-Extension, die URL ist daher aus der TSL nicht ableitbar.
+        servesCa:
+          - "TSPC.SMCB-CA3"
+          - "TSPC.SMCB-CA5"
+
+  # --- OCSP: uebrige Klassen -------------------------------------------------
+
+  - key: ocspTiPki
+    purpose: OCSP-Responder der TI-Komponenten-PKI
+    owner: gematik
+    stability: stable
+    consumers: [pep-proxy]
+    endpoints:
+      - fqdn: ocsp.ti-pki.invalid
+        port: 80
+        protocol: OCSP/HTTP
+        source: gematik-operated
+      - fqdn: download.crl.ti-dienste.de
+        port: 80
+        protocol: OCSP/HTTP
+        path: /ocsp/ec
+        source: cert-aia
+        sourceRef: >
+          AIA des Zertifikats "ZETA PIP/PAP Freigeber" (Aussteller
+          GEM.KOMP-CA8) aus zeta-guard-provisioning/prod/
+          policy-engine-bundle-keys/signers/. Nachvollziehbar mit
+          scripts/ocsp-endpoints-from-certs.sh.
+        tsp: "gematik GmbH"
+        servesCa:
+          - "GEM.KOMP-CA8"
+  - key: ocspCabForum
+    purpose: OCSP/CRL der TLS-CA des Betreibers (CAB Forum)
+    owner: operator
+    stability: volatile
+    consumers: [pep-proxy]
+    note: >
+      Kann die gematik nicht liefern - haengt daran, welche CA der Betreiber
+      fuer sein Ingress-Zertifikat gewaehlt hat. Massgeblich ist die AIA- bzw.
+      CDP-Extension des tatsaechlich eingesetzten Zertifikats:
+        openssl x509 -in <cert.pem> -noout -text | grep -A2 "OCSP"
+      Eintraege mit owner: operator werden von render-egress-values.sh
+      uebersprungen.
+    endpoints:
+      - fqdn: ocsp.example-ca.invalid
+        port: 80
+        protocol: OCSP/HTTP
+        source: declared
+        sourceRef: "AIA-Extension des eingesetzten Ingress-Zertifikats"
+
+  # --- Fehlende Kategorien ---------------------------------------------------
+  #
+  # Fuer Federation Master, Sektoraler IDP, Mail Relay und Clientsystem
+  # Notification Service existiert im Chart heute kein Egress-Schluessel (siehe
+  # Konzept Laufzeitueberwachung, Abschnitt 4.3.3 und offener Punkt 13). Sobald
+  # die Schluessel ergaenzt sind, gehoeren die Ziele hierher.
