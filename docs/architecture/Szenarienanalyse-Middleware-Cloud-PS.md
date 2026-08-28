@@ -501,7 +501,7 @@ Begründung:
    am Guard. Regulierte Sichtbarkeit ist der aus Sicherheitssicht bessere Zustand als unsichtbare Umgehung.
 2. **Der aktuelle Vorsprung von Szenario 2 ist geringer als das Zielbild suggeriert.** Solange die
    Attestierung software-basiert ist (`posture_type: software`, Hardware-Attestierung noch nicht
-   vollständig spezifiziert), ist der reale Sicherheitsgewinn des Endgeräte-Clients begrenzt. Ein
+   gefordert), ist der reale Sicherheitsgewinn des Endgeräte-Clients begrenzt. Ein
    striktes Verbot würde heute einen Marktausschluss für einen Schutz erkaufen, der erst mit der
    TPM-Attestierung seine volle Wirkung entfaltet.
 3. **Die Unterscheidbarkeit ist der eigentliche Wert.** Ist die Betriebsart im Client Statement
