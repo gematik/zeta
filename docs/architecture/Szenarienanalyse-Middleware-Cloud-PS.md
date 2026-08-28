@@ -498,7 +498,7 @@ Begründung:
    VDI, BYOD, Altsysteme). Unter Szenario 2 entstehen dieselben Architekturen als nicht
    spezifizierte Workarounds — Terminalserver, Remote-Sessions, geteilte „ZETA-Rechner". Das Ergebnis
    ist dasselbe Risiko *ohne* Kennzeichnung, *ohne* Zulassungsanforderungen und *ohne* Sichtbarkeit
-   am Guard. Regulierte Sichtbarkeit ist der sicherheitlich bessere Zustand als unsichtbare Umgehung.
+   am Guard. Regulierte Sichtbarkeit ist der aus Sicherheitssicht bessere Zustand als unsichtbare Umgehung.
 2. **Der aktuelle Vorsprung von Szenario 2 ist geringer als das Zielbild suggeriert.** Solange die
    Attestierung software-basiert ist (`posture_type: software`, Hardware-Attestierung noch nicht
    vollständig spezifiziert), ist der reale Sicherheitsgewinn des Endgeräte-Clients begrenzt. Ein
