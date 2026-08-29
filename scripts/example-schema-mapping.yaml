@@ -1,0 +1,109 @@
+# Maps example documents (under examples/) to the JSON Schema that defines
+# their shape (under src/schemas/). Used by scripts/validate_examples.py.
+#
+# Note: src/openapi/*.yaml response/request bodies all `$ref` straight into
+# src/schemas/*.yaml (see e.g. src/openapi/as-well-known.yaml), so validating
+# against src/schemas/ also covers the OpenAPI-described payloads.
+#
+# schema:   path relative to src/
+# examples: paths relative to examples/
+#
+# Every *.json file under examples/ must appear either in `mappings` or in
+# `no_schema` (with a reason). The validator fails the build if a new example
+# file shows up that isn't accounted for in either list.
+
+mappings:
+  - schema: schemas/access-token.yaml
+    examples:
+      - schemas/access-token/example-access-token.json
+
+  - schema: schemas/authorization-details.yaml
+    examples:
+      - schemas/authorization-details/authorization-details.json
+
+  - schema: schemas/client-assertion-jwt.yaml
+    examples:
+      - schemas/client-assertion-jwt/android.json
+      - schemas/client-assertion-jwt/apple.json
+      - schemas/client-assertion-jwt/linux-software.json
+      - schemas/client-assertion-jwt/linux-tpm.json
+      - schemas/client-assertion-jwt/software.json
+      - schemas/client-assertion-jwt/tpm.json
+
+  - schema: schemas/client-data.yaml
+    examples:
+      - schemas/client-data/client-data.json
+
+  - schema: schemas/dcr-request.yaml
+    examples:
+      - schemas/dcr-request/dcr-request-android.json
+      - schemas/dcr-request/dcr-request-apple.json
+      - schemas/dcr-request/dcr-request-software.json
+      - schemas/dcr-request/dcr-request-tpm.json
+      - schemas/dcr-request/dcr-request-zeta-att-token.json
+
+  - schema: schemas/pdp-decision.yaml
+    examples:
+      - schemas/pdp-decision/pdp-decision-allow.json
+      - schemas/pdp-decision/pdp-decision-deny.json
+
+  - schema: schemas/policy-engine-input.yaml
+    examples:
+      - schemas/policy-engine-input/policy-engine-input-android.json
+      - schemas/policy-engine-input/policy-engine-input-apple-assertion.json
+      - schemas/policy-engine-input/policy-engine-input-apple-attestation.json
+      - schemas/policy-engine-input/policy-engine-input-linux-software.json
+      - schemas/policy-engine-input/policy-engine-input-linux.json
+      - schemas/policy-engine-input/policy-engine-input-windows-software-vsdm.json
+      - schemas/policy-engine-input/policy-engine-input-windows-software.json
+      - schemas/policy-engine-input/policy-engine-input-windows.json
+      - schemas/policy-engine-input/statement-windows-missing-audience.json
+
+  - schema: schemas/subject-token-smb.yaml
+    examples:
+      - schemas/smb-id-token-jwt/example.json
+
+  - schema: schemas/token-response.yaml
+    examples:
+      - schemas/token-response/token-response.json
+
+  - schema: schemas/zeta-user-info.yaml
+    examples:
+      - schemas/zeta-user-info/zeta-user-info.json
+
+  # Discovery & configuration responses. The OpenAPI operations for these
+  # endpoints (src/openapi/as-well-known.yaml,
+  # src/openapi/oauth-protected-resource-well-known.yaml) reference these
+  # same schema files for their response bodies.
+  - schema: schemas/as-well-known.yaml
+    examples:
+      - discovery-and-configuration/05-oauth-authorization-server-well-known-response.json
+
+  - schema: schemas/opr-well-known.yaml
+    examples:
+      - discovery-and-configuration/02-oauth-protected-resource-response.json
+
+  - schema: schemas/tmp/api-catalog.yaml
+    examples:
+      - discovery-and-configuration/01-api-catalog-response.json
+
+# Example files that intentionally have no schema to validate against yet.
+# Each entry needs a reason so the gap stays visible instead of just being
+# silently ignored.
+no_schema:
+  - path: discovery-and-configuration/03-federation-fetch-response.json
+    reason: >-
+      No schema in src/ describes an OpenID Federation entity statement yet.
+      src/schemas/federation-master.yaml is a different artifact (a config
+      file listing Federation Master entity-statement URIs per environment).
+  - path: discovery-and-configuration/04-federation-master-jwks-response.json
+    reason: >-
+      No schema in src/ describes a raw JWKS document yet.
+  - path: opa-bundle/audiences/data.json
+    reason: OPA policy bundle data, not a JSON-Schema-described payload.
+  - path: opa-bundle/products/data.json
+    reason: OPA policy bundle data, not a JSON-Schema-described payload.
+  - path: opa-bundle/professions/data.json
+    reason: OPA policy bundle data, not a JSON-Schema-described payload.
+  - path: opa-bundle/token/data.json
+    reason: OPA policy bundle data, not a JSON-Schema-described payload.
