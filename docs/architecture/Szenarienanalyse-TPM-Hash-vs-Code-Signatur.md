@@ -1,6 +1,6 @@
 # Herstellerintegritätsprüfung bei der TPM-Attestierung — Szenarienanalyse
 
-**Stand:** 2026-08-28 · **Revision 1**
+**Stand:** 2026-08-31 · **Revision 2** (Kapitel 12 ergänzt: Bindung von Version, Signatur und laufendem Prozess)
 **Gegenstand:** Bewertung zweier Grundsatzoptionen dafür, wie der AuthS bei der TPM-Attestierung
 prüft, dass die auf dem Client geladene Software tatsächlich vom Hersteller stammt und nicht
 manipuliert wurde:
@@ -30,30 +30,35 @@ abgeleiteter Empfehlung.
 
 ## Inhaltsverzeichnis
 
-- [1 Ausgangslage](#1-ausgangslage)
-- [2 Was die Herstellerintegritätsprüfung heute tatsächlich zusichert](#2-was-die-herstellerintegritätsprüfung-heute-tatsächlich-zusichert)
-- [3 Ausprägungen von Szenario 2 (Varianten T2a–T2b)](#3-ausprägungen-von-szenario-2-varianten-t2at2b)
-- [4 Szenario 1: TPM-Hash (Gesamthash je Produktversion)](#4-szenario-1-tpm-hash-gesamthash-je-produktversion)
-  - [4.1 Entwicklung](#41-entwicklung)
-  - [4.2 Wartung](#42-wartung)
-  - [4.3 Betrieb](#43-betrieb)
-  - [4.4 Auswirkung auf Hersteller](#44-auswirkung-auf-hersteller)
-  - [4.5 Sicherheit (Zusammenfassung)](#45-sicherheit-zusammenfassung)
-- [5 Szenario 2: Code-Signatur-Schlüssel-Lösung](#5-szenario-2-code-signatur-schlüssel-lösung)
-  - [5.1 Entwicklung](#51-entwicklung)
-  - [5.2 Wartung](#52-wartung)
-  - [5.3 Betrieb](#53-betrieb)
-  - [5.4 Auswirkung auf Hersteller](#54-auswirkung-auf-hersteller)
-  - [5.5 Sicherheit (Zusammenfassung)](#55-sicherheit-zusammenfassung)
-- [6 Gegenüberstellung](#6-gegenüberstellung)
-- [7 Sicherheitsanalyse im Detail](#7-sicherheitsanalyse-im-detail)
-  - [7.1 Was genau verloren geht](#71-was-genau-verloren-geht)
-  - [7.2 Neue Risiken, die entstehen](#72-neue-risiken-die-entstehen)
-  - [7.3 Was *nicht* verloren geht](#73-was-nicht-verloren-geht)
-- [8 Kompensierende Maßnahmen für Szenario 2](#8-kompensierende-maßnahmen-für-szenario-2)
-- [9 Empfehlung](#9-empfehlung)
-- [10 Umsetzungsschritte der Empfehlung](#10-umsetzungsschritte-der-empfehlung)
-- [11 Offene Punkte und Entscheidungsbedarf](#11-offene-punkte-und-entscheidungsbedarf)
+- [Herstellerintegritätsprüfung bei der TPM-Attestierung — Szenarienanalyse](#herstellerintegritätsprüfung-bei-der-tpm-attestierung--szenarienanalyse)
+  - [Inhaltsverzeichnis](#inhaltsverzeichnis)
+  - [1 Ausgangslage](#1-ausgangslage)
+  - [2 Was die Herstellerintegritätsprüfung heute tatsächlich zusichert](#2-was-die-herstellerintegritätsprüfung-heute-tatsächlich-zusichert)
+  - [3 Ausprägungen von Szenario 2 (Varianten T2a–T2b)](#3-ausprägungen-von-szenario-2-varianten-t2at2b)
+  - [4 Szenario 1: TPM-Hash (Gesamthash je Produktversion)](#4-szenario-1-tpm-hash-gesamthash-je-produktversion)
+    - [4.1 Entwicklung](#41-entwicklung)
+    - [4.2 Wartung](#42-wartung)
+    - [4.3 Betrieb](#43-betrieb)
+    - [4.4 Auswirkung auf Hersteller](#44-auswirkung-auf-hersteller)
+    - [4.5 Sicherheit (Zusammenfassung)](#45-sicherheit-zusammenfassung)
+  - [5 Szenario 2: Code-Signatur-Schlüssel-Lösung](#5-szenario-2-code-signatur-schlüssel-lösung)
+    - [5.1 Entwicklung](#51-entwicklung)
+    - [5.2 Wartung](#52-wartung)
+    - [5.3 Betrieb](#53-betrieb)
+    - [5.4 Auswirkung auf Hersteller](#54-auswirkung-auf-hersteller)
+    - [5.5 Sicherheit (Zusammenfassung)](#55-sicherheit-zusammenfassung)
+  - [6 Gegenüberstellung](#6-gegenüberstellung)
+  - [7 Sicherheitsanalyse im Detail](#7-sicherheitsanalyse-im-detail)
+    - [7.1 Was genau verloren geht](#71-was-genau-verloren-geht)
+    - [7.2 Neue Risiken, die entstehen](#72-neue-risiken-die-entstehen)
+    - [7.3 Was *nicht* verloren geht](#73-was-nicht-verloren-geht)
+  - [8 Kompensierende Maßnahmen für Szenario 2](#8-kompensierende-maßnahmen-für-szenario-2)
+  - [9 Empfehlung](#9-empfehlung)
+  - [10 Umsetzungsschritte der Empfehlung](#10-umsetzungsschritte-der-empfehlung)
+  - [11 Offene Punkte und Entscheidungsbedarf](#11-offene-punkte-und-entscheidungsbedarf)
+  - [12 Ergänzende Analyse: Bindung von Version, Signatur und laufendem Prozess](#12-ergänzende-analyse-bindung-von-version-signatur-und-laufendem-prozess)
+    - [12.1 Wie stellt der ZAS sicher, dass die laufende PVS-Instanz der signierten Version entspricht?](#121-wie-stellt-der-zas-sicher-dass-die-laufende-pvs-instanz-der-signierten-version-entspricht)
+    - [12.2 Warum darf der PCR-/Referenzwert nicht an die Versionsnummer gekoppelt sein?](#122-warum-darf-der-pcr-referenzwert-nicht-an-die-versionsnummer-gekoppelt-sein)
 
 ---
 
@@ -448,3 +453,111 @@ Software-Anker bleibt und nicht als vollwertige Hardware-Attestierung kommunizie
    Hash-Ansatz vorbereitete Installationen übergeleitet — Parallelbetrieb oder harter Cutover?
 6. **Aufwand-Nutzen-Abwägung der KMS-/HSM-Pflicht** für kleinere Primärsystemhersteller ohne
    vorhandene Signing-Infrastruktur.
+7. **Extraktion von `product_version` aus dem signierten Artefakt:** Ist das für alle unterstützten
+   Primärsystem-Technologiestacks (native PE-Binaries, aber auch z. B. .NET-Assemblies oder
+   interpretierte/gehostete Laufzeiten) einheitlich möglich? Siehe [Kapitel 12.1](#121-wie-stellt-der-zas-sicher-dass-die-laufende-pvs-instanz-der-signierten-version-entspricht).
+8. **Enforcement- vs. Audit-Modus von WDAC/IMA-EVM (Maßnahme 1, Kapitel 8):** Nur im
+   Enforcement-Modus schließt sich die in Kapitel 12.1 beschriebene TOCTOU-Lücke tatsächlich; das
+   muss als verbindliche Anforderung und nicht nur als Empfehlung festgeschrieben werden.
+
+---
+
+## 12 Ergänzende Analyse: Bindung von Version, Signatur und laufendem Prozess
+
+Zwei Nachfragen zeigen, dass Kapitel 3–8 zwar den Referenzwert selbst (Hash vs. Zertifikat)
+bewerten, aber noch nicht explizit machen, (a) **woran** der ZAS die Signaturprüfung tatsächlich
+festmacht und (b) **was** konkret in das PCR extended werden darf, ohne den Kernvorteil von
+Szenario 2 wieder zu verlieren. Beide Punkte sind Voraussetzung dafür, dass Szenario 2 in der Praxis
+das hält, was Kapitel 5–6 ihm zuschreiben.
+
+### 12.1 Wie stellt der ZAS sicher, dass die laufende PVS-Instanz der signierten Version entspricht?
+
+**Problem:** Eine Code-Signaturprüfung beweist zunächst nur, dass *eine bestimmte Datei* vom
+Hersteller signiert wurde. Sie beweist nicht automatisch,
+
+1. dass genau diese Datei auch das ist, was aktuell als Prozess im Speicher läuft (Verify-then-Load-
+   Lücke/TOCTOU: DLL-Side-Loading, Prozess-Hollowing, nachträgliches In-Memory-Patching nach dem
+   Laden), und
+2. dass die separat gemeldete `product_version` — heute in
+   [posture-tpm.yaml](../../src/schemas/posture-tpm.yaml) ein eigenständiges, freies String-Feld —
+   tatsächlich zu genau dem signierten/geladenen Artefakt gehört. `product_version` ist im
+   heutigen Schema **nicht kryptografisch an `tpm_quote`/eine künftige `code_signature_verified`
+   gebunden**. Ein kompromittierter oder fehlerhafter ZAS könnte grundsätzlich „Signatur gültig"
+   und eine falsche (z. B. ältere, bereits zurückgezogene) `product_version` gleichzeitig melden,
+   ohne dass AuthS oder Policy Engine das anhand der heutigen Felder erkennen könnten.
+
+**Erforderliche Bausteine, damit Szenario 2 diese Bindung tatsächlich leistet:**
+
+1. **Version MUSS aus dem signierten Artefakt selbst gelesen werden, nicht als separates,
+   unabhängiges Feld gemeldet werden.** Der ZAS darf `product_version` nicht als freie Eingabe
+   übernehmen, sondern muss sie aus denselben Metadaten extrahieren, die von der Signatur
+   mit-abgedeckt sind (z. B. bei Windows-Authenticode ist die Versionsressource Teil der gehashten
+   PE-Datei; unter Linux müsste eine Versionsangabe analog in das signierte bzw. IMA-gemessene
+   Artefakt eingebettet werden — siehe die in Kapitel 5.1 und 8.2 benannte offene
+   Linux-Signaturkonvention). Jede Abweichung zwischen behaupteter und tatsächlich signierter
+   Version wird dadurch bereits als Signaturfehler sichtbar, statt unbemerkt zu bleiben.
+2. **Die Bindung „geprüfte Datei = laufender Prozess" MUSS auf OS-/Kernel-Ebene erzwungen werden,
+   nicht durch eine nachträgliche ZAS-Prüfung.** Das ist der eigentliche Zweck von **Maßnahme 1**
+   aus Kapitel 8 (Secure Boot + WDAC/IMA-EVM) — allerdings **nur im Enforcement-Modus**: Nur dort
+   verhindert das Betriebssystem selbst das Laden jeder Binärdatei, deren Signatur nicht zum
+   erwarteten Herausgeber passt, wodurch eine Diskrepanz zwischen „was signiert wurde" und „was
+   tatsächlich läuft" bereits strukturell ausgeschlossen ist. Im (schwächeren) Audit-Modus wird eine
+   Abweichung nur protokolliert, aber nicht verhindert — die ZAS-Prüfung bliebe dann ein
+   nachträglicher, durch denselben Angreifer umgehbarer Check. Dieser Unterschied ist in Kapitel 8
+   bisher nicht explizit benannt und sollte als verbindliche Anforderung (Enforcement, nicht Audit)
+   ergänzt werden (siehe neuer Offener Punkt 8 in Kapitel 11).
+3. **Messung muss am tatsächlich überwachten Prozess ansetzen, nicht an einem beliebigen
+   Installationsartefakt.** Das ZAS-Modell sieht laut
+   [5.3.1.2](../api/v1/index.md#41-windows-oder-linux-clients-mit-tpm-attestation) bereits ein
+   kontinuierliches Monitoring des Primärsystem-Prozesses vor; die Signaturprüfung muss an genau
+   diesem überwachten Prozess-Image ansetzen (Pfad/Hauptmodul des laufenden Prozesses), nicht an
+   einer separat abgelegten Kopie des Installationspakets.
+
+**Residuales Risiko, das auch mit allen drei Bausteinen bleibt:** Bei technologischen Stacks, in
+denen die eigentliche Anwendungslogik nicht in der signierten Host-Binärdatei selbst liegt, sondern
+in nachträglich geladenem, nicht mitsigniertem Code (z. B. interpretierte Skripte, dynamisch
+geladene Plugins, gemanagte Assemblies ohne durchgängige Signaturkette), greift Baustein 1 nicht
+vollständig — die Versionsangabe des eigentlich sicherheitsrelevanten Codes wäre dann weiterhin
+nicht verifizierbar an die Signatur gebunden. Dies ist als **neuer Offener Punkt 7** in Kapitel 11
+aufgenommen, da eine plattform-/technologieübergreifende Antwort noch aussteht.
+
+### 12.2 Warum darf der PCR-/Referenzwert nicht an die Versionsnummer gekoppelt sein?
+
+Die Beobachtung ist zutreffend und beschreibt exakt den in Kapitel 1 und 4 hergeleiteten
+Kernnachteil von **Szenario 1**: Dort ist der PCR-Wert ein Hash über die unveränderlichen Dateien
+*einer bestimmten Produktversion* — jede neue Version (auch ein reines Minor-Update oder ein
+Hotfix) ändert diesen Hash und würde, konsequent zu Ende gedacht, einen neuen Meldevorgang
+erzwingen. Genau dieser Mechanismus ist der Ausgangspunkt der gesamten Analyse (Kapitel 1) und der
+Grund, warum Szenario 1 in Kapitel 4.2/4.4 als mit modernen Release-Zyklen unvereinbar bewertet
+wird.
+
+**Deshalb darf in Szenario 2 nicht derselbe Fehler wiederholt werden.** Wie in
+[tmp/docs/01, Abschnitt 3](../../tmp/docs/01-spezifikationsaenderung-herstellerwert-abgleich.md#3-zielarchitektur-code-signing-statt-hash-vergleich)
+bereits angelegt, erweitert der ZAS das PCR in Szenario 2 **nicht** mit einem rohen Datei-/
+Versions-Hash, sondern mit dem **Prüfergebnis der Signaturverifikation** (Signer-Identität,
+z. B. Zertifikats-Fingerabdruck + Status „verifiziert"). Dieser Wert bleibt über beliebig viele
+Minor-/Patch-Releases hinweg **identisch**, solange derselbe Hersteller-Signaturschlüssel verwendet
+wird — er ändert sich nur bei Schlüsselrotation oder Vorfall, nicht bei jedem Release. Das löst das
+in der Frage benannte Problem strukturell, statt es zu kompensieren.
+
+Die konkrete Versionsinformation geht dabei **nicht verloren** — sie wird nur nicht mehr für den
+PCR-Referenzwertvergleich verwendet:
+
+- `product_version` wird (nach Baustein 1 aus Kapitel 12.1) aus dem signierten Artefakt extrahiert
+  und als eigenes, separates Feld an den AuthS gemeldet.
+- Der AuthS prüft sie nicht auf Gleichheit gegen einen fixen Referenzwert, sondern als
+  **Ordnungsvergleich** gegen `minimum_version` (`minimum_version_satisfied`, siehe
+  [tmp/docs/01, Abschnitt 4](../../tmp/docs/01-spezifikationsaenderung-herstellerwert-abgleich.md#4-vorgeschlagene-schema-ergänzungen)) —
+  also „ist die gemeldete Version mindestens so neu wie X", nicht „ist die gemeldete Version exakt
+  gleich X". `minimum_version` wird dabei nur bei einem bewussten Zurückziehen einer als
+  fehlerhaft/kompromittiert erkannten Version angehoben, nicht bei jedem regulären Release.
+- Auch der in Kapitel 3 beschriebene TPM-NV-Zähler (T2b) ist bewusst ein reiner, vom Hersteller bei
+  sicherheitsrelevanten Releases inkrementierter monotoner Zähler **ohne semantische Bindung** an
+  Major/Minor/Patch — auch hier wird dieselbe Kopplungsproblematik absichtlich vermieden.
+
+**Leitplanke für die Umsetzung:** Sollte in einer konkreten Implementierung dennoch erwogen werden,
+einen versionsabhängigen Hash weiterhin in das PCR zu extenden (etwa aus Kompatibilitäts- oder
+Übergangsgründen zu Szenario 1), wäre das ein Rückfall in exakt das Problem, das Szenario 2 lösen
+soll, und sollte explizit vermieden werden.
+
+---
