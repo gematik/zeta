@@ -1,6 +1,6 @@
 # Herstellerintegritätsprüfung bei der TPM-Attestierung — Szenarienanalyse
 
-**Stand:** 2026-08-31 · **Revision 2** (Kapitel 12 ergänzt: Bindung von Version, Signatur und laufendem Prozess)
+**Stand:** 2026-08-31 · **Revision 3** (Kapitel 13 ergänzt: technischer Ablauf der ZAS-Signaturprüfung)
 **Gegenstand:** Bewertung zweier Grundsatzoptionen dafür, wie der AuthS bei der TPM-Attestierung
 prüft, dass die auf dem Client geladene Software tatsächlich vom Hersteller stammt und nicht
 manipuliert wurde:
@@ -59,6 +59,13 @@ abgeleiteter Empfehlung.
   - [12 Ergänzende Analyse: Bindung von Version, Signatur und laufendem Prozess](#12-ergänzende-analyse-bindung-von-version-signatur-und-laufendem-prozess)
     - [12.1 Wie stellt der ZAS sicher, dass die laufende PVS-Instanz der signierten Version entspricht?](#121-wie-stellt-der-zas-sicher-dass-die-laufende-pvs-instanz-der-signierten-version-entspricht)
     - [12.2 Warum darf der PCR-/Referenzwert nicht an die Versionsnummer gekoppelt sein?](#122-warum-darf-der-pcr-referenzwert-nicht-an-die-versionsnummer-gekoppelt-sein)
+  - [13 Technischer Ablauf der ZAS-Signaturprüfung (Szenario 2)](#13-technischer-ablauf-der-zas-signaturprüfung-szenario-2)
+    - [13.1 Aufgabenteilung: ZAS (lokal) vs. AuthS (zentral)](#131-aufgabenteilung-zas-lokal-vs-auths-zentral)
+    - [13.2 Windows: Authenticode-Verifikation](#132-windows-authenticode-verifikation)
+    - [13.3 Linux: heute offen — Zielarchitektur-Skizze](#133-linux-heute-offen--zielarchitektur-skizze)
+    - [13.4 Konstruktion des PCR-Extend-Werts](#134-konstruktion-des-pcr-extend-werts)
+    - [13.5 Ablauf bei Fehlschlag der Signaturprüfung](#135-ablauf-bei-fehlschlag-der-signaturprüfung)
+    - [13.6 Bezug zu bestehenden Angriffsflächen](#136-bezug-zu-bestehenden-angriffsflächen)
 
 ---
 
@@ -459,6 +466,14 @@ Software-Anker bleibt und nicht als vollwertige Hardware-Attestierung kommunizie
 8. **Enforcement- vs. Audit-Modus von WDAC/IMA-EVM (Maßnahme 1, Kapitel 8):** Nur im
    Enforcement-Modus schließt sich die in Kapitel 12.1 beschriebene TOCTOU-Lücke tatsächlich; das
    muss als verbindliche Anforderung und nicht nur als Empfehlung festgeschrieben werden.
+9. **Fehlerfall-Verhalten der ZAS-Signaturprüfung:** Erweitert der ZAS das PCR bei ungültiger
+   Signatur mit einem expliziten „nicht verifiziert"-Wert (empfohlen, siehe
+   [Kapitel 13.5](#135-ablauf-bei-fehlschlag-der-signaturprüfung)), oder erzwingt er einen
+   vollständigen Fallback auf Software-Attestation? Muss verbindlich festgelegt werden.
+10. **Exaktes PCR-Extend-Format (Kapitel 13.4):** Der in dieser Analyse skizzierte Messwert
+    (`code_signer_fingerprint` + Ergebnis-Flag) ist ein Vorschlag und muss mit den
+    ZAS-Verantwortlichen sowie im Security-Review (Maßnahme 5, Kapitel 8) verbindlich abgestimmt
+    werden.
 
 ---
 
@@ -561,3 +576,116 @@ einen versionsabhängigen Hash weiterhin in das PCR zu extenden (etwa aus Kompat
 soll, und sollte explizit vermieden werden.
 
 ---
+
+## 13 Technischer Ablauf der ZAS-Signaturprüfung (Szenario 2)
+
+Kapitel 5 und 12 begründen *warum* auf Signaturprüfung umgestellt wird und *woran* sie gebunden sein
+muss. Dieses Kapitel beschreibt *wie* der ZAS die Prüfung konkret durchführt — als Präzisierung für
+die Sicherheitsbewertung. **Wichtig:** Nur die Windows-Umsetzung (13.2) stützt sich auf ein
+etabliertes, produktiv genutztes Verfahren (Authenticode). Die Linux-Skizze (13.3) sowie das
+PCR-Extend-Format (13.4) sind **Vorschläge dieser Analyse, kein abgestimmter Beschluss** — beides
+ist bereits als offener Punkt in Kapitel 11 (Punkte 1, 9, 10) geführt.
+
+### 13.1 Aufgabenteilung: ZAS (lokal) vs. AuthS (zentral)
+
+Die Prüfung ist bewusst zweigeteilt, konsistent mit Kapitel 3.1 aus
+[tmp/docs/01](../../tmp/docs/01-spezifikationsaenderung-herstellerwert-abgleich.md):
+
+| Prüfschritt | Wo | Warum dort |
+|---|---|---|
+| Kryptografische Signaturgültigkeit der Datei (Hash-Bindung) | **ZAS, lokal** | Braucht keine Netzwerkverbindung, muss auch bei jedem PVS-Start ohne Latenz laufen |
+| Extraktion Signer-Identität (Zertifikats-Fingerabdruck) | **ZAS, lokal** | Reines Auslesen, keine Vertrauensentscheidung nötig |
+| Extraktion `product_version` aus dem signierten Artefakt | **ZAS, lokal** | Muss aus derselben Datei kommen, die gerade geprüft wurde (Kapitel 12.1) |
+| Ist der Signer vertrauenswürdig? (Kettenvalidierung gegen Hersteller-Trust-Store) | **AuthS, zentral** | Der Trust-Store ist eine gematik-seitig gepflegte, zentrale Ressource, kein Client-Artefakt |
+| Sperrstatus (OCSP) | **AuthS, zentral** | Erfordert Netzwerkzugriff auf den OCSP-Responder; ZAS-Umgebungen sind ggf. netzwerkeingeschränkt |
+| Mindestversion-Vergleich (`minimum_version_satisfied`) | **AuthS, zentral** | Mindestversion wird zentral über die gematik/OPA-Bundle-Distribution verteilt, nicht clientseitig gepflegt |
+
+Der ZAS liefert also **nur Fakten** (Signatur kryptografisch gültig ja/nein, welcher Signer,
+welche Version), **keine Vertrauensbewertung** — die Bewertung bleibt vollständig beim AuthS. Das
+hält die ZAS-Logik einfach und auditierbar und vermeidet, dass jede Client-Installation einen
+aktuellen Hersteller-Trust-Store und OCSP-Konnektivität benötigt.
+
+### 13.2 Windows: Authenticode-Verifikation
+
+1. **Zielartefakt bestimmen:** Der ZAS ermittelt den Dateipfad des Hauptmoduls des Prozesses, den er
+   laut [5.3.1.2](../api/v1/index.md#41-windows-oder-linux-clients-mit-tpm-attestation) ohnehin
+   kontinuierlich überwacht — nicht eine separat abgelegte Kopie des Installationspakets (siehe
+   Kapitel 12.1, Baustein 3).
+2. **Signatur prüfen:** Aufruf von `WinVerifyTrust()` mit `WINTRUST_ACTION_GENERIC_VERIFY_V2` und
+   `WTD_CHOICE_FILE` auf genau dieser Datei. Das validiert:
+   - dass der Authenticode-Hash der Datei (SHA-256 über die PE-Datei, ausgenommen Checksum-Feld und
+     Zertifikatstabelle) mit dem im eingebetteten PKCS#7-Blob signierten Hash übereinstimmt (Datei
+     seit Signierung unverändert),
+   - dass sich strukturell eine Zertifikatskette zum eingebetteten Aussteller aufbauen lässt
+     (`CertGetCertificateChain`).
+   - Bewusst **`WTD_REVOKE_NONE`**: keine Sperrprüfung im ZAS selbst — das ist laut 13.1 Aufgabe des
+     AuthS (OCSP), um den PVS-Start nicht von Netzwerkverfügbarkeit abhängig zu machen.
+   - Der ZAS entscheidet an dieser Stelle **nicht**, ob die Wurzel vertrauenswürdig ist — er prüft
+     nur die kryptografische Konsistenz der eingebetteten Signatur.
+3. **Signer-Identität extrahieren:** SHA-256-Fingerabdruck des Leaf-Zertifikats →
+   `code_signer_fingerprint`.
+4. **Version aus derselben Datei lesen:** Die `VS_VERSIONINFO`-Ressource ist Bestandteil der
+   Authenticode-gehashten PE-Datei — der ZAS liest `product_version` aus dieser Ressource, **nicht**
+   aus einem separaten, unabhängigen Feld (setzt Kapitel 12.1, Baustein 1 um).
+5. **Ergebnis:** `code_signature_verified` (Schritt 2 erfolgreich), `code_signer_fingerprint`
+   (Schritt 3), `product_version` (Schritt 4) — alle drei fließen in das Client Statement
+   ([posture-tpm.yaml](../../src/schemas/posture-tpm.yaml)) und in den PCR-Extend-Wert (13.4) ein.
+
+### 13.3 Linux: heute offen — Zielarchitektur-Skizze
+
+Es gibt noch **keine** verbindliche gematik-Konvention (Offener Punkt 1, Kapitel 11); die
+Linux-Unreife ist laut Kapitel 5.1/8.2 das größte Einzelrisiko von Szenario 2. Skizze eines
+IMA/EVM-basierten Zielbilds, damit die Sicherheitsbewertung nicht im Vagen bleibt:
+
+- **IMA (Integrity Measurement Architecture):** Jede Datei trägt ein `security.ima`-Erweiterungsattribut
+  mit einem signierten Datei-Hash. Der öffentliche Prüfschlüssel liegt im Kernel-Keyring, das seinerseits
+  beim Boot über Secure Boot/MOK abgesichert sein muss.
+- **EVM (Extended Verification Module):** Schützt die Erweiterungsattribute selbst (inkl.
+  `security.ima`) gegen Offline-Manipulation am ruhenden Dateisystem.
+- Der ZAS würde **nicht** selbst eine eigene PKCS#7-Prüfung implementieren, sondern den vom Kernel
+  bereits ermittelten IMA-Appraisal-Status des laufenden Prozess-Binaries auslesen (z. B. über
+  `securityfs`/Audit-Log) — die eigentliche Durchsetzung bleibt im Kernel (Enforcement-Modus, siehe
+  Kapitel 12.1 Baustein 2), nicht im ZAS-Userspace-Code.
+- Versionsauslesung analog zu 13.2 Schritt 4 müsste ebenfalls aus einem signatur-/IMA-gedeckten
+  Artefakt erfolgen (z. B. eingebettete ELF-Metadaten oder ein signiertes Begleitmanifest) — Format
+  ist nicht spezifiziert.
+
+### 13.4 Konstruktion des PCR-Extend-Werts
+
+Damit Kapitel 12.2 gilt (PCR-Wert darf sich nicht bei jedem Minor-/Patch-Release ändern), darf **nicht**
+die Datei oder die Version gehasht werden, sondern ausschließlich das Prüfergebnis:
+
+```text
+Messwert = SHA-256( "ZETA-CODE-SIG-v1" || code_signer_fingerprint || Ergebnis-Flag )
+Ergebnis-Flag = 0x01, wenn code_signature_verified == true, sonst 0x00
+```
+
+Dieses konkrete Format ist ein **Vorschlag dieser Analyse** (neuer Offener Punkt 10, Kapitel 11) und
+noch mit den ZAS-Verantwortlichen sowie im Security-Review (Maßnahme 5, Kapitel 8) abzustimmen.
+Entscheidend ist nur die Eigenschaft: Der Wert hängt ausschließlich von `code_signer_fingerprint`
+und dem Prüfergebnis ab — er ändert sich über beliebig viele Minor-/Patch-Releases **nicht**,
+sondern ausschließlich bei Zertifikatsrotation oder einem fehlgeschlagenen Prüfergebnis.
+
+### 13.5 Ablauf bei Fehlschlag der Signaturprüfung
+
+Bislang nirgends spezifiziert (neuer Offener Punkt 9, Kapitel 11) — zwei Optionen:
+
+- **Option A (empfohlen):** Der ZAS extended das PCR trotzdem, aber mit Ergebnis-Flag `0x00`
+  („nicht verifiziert"). Der Vorgang wird dadurch nicht verschleiert, sondern über
+  `code_signature_verified = false` im Client Statement und im Event Log sichtbar und vom AuthS
+  auswertbar zurückweisbar.
+- **Option B:** Der ZAS verweigert die PCR-Nutzung vollständig und erzwingt den Fallback auf reine
+  Software-Attestation — analog zum bestehenden „PCR bereits belegt"-Fallback in
+  [5.3.1.1.1](../api/v1/index.md#41-windows-oder-linux-clients-mit-tpm-attestation).
+
+Option A wird empfohlen, weil sie einen aktiven Manipulationsversuch nicht wie einen harmlosen
+Fallback aussehen lässt, sondern explizit und auswertbar protokolliert.
+
+### 13.6 Bezug zu bestehenden Angriffsflächen
+
+Dieser Mechanismus ändert nichts an der in Kapitel 2 und 7 beschriebenen ZAS-Ersatz-Lücke: Ein durch
+einen Angreifer mit Admin-/Root-Rechten unterschobener, manipulierter ZAS könnte Schritt 13.2/13.3
+schlicht überspringen und trotzdem `code_signature_verified = true` in das PCR extenden — er
+kontrolliert ja selbst, was gemessen wird. Genau deshalb bleibt **Maßnahme 1** (Secure Boot +
+WDAC/IMA-EVM, zwingend im **Enforcement-Modus**, siehe Kapitel 12.1 Baustein 2) die Voraussetzung
+dafür, dass der hier beschriebene Ablauf tatsächlich das leistet, was Kapitel 5–6 ihm zuschreiben.
