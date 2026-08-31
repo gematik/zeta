@@ -306,14 +306,14 @@ Charts, siehe
 | (11) | Authorization Server | Sektoraler IDP | HTTPS 443 | OIDC: Entity Statement, PAR, Token-Endpunkt, JWKS | *(fehlt, siehe Abschnitt 4.3.3)* |
 | (8) | Authorization Server | Mail Relay (Zustellung an den E-Mail Client des Nutzers) | SMTPS 465 bzw. STARTTLS 587 | Versand des TOFU-OTP | *(fehlt, siehe Abschnitt 4.3.3)* |
 | (2) | Local Artifact Registry Cache | ZETA Artifact Registry (gematik) | HTTPS 443 | OCI-Images, OPA-Bundles, cosign-Signaturartefakte | `artifactRegistry` |
-| (21) | Telemetriedaten Service | Telemetriedaten-Empfänger (gematik) | OTLP/gRPC 4317, mTLS | Telemetrieausleitung an die gematik | `telemetry` |
-| (22) | Telemetriedaten Service | TI SIEM (gematik) | OTLP/gRPC 4317, mTLS | Sicherheitsereignisse des ZETA Guard **und** die über (19) eingespeisten Ereignisse des Anbieter-SIEM | `siem` |
+| (21) | Telemetriedaten Service | Telemetriedaten-Empfänger (gematik) | OTLP/gRPC 443 | Telemetrieausleitung an die gematik | `telemetry` |
+| (22) | Telemetriedaten Service | TI SIEM (gematik) | OTLP/gRPC 443 | Sicherheitsereignisse des ZETA Guard **und** die über (19) eingespeisten Ereignisse des Anbieter-SIEM | `siem` |
 | (25) | Notification Service | Clientsystem Notification Service | HTTPS 443 | Push-Benachrichtigung an das Clientsystem | *(fehlt, siehe Abschnitt 4.3.3)* |
 | o. Nr. | HSM Proxy | HSM | herstellerspezifisch (PKCS#11 über TCP) | Schlüsseloperationen; Freigabe verantwortet der **DH** | — |
 | n. i. B. | Policy Engine (OPA), OPA-Simulation | PIP | HTTPS 443 | Quelle der OPA-Policy-Bundles | `pip` |
 | n. i. B. | PEP HTTP Proxy | PoPP-Dienst | HTTPS 443 | Proof of Patient Presence | `popp` |
 | n. i. B. | Authorization Server | OCSP-Responder **aller zugelassenen SMC-B-TSP** | HTTP 80, HTTPS 443 | Statusprüfung des SMC-B-Zertifikats bei der Validierung der SMC-B-Signatur | `ocspSmcbTsp` |
-| n. i. B. | PEP HTTP Proxy | OCSP-/CRL-Responder | HTTP 80, HTTPS 443 | Zertifikatsstatusprüfung für TLS-Client-Zertifikate, TI-Komponenten-PKI und SMC-B | `ocspCabForum`, `ocspTiPki`, `ocspSmcbTsp` |
+| n. i. B. | PEP HTTP Proxy | OCSP-Responder | HTTP 80, HTTPS 443 | OCSP Stapling Zertifikatsstatusprüfung für eigenes TLS-Zertifikat und TI-Komponenten-PKI | eine CA aus `ocspCabForum`, `ocspTiPki` |
 | n. i. B. | PEP HTTP Proxy | Anbieter-interne Resource Server | HTTPS | Fachdienst außerhalb des Clusters | `providerInternal.resourceServers` |
 | n. i. B. | Telemetriedaten Service | Anbieter-internes Telemetriesystem | OTLP | Observability-Backend des Anbieters | `providerInternal.telemetrySystems` |
 | n. i. B. | alle Kernkomponenten (Init-Container) | Anbieter-interne Artifact Registry | HTTPS 443 | gespiegelte Images und Bundles | `providerArtifactRegistry` |
