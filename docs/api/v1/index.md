@@ -6,7 +6,7 @@
 | ----------------------------- | --------------------------------- |
 | Dokumenttitel                 | ZETA API v2.0.0-draft             |
 | Dokumentversion               | 2.0.0-draft                       |
-| Stand                         | 17.06.2026                        |
+| Stand                         | 01.09.2026                        |
 | Status                        | Draft                             |
 | Verantwortlich                | gematik                           |
 | Gültigkeitsbereich            | ZETA Guard API                    |
@@ -70,6 +70,41 @@ Bevor ein ZETA-Client erfolgreich mit einem Resource Server kommunizieren kann, 
 2. **Trust Anchor Informationen (`roots.json`)**: Die Datei [roots.json](https://download.tsl.ti-dienste.de/ECC/ROOT-CA/roots.json) dient dem Client als lokaler Vertrauensanker, um die Vertrauenskette beim Aufbau einer ZETA/ASL-Verbindung zu validieren. Diese Datei muss wöchentlich aktualisiert werden.
 3. **Konnektor und SMC-B**: Bei stationären Clients im Leistungserbringer-Umfeld wird zur Authentifizierung der Institution ein SMC-B-Institutionszertifikat sowie die Schnittstelle des Konnektors oder TI-Gateways benötigt.
 4. **VSDM2 (Versichertenstammdatenmanagement 2.0)**: Für fachspezifische Anfragen an einen VSDM2-Resource-Server muss ein gültiges **PoPP-Token** (Proof of Patient Presence) im HTTP-Header `PoPP` an den ZETA-Client übergeben und an die PDP übermittelt werden.
+5. **Zeitbezug**: Alle vom Client signierten Artefakte tragen Zeitstempel, die der Authorization Server gegen seine eigene Uhr prüft. Der Client muss die Serverzeit ermitteln und verwenden — siehe [Zeitsynchronisation und Serverzeit-Offset](#zeitsynchronisation-und-serverzeit-offset).
+
+### Zeitsynchronisation und Serverzeit-Offset
+
+Der Authorization Server (AuthS) prüft die Zeitstempel **aller** vom Client signierten Artefakte (`iat`, `exp` und `nbf` in Client Assertion, DPoP-Proof und Subject Token) gegen seine **eigene** Uhr. Die dabei wirksamen Toleranzfenster sind eng und clientseitig nicht konfigurierbar. Eine abweichende lokale Systemuhr — auf nicht domänengebundenen Windows-Arbeitsplätzen keine Seltenheit — führt deshalb zu HTTP `400`/`401`, obwohl Signatur, Schlüsselbindung und Attestierung korrekt sind.
+
+**Regel:** Ein ZETA-Client MUSS alle Zeitstempel in signierten Artefakten aus der **Serverzeit** ableiten und DARF sich dabei NICHT auf die lokale Systemuhr verlassen. Eine NTP-Synchronisation des Betriebssystems ist empfohlen, als alleinige Maßnahme jedoch nicht ausreichend, da sie in der Einsatzumgebung des Leistungserbringers nicht durchsetzbar ist.
+
+**Ermittlung des Offsets**
+
+Jede HTTP-Antwort des ZETA Guard trägt einen `Date`-Header (RFC 9110, Abschnitt 6.6.1). Der Client bildet daraus einen Offset — vorzugsweise aus der Antwort auf `GET /nonce`, die dem `POST /token` ohnehin unmittelbar vorausgeht:
+
+```text
+offset      = Date-Header der Antwort (Unix-Zeit) − lokale Unix-Zeit beim Empfang der Antwort
+serverNow() = lokale Unix-Zeit + offset
+```
+
+Sämtliche `iat`-, `exp`- und `nbf`-Werte werden anschließend aus `serverNow()` gebildet — nicht aus der Systemuhr.
+
+Hinweise zur Umsetzung:
+
+- Für die Zeitspanne zwischen Offset-Ermittlung und Signatur SOLLTE eine monotone Uhr verwendet werden, damit ein NTP-Sprung oder eine Zeitumstellung den Offset nicht verfälscht.
+- Der `Date`-Header hat eine Auflösung von einer Sekunde; zusammen mit der halben Round-Trip-Zeit verbleibt eine Restunsicherheit von deutlich unter einer Sekunde. Gegenüber den unten genannten Toleranzfenstern ist das unkritisch.
+- Der Offset SOLLTE je Token-Session bei `GET /nonce` neu bestimmt und nicht dauerhaft persistiert werden.
+- Empfängt der Client trotz Offset-Korrektur einen zeitbezogenen Fehler (siehe [8.2 API Fehler-Tabelle & Troubleshooting](#82-api-fehler-tabelle--troubleshooting)), SOLLTE er den Offset genau einmal neu bestimmen und die Anfrage wiederholen, bevor er den Fehler an das Primärsystem meldet.
+
+**Wirksame Toleranzen** (nicht normativ; Implementierungsstand des ZETA Guard, Δ = Client-Uhr − Server-Uhr, `L` = gewählte Lebensdauer der Client Assertion):
+
+| Artefakt | Prüfung des AuthS | Client-Uhr darf vorlaufen | Client-Uhr darf nachlaufen |
+| ---------- | ------------------- | --------------------------- | ---------------------------- |
+| Client Assertion ohne `iat` | `exp − Serverzeit ≤ 60 s` (max. Assertion-Lebensdauer) | Δ ≤ 60 s − `L`, bei `L` = 30 s also **+ 30 s** | Δ > −`L`, bei `L` = 30 s also **− 30 s** |
+| Client Assertion mit `iat` | `iat − 15 s ≤ Serverzeit` | **+ 15 s** | Δ > −`L`, bei `L` = 30 s also **− 30 s** |
+| DPoP-Proof (`iat` ist Pflicht) | `Serverzeit − 25 s ≤ iat ≤ Serverzeit + 15 s` | **+ 15 s** | **− 25 s** |
+
+Maßgeblich ist immer das engste Fenster, also das des DPoP-Proofs: **+ 15 s / − 25 s**. Ein zusätzliches `iat` in der Client Assertion verbessert die Toleranz **nicht** — es ersetzt lediglich die Prüfung gegen die maximale Lebensdauer durch eine engere Prüfung auf ein in der Zukunft liegendes Ausstellungsdatum. Ein zuverlässiger Betrieb ist deshalb nur über die Offset-Korrektur erreichbar.
 
 ### Ablauf Übersicht (alle stationären Clients)
 
@@ -408,7 +443,7 @@ Content-Type: application/json
 
 Nach erfolgreicher Registrierung bereitet der Client die Authentifizierung am Token-Endpunkt vor. Hierbei werden drei wesentliche Artefakte erstellt: das **Subject Token** (signiert durch die SMC-B), die **Attestation Evidence** (TPM Quote) und die **Client Assertion** (signiert mit `PrK.Client.Sig`).
 
-- *(01) Nonce abholen:* Der Client ruft `GET /nonce` am AuthS auf, um eine frische Nonce für Replay-Schutz zu erhalten.
+- *(01) Nonce abholen:* Der Client ruft `GET /nonce` am AuthS auf, um eine frische Nonce für Replay-Schutz zu erhalten. Aus dem `Date`-Header dieser Antwort bestimmt der Client zugleich den Serverzeit-Offset, aus dem alle folgenden Zeitstempel gebildet werden (siehe [Zeitsynchronisation und Serverzeit-Offset](#zeitsynchronisation-und-serverzeit-offset)).
 - *(02) DPoP Key Pair:* Der Client generiert ein kurzlebiges DPoP-Schlüsselpaar (`PrK.DPoP.Sig` / `PuK.DPoP.Sig`) für die Token-Session.
 - *(03) Subject Token erstellen:* Der Client erstellt das Subject Token (JWT) mit der eingebetteten Nonce. Dieses Token wird mit der SMC-B signiert.
 - *(04)–(07) SMC-B Signatur:* Das Subject Token wird über den Konnektor/TI-Gateway an die SM(C)-B weitergeleitet und dort signiert.
@@ -1319,6 +1354,7 @@ Sämtliche Fehler der ZETA Guard Endpunkte folgen dem JSON-Schema [zeta-error.ya
 | HTTP Status | Fehler-Code (`error`) | Mögliche Ursache | Troubleshooting-Schritte |
 | ------------- | ----------------------- | ------------------ | -------------------------- |
 | **400** | `invalid_request` | Der DPoP-Proof oder das HTTP-Format ist ungültig. | 1. Gültigkeit des `DPoP`-Headers prüfen (z.B. Zeitstempel, URI).<br>2. Parameter im URL-kodierten Request-Body validieren. |
+| **400** / **401** | `invalid_request` / `invalid_client` | Die Zeitstempel des DPoP-Proofs oder der Client Assertion liegen außerhalb des Toleranzfensters des AuthS — Ursache ist praktisch immer eine abweichende lokale Systemuhr. Typische Meldungen im `error_description`: `DPoP proof is not active`, `Token is not active`, `Token was issued in the future`, `Token expiration is too far in the future and iat claim not present in token`. | 1. Serverzeit-Offset aus dem `Date`-Header der AuthS-Antwort ermitteln und alle `iat`/`exp`/`nbf` daraus ableiten (siehe [Zeitsynchronisation und Serverzeit-Offset](#zeitsynchronisation-und-serverzeit-offset)).<br>2. Anfrage einmalig mit neu bestimmtem Offset wiederholen.<br>3. Abweichung der Systemuhr des Clients gegen eine verlässliche Zeitquelle messen und protokollieren. |
 | **401** | `invalid_client` | Die Signatur der Client Assertion ist ungültig oder der Client Instance Key unbekannt. | 1. DCR-Registrierungsstatus des Clients prüfen.<br>2. Verwendeten Signaturalgorithmus und Schlüssel verifizieren. |
 | **403** | `access_denied` | Attestierungsprüfung fehlgeschlagen; PCR-Werte weichen von Baseline ab. | 1. TPM PCRs prüfen (Integrität von ZAS/System).<br>2. Sicherstellen, dass keine unerlaubte Kernel-Modifikation vorliegt. |
 | **404** | `resource_not_found` | Falscher Well-Known Pfad oder Endpoint. | 1. FQDN des Resource Servers und Pfadstruktur prüfen. |
@@ -1376,6 +1412,7 @@ Die Bearbeitungszeiten müssen unter Last folgende Kriterien erfüllen:
 ### 10.3 Client-Verhaltensregeln
 
 - **Rate Limits**: Clients MÜSSEN die Ratenbegrenzung beachten. Wird ein HTTP-Status `429` empfangen, sind erneute Anfragen mit einem **Exponential Backoff mit Jitter** auszuführen.
+- **Zeitstempel**: Clients MÜSSEN `iat`, `exp` und `nbf` aller signierten Artefakte aus der Serverzeit ableiten, die aus dem `Date`-Header einer AuthS-Antwort bestimmt wird, und DÜRFEN sich NICHT auf die lokale Systemuhr verlassen (siehe [Zeitsynchronisation und Serverzeit-Offset](#zeitsynchronisation-und-serverzeit-offset)).
 
 ---
 
