@@ -39,6 +39,7 @@ alt Kein ZETA Attestation Token vorhanden
       Der ZETA Client unterscheidet den zu nutzenden AuthS-Endpunkt anhand des Pfads.
     end note
 
+    AuthS -> AuthS: Pinne attestation_type, platform, product_id und ak_jkt (Thumbprint PuK.AK.Sig)\nim Registrierungsdatensatz (binding_status: pinned)
     AuthS -> AuthS: Store Client (state: pending_user_binding)
     AuthS --> Client--: 201 Created {client_id, status: pending_user_binding}
 

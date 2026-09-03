@@ -37,6 +37,7 @@ else ZETA Attestation Token vorhanden
     AuthS -> AuthS: Extrahiere PuK.AK.Sig aus Token, prüfe signed_Hash_PuK.Client.Sig
 end
 
+AuthS -> AuthS: Pinne attestation_type, platform, product_id und ak_jkt (Thumbprint PuK.AK.Sig)\nim Registrierungsdatensatz (binding_status: pinned)
 AuthS -> AuthS: Store Client Placeholder
 AuthS --> Client--: 201 Created {client_id}
 

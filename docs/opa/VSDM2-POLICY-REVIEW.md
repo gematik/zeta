@@ -149,12 +149,13 @@ user_profession_is_allowed if {
 }
 
 #client_product_is_allowed if {
-#	posture := input.client_assertion.posture
+#	# Quelle: Registrierungsdatensatz des AuthS (gepinnte product_id),
+#	# nicht die Posture der Client Assertion.
+#	client := input.client_registration_data
 #
-#	# KORRIGIERTER PFAD
-#	allowed_versions := data.products.allowed_products[posture.product_id]
+#	allowed_versions := data.products.allowed_products[client.product_id]
 #	some i
-#	posture.product_version == allowed_versions[i]
+#	client.product_version == allowed_versions[i]
 #}
 
 scopes_are_allowed if {

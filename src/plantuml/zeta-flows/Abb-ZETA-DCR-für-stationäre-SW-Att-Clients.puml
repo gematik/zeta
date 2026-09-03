@@ -15,8 +15,22 @@ box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
 end box
 
 Client++
-Client -> AuthS++: POST /register\n{\n  "client_name": "myClient",\n  "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"],\n  "jwks": { "keys": [ PuK.Client.Sig ] },\n  "token_endpoint_auth_method": "private_key_jwt"\n}
+Client -> AuthS: GET /nonce
+AuthS --> Client: 200 OK {nonce}
+Client -> Client: Signiere SHA-256(PuK.Client.Sig || nonce) mit PrK.Client.Sig\n-> signed_hash_puk_client_sig
+Client -> AuthS++: POST /register\n{\n  "client_name": "myClient",\n  "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"],\n  "jwks": { "keys": [ PuK.Client.Sig ] },\n  "token_endpoint_auth_method": "private_key_jwt",\n  "platform": "windows",\n  "product_id": "<gematik-Produktbezeichner>",\n  "nonce": "<nonce>",\n  "signed_hash_puk_client_sig": "<PoP>"\n}
+AuthS -> AuthS: Prüfe nonce (frisch, einmalig) und\nsigned_hash_puk_client_sig mit PuK.Client.Sig (PoP des Client Instance Keys)
+AuthS -> AuthS: Pinne attestation_type="software" (immer) sowie platform und product_id\n(sofern übermittelt) im Registrierungsdatensatz — kein ak_jkt; binding_status: pinned
 AuthS -> AuthS: Store Client Placeholder
 AuthS --> Client--: 201 Created {client_id}
+
+note right of AuthS
+  Abwärtskompatibilität: nonce, signed_hash_puk_client_sig, platform und product_id sind
+  im Software-Zweig optional; eine Registrierung ohne sie bleibt gültig — attestation_type
+  wird trotzdem gepinnt, nur platform/product_id bleiben dann ungepinnt.
+  Ohne Besitznachweis ist die Registrierung jedoch nicht an den Besitz
+  von PrK.Client.Sig gebunden — ein Dritter kann einen fremden öffentlichen Schlüssel
+  registrieren und dessen spätere Registrierung per 409 registrationConflict blockieren.
+end note
 
 @enduml

@@ -57,20 +57,24 @@ alt Kein ZETA Attestation Token
       apple-app-site-association bzw. assetlinks.json (Deployment, kein Laufzeit-Flow). Die App ist inkl. redirect_uris bei der gematik registriert; der AuthS prüft beim DCR, ob die übergebenen redirect_uris registriert sind.
     end note
 
+    AuthS -> AuthS: Pinne attestation_type, platform, product_id und ak_jkt (Thumbprint PuK.AK.Sig)\nim Registrierungsdatensatz (binding_status: pinned)
     AuthS -> AuthS: Store Client (state: pending_user_binding)
     AuthS --> Client--: 201 Created {client_id, status: pending_user_binding}
 
 
 else ZETA Attestation Token vorhanden (Fast-Path)
-    Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token", client_name, zeta_attestation_token,\njwks (enthält PuK.Client.Sig), signed_hash_puk_client_sig, attestation_pop}
+    Client -> AuthS: GET /nonce
+    AuthS --> Client: 200 OK {nonce}
+    Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token", client_name, zeta_attestation_token,\njwks (enthält PuK.Client.Sig), nonce, signed_hash_puk_client_sig, attestation_pop}
     AuthS -> AuthS: Prüfe Token-Signatur & Vertrauensstellung
+    AuthS -> AuthS: Prüfe nonce (frisch, einmalig, nicht abgelaufen)
     AuthS -> AuthS: Prüfe signed_hash_puk_client_sig mit PuK.Client.Sig (Selbstsignatur, PoP des Client Instance Keys)
     AuthS -> AuthS: Extrahiere attestation_type und PuK.AK.Sig (cnf.jwk) aus dem Token
 
     alt attestation_type == "apple"
-        AuthS -> AuthS: Validiere attestation_pop als CBOR-Assertion (generateAssertion):\nSignatur über SHA-256(authenticatorData || clientDataHash) mit PuK.AK.Sig,\nprüfe clientDataHash == SHA-256(PuK.Client.Sig), rpIdHash und Counter-Monotonie
+        AuthS -> AuthS: Validiere attestation_pop als CBOR-Assertion (generateAssertion):\nSignatur über SHA-256(authenticatorData || clientDataHash) mit PuK.AK.Sig,\nprüfe clientDataHash == SHA-256(PuK.Client.Sig || nonce), rpIdHash und Counter-Monotonie
     else attestation_type == "android" oder "tpm"
-        AuthS -> AuthS: Validiere attestation_pop als Signatur über SHA-256(PuK.Client.Sig) mit PuK.AK.Sig
+        AuthS -> AuthS: Validiere attestation_pop als Signatur über SHA-256(PuK.Client.Sig || nonce) mit PuK.AK.Sig
     end
 
     note right of AuthS
@@ -78,8 +82,14 @@ else ZETA Attestation Token vorhanden (Fast-Path)
       Das Format ist plattformspezifisch (attestation_type im Token): Apple App Attest Keys können nur CBOR-Assertions
       erzeugen, keine rohen Signaturen. Für die Counter-Monotonie-Prüfung persistiert der AuthS den zuletzt
       verifizierten Assertion-Counter je Attestation Key.
+
+      Nonce-Bindung (empfohlen): Ohne nonce wäre der Besitznachweis nicht challenge-gebunden und ein
+      mitgeschnittener Fast-Path-Request bliebe an beliebigen Guards wiedereinlösbar (Cross-Guard-Onboarding).
+      Abwärtskompatibel: fehlt nonce im Request, prüft der AuthS wie bisher gegen SHA-256(PuK.Client.Sig);
+      der Schutz beruht dann allein auf der Pflicht-Benachrichtigung der gebundenen E-Mail (F1).
     end note
 
+    AuthS -> AuthS: Pinne attestation_type, platform, product_id und ak_jkt (Thumbprint PuK.AK.Sig)\nim Registrierungsdatensatz (binding_status: pinned)
     AuthS --> Client: 201 Created {client_id, status: bound}
 
 end

@@ -2,18 +2,35 @@
 # zur Übergabe an die OPA Policy Engine.
 #
 # Herleitung der Claims:
+#
+#   Grundsatz: Identitaetsbestimmende Attribute stammen aus dem
+#   Registrierungsdatensatz des AuthS (bei der DCR gepinnt), NICHT aus der zwar
+#   client-signierten, inhaltlich aber selbst-behaupteten Client Assertion.
+#   Weicht die Assertion von den gepinnten Werten ab, lehnt der AuthS den
+#   Request am /token-Endpunkt ab und es entsteht kein Policy-Input.
+#
 #   client_id       ← client-assertion-jwt.yaml: payload.iss / payload.sub
-#   product_id      ← client-assertion-jwt.yaml: payload.client_statement.posture.product_id
+#                     (durch die Signatur mit prk_client_sig authentisiert)
+#   product_id      ← Registrierungsdatensatz (gepinnt), sonst Fallback auf
+#                     client_statement.posture.product_id (siehe binding_status)
 #   product_version ← client-assertion-jwt.yaml: payload.client_statement.posture.product_version
-#   platform        ← client-assertion-jwt.yaml: payload.client_statement.platform
-#   posture_type    ← client-assertion-jwt.yaml: payload.client_statement.posture_type
-#   device_info     ← client-assertion-jwt.yaml: payload.client_statement.posture (plattformspezifisch)
-#   attestation_result ← vom AuthS nach Verifikation der posture-*.yaml Claims erzeugt
-#   registration_timestamp ← Zeitpunkt der initialen Client-Registrierung am AuthS
+#                     (nicht gepinnt — aendert sich durch Software-Updates)
+#   platform        ← Registrierungsdatensatz (gepinnt), sonst Fallback auf
+#                     client_statement.platform (siehe binding_status)
+#   posture_type    ← Registrierungsdatensatz: attestation_type (gepinnt), sonst
+#                     Fallback auf client_statement.posture_type (siehe binding_status)
+#   device_info     ← client-assertion-jwt.yaml: payload.client_statement.posture
+#                     (plattformspezifisch), verifiziert gegen die Evidence, die
+#                     ihrerseits gegen den gepinnten ak_jkt geprueft wurde
+#   attestation_result ← vom AuthS nach Verifikation der posture-*.yaml Claims
+#                     gegen den gepinnten Attestation Key (ak_jkt) erzeugt
+#   attestation_timestamp ← client-assertion-jwt.yaml: payload.client_statement.attestation_timestamp
+#   registration_timestamp ← Registrierungsdatensatz: registered_at
+#   binding_status  ← Registrierungsdatensatz (siehe Feldbeschreibung)
 
 $schema: "http://json-schema.org/draft-07/schema#"
 type: object
-schemaVersion: "1.0.0"
+schemaVersion: "1.1.0"
 title: Policy Engine Client Data
 description: >
   Enthält die vom AuthS verifizierten Client-Registrierungsdaten sowie die
@@ -31,8 +48,11 @@ properties:
   product_id:
     type: string
     description: >
-      Der gematik-Produktbezeichner der Client-Software. Quelle:
-      client-assertion-jwt.yaml → payload.client_statement.posture.product_id.
+      Der gematik-Produktbezeichner der Client-Software. Quelle: der bei der
+      Registrierung gepinnte Wert aus dem Registrierungsdatensatz. Nur wenn
+      dieser fehlt (binding_status = legacy_unpinned) stammt der Wert wie bisher
+      aus client-assertion-jwt.yaml →
+      payload.client_statement.posture.product_id und ist dann selbst-behauptet.
     example: "gematik-desktop-suite-win-v3"
 
   product_version:
@@ -45,16 +65,26 @@ properties:
   platform:
     type: string
     description: >
-      Die Plattform der Client-Instanz. Quelle: client-assertion-jwt.yaml →
-      payload.client_statement.platform.
+      Die Plattform der Client-Instanz. Quelle: der bei der Registrierung
+      gepinnte Wert aus dem Registrierungsdatensatz; der AuthS lehnt ein davon
+      abweichendes client_statement.platform ab. Nur wenn der gepinnte Wert
+      fehlt (binding_status = legacy_unpinned) stammt der Wert wie bisher aus
+      client-assertion-jwt.yaml → payload.client_statement.platform.
     enum: [ android, apple, windows, linux, other ]
     example: "windows"
 
   posture_type:
     type: string
     description: >
-      Der Typ der verwendeten Attestierung. Quelle: client-assertion-jwt.yaml →
-      payload.client_statement.posture_type.
+      Der Typ der verwendeten Attestierung. Quelle: der bei der Registrierung
+      gepinnte attestation_type aus dem Registrierungsdatensatz; der AuthS lehnt
+      ein davon abweichendes client_statement.posture_type ab (verhindert, dass
+      eine software-attestierte Registrierung zur Laufzeit als hardware-
+      attestiert auftritt). Der attestation_type ist bei jeder Registrierung
+      nach dcr-request.yaml >= 1.1.0 gepinnt, unabhaengig von den optionalen
+      DCR-Feldern. Nur bei Datensaetzen, die vor Einfuehrung des Pinnings
+      angelegt wurden (binding_status = legacy_unpinned), stammt der Wert wie
+      bisher aus client-assertion-jwt.yaml → payload.client_statement.posture_type.
     enum: [ tpm, android, apple, software ]
     example: "tpm"
 
@@ -63,6 +93,31 @@ properties:
     description: >
       Unix-Timestamp der initialen Client-Registrierung am AuthS.
     example: 1678888000
+
+  binding_status:
+    type: string
+    enum: [ pinned, legacy_unpinned ]
+    default: legacy_unpinned
+    description: >
+      Gibt an, ob posture_type (= gepinnter attestation_type, bei Hardware-
+      Attestierung zusaetzlich ak_jkt) aus dem Registrierungsdatensatz stammt.
+      pinned gilt fuer JEDE Registrierung nach dcr-request.yaml >= 1.1.0 —
+      auch wenn die optionalen Felder platform/product_id fehlen; diese beiden
+      werden dann einzeln aus dem client_statement uebernommen. legacy_unpinned
+      kennzeichnet Datensaetze, die vor Einfuehrung des Pinnings angelegt
+      wurden und fuer die der AuthS keinen attestation_type haelt; nur dort
+      stammt auch posture_type aus dem client_statement. Policies koennen damit
+      waehrend der Migration zwischen beiden Populationen unterscheiden, etwa
+      indem sie fuer legacy_unpinned kein erhoehtes Vertrauen aus
+      posture_type = tpm/apple/android ableiten. Die Migration eines
+      Hardware-Clients nach pinned erfolgt ueber den Fast-Path
+      (attestation_type = zeta_attestation_token) mit dem bereits verifizierten
+      Attestation Key — ohne erneute Plattform-Attestierung, die bei iOS/Android
+      Rate Limits unterliegt.
+
+      Optional aus Kompatibilitaetsgruenden; fehlt das Feld, ist
+      legacy_unpinned anzunehmen.
+    example: "pinned"
 
   device_info:
     type: object

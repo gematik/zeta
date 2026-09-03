@@ -38,7 +38,9 @@ info:
     registration is bound to a fresh instance key via the DCR possession proof
     (`signed_hash_puk_client_sig`, A_29915/A_29916), so replay is useless without the private
     key. Every cross-guard onboarding MUST notify the F1 email (A_29920) — the primary
-    abuse-detection control (accepted residual risk; the PoP is not challenge-bound).
+    abuse-detection control. The PoP SHOULD additionally be bound to a fresh nonce from the
+    `nonce_endpoint`; the unbound legacy form stays acceptable for backwards compatibility
+    (see `POST /register`).
 
     Extensions on top of registration: RFC 7592 management (`/register/{client_id}`),
     instance-key rollover, identity-scoped email change, enrolled-client management and the
@@ -139,13 +141,45 @@ paths:
             genuine attestation key can sign, a replayed redemption can only re-register that same
             key (useless to a replayer without its private key). Every successful cross-guard
             onboarding MUST notify the F1 email (A_29920), which is the primary abuse-detection
-            control; the PoP is not challenge-bound (no server nonce) — an accepted residual risk
-            (A_29915).
+            control.
+
+            Nonce binding (A_29915): the client SHOULD obtain a fresh single-use nonce from the
+            `nonce_endpoint` and compute `attestation_pop` over
+            `SHA-256(puk_client_sig || nonce)`, which makes a captured registration request
+            non-redeemable a second time and closes the cross-guard onboarding replay at the
+            source. For backwards compatibility the guard MUST still accept the unbound legacy
+            form over `SHA-256(puk_client_sig)` and selects the form by the presence of `nonce`
+            in the request; for those requests the unchallenged PoP remains an accepted residual
+            risk mitigated only by the A_29920 notification. The guard SHOULD log redemptions
+            without a nonce.
 
         Identity binding is derived from the OIDC user authentication (status
         `pending_user_binding`); a realm-wide initial access token without identity reference
         is NOT sufficient (A_29903). Full scope/audiences are withheld until email verification
         completes (A_29905).
+
+        **Pinning at registration.** On success the guard persists `attestation_type`,
+        `platform`, `product_id` and — for hardware attestation — `ak_jkt` (RFC 7638 thumbprint
+        of the verified `PuK.AK.Sig`) on the client record and sets `binding_status: pinned`.
+        These attributes are immutable for the lifetime of the `client_id`; changing the
+        attestation method or the platform requires a new registration. At the token endpoint
+        the guard then rejects any client statement whose `platform` or `posture_type` deviates
+        from the pinned values, and verifies all posture evidence against the pinned `ak_jkt` —
+        never against an attestation key supplied in the request.
+
+        `attestation_type` and (for hardware attestation) `ak_jkt` are pinned on EVERY
+        registration under this specification version, without exception: both are intrinsic
+        to the request — the attestation type is the chosen `dcr-request.yaml` branch and the
+        attestation key is the one the guard just verified — so no client-supplied field is
+        needed for them. `platform` and `product_id` are OPTIONAL in the request body for
+        backwards compatibility. If `platform` is absent the guard derives it from
+        `attestation_type` (not possible for `software`, where only the platform then stays
+        unpinned); if `product_id` is absent it stays unpinned and the guard takes it from the
+        client statement as before. `binding_status: legacy_unpinned` is reserved for records
+        created BEFORE this specification version, for which the guard holds no pinned
+        attestation type; only for those does the guard fall back to taking `posture_type`
+        from the client statement. The flag is forwarded to the Policy Engine so policies can
+        distinguish the two populations during the transition.
       security:
         - {}   # Self-authenticating request (attestation + instance-key PoP); the identity
                # binding is established by the OIDC user authentication (A_29903).
@@ -266,7 +300,10 @@ paths:
             NOT change the instance key (F2 — use the rollover mode below), the bound email
             (F1 — use `POST /zeta/identity/email`, A_29911), the authorised audiences (governed
             by policy per client instance, A_29901) or DCR parameters (`jwks`, `redirect_uris`,
-            `grant_types`). Any such field is rejected (`additionalProperties: false`).
+            `grant_types`). The pinned binding attributes (`attestation_type`, `platform`,
+            `product_id`, `ak_jkt`) are likewise immutable — changing the attestation method or
+            the platform requires a new registration. Any such field is rejected
+            (`additionalProperties: false`).
           * application/zeta-rollover+jws — instance-key rollover (A_29921). Body is the
             nested JWS: outer signed by the OLD key = authorization (A_29922), inner signed
             by the NEW key = anti-substitution. Requires a fresh Replay-Nonce from
@@ -282,6 +319,18 @@ paths:
             solely via the operator OOB deletion path (A_29927).
             A rollover MUST NOT be coupled with an email (F1) change
             (A_29926). Key thumbprints follow RFC 7638.
+
+            Re-anchoring for hardware-attested clients: for a client whose `attestation_type`
+            is not `software`, the rollover envelope SHOULD additionally carry an
+            `attestation_pop` over `SHA-256(new_puk_client_sig || replay_nonce)`, verifiable
+            against the pinned `ak_jkt`. Without it the new instance key is authorised solely
+            by possession of the previous key and is no longer anchored in the TPM / Secure
+            Enclave / Keystore — the client keeps its hardware `attestation_type` while its
+            active key is only software-authorised. A guard that requires the re-anchoring
+            rejects an envelope without `attestation_pop` as `attestationPopRequired`; for
+            backwards compatibility with clients implementing A_29921/A_29922 only, accepting
+            the envelope without it remains permitted, and the guard then SHOULD record the
+            client as no longer hardware-anchored.
       security:
         - clientAssertion: []
       requestBody:
@@ -311,7 +360,7 @@ paths:
               schema: { type: string }
               description: Returned on badNonce so the client can retry.
         '401':
-          description: invalidSignature | invalidNewKeyProof | popRequired
+          description: invalidSignature | invalidNewKeyProof | popRequired | attestationPopRequired
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -870,6 +919,13 @@ components:
           * `htu`   — the target URI of this request (`/register/{client_id}`).
           * `aud`   — the guard audience (this ZETA Guard's identity).
           * `iat`   — issue time, for freshness.
+          * `attestation_pop` — OPTIONAL. Fresh proof of possession of the attestation key:
+            a signature over `SHA-256(new_puk_client_sig || nonce)` verifiable against the
+            client record's pinned `ak_jkt` (for `apple`, the CBOR assertion object with that
+            hash as `clientDataHash`). Re-anchors the NEW instance key in the hardware that
+            attested the client at registration. Only meaningful for clients whose
+            `attestation_type` is not `software`, and absent on clients implementing
+            A_29921/A_29922 only — see the `PUT` description for the guard's handling.
 
         The envelope MUST NOT carry an email (F1) change; that is a separate operation
         (A_29911, A_29926).
@@ -878,6 +934,10 @@ components:
 
     ClientRegistration:
       type: object
+      # `required` bleibt bewusst auf [client_id] beschraenkt. Die in dieser
+      # Fassung ergaenzten Pinning-Attribute sind optional: fuer Clients, die
+      # vor Einfuehrung des Pinnings registriert wurden, fehlen sie im
+      # Datensatz und der Guard verfaehrt wie bisher (siehe binding_status).
       required: [client_id]
       properties:
         client_id:
@@ -906,6 +966,73 @@ components:
           properties:
             old_jkt: { type: string }
             grace_until: { type: integer }
+        attestation_type:
+          type: string
+          enum: [tpm, apple, android, software]
+          description: >-
+            The attestation method proven at first registration. On the fast path it
+            is adopted from the `zeta_attestation_token` (never "software" there).
+            IMMUTABLE for the lifetime of the `client_id` — switching the attestation
+            method requires a new registration. Always present on records created under
+            this specification version (the value is intrinsic to the registration
+            request); absent only on records created before pinning was introduced
+            (`binding_status: legacy_unpinned`).
+        platform:
+          type: string
+          enum: [android, apple, windows, linux, other]
+          description: >-
+            Pinned platform of the client instance, taken from the DCR request or
+            derived from `attestation_type`. Immutable. Absent on legacy records.
+        product_id:
+          type: string
+          description: >-
+            Pinned gematik product identifier, registered by the manufacturer at gematik
+            together with the admitted versions and — for TPM attestation — the code-signing
+            key of the Primärsystem. Immutable. Verified against the attested app identity
+            (apple/android) or against the signer measured into PCR 23 by the ZETA Attestation
+            Service (tpm); the reference MUST be looked up by this pinned value. Absent when
+            the DCR request did not carry one — the value is then self-asserted per request
+            via the client statement and MUST NOT be relied on for authorisation.
+        product_version:
+          type: string
+          description: >-
+            Software version at registration time. NOT pinned (updates change it);
+            recorded for traceability only.
+        ak_jkt:
+          type: string
+          description: >-
+            RFC 7638 thumbprint of the attestation key (`PuK.AK.Sig`) verified during
+            registration. This is the trust anchor for every later attestation: the
+            guard verifies posture evidence at the token endpoint against THIS key and
+            never against a key supplied in the request. Absent for
+            `attestation_type: software` and on legacy records.
+        registered_at:
+          type: integer
+          description: >-
+            Unix timestamp of the initial registration. Source for
+            `registration_timestamp` in `policy-engine-client-data.yaml`.
+        binding_status:
+          type: string
+          enum: [pinned, legacy_unpinned]
+          default: legacy_unpinned
+          description: >-
+            Whether `attestation_type` (and `ak_jkt` where applicable) is pinned on
+            this record. `pinned` holds for every registration created under this
+            specification version — even when the optional `platform`/`product_id`
+            were omitted; those two are then simply absent and taken from the client
+            statement individually. `legacy_unpinned` marks a client registered
+            BEFORE pinning was introduced, for which the guard holds no attestation
+            type and therefore falls back to the previous behaviour of taking
+            `posture_type` from the client statement as well. The value is forwarded
+            to the Policy Engine so that policies can treat legacy clients
+            differently during the transition. It flips to `pinned` after a
+            re-registration — for hardware-attested clients via the fast path
+            (`attestation_type: zeta_attestation_token`), which re-uses the already
+            verified attestation key and needs NO new platform attestation: the
+            `attestation_pop` is a plain AK signature (android/tpm) or an App Attest
+            assertion (apple), neither of which is subject to the attestation rate
+            limits of the mobile platforms. A full re-attestation is deliberately not
+            required for the migration.
 
     BindEmailRequest:
       type: object

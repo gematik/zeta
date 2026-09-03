@@ -270,7 +270,7 @@ Die folgende Abbildung zeigt den Attestierungsablauf im Überblick und die Unter
 | `/.well-known/oauth-authorization-server` | GET | PDP-Endpunkte und Konfiguration abrufen | Alle Client-Typen |
 | `/register` | POST | Client-Registrierung starten (DCR) | Alle Client-Typen |
 | `/register/verify` | POST | TPM ActivateCredential-Secret übermitteln | Nur TPM (4.1) |
-| `/nonce` | GET | Frische Nonce für Token Exchange abrufen | Alle Client-Typen |
+| `/nonce` | GET | Frische Nonce für Token Exchange sowie für die DCR im Fast-Path und bei Software-Attestierung abrufen | Alle Client-Typen |
 | `/token` | POST | Access Token per Token Exchange beziehen | Alle Client-Typen |
 
 #### Token-Lebenszyklus
@@ -280,8 +280,33 @@ Die folgende Abbildung zeigt den Attestierungsablauf im Überblick und die Unter
 | **Access Token** | 300 s (5 min) | Über Refresh Token oder neuen Token Exchange | DPoP-gebunden (an `PuK.DPoP.Sig`) |
 | **Refresh Token** | 86 400 s (24 h) | Einmalig einlösbar (Rotation bei Nutzung) | An `client_id` gebunden |
 | **DPoP Proof** | Einmalig verwendbar | Jeder Request benötigt neuen Proof | An HTTP-Methode + URI gebunden |
-| **ZETA Guard Attestation Token** (`zeta_attestation_token`) | Unbegrenzt | Neuer Token Exchange mit Hardware Attestation | An `PuK.AK.Sig` gebunden |
+| **ZETA Guard Attestation Token** (`zeta_attestation_token`) | Unbegrenzt | Neuer Token Exchange mit Hardware Attestation | An `PuK.AK.Sig` gebunden; Einlösung zusätzlich nonce-gebunden (empfohlen) |
 | **Nonce** | 300 s (5 min) | Neuer `GET /nonce` Aufruf | Einmalig verwendbar |
+
+#### Bindung der `client_id` an Plattform und Attestierungsverfahren
+
+Die Registrierung stellt eine durchgehende Kette her:
+
+```text
+client_id → jwks (PuK.Client.Sig) → signed_hash_puk_client_sig → PuK.AK.Sig → Hersteller-Root
+```
+
+Der AuthS prüft bei der DCR die Attestierungs-Evidence (TPM: EK-Kette und `ActivateCredential`; Apple: App-Attest-Objekt gegen die Apple Root; Android: Key-Attestation-Kette gegen die Google Root) und die Bindung `PuK.AK.Sig ↔ PuK.Client.Sig`. Weil die Client Assertion am `/token`-Endpunkt mit `PrK.Client.Sig` signiert ist, authentisiert sie die `client_id` gegen genau diesen attestierten Schlüssel.
+
+Damit diese Kette auch zur Laufzeit trägt, **pinnt** der AuthS bei erfolgreicher Registrierung folgende Attribute im Registrierungsdatensatz:
+
+| Attribut | Bedeutung | Änderbar? |
+| --- | --- | --- |
+| `attestation_type` | nachgewiesenes Attestierungsverfahren | nein — nur per Neuregistrierung |
+| `platform` | Plattform der Client-Instanz | nein |
+| `product_id` | gematik-Produktbezeichner (vom Hersteller bei der gematik registriert) | nein |
+| `ak_jkt` | RFC-7638-Thumbprint von `PuK.AK.Sig` | nein (entfällt bei `software`) |
+
+Bei jedem Token Exchange gilt: `client_statement.platform` und `client_statement.posture_type` **müssen** den gepinnten Werten entsprechen, und die Posture-Evidence wird ausschließlich gegen `ak_jkt` geprüft — nie gegen einen im Request mitgelieferten Attestation Key. Andernfalls könnte eine software-attestierte Registrierung zur Laufzeit als hardware-attestiert auftreten und ein höheres Vertrauensniveau erlangen, als bei der Registrierung nachgewiesen wurde — oder umgekehrt ein TPM-Client mit manipuliertem Primärsystem als `software` auftreten und so die PCR-Prüfung umgehen, obwohl seine `product_id` in der Allowlist steht.
+
+Die `product_id` wird je Attestierungsverfahren unterschiedlich belegt: Bei Apple/Android gegen die attestierte App-Identität; bei TPM darüber, dass der ZETA Attestation Service die Hersteller-Signatur des Primärsystems prüft und das Ergebnis samt Signer-Identität in PCR 23 misst — die Policy Engine vergleicht den gemessenen Signer mit dem für **diese** `product_id` bei der gematik registrierten Schlüssel. Bei Software-Attestierung bleibt sie eine unveränderliche, aber unbelegte Selbstauskunft.
+
+**Übergangsregelung:** `attestation_type` und `ak_jkt` werden bei **jeder** Registrierung gepinnt — beide ergeben sich aus dem Request selbst (gewählter Schema-Zweig bzw. soeben verifizierter Attestation Key), es ist kein zusätzliches Client-Feld nötig. Nur `platform` und `product_id` sind im DCR-Request optional; fehlen sie, bleiben genau diese beiden ungepinnt und werden wie bisher aus dem `client_statement` übernommen. `binding_status: legacy_unpinned` tragen ausschließlich Clients, die vor Einführung des Pinnings registriert wurden und für die der AuthS keinen `attestation_type` hält; nur für sie entfällt auch der `posture_type`-Abgleich. Der `binding_status` wird an die Policy Engine übergeben, sodass Policies beide Populationen unterscheiden können. Die Migration eines Legacy-Datensatzes nach `pinned` erfolgt für Hardware-Clients über den Fast-Path (`attestation_type: zeta_attestation_token`): Er nutzt den bereits verifizierten Attestation Key und benötigt **keine** erneute Plattform-Attestierung — der `attestation_pop` ist eine einfache AK-Signatur (Android/TPM) bzw. eine App-Attest-Assertion (Apple), die nicht den Rate Limits der Attestierungs-APIs unterliegen. Eine vollständige Neu-Attestierung ist für die Migration bewusst nicht vorgesehen.
 
 ---
 
@@ -459,8 +484,8 @@ Der Token Exchange ist der zentrale Schritt zur Erlangung eines DPoP-gebundenen 
 
 - *(01) DPoP Proof:* Der Client erstellt einen DPoP Proof mit der Nonce des AuthS.
 - *(02) POST /token:* Der Client sendet die Anfrage mit `client_assertion` (JWT, signiert mit `PrK.Client.Sig`), `subject_token` (SMC-B signiert, inkl. Nonce) und `DPoP`-Header.
-- *(03) Validierung:* Der AuthS validiert Client Assertion, DPoP Proof, Subject Token, Nonce, Key-Bindings aus der DCR und den Sperrstatus (OCSP) der SM(C)-B.
-- *(04) TPM Attestation Prüfung:* Verifizierung der Hardware-Signatur (Quote) gegen die extrahierte Nonce mit PCR-Replay via Event Log.
+- *(03) Validierung:* Der AuthS validiert Client Assertion, DPoP Proof, Subject Token, Nonce und den Sperrstatus (OCSP) der SM(C)-B. Zu den Key-Bindings aus der DCR gehört insbesondere der Abgleich der bei der Registrierung gepinnten Attribute: der Instanzschlüssel gegen `jwks` sowie `client_statement.platform` und `client_statement.posture_type` gegen `platform` bzw. `attestation_type` des Registrierungsdatensatzes. Weicht eines davon ab, wird der Request abgelehnt. Für Clients, die vor Einführung des Pinnings registriert wurden (`binding_status: legacy_unpinned`), entfällt dieser Abgleich und die Werte werden wie bisher aus dem `client_statement` übernommen.
+- *(04) TPM Attestation Prüfung:* Verifizierung der Hardware-Signatur (Quote) gegen die extrahierte Nonce mit PCR-Replay via Event Log. Die Quote-Signatur wird gegen den bei der Registrierung gepinnten Attestation Key (`ak_jkt`) geprüft — **nicht** gegen den in `posture.tpm_attestation_key` mitgelieferten Schlüssel; dieser dient nur der Diagnose und muss mit dem gepinnten Schlüssel übereinstimmen.
 - *(05) Policy Engine:* Bei erfolgreicher Validierung wird der Policy Engine Input erstellt und an die OPA Policy Engine übermittelt (`POST /v1/data/authz`).
 - *(06) Token-Erstellung:* Bei positiver Policy Decision erstellt der AuthS Access Token, Refresh Token und (bei Hardware Attestation) das `zeta_attestation_token`.
 
@@ -639,8 +664,11 @@ Die rein software-basierte Attestation dient als **Fallback**, wenn kein TPM 2.0
 Die Registrierung bei Software-basierter Attestation erfordert kein Challenge-Response-Verfahren und kein Attestation Object. Der Client übermittelt lediglich seinen öffentlichen Schlüssel.
 
 - **Verwendete Endpunkt-Pfade:** `POST /register`
-- *(01) POST /register:* Der Client sendet `client_name`, `grant_types`, `jwks` (mit `PuK.Client.Sig`) und `token_endpoint_auth_method`.
-- *(02) Registrierung:* Der AuthS speichert den Client mit Status `pending_verification` und antwortet mit `201 Created {client_id}`.
+- *(00) Nonce abholen (empfohlen):* Der Client ruft `GET /nonce` am AuthS auf. Die Nonce wird für den Besitznachweis im nächsten Schritt benötigt.
+- *(01) POST /register:* Der Client sendet `client_name`, `grant_types`, `jwks` (mit `PuK.Client.Sig`), `token_endpoint_auth_method` sowie — empfohlen — `platform`, `product_id`, `nonce` und `signed_hash_puk_client_sig` (Selbstsignatur über `SHA-256(PuK.Client.Sig || nonce)`).
+- *(02) Registrierung:* Der AuthS prüft den Besitznachweis, sofern vorhanden, und speichert den Client mit Status `pending_verification`; er antwortet mit `201 Created {client_id}`.
+
+> **Hinweis:** `nonce` und `signed_hash_puk_client_sig` sind im Software-Zweig aus Kompatibilitätsgründen optional — eine Registrierung ohne sie bleibt gültig. Ohne Besitznachweis ist die Registrierung allerdings nicht an den Besitz von `PrK.Client.Sig` gebunden; ein Dritter kann dann einen fremden öffentlichen Schlüssel registrieren und dessen spätere Registrierung per `409 registrationConflict` blockieren. Neue Client-Implementierungen sollten beide Felder setzen.
 
 ![Abbildung 12: DCR für stationäre Software-Attestation Clients](../../../images/zeta-flows/Abb-ZETA-DCR-für-stationäre-SW-Att-Clients.svg)
 
@@ -1123,7 +1151,7 @@ Die Schlüsselgenerierung erfolgt rein softwarebasiert, identisch zu stationäre
 
 Die Registrierung erfolgt wie bei der stationären Software-Attestation, ergänzt um den TOFU-OTP-Prozess.
 
-- *(01) POST /register:* Der Client sendet `client_name`, `grant_types`, `jwks` (mit `PuK.Client.Sig`) und `token_endpoint_auth_method` — ohne Attestation-spezifische Felder.
+- *(01) POST /register:* Der Client sendet `client_name`, `grant_types`, `jwks` (mit `PuK.Client.Sig`) und `token_endpoint_auth_method` — ohne Attestation-spezifische Felder. Empfohlen werden zusätzlich `platform`, `product_id` sowie `nonce` (aus `GET /nonce`) und `signed_hash_puk_client_sig` über `SHA-256(PuK.Client.Sig || nonce)`; siehe den Hinweis in Kapitel [4.3.2](#432-dynamic-client-registration-dcr).
 - *(02)–(06) TOFU OTP:* Identischer Ablauf wie bei den Hardware-Attestation-Varianten (OTP-Generierung, E-Mail-Versand, Nutzer-Eingabe, Verifikation).
 
 ![Abbildung 23: DCR für mobile Clients mit Software Attestation](../../../images/zeta-flows/Abb-ZETA-DCR-für-mobile-SW-Att-Clients.svg)

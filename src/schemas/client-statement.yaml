@@ -2,7 +2,7 @@
 # The Client Statement is used in the Client Assertion JWT with the ZETA Guard AuthServer.
 # It contains information about the client instance.
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.0.0"
+schemaVersion: "1.1.0"
 title: Client Statement
 description: The client statement contains information about the client instance.
 type: object
@@ -12,7 +12,12 @@ properties:
     description: The name of the client
   platform:
     type: string
-    description: The platform of the client instance
+    description: >-
+      The platform of the client instance. MUST match the platform pinned in the
+      client record at registration; a deviating value is rejected by the AuthS.
+      For clients registered without a pinned platform the AuthS falls back to
+      the previous behaviour and takes the value from here
+      (policy-engine-client-data.yaml, binding_status).
     enum:
       - android
       - apple
@@ -21,7 +26,15 @@ properties:
       - other
   posture_type:
     type: string
-    description: The type of the supplied posture
+    description: >-
+      The type of the supplied posture. MUST match the attestation_type pinned
+      in the client record at registration; a deviating value is rejected by the
+      AuthS, so a software-attested registration cannot present itself as
+      hardware-attested at runtime. The attestation_type is pinned on every
+      registration under dcr-request.yaml >= 1.1.0; only for clients registered
+      before pinning was introduced does the AuthS fall back to the previous
+      behaviour and take the value from here (policy-engine-client-data.yaml,
+      binding_status).
     enum:
       - android
       - apple

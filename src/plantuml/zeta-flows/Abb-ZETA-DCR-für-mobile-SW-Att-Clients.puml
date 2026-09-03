@@ -22,7 +22,9 @@ box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
 end box
 
 Client++
-Client -> AuthS++: POST /register\n{\n  "client_name": "myClient",\n  "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"],\n  "jwks": { "keys": [ PuK.Client.Sig ] },\n  "token_endpoint_auth_method": "private_key_jwt",\n  "redirect_uris": ["https://<App-FQDN>/cb/<app>/oidc", "https://<App-FQDN>/cb/<app>/app"]\n}
+Client -> AuthS: GET /nonce
+AuthS --> Client: 200 OK {nonce}
+Client -> AuthS++: POST /register\n{\n  "client_name": "myClient",\n  "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"],\n  "jwks": { "keys": [ PuK.Client.Sig ] },\n  "token_endpoint_auth_method": "private_key_jwt",\n  "redirect_uris": ["https://<App-FQDN>/cb/<app>/oidc", "https://<App-FQDN>/cb/<app>/app"],\n  "platform": "android",\n  "product_id": "<gematik-Produktbezeichner>",\n  "nonce": "<nonce>",\n  "signed_hash_puk_client_sig": "<PoP über SHA-256(PuK.Client.Sig || nonce)>"\n}
 note right of AuthS
   Es werden zwei redirect_uris je App registriert (RFC 8252, claimed-HTTPS
   Universal-/App-Links auf einer vom App-Hersteller kontrollierten Domain):
@@ -38,7 +40,15 @@ note right of AuthS
   redirect_uris registriert sind.
 end note
 
+    AuthS -> AuthS: Prüfe nonce (frisch, einmalig) und\nsigned_hash_puk_client_sig mit PuK.Client.Sig (PoP des Client Instance Keys)
+    AuthS -> AuthS: Pinne attestation_type="software" (immer) sowie platform und product_id\n(sofern übermittelt) im Registrierungsdatensatz — kein ak_jkt; binding_status: pinned
     AuthS -> AuthS: Store Client (state: pending_user_binding)
     AuthS --> Client--: 201 Created {client_id, status: pending_user_binding}
+
+    note right of AuthS
+      Abwärtskompatibilität: nonce, signed_hash_puk_client_sig, platform und product_id sind
+      im Software-Zweig optional; eine Registrierung ohne sie bleibt gültig — attestation_type
+      wird trotzdem gepinnt, nur platform/product_id bleiben dann ungepinnt.
+    end note
 
 @enduml

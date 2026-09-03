@@ -1,7 +1,17 @@
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.0.0"
+schemaVersion: "1.1.0"
 title: RegistrationRequest
-description: Payload Schema für den DCR POST /register Body
+description: >-
+  Payload Schema für den DCR POST /register Body.
+
+  Abwärtskompatibilität (1.0.0 → 1.1.0): Alle in 1.1.0 ergänzten Felder
+  (nonce, platform, product_id, product_version sowie
+  signed_hash_puk_client_sig im Software-Zweig) sind OPTIONAL — kein
+  required-Block wurde erweitert. Ein Request nach 1.0.0 bleibt gültig.
+  Fehlt eines der Felder, verfährt der AuthS wie bisher (Legacy-Verhalten,
+  jeweils bei der Feldbeschreibung dokumentiert); die Felder SOLLEN von
+  neuen Client-Implementierungen gesetzt werden und werden in einer
+  künftigen Major-Version verpflichtend.
 type: object
 
 oneOf:
@@ -36,6 +46,9 @@ oneOf:
             type: array
             items: { $ref: "#/definitions/jwk" }
         required: [keys]
+      platform:        { $ref: "#/definitions/platform" }
+      product_id:      { $ref: "#/definitions/product_id" }
+      product_version: { $ref: "#/definitions/product_version" }
       puk_ek_enc:
         type: string
         description: >-
@@ -94,6 +107,9 @@ oneOf:
             type: array
             items: { $ref: "#/definitions/jwk" }
         required: [keys]
+      platform:        { $ref: "#/definitions/platform" }
+      product_id:      { $ref: "#/definitions/product_id" }
+      product_version: { $ref: "#/definitions/product_version" }
       apple_attestation_object:
         type: string
         description: >-
@@ -145,6 +161,9 @@ oneOf:
             type: array
             items: { $ref: "#/definitions/jwk" }
         required: [keys]
+      platform:        { $ref: "#/definitions/platform" }
+      product_id:      { $ref: "#/definitions/product_id" }
+      product_version: { $ref: "#/definitions/product_version" }
       android_key_attestation_certificate_chain:
         type: array
         description: >-
@@ -211,6 +230,9 @@ oneOf:
             type: array
             items: { $ref: "#/definitions/jwk" }
         required: [keys]
+      platform:        { $ref: "#/definitions/platform" }
+      product_id:      { $ref: "#/definitions/product_id" }
+      product_version: { $ref: "#/definitions/product_version" }
       zeta_attestation_token:
         type: string
         description: >-
@@ -225,29 +247,42 @@ oneOf:
           erstellt mit prk_client_sig (Proof-of-Possession des Client
           Instance Keys). Base64url-kodiert. Einheitlich für alle
           Plattformen.
+      nonce: { $ref: "#/definitions/nonce" }
       attestation_pop:
         type: string
         description: >-
           Frischer Besitznachweis des Attestation Keys (prk_ak_sig). Bindet
           den (ggf. neuen) Client Instance Key an den bereits attestierten
           Attestation Key. Das Format bestimmt der AuthS anhand des
-          attestation_type-Claims im zeta_attestation_token:
+          attestation_type-Claims im zeta_attestation_token.
+
+          Der signierte Hash ist SHA-256(puk_client_sig || nonce), sofern
+          das Feld nonce gesetzt ist, andernfalls SHA-256(puk_client_sig)
+          (Legacy-Form nach Schema 1.0.0). Der AuthS akzeptiert beide Formen
+          und wählt anhand der An-/Abwesenheit von nonce; ohne nonce ist der
+          Nachweis nicht challenge-gebunden und ein mitgeschnittener Request
+          bleibt wiedereinlösbar (Restrisiko A_29915), weshalb neue Clients
+          die nonce setzen SOLLEN.
 
           apple: Base64-kodiertes CBOR-Assertion-Objekt aus
           DCAppAttestService.generateAssertion(keyId:clientDataHash:) mit
-          clientDataHash = SHA-256(puk_client_sig). Der AuthS verifiziert
+          clientDataHash = dem oben bestimmten Hash. Der AuthS verifiziert
           die Signatur über SHA-256(authenticatorData || clientDataHash)
           gegen cnf.jwk (puk_ak_sig) aus dem Token und prüft rpIdHash
           sowie die Monotonie des Counters.
 
-          android | tpm: Base64url-kodierte Signatur über
-          SHA-256(puk_client_sig), erstellt mit prk_ak_sig. Der AuthS
-          verifiziert gegen cnf.jwk (puk_ak_sig) aus dem Token.
+          android | tpm: Base64url-kodierte Signatur über den oben
+          bestimmten Hash, erstellt mit prk_ak_sig. Der AuthS verifiziert
+          gegen cnf.jwk (puk_ak_sig) aus dem Token.
 
   # -----------------------------------------------------------------
   # 5. Legacy / Software Attestation
   # -----------------------------------------------------------------
   - title: Legacy / Software Attestation
+    # required bleibt gegenüber Schema 1.0.0 unverändert. nonce und
+    # signed_hash_puk_client_sig sind optional, damit bestehende Clients
+    # weiter registrieren können; ohne sie ist die Registrierung NICHT an
+    # den Besitz von prk_client_sig gebunden (siehe Feldbeschreibung).
     required:
       - client_name
       - jwks
@@ -257,6 +292,20 @@ oneOf:
         type: string
         enum: [software]
       client_name: { type: string }
+      nonce: { $ref: "#/definitions/nonce" }
+      signed_hash_puk_client_sig:
+        type: string
+        description: >-
+          Selbstsignatur über SHA-256(puk_client_sig || nonce), erstellt mit
+          prk_client_sig. Base64url-kodiert. Weist den Besitz des
+          Instanzschlüssels nach und verhindert, dass ein Dritter einen
+          fremden öffentlichen Schlüssel registriert und damit dessen
+          spätere Registrierung per 409 registrationConflict blockiert.
+
+          Optional aus Kompatibilitätsgründen (in Schema 1.0.0 nicht
+          vorhanden): fehlt das Feld, registriert der AuthS wie bisher ohne
+          Besitznachweis. Neue Client-Implementierungen SOLLEN es zusammen
+          mit nonce setzen; der AuthS SOLL das Fehlen protokollieren.
       token_endpoint_auth_method: { type: string }
       grant_types:
         type: array
@@ -271,8 +320,87 @@ oneOf:
             type: array
             items: { $ref: "#/definitions/jwk" }
         required: [keys]
+      platform:        { $ref: "#/definitions/platform" }
+      product_id:      { $ref: "#/definitions/product_id" }
+      product_version: { $ref: "#/definitions/product_version" }
 
 definitions:
+  nonce:
+    type: string
+    description: >-
+      Frische, einmalig verwendbare Nonce vom nonce_endpoint (GET /nonce, siehe
+      as-well-known.yaml). Die Nonce MUSS in den signierten Hash eingehen —
+      attestation_pop bzw. signed_hash_puk_client_sig werden dann über
+      SHA-256(puk_client_sig || nonce) gebildet: die Nonce wird als UTF-8-Bytes
+      des vom AuthS gelieferten Strings an dieselbe Byte-Repräsentation von
+      puk_client_sig angehängt, die auch die Legacy-Form SHA-256(puk_client_sig)
+      hasht. Eine mitgesendete, aber nicht mitsignierte Nonce hat keine
+      Schutzwirkung.
+
+      Relevant für attestation_type "zeta_attestation_token" (Fast-Path) und
+      "software". NICHT vorgesehen für "tpm" (der
+      MakeCredential/ActivateCredential-Handshake liefert bereits eine
+      serverseitig erzeugte Challenge) sowie für "apple" und "android" (die
+      Frische ergibt sich dort aus der Einmaligkeit des Instanzschlüssels im
+      clientDataHash bzw. in der attestationChallenge; ein Replay registriert
+      nur denselben Schlüssel erneut und nützt ohne dessen privaten Teil
+      nichts — eine Nonce müsste dort in die Erzeugung des Attestation Objects
+      eingehen und wäre nur mit Client-seitiger Änderung wirksam).
+
+      Optional aus Kompatibilitätsgründen; ohne nonce gilt die Legacy-Form des
+      jeweiligen Besitznachweises (siehe dort).
+
+  platform:
+    type: string
+    enum: [android, apple, windows, linux, other]
+    description: >-
+      Plattform der Client-Instanz. Der AuthS prüft den Wert auf Konsistenz mit
+      dem attestation_type (tpm → windows|linux, apple → apple,
+      android → android) und pinnt ihn im Registrierungsdatensatz; ein davon
+      abweichendes client_statement.platform wird am /token-Endpunkt abgelehnt.
+
+      Optional aus Kompatibilitätsgründen: fehlt das Feld, leitet der AuthS die
+      Plattform aus dem attestation_type ab. Bei "software" ist das nicht
+      möglich; dann bleibt NUR die Plattform ungepinnt und wird wie bisher aus
+      dem client_statement übernommen. Der attestation_type selbst wird
+      unabhängig davon IMMER gepinnt — er ergibt sich aus dem gewählten Zweig
+      dieses Schemas und ist dem AuthS daher bei jeder Registrierung bekannt
+      (siehe policy-engine-client-data.yaml, binding_status).
+
+  product_id:
+    type: string
+    description: >-
+      gematik-Produktbezeichner der Client-Software, vom Hersteller bei der
+      gematik registriert (zusammen mit den zugelassenen Produktversionen; bei
+      TPM-Attestierung zusätzlich mit dem Code-Signatur-Schlüssel, mit dem der
+      Hersteller das Primärsystem signiert). Wird bei der Registrierung gepinnt
+      und in das Access Token übernommen (access-token.yaml).
+
+      Belastbarkeit je attestation_type: Bei "apple" und "android" prüft der
+      AuthS die product_id gegen die attestierte App-Identität (rpIdHash bzw.
+      Package-Name aus der Key-Attestation-Chain). Bei "tpm" ergibt sich die
+      Bindung über PCR 23: Der ZETA Attestation Service prüft die
+      Hersteller-Signatur des Primärsystems und misst das Prüfergebnis samt
+      Signer-Identität in PCR 23; der AuthS bzw. die Policy Engine vergleicht
+      den gemessenen Signer mit dem für DIESE product_id registrierten
+      Schlüssel — die Referenz MUSS über die gepinnte product_id nachgeschlagen
+      werden, nicht nur gegen die Menge aller registrierten Schlüssel. Bei
+      "software" existiert kein attestierter Nachweis; die product_id ist dort
+      eine unveränderliche, aber unbelegte Selbstauskunft.
+
+      Optional aus Kompatibilitätsgründen: fehlt das Feld, bleibt die product_id
+      ungepinnt und wird wie bisher aus dem client_statement der Client
+      Assertion übernommen — sie ist dann selbst-behauptet und für
+      Autorisierungsentscheidungen nicht belastbar.
+
+  product_version:
+    type: string
+    description: >-
+      Version der Client-Software zum Registrierungszeitpunkt. Wird NICHT
+      gepinnt (Software-Updates ändern sie); dient der Nachvollziehbarkeit im
+      Registrierungsdatensatz. Die für Policy-Entscheidungen maßgebliche
+      Version stammt weiterhin aus dem client_statement.
+
   user_email:
     type: string
     format: email

@@ -35,7 +35,7 @@ Folgende Berufe und Einrichtungsarten sind zugelassen:
 Diese Regel verifiziert, dass die verwendete Software (der "Client") und deren Version für den Zugriff bei der gematik registriert sind. Jede Software, die auf das System zugreifen möchte, identifiziert sich mit einer Produktkennung und einer Versionsnummer.
 
 **Was wird geprüft?**
-Es wird geprüft, ob die Kombination aus Produkt und Version in einer Liste der erlaubten Software-Versionen enthalten ist.
+Es wird geprüft, ob die Kombination aus Produkt und Version in einer Liste der erlaubten Software-Versionen enthalten ist. Maßgeblich ist dabei die `product_id` aus dem Registrierungsdatensatz des Authorization Servers (`input.client_registration_data`), die bei der Client-Registrierung gepinnt wurde — nicht ein vom Client in der Client Assertion behaupteter Wert. Andernfalls wäre die Allowlist durch eine frei gewählte Produktkennung umgehbar.
 
 **Beispiel:**
 
@@ -146,12 +146,15 @@ user_profession_is_allowed if {
 }
 
 client_product_is_allowed if {
- posture := input.client_assertion.posture
+ # Quelle ist der vom AuthS geführte Registrierungsdatensatz
+ # (input.client_registration_data), NICHT die vom Client selbst befüllte
+ # Posture der Client Assertion: product_id ist dort der bei der DCR
+ # gepinnte Wert.
+ client := input.client_registration_data
 
- # KORRIGIERTER PFAD
- allowed_versions := data.products.allowed_products[posture.product_id]
+ allowed_versions := data.products.allowed_products[client.product_id]
  some i
- posture.product_version == allowed_versions[i]
+ client.product_version == allowed_versions[i]
 }
 
 scopes_are_allowed if {
