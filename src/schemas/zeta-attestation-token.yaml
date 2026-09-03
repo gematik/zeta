@@ -114,7 +114,8 @@ definitions:
         description: Confirmation Claim nach RFC 7800 (Proof-of-Possession).
         required: [jwk]
         properties:
-          jwk: 
+          jwk:
+            description: Der verifizierte Public Key (PuK.AK.Sig) als JSON Web Key.
             type: object
             required: [kty]
             properties:
@@ -124,7 +125,6 @@ definitions:
               y: { type: string }
               n: { type: string }
               e: { type: string }
-              description: Der verifizierte Public Key (PuK.AK.Sig) als JSON Web Key.
 
   # -------------------------------------------------------------
   # 2. Die spezifischen Klassen (Sub-Schemas)
