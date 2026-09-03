@@ -1,10 +1,23 @@
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.0.0"
+schemaVersion: "1.1.0"
 title: ZETA Guard Attestation Token
 type: object
 description: >-
   Ein signiertes JWT, das der ZETA Guard nach erfolgreicher
-  Hardware-Attestierung ausstellt ("Fast-Path").
+  Hardware-Attestierung ausstellt ("Fast-Path"). Signiert wird der Token
+  mit PrK.AuthS.Sig des ausstellenden ZETA Guards; der zugehörige
+  PuK.AuthS.Sig wird über das JWKS (jwks_uri gemäß Well-Known-Metadaten)
+  des Ausstellers (iss) veröffentlicht. Ein Ziel-Guard prüft die Signatur
+  gegen dieses JWKS und die Zulassung des Ausstellers über das Entity
+  Statement des Federation Master (A_29914, A_29915).
+
+  Änderungen 1.0.0 → 1.1.0 (Angleichung an A_29914): `aud` ist neuer
+  Pflicht-Claim (Einschränkung des Empfängerkreises auf ZETA Guards),
+  `email_verified` ist neuer Claim und Pflicht, sobald `user_email` gesetzt
+  ist; `sub` ist beschrieben (KVNR bzw. Telematik-ID). Ein nach 1.0.0
+  ausgestellter Token ohne `aud` war nie A_29914-konform und wird vom
+  Ziel-Guard nach A_29915 (b) abgelehnt; der Client fällt dann auf eine
+  erneute Plattform-Attestierung zurück.
 # oneOf zwingt das Objekt, exakt einem der referenzierten Sub-Schemata zu entsprechen.
 # Die Zuordnung erfolgt eindeutig über den `const`-Wert von `attestation_type`
 # (tpm | apple | android) im jeweiligen Zweig; die Validierung unter draft-07 ist
@@ -25,13 +38,34 @@ definitions:
   # -------------------------------------------------------------
   BaseTokenProperties:
     type: object
-    required: [iss, sub, iat, exp, jti, cnf, platform]
+    required: [iss, aud, sub, iat, exp, jti, cnf, platform]
+    # draft-07 `dependencies`: Ist user_email gesetzt, MUSS email_verified
+    # vorhanden sein (A_29914: "verifizierte E-Mail nebst Verifikationsstatus").
+    dependencies:
+      user_email: [email_verified]
     properties:
-      iss: 
+      iss:
         type: string
-        format: uri 
-      sub: 
-        type: string 
+        format: uri
+        description: >-
+          Issuer-URL des ausstellenden ZETA Guards (Wert von `issuer` in dessen
+          Well-Known-Metadaten). Über diese URL ermittelt der Ziel-Guard das JWKS
+          mit PuK.AuthS.Sig zur Signaturprüfung.
+      aud:
+        type: string
+        const: zeta-guard
+        description: >-
+          Empfängerkreis nach RFC 7519. Der Token ist an mehreren ZETA Guards
+          einlösbar und benennt deshalb keinen konkreten Guard, sondern die
+          Empfängerklasse. Ein Ziel-Guard MUSS den Token ablehnen, wenn `aud`
+          nicht exakt diesem Wert entspricht (A_29915 (b)); damit ist der Token
+          nicht als Access Token oder Client Assertion verwendbar.
+      sub:
+        type: string
+        description: >-
+          Identitätssubjekt, für das die Attestierung erfolgte: die KVNR bei
+          Versicherten (mobile Clients) bzw. die Telematik-ID der Institution
+          bei stationären Clients (A_29914).
       iat: 
         type: integer 
       exp: 
@@ -52,6 +86,14 @@ definitions:
           im Fast-Path (attestation_type=zeta_attestation_token) nicht erneut
           übertragen und per OTP verifiziert werden muss; der AuthS übernimmt sie
           aus dem Token. Für stationäre Clients i. d. R. nicht gesetzt.
+      email_verified:
+        type: boolean
+        description: >-
+          Verifikationsstatus (F1) der in `user_email` enthaltenen Adresse
+          (A_29914). `true`, wenn die Adresse bei der ursprünglichen Registrierung
+          per OTP bestätigt wurde. Pflicht, sobald `user_email` gesetzt ist. Bei
+          `false` DARF der Ziel-Guard die E-Mail nicht als verifiziert übernehmen
+          und MUSS eine OTP-Verifikation nachholen.
       redirect_uris:
         type: array
         description: >-
