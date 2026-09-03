@@ -3,8 +3,9 @@
 **Stand:** 2026-09-02 · **Bezug:** [gemSpec_ZETA V2.0.0 CC (Draft ZETA 26.2)](https://gemspec.gematik.de/downloads/prereleases/Draft_ZETA_26_2/gemSpec_ZETA_V2.0.0_CC.html)
 **Anlass:** Review-Kommentar, dass ein Binding der `client_id` an Plattform und Attestierungsverfahren fehlt.
 **Repo-Stand:** Die Annexe sind bereits angepasst (`dcr-request.yaml` 1.1.0, `policy-engine-client-data.yaml` 1.1.0,
-`client-statement.yaml` 1.1.0, `posture-tpm.yaml`, `zeta-guard-client-management.yaml`, acht DCR-Diagramme,
-`examples/opa-bundle`). Diese Liste enthält, was **in der Spezifikation** noch umzusetzen ist.
+`client-statement.yaml` 1.1.0, `zeta-attestation-token.yaml` 1.1.0, `posture-tpm.yaml`,
+`zeta-guard-client-management.yaml`, acht DCR-Diagramme, `examples/opa-bundle`). Diese Liste enthält, was **in der
+Spezifikation** noch umzusetzen ist.
 
 ## Leitplanken
 
@@ -27,19 +28,29 @@ Heutiger Text sagt wörtlich: *„der Besitznachweis ist NICHT challenge-gebunde
 Einlösung ergibt sich aus der Pflicht-Benachrichtigung nach A_29920 (akzeptiertes Restrisiko)."* Das wird durch die
 Nonce-Bindung obsolet.
 
+**Nebenbefund korrigieren:** Der heutige Text verlangt in (a) die Signaturprüfung „gegen das Zertifikat eines von der
+gematik zugelassenen ZETA Guards (TI-Vertrauensraum/Trust-Liste)". Ein solches Zertifikat gibt es nicht: Der Token wird
+mit `PrK.AuthS.Sig` signiert, und Tabelle 4 (5.2.2) sowie A_26281-01 legen fest, dass der zugehörige `PuK.AuthS.Sig` im
+JWKS bereitgestellt wird. Der passende Vertrauensanker für guard-übergreifende Signaturen existiert bereits beim HTTP
+Proxy (Access Token eines fremden Authorization Servers gültig, wenn dieser „im Entity Statement des Federation Master
+aufgeführt ist") und wird hier übernommen. Prüfpunkt (b) setzt den Claim `aud` voraus, den A_29914 fordert; der Annex
+`zeta-attestation-token.yaml` definiert ihn erst ab 1.1.0 (siehe E).
+
 **Vorschlag:**
 
-> Der Authorization Server MUSS einen vorgelegten ZETA Attestation Token vollständig prüfen: (a) Signatur gegen das
-> Zertifikat eines von der gematik zugelassenen ZETA Guards, (b) Empfängerkreis (aud), (c) den DCR-Besitznachweis
-> `signed_hash_puk_client_sig`, der den neu vorgelegten Instanzschlüssel (F2) bindet, sowie (d) den Besitznachweis des
-> attestierten Schlüssels `attestation_pop`. Enthält der Request das Feld `nonce`, MUSS der Authorization Server
-> prüfen, dass die Nonce von seinem `nonce_endpoint` stammt, unverbraucht und nicht abgelaufen ist, und
-> `attestation_pop` über `SHA-256(PuK.Client.Sig || nonce)` verifizieren. Fehlt `nonce`, MUSS er `attestation_pop`
+> Der Authorization Server MUSS einen vorgelegten ZETA Attestation Token vollständig prüfen: (a) Signatur gegen einen
+> Schlüssel `PuK.AuthS.Sig`, den der ausstellende ZETA Guard (`iss`) über sein JWKS (`jwks_uri` gemäß
+> Well-Known-Metadaten) veröffentlicht, wobei der ausstellende ZETA Guard als von der gematik zugelassener ZETA Guard im
+> Entity Statement des Federation Master aufgeführt sein MUSS, (b) Empfängerkreis (`aud` = `zeta-guard`), (c) den
+> DCR-Besitznachweis `signed_hash_puk_client_sig`, der den neu vorgelegten Instanzschlüssel (F2) bindet, sowie (d) den
+> Besitznachweis des attestierten Schlüssels `attestation_pop`. Enthält der Request das Feld `nonce`, MUSS der
+> Authorization Server prüfen, dass die Nonce von seinem `nonce_endpoint` stammt, unverbraucht und nicht abgelaufen ist,
+> und `attestation_pop` über `SHA-256(PuK.Client.Sig || nonce)` verifizieren. Fehlt `nonce`, MUSS er `attestation_pop`
 > über `SHA-256(PuK.Client.Sig)` verifizieren (Legacy-Form) und SOLL die Einlösung protokollieren. Schlägt eine dieser
 > Prüfungen fehl, MUSS der Ziel-Guard die Fast-Path-Registrierung ablehnen. Der ZETA Attestation Token ist mehrfach und
-> an mehreren Guards einlösbar. Mit `nonce` ist ein mitgeschnittener Registrierungs-Request nicht erneut einlösbar;
-> ohne `nonce` bleibt die Wiedereinspielung ein akzeptiertes Restrisiko, das allein durch die Pflicht-Benachrichtigung
-> nach A_29920 begrenzt wird. Der ZETA Client SOLL `nonce` setzen.
+> an mehreren Guards einlösbar. Mit `nonce` ist ein mitgeschnittener Registrierungs-Request nicht erneut einlösbar; ohne
+> `nonce` bleibt die Wiedereinspielung ein akzeptiertes Restrisiko, das allein durch die Pflicht-Benachrichtigung nach
+> A_29920 begrenzt wird. Der ZETA Client SOLL `nonce` setzen.
 
 ### A_26585-02 → A_26585-03 (5.8.2) — Client-Daten für die Policy Engine
 
@@ -153,6 +164,13 @@ Ohne Stichtag wird aus dem Übergang ein Dauerzustand — das ist die wichtigste
 
 ## C. Fließtext
 
+### 5.2.2 Übersicht der ZETA Guard Schlüssel
+
+Tabelle 4 nennt als Zweck von `PrK.AuthS.Sig`/`PuK.AuthS.Sig` nur „Signatur von Access- und Refresh-Token sowie des
+Entity Statements". Ergänzen: „sowie des ZETA Attestation Token (A_29914)". Damit ist an einer Stelle belegt, welcher
+Schlüssel den Token signiert und dass er über das JWKS (nicht über ein Zertifikat) verifiziert wird — Voraussetzung für
+A_29915-01 (a).
+
 ### 5.3.2.2 Client Registrierung und Authentifizierung
 
 Der Abschnitt beschreibt `Abb-ZETA-DCR-für-mobile-Clients` als durchnummerierte Schrittliste (01)–(26). Die
@@ -234,6 +252,7 @@ Nicht geändert, aber in der Spec zu prüfen: `Abb-ZETA-Token-Exchange-mit-Attes
 | `dcr-request.yaml` | 1.0.0 → 1.1.0 | optionale Felder `nonce`, `platform`, `product_id`, `product_version`; `signed_hash_puk_client_sig` im Software-Zweig; `attestation_pop` mit beiden Hash-Formen |
 | `policy-engine-client-data.yaml` | 1.0.0 → 1.1.0 | Herleitung aus Registrierungsdatensatz; optionales `binding_status` |
 | `client-statement.yaml` | 1.0.0 → 1.1.0 | `platform`/`posture_type` müssen gepinnten Werten entsprechen |
+| `zeta-attestation-token.yaml` | 1.0.0 → 1.1.0 | Angleichung an A_29914: Pflicht-Claim `aud` (`zeta-guard`), `email_verified` (Pflicht bei `user_email`), `iss`/`sub` beschrieben, Signaturmodell (JWKS des Ausstellers) dokumentiert; Altfehler im `cnf.jwk`-Block behoben |
 | `posture-tpm.yaml` | — (nur Beschreibung) | `tpm_attestation_key` ist kein Trust Anchor |
 | `zeta-guard-client-management.yaml` | 0.1.0-draft | `ClientRegistration` um Pinning-Attribute und `binding_status`; Pinning-Absatz; Nonce-Bindung; Rollover-`attestation_pop`; Fehlercode `attestationPopRequired` |
 | `examples/opa-bundle` | — | Produktregel liest `input.client_registration_data` statt `input.client_assertion.posture` |
