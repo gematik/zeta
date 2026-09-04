@@ -102,17 +102,23 @@ gepinnten Attestierungsattribute regelt A_xxxxx (5.8.2)."
 > legacy_unpinned`), entfällt der Abgleich; der Authorization Server übernimmt die Werte dann wie bisher aus dem Client
 > Statement.
 
-### B.3 Neu in 5.8.2 (oder Policy-Engine-Kapitel) — Produktreferenz über die gepinnte `product_id`
+### B.3 Entfällt — Produktreferenz über die gepinnte `product_id` (keine Anforderung an die Spezifikation)
 
-> Die Policy Engine MUSS die vom Hersteller bei der gematik registrierten Referenzwerte (zugelassene Produktversionen;
-> bei TPM-Attestierung der Code-Signatur-Schlüssel des Primärsystems) über die gepinnte `product_id` aus
-> `client_registration_data` nachschlagen. Sie DARF NICHT einen in der Client Assertion behaupteten Produktbezeichner
-> verwenden und DARF NICHT einen gemessenen Signer allein gegen die Menge aller registrierten Schlüssel prüfen, ohne
-> ihn der `product_id` des Datensatzes zuzuordnen.
+**Entscheidung (2026-09-03):** Die Regeln der Policy Engine werden außerhalb der Spezifikation festgelegt. Eine
+Anforderung, die der Policy Engine das Nachschlagen der Herstellerreferenz über die gepinnte `product_id` vorschreibt,
+wird deshalb **nicht** in die Spezifikation übernommen. Die Nummer bleibt reserviert, damit die Verweise in dieser
+Liste stabil bleiben.
 
-Hintergrund: Ohne Zuordnung könnte ein Client `product_id = A` behaupten, während PCR 23 den Signer von Produkt B
-zeigt — beide „registriert", aber nicht dasselbe Produkt. Für Apple/Android prüft der Authorization Server die
-`product_id` bereits bei der DCR gegen die attestierte App-Identität (rpIdHash bzw. Package-Name).
+Der Sachverhalt bleibt relevant und wird im Repo umgesetzt: Die Produktregel in `examples/opa-bundle` liest die
+gepinnte `product_id` aus `input.client_registration_data` statt aus dem Client Statement der Client Assertion (siehe
+E). Damit ist die Zuordnung Signer ↔ Produkt in der Referenz-Policy sichergestellt. Der Spezifikation genügt, was
+A_26585-03 und B.1 leisten: Die Policy Engine erhält die gepinnten Werte aus dem Registrierungsdatensatz, nicht aus
+der Selbstauskunft des Clients.
+
+Hintergrund (zur Einordnung, nicht normativ): Ohne Zuordnung könnte ein Client `product_id = A` behaupten, während
+PCR 23 den Signer von Produkt B zeigt — beide „registriert", aber nicht dasselbe Produkt. Für Apple/Android prüft der
+Authorization Server die `product_id` bereits bei der DCR gegen die attestierte App-Identität (rpIdHash bzw.
+Package-Name).
 
 ### B.4 Neu in 5.5.8 — Authorization Server: Re-Verankerung des Instanzschlüssels beim Rollover
 
@@ -222,9 +228,10 @@ nur Assertions/AK-Signaturen benötigen und daher nicht von den Limits betroffen
 ### Stelle prüfen: Herstellerregistrierung
 
 Wo die Spezifikation beschreibt, was der Hersteller bei der gematik registriert (`product_id`, Produktversionen, bei
-TPM den Code-Signatur-Schlüssel des Primärsystems) und dass diese Werte als Referenz in die OPA-Policies eingehen,
-muss B.3 darauf verweisen. Im Repo ist der Meldeprozess nur in `ReadMePrimaersystemHersteller.md` beschrieben und dort
-als „noch nicht vollständig spezifiziert" markiert.
+TPM den Code-Signatur-Schlüssel des Primärsystems), sollte stehen, dass diese Werte über die gepinnte `product_id`
+(B.1) als Referenz in die Policies eingehen. Die Auswertung selbst ist Sache der Policy Engine und nicht Gegenstand der
+Spezifikation (B.3). Im Repo ist der Meldeprozess nur in `ReadMePrimaersystemHersteller.md` beschrieben und dort als
+„noch nicht vollständig spezifiziert" markiert.
 
 ## D. Abbildungen
 
