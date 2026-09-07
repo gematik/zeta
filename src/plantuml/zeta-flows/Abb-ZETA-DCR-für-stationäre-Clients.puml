@@ -41,10 +41,25 @@ alt Kein ZETA Guard Attestation Token
         Client -> AuthS: POST /register\n{\n  "client_name": "myClient",\n  "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"],\n  "jwks": { "keys": [ PuK.Client.Sig ] },\n  "token_endpoint_auth_method": "private_key_jwt"\n}
     end
 
-else ZETA Attestation Token vorhanden
-    Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token",\nzeta_attestation_token, PuK.Client.Sig,\nsigned_Hash_PuK.Client.Sig}
-    AuthS -> AuthS: Prüfe Token-Signatur & Vertrauensstellung
-    AuthS -> AuthS: Extrahiere PuK.AK.Sig aus Token, prüfe signed_Hash_PuK.Client.Sig
+else ZETA Attestation Token vorhanden (Fast-Path)
+    Client -> AuthS: GET /nonce
+    AuthS --> Client: 200 OK {nonce}
+    Client -> Client: signed_Hash_PuK.Client.Sig = Sign(PrK.Client.Sig, SHA-256(PuK.Client.Sig || nonce))
+    Client -> ZAS: Sign(PrK.AK.Sig, SHA-256(PuK.Client.Sig || nonce))
+    ZAS --> Client: attestation_pop
+    Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token",\nzeta_attestation_token, PuK.Client.Sig, nonce,\nsigned_Hash_PuK.Client.Sig, attestation_pop}
+    AuthS -> AuthS: Prüfe Token-Signatur (JWKS des Ausstellers) & Vertrauensstellung\n(Aussteller im Entity Statement des Federation Master, aud = zeta-guard)
+    AuthS -> AuthS: Prüfe nonce (eigener nonce_endpoint, unverbraucht, nicht abgelaufen)
+    AuthS -> AuthS: Prüfe signed_Hash_PuK.Client.Sig mit PuK.Client.Sig\n(Selbstsignatur, PoP des Client Instance Keys)
+    AuthS -> AuthS: Extrahiere attestation_type und PuK.AK.Sig (cnf.jwk) aus dem Token
+    AuthS -> AuthS: Verifiziere attestation_pop mit PuK.AK.Sig über SHA-256(PuK.Client.Sig || nonce)\n(Bindung des neuen Client Instance Keys an den attestierten AK)
+    note right of AuthS
+      Bei attestation_type "apple" (macOS) ist attestation_pop eine
+      App-Attest-Assertion mit clientDataHash = SHA-256(PuK.Client.Sig || nonce),
+      erzeugt vom Client selbst (keine ZAS-Beteiligung); bei "tpm" eine
+      TPM-Signatur mit PrK.AK.Sig, die der ZAS erstellt.
+      Ohne nonce prüft der AuthS abwärtskompatibel über SHA-256(PuK.Client.Sig).
+    end note
 end
 
 AuthS -> AuthS: Pinne attestation_type, platform, product_id und ak_jkt (Thumbprint PuK.AK.Sig)\nim Registrierungsdatensatz (binding_status: pinned)

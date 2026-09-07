@@ -177,6 +177,107 @@ Entity Statements". Ergänzen: „sowie des ZETA Attestation Token (A_29914)". D
 Schlüssel den Token signiert und dass er über das JWKS (nicht über ein Zertifikat) verifiziert wird — Voraussetzung für
 A_29915-01 (a).
 
+### 5.3.1.5 Client-Registrierung (stationäre Clients)
+
+Der Abschnitt beschreibt `Abb-ZETA-DCR-für-stationäre-Clients` mit nummerierten Schritten. Das Diagramm wurde in zwei
+Punkten geändert: (a) Pinning-Schritt vor „Store Client Placeholder", (b) der Fast-Path ist an
+`Abb-ZETA-DCR-für-mobile-Clients` angeglichen — `GET /nonce`, Erzeugung von `signed_Hash_PuK.Client.Sig` und
+`attestation_pop` auf dem Client, Nonce-Prüfung und AK-Verifikation des `attestation_pop` im AuthS. Der bisherige
+Fast-Path hatte `attestation_pop` weder im Diagramm noch im Text noch im Beispiel, obwohl `dcr-request.yaml` das Feld
+im Zweig `zeta_attestation_token` als Pflichtfeld führt; damit wies nichts nach, dass der Registrierende den
+Attestation Key besitzt.
+
+**Neue Nummerierung:** (01)–(10) TPM · (11)–(12) macOS · (13) Software · (14)–(24) Fast-Path · (25)–(27) Abschluss.
+Die Abschnitte (01)–(12) bleiben unverändert. Ab dem Software-Pfad ersetzt folgender Text den bisherigen:
+
+> **(13) Software-Attestation (Legacy OIDC DCR)**
+>
+> Im Software-Attestation-Pfad sendet der ZETA Client einen Standard-OIDC-DCR-Request: *[JSON-Beispiel unverändert]*.
+> Zusätzlich SOLL der ZETA Client `platform` und `product_id` sowie eine vom `nonce_endpoint` bezogene `nonce` und
+> `signed_hash_puk_client_sig` (Selbstsignatur über `SHA-256(PuK.Client.Sig || nonce)` mit `PrK.Client.Sig`)
+> übermitteln; der Authorization Server prüft einen vorhandenen Besitznachweis (siehe [dcr-request.yaml], Zweig
+> „Software Attestation"). Der Authorization Server legt den Client in der PDP DB an. Erst wenn beim Token Request die
+> Policy Engine dem Authorization Server eine `allow: true` Decision übergibt, wird der Client als unterstützter Client
+> akzeptiert.
+>
+> **(14)–(24) Vorbedingung: ZETA Guard Attestation Token vorhanden (Fast-Path)**
+>
+> Verfügt der ZETA Client über ein gültiges ZETA Guard Attestation Token aus einer vorherigen Authentifizierung, kann
+> die erneute Registrierung beschleunigt erfolgen, ohne dass eine erneute Plattform-Attestierung nötig ist.
+>
+> (14)–(15) Der ZETA Client bezieht eine Nonce vom `nonce_endpoint` des Authorization Servers. (16) Er erzeugt
+> `signed_Hash_PuK.Client.Sig` als Selbstsignatur mit `PrK.Client.Sig` über `SHA-256(PuK.Client.Sig || nonce)`.
+> (17)–(18) Er lässt denselben Hash mit `PrK.AK.Sig` signieren — bei TPM durch den ZAS, bei macOS als
+> App-Attest-Assertion mit `clientDataHash = SHA-256(PuK.Client.Sig || nonce)` — und erhält `attestation_pop`.
+> (19) Der ZETA Client sendet `POST /register` mit `attestation_type = "zeta_attestation_token"`, dem Token,
+> `PuK.Client.Sig` (in `jwks`), `nonce`, `signed_hash_puk_client_sig` und `attestation_pop`:
+>
+> *[Beispiel, siehe unten]*
+>
+> (20) Der Authorization Server prüft die Token-Signatur gegen das JWKS des ausstellenden ZETA Guards (`iss`), dessen
+> Zulassung über das Entity Statement des Federation Master sowie `aud = zeta-guard` (A_29915). (21) Er prüft, dass
+> die `nonce` von seinem `nonce_endpoint` stammt, unverbraucht und nicht abgelaufen ist. (22) Er prüft
+> `signed_Hash_PuK.Client.Sig` als Selbstsignatur mit `PuK.Client.Sig` (Besitznachweis des Instanzschlüssels).
+> (23) Er extrahiert `attestation_type` und `PuK.AK.Sig` (`cnf.jwk`) aus dem Token. (24) Er verifiziert
+> `attestation_pop` mit `PuK.AK.Sig` über `SHA-256(PuK.Client.Sig || nonce)` — damit ist der neue Instanzschlüssel an
+> den bereits attestierten Attestation Key gebunden. Fehlt `nonce`, prüft der Authorization Server abwärtskompatibel
+> über `SHA-256(PuK.Client.Sig)` (Legacy-Form, A_29915-01).
+>
+> **(25)–(27) Abschluss der Registrierung**
+>
+> (25) Nach erfolgreichem Durchlauf eines der obigen Pfade pinnt der Authorization Server im Registrierungsdatensatz
+> der Client-Instanz das nachgewiesene Attestierungsverfahren (`attestation_type`; im Fast-Path aus dem Token
+> übernommen), bei Hardware-Attestation den RFC-7638-Thumbprint des verifizierten Attestation Keys (`ak_jkt`), die
+> Plattform (`platform`, aus dem Request oder aus `attestation_type` abgeleitet) sowie `product_id`, sofern übermittelt
+> (`binding_status = pinned`). Diese Attribute sind über die Lebensdauer der `client_id` unveränderlich; ein Wechsel
+> des Attestierungsverfahrens oder der Plattform erfordert eine neue Registrierung. Beim Token Request prüft der
+> Authorization Server `client_statement.platform` und `posture_type` gegen die gepinnten Werte und verifiziert die
+> Attestierungs-Evidence ausschließlich gegen `ak_jkt` (vgl. A_xxxxx, Kapitel 5.8.2). (26) Der Authorization Server
+> legt den Client an. (27) Er antwortet mit `201 Created {client_id}`.
+
+**Beispiel für Schritt (19)** — ersetzt das bisherige Beispiel. Es zeigt einen stationären Windows-Client mit
+TPM-Attestierung; `redirect_uris` entfallen, da stationäre Clients den Token Exchange nutzen (das bisherige Beispiel
+trug App-Links aus dem mobilen Fall):
+
+```json
+{
+  "attestation_type": "zeta_attestation_token",
+  "client_name": "ZETA Secure Desktop Agent v1.2",
+  "token_endpoint_auth_method": "private_key_jwt",
+  "grant_types": [
+    "urn:ietf:params:oauth:grant-type:token-exchange",
+    "refresh_token"
+  ],
+  "jwks": {
+    "keys": [
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+        "y": "eZXwxvO1hvCY0KucrPfKo7yAyMT6Ajc3N7OkAB6VYy8",
+        "use": "sig",
+        "kid": "client-key-tpm-002"
+      }
+    ]
+  },
+  "platform": "windows",
+  "product_id": "gematik-desktop-suite-win-v3",
+  "product_version": "3.5.0",
+  "zeta_attestation_token": "ey...",
+  "nonce": "n-0S6_WzA2Mj",
+  "signed_hash_puk_client_sig": "MEQ...",
+  "attestation_pop": "MEU..."
+}
+```
+
+Erläuterung der Felder zum Beispiel: `zeta_attestation_token` ist der vom Quell-Guard ausgestellte Token
+(`attestation_type = "tpm"`, `cnf.jwk = PuK.AK.Sig`, `aud = "zeta-guard"`); `nonce` stammt aus `GET /nonce`;
+`signed_hash_puk_client_sig` ist die Base64url-kodierte ECDSA-Signatur mit `PrK.Client.Sig` über
+`SHA-256(PuK.Client.Sig || nonce)`; `attestation_pop` ist die Base64url-kodierte Signatur mit `PrK.AK.Sig` über
+denselben Hash, bei `attestation_type = "apple"` stattdessen das Base64-kodierte CBOR-Assertion-Objekt.
+
+A_29375 bleibt unverändert (Verweis auf die Abbildung).
+
 ### 5.3.2.2 Client Registrierung und Authentifizierung
 
 Der Abschnitt beschreibt `Abb-ZETA-DCR-für-mobile-Clients` als durchnummerierte Schrittliste (01)–(26). Die
@@ -247,7 +348,7 @@ Alle Abbildungen der Spezifikation stammen aus `src/plantuml/zeta-flows/` und we
 | `Abb-ZETA-DCR-für-mobile-Android-HW-Att-Clients` | Pinning-Schritt |
 | `Abb-ZETA-DCR-für-stationäre-Apple-Clients` | Pinning-Schritt |
 | `Abb-ZETA-DCR-für-stationäre-Win-Linux-Clients-TPM-Att` | Pinning-Schritt |
-| `Abb-ZETA-DCR-für-stationäre-Clients` | Pinning-Schritt (nach dem alt/else) |
+| `Abb-ZETA-DCR-für-stationäre-Clients` | Pinning-Schritt (nach dem alt/else); Fast-Path an das mobile Diagramm angeglichen (`GET /nonce`, `attestation_pop`, Nonce-Prüfung, AK-Verifikation). **Treibt die Nummerierung in 5.3.1.5.** |
 
 Nicht geändert, aber in der Spec zu prüfen: `Abb-ZETA-Token-Exchange-mit-Attestation` — falls dort ein Schritt
 „Key-Bindings aus der DCR prüfen" existiert, sollte er den Abgleich gegen die gepinnten Attribute benennen.
