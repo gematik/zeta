@@ -13,6 +13,8 @@ Diese Neufassung ersetzt das bisherige Kapitel 5.5 der Spezifikation Zero Trust 
 
 **Kritische Überarbeitung (Minimalversion)**: Nach einer sicherheitstechnischen Prüfung wurden alle Anforderungen entfernt, die keinen eigenständigen Sicherheitsbeitrag leisten (reine Client-UX, redundante Klarstellungen, ableitbare Folgesätze) sowie das gesamte Fast-Path-Verfahren (vormals 5.5.5), da es die Angriffsfläche gegenüber der einfachen OTP-Registrierung signifikant vergrößert, ohne für den sicheren Betrieb erforderlich zu sein. Alle gestrichenen Anforderungen sind mit Begründung in Abschnitt 5.5.9 aufgeführt.
 
+**Zweite Prüfstufe (Wortlaut-Redundanz)**: Zusätzlich wurde jedes MUSS/DARF-NICHT-Paar daraufhin geprüft, ob die DARF-NICHT-Aussage lediglich die logische Umkehrung einer bereits mit einem Exklusivitätswort ("ausschließlich", "genau", "erst") formulierten MUSS-Aussage ist und daher keinen eigenen Prüfschritt darstellt. Solche Paare wurden zu einer einzigen Anforderung zusammengeführt; eine wortgleich in zwei Kapiteln vorkommende Anforderung wurde einmal gestrichen. Details siehe Abschnitt 5.5.9.
+
 ---
 
 ## 5.5.0 Begriffe, Akteure und Zustandsmodell
@@ -80,13 +82,9 @@ Die Client-Registrierung nutzt drei Datenstrukturen (Client Assertion JWT, Clien
 
 Dieser Abschnitt regelt, wie ein Fachdienst den TOFU-Datensatz einer Identität führt, gegen wen er ihn abgrenzt und wie die Identitätsbindung zustande kommt.
 
-### A_29898 – Eigenständiger TOFU-Datensatz je Fachdienst
+### A_29898 – Eigenständiger, fachdienstlokaler TOFU-Datensatz
 
-**ZETA Guard** MUSS für jede TI-Identität einen von anderen Fachdiensten unabhängigen TOFU-Datensatz führen.
-
-### A_29898-01 – Kein Teilen oder Beziehen von TOFU-Daten zwischen Guards
-
-**ZETA Guard** DARF NICHT den TOFU-Datensatz (gebundene E-Mail, Instanzschlüssel, Tombstone- und Einspruchsfrist-Zustände) mit einem anderen ZETA Guard teilen oder von einem anderen ZETA Guard beziehen. Ausgenommen ist die client-vermittelte Übernahme im Rahmen der fachdienstübergreifenden Fast-Path-Registrierung (Abschnitt 5.5.5).
+**ZETA Guard** MUSS für jede TI-Identität einen TOFU-Datensatz (gebundene E-Mail, Instanzschlüssel, Tombstone- und Einspruchsfrist-Zustände) ausschließlich fachdienstlokal führen, ohne ihn mit einem anderen ZETA Guard zu teilen oder von einem anderen ZETA Guard zu beziehen.
 
 ### A_29899 – Keine fachdienstübergreifende Korrelation
 
@@ -96,13 +94,9 @@ Dieser Abschnitt regelt, wie ein Fachdienst den TOFU-Datensatz einer Identität 
 
 **Authorization Server** MUSS das Faktormodell (F1, F2) dieses Kapitels ausschließlich auf mobile Client-Registrierungen anwenden, die im TOFU-Verfahren an eine TI-Identität gebunden werden. Für stationäre Clients mit Authentisierung per SMC-B-Token-Exchange sowie für Clients ohne Nutzer-Identität gelten die faktorgebundenen Anforderungen dieses Kapitels nicht.
 
-### A_29894 – Identitätslose Clients: Absicherung über F2 und Posture
+### A_29894 – Identitätslose Clients: Absicherung ausschließlich über F2 und Posture
 
-**Authorization Server** MUSS einen ohne TI-Identität registrierten Client ausschließlich über den Instanzschlüssel (F2, Proof-of-Possession via JWT-Bearer Assertion) und die plattformabhängige Attestierung absichern.
-
-### A_29894-01 – Identitätslose Clients: kein F1
-
-**Authorization Server** DARF NICHT für einen identitätslosen Client eine identitätsgebundene E-Mail (F1) erzeugen oder verlangen.
+**Authorization Server** MUSS einen ohne TI-Identität registrierten Client ausschließlich über den Instanzschlüssel (F2, Proof-of-Possession via JWT-Bearer Assertion) und die plattformabhängige Attestierung absichern, ohne eine identitätsgebundene E-Mail (F1) zu erzeugen oder zu verlangen.
 
 ### A_29895 – Identitätslose Clients: Schlüssel-Rollover zulässig
 
@@ -126,7 +120,7 @@ Bei Verlust des Instanzschlüssels eines identitätslosen Clients MUSS sich der 
 
 ### A_29902 – Verwaltung nur durch eingebuchten Client
 
-**Authorization Server** MUSS für identitäts- und clientbezogene Verwaltungsoperationen (Änderung der E-Mail, Schlüssel-Rollover, Löschung von Clients) den Nachweis eines an diesem Fachdienst eingebuchten, gültigen Clients verlangen.
+**Authorization Server** MUSS für identitäts- und clientbezogene Verwaltungsoperationen (Änderung der E-Mail, Schlüssel-Rollover, Umbenennung und Löschung von Clients) den Nachweis eines an diesem Fachdienst eingebuchten, gültigen Clients verlangen.
 
 ### A_29903 – Ableitung der Identitätsbindung aus der Nutzerauthentisierung
 
@@ -142,7 +136,7 @@ Bei Verlust des Instanzschlüssels eines identitätslosen Clients MUSS sich der 
 
 ### A_30086-01 – Keine Berechtigungsfreigabe im Zustand pending_user_binding
 
-**Authorization Server** DARF im Zustand `pending_user_binding` ausschließlich die Identitätsbindung zulassen und DARF NICHT Scope oder Audiences für den Ressourcenzugriff freigeben.
+**Authorization Server** DARF im Zustand `pending_user_binding` ausschließlich die Identitätsbindung zulassen.
 
 ### A_30086-02 – Tombstone nur für identitätsgebundene Registrierungen
 
@@ -188,7 +182,7 @@ Bei Folgeregistrierung einer bereits bekannten Identität MUSS **Authorization S
 
 ### A_30085-05 – Vollwertige Token nur nach Abschluss der Bindung
 
-**Authorization Server** MUSS vollwertige Access- und Refresh-Token ausschließlich über einen Token Exchange nach Abschluss der Bindung ausstellen und DARF diesen Exchange nicht vor Erreichen des Zustands `bound` erfolgreich beantworten.
+**Authorization Server** MUSS vollwertige Access- und Refresh-Token ausschließlich über einen Token Exchange nach Erreichen des Zustands `bound` ausstellen.
 
 ### A_30085-06 – Verwerfung unvollständiger Bindungen
 
@@ -202,23 +196,11 @@ Dieser Abschnitt regelt das Hinzufügen weiterer Clients zu einer bereits bekann
 
 ### A_29909 – Eine verifizierte E-Mail je Identität
 
-**Authorization Server** MUSS einer Identität genau eine verifizierte E-Mail-Adresse zuordnen, die bei der Erstnutzung gebunden wird.
+**Authorization Server** MUSS einer Identität zu jedem Zeitpunkt genau eine verifizierte E-Mail-Adresse zuordnen, die bei der Erstnutzung gebunden wird; das Hinzufügen einer weiteren E-Mail-Adresse ist ausgeschlossen.
 
-### A_29909-01 – Keine weitere E-Mail nach Erstnutzung
+### A_30005 – Metadatenaktualisierung ausschließlich zur Umbenennung
 
-**Authorization Server** DARF NICHT das Hinzufügen einer weiteren E-Mail-Adresse zu einer Identität nach der Erstnutzung zulassen.
-
-### A_29909-02 – Verwaltungsoperationen nur durch registrierten Client
-
-**Authorization Server** MUSS sicherstellen, dass Client löschen, Client umbenennen und E-Mail-Adresse aktualisieren ausschließlich durch einen registrierten, gültigen Client der Identität durchgeführt werden können.
-
-### A_30005 – Metadatenaktualisierung beschränkt auf Umbenennung
-
-**Authorization Server** MUSS die Metadatenaktualisierung über die Registrierungsverwaltung (Content-Type `application/json`) ausschließlich auf die Umbenennung des Clients (`client_name`) beschränken.
-
-### A_30005-01 – Ablehnung nicht zulässiger Feldänderungen
-
-**Authorization Server** MUSS eine über die Metadatenaktualisierung eingereichte Änderung des Instanzschlüssels, der gebundenen E-Mail, der berechtigten Audiences oder der Registrierungsparameter (`jwks`, `redirect_uris`, `grant_types`) ablehnen.
+**Authorization Server** MUSS die Metadatenaktualisierung über die Registrierungsverwaltung (Content-Type `application/json`) ausschließlich zur Umbenennung des Clients (`client_name`) zulassen und jede Änderung des Instanzschlüssels, der gebundenen E-Mail, der berechtigten Audiences oder der Registrierungsparameter (`jwks`, `redirect_uris`, `grant_types`) ablehnen.
 
 ### A_29910 – Erneute E-Mail-Verifikation bei Folgeregistrierung
 
@@ -264,10 +246,6 @@ Dieser Abschnitt regelt das Hinzufügen weiterer Clients zu einer bereits bekann
 
 **Authorization Server** MUSS eine erfolgreiche E-Mail-Änderung identitätsweit für alle Clients dieser Identität an diesem Fachdienst wirksam machen.
 
-### A_29933 – Empfohlene Reihenfolge bei E-Mail-Verlust
-
-Verfügt der Nutzer über ein weiteres registriertes Gerät und hat den Zugriff auf die gebundene E-Mail verloren, SOLL **ZETA Client** ihn anleiten, zunächst über dieses Gerät die E-Mail zu ändern und erst danach das Ersatzgerät zu registrieren.
-
 ---
 
 ## 5.5.5 Fachdienstübergreifende Fast-Path-Registrierung (entfällt in der Minimalversion)
@@ -308,17 +286,13 @@ Die verschachtelte Signaturstruktur MUSS zusätzlich eine innere, mit dem neuen 
 
 **Authorization Server** MUSS den Rollover an die HTTP-Methode und die Ziel-URI der Anfrage binden.
 
-### A_29924 – Übergangszeitraum für Ressourcenzugriff
+### A_29924 – Übergangszeitraum ausschließlich für Ressourcenzugriff
 
-**Authorization Server** MUSS nach erfolgreichem Rollover den bisherigen Schlüssel für einen begrenzten Übergangszeitraum ausschließlich für den Ressourcenzugriff weiter akzeptieren.
+**Authorization Server** MUSS nach erfolgreichem Rollover den bisherigen Schlüssel für einen begrenzten Übergangszeitraum ausschließlich für den Ressourcenzugriff weiter akzeptieren und DARF ihn nicht mehr für Verwaltungsoperationen, insbesondere einen erneuten Rollover, akzeptieren.
 
 ### A_29924-01 (neu) – Policy-definierte Dauer des Übergangszeitraums
 
 Die Dauer des Übergangszeitraums MUSS über Policy definiert und dokumentiert sein und MUSS mindestens der maximalen Gültigkeitsdauer eines zum Rollover-Zeitpunkt bereits ausgestellten Access Tokens entsprechen.
-
-### A_29924-02 – Keine weiteren Verwaltungsoperationen mit altem Schlüssel
-
-**Authorization Server** DARF NICHT nach dem Rollover den bisherigen Schlüssel für weitere Verwaltungsoperationen, insbesondere einen erneuten Rollover, akzeptieren.
 
 ### A_29925 – Invalidierung des bisherigen Schlüssels
 
@@ -352,7 +326,7 @@ Dieser Abschnitt regelt die Verwaltung mehrerer, derselben Identität zugeordnet
 
 ### A_29937 – Fachdienstbezogener Geltungsbereich der Löschung
 
-**Authorization Server** MUSS Client-Löschungen ausschließlich auf den eigenen Fachdienst beziehen. Eine fachdienstübergreifende Löschung DARF NICHT serverseitig erfolgen.
+**Authorization Server** MUSS Client-Löschungen ausschließlich auf den eigenen Fachdienst beziehen.
 
 ### A_29938 – Fortbestand der Identität nach Löschung des letzten Clients
 
@@ -378,11 +352,11 @@ Der Notfall-Löschprozess DARF NICHT Zugriff gewähren, ein Token ausstellen ode
 
 ### A_29941 – Hochassuranter, IDP-unabhängiger Identitätsnachweis
 
-**Authorization Server** MUSS für die Notfall-Löschung einen vom sektoralen IDP unabhängigen Identitätsnachweis auf hohem Vertrauensniveau verlangen. Ein Nachweis auf niedrigerem Niveau DARF NICHT akzeptiert werden.
+**Authorization Server** MUSS für die Notfall-Löschung ausschließlich einen vom sektoralen IDP unabhängigen Identitätsnachweis auf hohem Vertrauensniveau akzeptieren.
 
 ### A_29942 – Verzögerte Ausführung mit Einspruchsfrist
 
-**Authorization Server** MUSS eine Notfall-Löschung mit einer Einspruchsfrist planen und DARF sie NICHT sofort ausführen.
+**Authorization Server** MUSS eine Notfall-Löschung erst nach Ablauf einer vorab angekündigten Einspruchsfrist ausführen.
 
 ### A_29942-01 – Benachrichtigung während der Einspruchsfrist
 
@@ -392,21 +366,13 @@ Der Notfall-Löschprozess DARF NICHT Zugriff gewähren, ein Token ausstellen ode
 
 Die Dauer der Einspruchsfrist MUSS über Policy definiert und dokumentiert sein und MUSS mindestens so bemessen sein, dass die Benachrichtigung zugestellt und ein überlebender Faktor rechtzeitig ein Veto einlegen kann.
 
-### A_29943 – Veto durch Proof-of-Possession eines Clients
+### A_29943 – Veto ausschließlich durch Proof-of-Possession eines Clients
 
-**Authorization Server** MUSS während der Einspruchsfrist den Abbruch der geplanten Löschung durch den Proof-of-Possession eines noch eingebuchten Clients (F2) zulassen.
-
-### A_29943-01 – Kein Veto allein durch Kontrolle der E-Mail
-
-Ein Veto allein durch Kontrolle der gebundenen E-Mail (F1) ist NICHT vorgesehen.
+**Authorization Server** MUSS während der Einspruchsfrist den Abbruch der geplanten Löschung ausschließlich durch den Proof-of-Possession eines noch eingebuchten Clients (F2) zulassen.
 
 ### A_29944 – Wirkung der Ausführung: Sperre ohne Zugriff
 
 **Authorization Server** MUSS bei Ausführung der Notfall-Löschung den Identitätsdatensatz in den Zustand `tombstone_locked` überführen und alle zugehörigen Client-Registrierungen entfernen.
-
-### A_29944-01 – Kein Zugriff und keine Faktor-Neubindung bei Ausführung
-
-Die Ausführung der Notfall-Löschung DARF NICHT Zugriff gewähren oder einen Faktor neu binden.
 
 ### A_29945 – Zweite, unabhängige Bestätigung für Wiederregistrierung
 
@@ -456,6 +422,28 @@ Dieser Abschnitt dokumentiert alle Anforderungen, die gegenüber dem ursprüngli
 | A_29897 (keine Faktoränderung allein aus IDP) | Spezialfall von A_29896 (IDP-Authentisierung allein nicht hinreichend für Übernahme, Änderung oder Wiederherstellung); „Änderung eines Faktors" ist bereits von „verändern" umfasst. |
 | A_29892 (Bereitstellung der TOFU-Erweiterungsschnittstellen) | Rein deklarative Meta-Anforderung ohne eigenen Prüfinhalt; jede Einzeloperation (E-Mail-Bindung, Rollover, Löschung, Notfallpfad) fordert ihren Endpunkt bereits implizit über die jeweils eigene Anforderung. |
 | A_29936-01 (Sammellöschung als wiederholte Einzel-Löschung) | Reine Implementierungsklarstellung ohne eigenständige Prüfbarkeit; die Schutzwirkung (erhöhte Anforderung beim letzten Client) ist bereits vollständig durch A_29936 abgedeckt, unabhängig vom Auslösungsweg. |
+| A_29909-02 (Verwaltungsoperationen nur durch registrierten Client) | Wortgleicher Inhalt wie A_29902 (Kapitel 5.5.2), das dieselbe Bedingung für alle identitäts- und clientbezogenen Verwaltungsoperationen bereits allgemeingültig festlegt. A_29902 wurde um „Umbenennung" ergänzt, um die einzige zusätzliche Angabe aus A_29909-02 aufzunehmen. |
+| A_29944-01 (kein Zugriff/keine Faktor-Neubindung bei Ausführung der Notfall-Löschung) | Vollständig deckungsgleich mit A_29940-01, das bereits für den gesamten Notfall-Löschprozess (einschließlich seiner Ausführung) festlegt, dass kein Zugriff gewährt, kein Token ausgestellt und kein Faktor neu gebunden werden darf. |
+
+### Zusammengeführte MUSS/DARF-NICHT-Paare (gleiche Aussage, zwei Formulierungen)
+
+Bei folgenden Anforderungspaaren war die DARF-NICHT-Aussage nach Prüfung ausschließlich die logische Umkehrung einer MUSS-Aussage, die bereits mit einem Exklusivitätswort („ausschließlich", „genau", „erst") formuliert war oder formuliert werden konnte. Beide Aussagen wurden zu einer Anforderung zusammengeführt; kein Prüfinhalt ging dabei verloren.
+
+| Zusammengeführt | Ursprüngliche Paarung | Begründung |
+|---|---|---|
+| A_29898 | A_29898 (MUSS eigenständig führen) + A_29898-01 (DARF NICHT teilen/beziehen) | „Eigenständig, ausschließlich fachdienstlokal führen" schließt Teilen und Beziehen bereits ein. |
+| A_29894 | A_29894 (MUSS ausschließlich über F2/Posture absichern) + A_29894-01 (DARF NICHT F1 verlangen) | „Ausschließlich über F2 und Posture" schließt die Verwendung von F1 bereits aus. |
+| A_29909 | A_29909 (MUSS genau eine E-Mail zuordnen) + A_29909-01 (DARF NICHT weitere E-Mail zulassen) | „Genau eine" schließt eine zweite E-Mail-Adresse bereits aus. |
+| A_30005 | A_30005 (MUSS ausschließlich auf Umbenennung beschränken) + A_30005-01 (MUSS andere Felder ablehnen) | Die konkrete Feldliste aus A_30005-01 wurde als Testkriterium in A_30005 übernommen; „ausschließlich beschränken" und „andere Felder ablehnen" sind dieselbe Aussage. |
+| A_29937 | A_29937 (MUSS ausschließlich auf eigenen Fachdienst beziehen) + zweiter Satz (DARF NICHT fachdienstübergreifend) | „Ausschließlich auf den eigenen Fachdienst" schließt eine fachdienstübergreifende Löschung bereits aus. |
+| A_29941 | MUSS hohes Vertrauensniveau verlangen + DARF NICHT niedrigeres Niveau akzeptieren | Durch Ergänzung von „ausschließlich" in der MUSS-Aussage wird die Ablehnung niedrigerer Niveaus zur reinen Wiederholung. |
+| A_29942 | MUSS mit Einspruchsfrist planen + DARF NICHT sofort ausführen | „Erst nach Ablauf einer Einspruchsfrist ausführen" drückt beides in einer Aussage aus. |
+| A_29943 | A_29943 (MUSS Veto durch F2-PoP zulassen) + A_29943-01 (DARF NICHT Veto allein durch F1) | Durch Ergänzung von „ausschließlich" wird der Ausschluss eines F1-only-Vetos zur reinen Wiederholung. |
+| A_29924 | A_29924 (MUSS ausschließlich für Ressourcenzugriff akzeptieren) + A_29924-02 (DARF NICHT für Verwaltungsoperationen akzeptieren) | „Ausschließlich für den Ressourcenzugriff" schließt die Verwendung für Verwaltungsoperationen bereits aus; beide Satzhälften wurden zu einer Anforderung zusammengeführt. |
+| A_30086-01 | MUSS ausschließlich Identitätsbindung zulassen + DARF NICHT Scope/Audiences freigeben | „Ausschließlich die Identitätsbindung zulassen" schließt jede Freigabe von Scope/Audiences bereits ein. |
+| A_30085-05 | MUSS Token nach Abschluss der Bindung ausstellen + DARF NICHT vor Zustand bound ausstellen | „Nach Erreichen des Zustands bound ausstellen" drückt beides in einer Aussage aus. |
+
+**Bewusst nicht zusammengeführt**: Paare, bei denen MUSS und DARF NICHT unterschiedliche Akteure adressieren (z. B. A_29921 [ZETA Client] und A_29921-01 [Authorization Server]) oder bei denen die DARF-NICHT-Aussage einen nicht offensichtlichen, eigenständig testrelevanten Umgehungsweg benennt (z. B. A_29903-01, A_29945-01), bleiben getrennt, da sie unterschiedliche Prüfgegenstände oder Systeme betreffen.
 
 ### Reine Client-Komfortfunktionen ohne eigenen Sicherheitsbeitrag
 
