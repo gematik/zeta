@@ -122,6 +122,8 @@ Gültige Typen:
 
 Beispiel: `feature/ANFTI2-123-pep-header-forwarding`
 
+Siehe auch: [Branch-Modell](./docs/branch-modell.md)
+
 ---
 
 ## Commit-Konventionen

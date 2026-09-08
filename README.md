@@ -8,7 +8,7 @@ Dies ist das Hauptrepository des [Zero Trust Access (ZETA)](https://gemspec.gema
 Die veröffentlichte Version fokussiert sich auf den stationären Zugang zur TI für Leistungserbringerinstitutionen (LEI).
 Beim aktuellen Stand handelt sich um einen finalen Stand für die Stufe 1, bei dem die sicherheitstechnische Prüfung noch nicht abgeschlossen ist. Der aktuelle Stand ist aus diesem Grund noch nicht für den produktiven Einsatz geeignet, und sollte bis zum Abschluss der Prüfung noch in lokalen Umgebungen für Test- und Integrationszwecke eingesetzt werden.
 
-Wir freuen uns über Feedback und Contributions! Bitte beachtet dabei unsere [Contributing Guidelines](./CONTRIBUTING.md).
+Wir freuen uns über Feedback und Contributions! Bitte beachtet dabei unsere [Contributing Guidelines](./CONTRIBUTING.md) und [Branch-Modell](./docs/branch-modell.md).
 
 * [Implementierungsleitfaden für Primärsysteme](https://gemspec.gematik.de/docs/gemILF/gemILF_ZETA_API/latest/)
 * [ZETA Produkthandbuch](./docs/user-manual/README.md)
