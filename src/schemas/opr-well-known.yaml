@@ -172,4 +172,5 @@ properties:
 required:
   - resource
   - authorization_servers
+  - scopes_supported
   - zeta_asl_use
