@@ -106,19 +106,37 @@ Hinweise zur Umsetzung:
 
 Maßgeblich ist immer das engste Fenster, also das des DPoP-Proofs: **+ 15 s / − 25 s**. Ein zusätzliches `iat` in der Client Assertion verbessert die Toleranz **nicht** — es ersetzt lediglich die Prüfung gegen die maximale Lebensdauer durch eine engere Prüfung auf ein in der Zukunft liegendes Ausstellungsdatum. Ein zuverlässiger Betrieb ist deshalb nur über die Offset-Korrektur erreichbar.
 
-### Ablauf Übersicht (alle stationären Clients)
+### Ablauf Übersicht (alle ZETA Clients)
 
-- [ ] Discovery: FQDN des Resource Servers → `GET /.well-known/oauth-protected-resource` → PDP-Metadaten laden ([Kapitel 3](#3-discovery-und-konfiguration))
+Unabhängig von Plattform und Attestierungsverfahren durchläuft jeder ZETA-Client dieselben Phasen. Die konkreten Nachrichten und Nachweise unterscheiden sich je nach Client-Typ; die Phasen und ihre Reihenfolge bleiben gleich:
 
-- [ ] Zertifikate laden: Lokale TI-Vertrauensanker-CA-Zertifikate (`roots.json`) einbinden und SMC-B-Institutionszertifikat auslesen.
+1. **[ ] Discovery**: Ausgehend vom FQDN des Resource Servers lädt der Client die PEP-Metadaten (`GET /.well-known/oauth-protected-resource`) und daraus die PDP-Metadaten mit den Endpunkten des Authorization Servers ([Kapitel 3](#3-discovery-und-konfiguration)).
 
-- [ ] Keys generieren: Client Instance Key (`PrK.Client.Sig` / `PuK.Client.Sig`) erzeugen — plattformabhängig (TPM, Secure Enclave oder Software).
+2. **[ ] Vertrauensanker einbinden**: Die TI-Vertrauensanker-CA-Zertifikate (`roots.json`) werden lokal eingebunden. Stationäre Clients im Leistungserbringer-Umfeld lesen zusätzlich das SMC-B-Institutionszertifikat über den Konnektor bzw. das TI-Gateway aus.
 
-- [ ] DCR aufrufen: Client am ZETA Guard registrieren (`POST /register`). Je nach Attestation-Typ mit Challenge-Handling (TPM), Attestation Object (Apple) oder nur JWK.
+3. **[ ] Keys generieren**: Der Client erzeugt seinen Client Instance Key (`PrK.Client.Sig` / `PuK.Client.Sig`) — je nach Plattform im TPM, in der Secure Enclave, im TEE / StrongBox oder als Software-Schlüssel.
 
-- [ ] Token abholen: Nonce abrufen (`GET /nonce`) → Subject Token mit SM(C)-B signieren → Client Assertion erstellen → `POST /token` mit DPoP-Proof.
+4. **[ ] Dynamic Client Registration (DCR)**: Der Client registriert sich am ZETA Guard (`POST /register`) und weist dabei die Bindung des Client Instance Key an die Plattform nach. Die Registrierung liefert die `client_id`. Der Nachweis hängt vom Attestierungsverfahren ab (TPM-Challenge, Apple Attestation Object, Android Key-Attestation-Kette oder nur JWK bei Software-Attestierung); mobile Clients bestätigen die Registrierung zusätzlich per TOFU-OTP über `POST /register/verify`.
 
-- [ ] RS anfragen: DPoP-gebundenes Access Token im `Authorization`-Header mitsenden und die geschützte API des Resource Servers anfragen ([Kapitel 7](#7-zugriff-auf-den-resource-server)).
+5. **[ ] Token beziehen**: Der Client bezieht am `token_endpoint` (`POST /token`) ein DPoP-gebundenes Access Token samt Refresh Token. Er authentisiert sich dabei mit einer Client Assertion (signiert mit `PrK.Client.Sig`) und einem DPoP-Proof. Der Nachweis der Nutzer- bzw. Institutionsidentität unterscheidet sich:
+   - *Stationäre Clients*: Token Exchange mit einem durch die SM(C)-B signierten Subject Token; zuvor wird eine frische Nonce über `GET /nonce` abgerufen ([Kapitel 4](#4-stationäre-clients-windows-linux-macos)).
+   - *Mobile Clients*: OIDC Authorization Code Flow mit PAR und PKCE, bei dem der AuthS als Relying Party gegenüber dem sektoralen IDP auftritt ([Kapitel 5](#5-mobile-clients-android-ios-ipados)).
+   - *Backend-Dienste*: Client Credentials bzw. Token Exchange mit einem vom eigenen IDP ausgestellten JWT ([Kapitel 6](#6-dienst-zu-dienst-kommunikation-backend-to-backend)).
+
+6. **[ ] Resource Server anfragen**: Das DPoP-gebundene Access Token wird im `Authorization`-Header zusammen mit einem neuen DPoP-Proof mitgesendet und die geschützte API des Resource Servers aufgerufen — optional über den verschlüsselten ZETA/ASL-Kanal ([Kapitel 7](#7-zugriff-auf-den-resource-server)).
+
+7. **[ ] Session erneuern**: Läuft das Access Token ab, wird es über den Refresh Token erneuert; erst wenn auch dieser ungültig ist, wird Phase 5 wiederholt. Eine erneute DCR ist nur bei Verlust des Client Instance Key oder einer Neuinstallation erforderlich.
+
+| Phase | Stationär (Kapitel 4) | Mobil (Kapitel 5) | Backend (Kapitel 6) |
+| ------- | ----------------------- | ------------------- | --------------------- |
+| Schlüsselspeicher | TPM, Secure Enclave oder Software | Secure Enclave, TEE / StrongBox oder Software | Workload-Identität |
+| DCR-Nachweis | TPM-Challenge, Apple Attestation Object oder JWK | Apple Attestation Object, Android Key Attestation oder JWK, jeweils + TOFU-OTP | entfällt |
+| Identitätsnachweis am `/token` | SM(C)-B-signiertes Subject Token | OIDC Authorization Code (sektoraler IDP) | Signiertes JWT des eigenen IDP |
+| Zugriff auf den RS | DPoP-gebundenes Access Token | DPoP-gebundenes Access Token | DPoP-gebundenes Access Token |
+
+Die plattformspezifischen Details zu Schlüsselerzeugung, DCR und Token-Bezug beschreiben die Kapitel 4 (stationäre Clients), 5 (mobile Clients) und 6 (Backend-to-Backend). Zeitstempel in allen signierten Artefakten sind dabei stets aus der Serverzeit abzuleiten (siehe [Zeitsynchronisation und Serverzeit-Offset](#zeitsynchronisation-und-serverzeit-offset)).
+
+*Hinweis: In den Abläufen und Beispielen werden mit dem Ziel der einfacheren Darstellung nur beispielhafte HTTP-Pfade für den Aufruf der ZETA Guard Endpunkte angegeben. Die echten Pfade werden vom ZETA Client per Service Discovery aus den Well-known-JSON-Dokumenten `/.well-known/oauth-protected-resource` und `/.well-known/oauth-authorization-server` ermittelt. Beispiel: `POST /register` wäre korrekt `POST <registration_endpoint>` mit dem Wert `registration_endpoint` aus `GET /.well-known/oauth-authorization-server`.*
 
 *Hinweis: Eine Übersicht der verwendeten Schlüssel ist in [Kapitel 9](#9-schlüsselverwaltung) zu finden.*
 
