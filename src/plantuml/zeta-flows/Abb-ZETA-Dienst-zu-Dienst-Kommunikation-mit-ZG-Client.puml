@@ -7,16 +7,17 @@ participant "Secure Token Service\n(Anbieter B)" as STSB
 box "Anbieter" PROVIDER_COLOR
   box "ZETA Guard" ZETA_GUARD_COLOR
     participant "ZG Client" as ZGC <<zeta>>
-    participant "PDP\nPolicy Engine" as PE
+    participant "Local Artifact\nRegistry Cache" as LARC <<zeta>>
     participant "PDP\nAuthorization Server\n(Anbieter A)" as ASA
   end box
   participant "Fachkomponente\n(z. B. Resource Server,\notel-collector)" as FK <<provider>>
 end box
 
-== Konfigurationsbezug ==
+== Konfigurationsbezug (Polling-Intervall) ==
 ZGC++
-ZGC -> PE++ : Konfiguration abrufen\n(zulässige Zieldienste, Scopes, Token-Endpunkte)
-PE --> ZGC-- : Konfiguration
+ZGC -> LARC++ : ZG-Client-Konfiguration abrufen\n(signiertes OCI-Artefakt je Fachdienst-Typ)
+LARC --> ZGC-- : Konfigurationsartefakt\n(zulässige Zieldienste, Scopes, Token-Endpunkte, Caching-Parameter)
+ZGC -> ZGC : Signatur prüfen,\nKonfiguration ohne Neustart aktivieren
 
 == Fachlicher Request ==
 FK++
