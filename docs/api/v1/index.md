@@ -153,6 +153,7 @@ Der Discovery-Ablauf ist für alle Client-Typen identisch und greift auf standar
 1. Der Client sendet eine `GET`-Anfrage an den Well-Known-Endpunkt der geschützten Ressource (PEP).
 2. PEP antwortet mit Metadaten über unterstützte Token-Methoden und den zuständigen Authorization Server (PDP).
 3. Der Client fragt die detaillierten Authorization Server Metadaten (PDP) ab, um Endpunkte für Registrierung, Token-Bezug und Nonce-Generierung zu erhalten.
+4. Der Client cacht beide Dokumente anhand der Header `ETag` und `Cache-Control` und validiert sie bei jedem Session-Start per `If-None-Match` (siehe [3.3](#33-caching-und-validierung-der-well-known-dokumente-etag-cache-control)).
 
 ![Abbildung 1: Ablauf Service Discovery](../../../images/zeta-flows/Abb-ZETA-Service-Discovery.svg)
 
@@ -263,6 +264,46 @@ ETag: "w/98d41-xyz98765"
   ]
 }
 ```
+
+### 3.3 Caching und Validierung der Well-known-Dokumente (ETag, Cache-Control)
+
+Beide Well-known-Dokumente werden vom ZETA Guard mit den HTTP-Headern `ETag` und `Cache-Control` ausgeliefert. Der ZETA Client führt die Service Discovery zu Beginn jeder Session durch, nutzt dabei aber den lokalen Cache, sodass die Dokumente in der Regel nicht erneut übertragen werden müssen.
+
+**Verhalten des ZETA Guard:**
+
+- Der `ETag`-Header ändert sich bei jeder inhaltlichen Änderung des Dokuments.
+- Der `Cache-Control`-Header enthält `max-age`; der Wert überschreitet 86400 Sekunden (24 Stunden) nicht.
+- Enthält die Anfrage den Header `If-None-Match` mit dem aktuellen `ETag`, antwortet der ZETA Guard mit `304 Not Modified` ohne Body. Die 304-Antwort enthält dieselben `ETag`- und `Cache-Control`-Header wie die zugehörige 200-Antwort.
+
+**Verhalten des ZETA Client zu Beginn jeder Session:**
+
+1. Liegt das Dokument im Cache vor und ist es gemäß `max-age` noch frisch, verwendet der Client das Dokument aus dem Cache ohne Anfrage an den ZETA Guard.
+2. Ist das Dokument abgelaufen, wurde kein `Cache-Control`-Header geliefert oder enthält dieser `no-cache`, sendet der Client eine bedingte Anfrage mit `If-None-Match: <zuletzt erhaltener ETag>`.
+   - `304 Not Modified`: Der Client verwendet das gecachte Dokument weiter. Die Frische wird anhand der Header der 304-Antwort neu bestimmt, d. h. `max-age` läuft ab dem Zeitpunkt der 304-Antwort erneut.
+   - `200 OK`: Der Client ersetzt das gecachte Dokument und übernimmt `ETag` und `Cache-Control` der neuen Antwort.
+3. Enthält `Cache-Control` die Direktive `no-store`, cacht der Client das Dokument nicht und lädt es bei jeder Session vollständig.
+4. Unabhängig vom `Cache-Control`-Header validiert der Client das Dokument spätestens 24 Stunden nach dem letzten Abruf bzw. der letzten erfolgreichen Validierung erneut. Das gilt auch innerhalb einer laufenden Session.
+
+Eine `404`-Antwort beim Zugriff auf eine geschützte Ressource führt **nicht** zu einer erneuten Service Discovery; sie wird unverändert an den Fach-Client durchgereicht (siehe [Kapitel 7](#7-zugriff-auf-den-resource-server)).
+
+**Anfrage-Beispiel (bedingte Anfrage):**
+
+```http
+GET /.well-known/oauth-authorization-server HTTP/1.1
+Host: auth.example.com
+Accept: application/json
+If-None-Match: "w/98d41-xyz98765"
+```
+
+**Antwort-Beispiel (304 Not Modified):**
+
+```http
+HTTP/1.1 304 Not Modified
+Cache-Control: public, max-age=86400
+ETag: "w/98d41-xyz98765"
+```
+
+Die Header und die 304-Antwort sind in den OpenAPI-Beschreibungen [oauth-protected-resource-well-known.yaml](../../../src/openapi/oauth-protected-resource-well-known.yaml) und [as-well-known.yaml](../../../src/openapi/as-well-known.yaml) spezifiziert.
 
 ---
 
