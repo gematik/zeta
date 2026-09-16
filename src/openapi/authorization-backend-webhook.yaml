@@ -1,0 +1,451 @@
+# Copyright 2026 Gematik GmbH
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+openapi: 3.1.0
+info:
+  title: ZETA Guard – Application Authorization Backend Webhook
+  version: 1.0.0
+  description: |-
+    Plugin interface between the **PDP Authorization Server** of a ZETA Guard and an
+    application-specific **Application Authorization Backend** operated by the
+    TI 2.0 service (gemSpec_ZETA A_25665-01, Kapitel 4.10 und 5.8.2.5).
+
+    The interface has two directions and is therefore described as **two servers**:
+
+      * **Backend server** (`/authorize`, `/access-denied`, `/session-terminated`):
+        implemented by the Application Authorization Backend, called by the
+        Authorization Server. The Authorization Server is the OAuth client of these
+        operations.
+      * **Authorization Server** (`/sessions/{session_id}/terminate`): implemented by the
+        PDP Authorization Server, called by the Application Authorization Backend (or by
+        the provider's SIEM through the backend) to terminate a session
+        (A_29847, A_29854 – A_29858).
+
+    ## Processing model
+
+    `authorizeAccess` is called **after** a positive decision of the Policy Engine and
+    **before** the token set is issued. The backend may deny access or narrow the
+    granted scope; it can never widen the scope beyond the Policy Engine decision.
+    The Authorization Server enforces this by intersecting the returned
+    `additional_scopes` / `additional_authorization_details` with what the Policy
+    Engine allowed (A_xxxx2). If the backend does not answer within the configured
+    timeout (default 500 ms) or returns an error, the Authorization Server fails
+    **closed**: no token set is issued and the client receives
+    `503 temporarily_unavailable` (A_xxxx5).
+
+    `notifyAccessDenied` and `notifySessionTermination` are **fire-and-forget**
+    notifications. A failure of these calls never influences the triggering operation;
+    it is logged only.
+
+    ## Data minimisation
+
+    The Authorization Server passes exactly the data it also passes to the Policy
+    Engine: client registration data, user information and the authorization request
+    (`policy-engine-input.yaml`) plus the Policy Engine decision (`pdp-decision.yaml`).
+    It never passes tokens, keys, nonces or attestation evidence (A_xxxx3).
+
+    ## Security
+
+    Both directions are protected by **mutual TLS** according to gemSpec_Krypt
+    (A_xxxx4). The Authorization Server accepts `terminateSession` only from the one
+    backend configured for this ZETA Guard instance and verifies the presented client
+    certificate against that configuration; any other caller receives `401`.
+    Every call is logged with the `trace_id` of the triggering request and exported
+    as part of the OTel trace (A_xxxx6).
+
+    ## Correlation
+
+    `trace_id` is the W3C Trace Context `trace-id` (32 lowercase hex characters) of the
+    request that triggered the call. The Authorization Server also sends it in the
+    `traceparent` header; the body copy exists so that backends without tracing
+    support can still correlate.
+
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+servers:
+  - url: https://{backend-host}/zeta/authz-backend/v1
+    description: Application Authorization Backend (operated by the TI 2.0 service)
+    variables:
+      backend-host:
+        default: authz-backend.internal.example
+  - url: https://{authserver-host}/zeta/authz-backend/v1
+    description: PDP Authorization Server (callback for terminateSession)
+    variables:
+      authserver-host:
+        default: authserver.internal.example
+
+tags:
+  - name: backend
+    description: Operations implemented by the Application Authorization Backend
+  - name: authorization-server
+    description: Operations implemented by the PDP Authorization Server
+
+security:
+  - mutualTLS: []
+
+paths:
+
+  /authorize:
+    post:
+      tags: [backend]
+      operationId: authorizeAccess
+      summary: Application-specific authorization before token issuance (authorizeAccess)
+      description: |-
+        Called by the Authorization Server after the Policy Engine returned
+        `allow: true` and before the token set is issued (A_xxxx1). The backend
+        decides whether the access is allowed from the perspective of the service
+        (e.g. representation rules, consent, contractual relationship, service-side
+        block) and may narrow the granted scope.
+
+        Timeout and failure handling: see A_xxxx5 (fail-closed).
+      parameters:
+        - $ref: '#/components/parameters/Traceparent'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AuthorizeAccessRequest' }
+      responses:
+        '200':
+          description: Decision of the backend
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthorizeAccessResponse' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /access-denied:
+    post:
+      tags: [backend]
+      operationId: notifyAccessDenied
+      summary: Notification about an access denied by the PDP (notifyAccessDenied)
+      description: |-
+        Called by the Authorization Server after the Policy Engine returned
+        `allow: false`. Informational only; the backend cannot override the
+        decision. Failures of this call do not influence the token request.
+      parameters:
+        - $ref: '#/components/parameters/Traceparent'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AccessDeniedNotification' }
+      responses:
+        '204':
+          description: Notification accepted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /session-terminated:
+    post:
+      tags: [backend]
+      operationId: notifySessionTermination
+      summary: Notification about an expired or terminated session (notifySessionTermination)
+      description: |-
+        Called by the Authorization Server when a session ends: by expiry, by client
+        logout (`POST /revoke`, A_29996 ff.), by a `terminateSession` call or by the
+        identity lifecycle (client deletion, OOB deletion). Allows the backend to clean
+        up session-bound state. Failures of this call do not influence the triggering
+        operation.
+      parameters:
+        - $ref: '#/components/parameters/Traceparent'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SessionTerminationNotification' }
+      responses:
+        '204':
+          description: Notification accepted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /sessions/{session_id}/terminate:
+    post:
+      tags: [authorization-server]
+      operationId: terminateSession
+      summary: Active termination of a session by the application (terminateSession)
+      description: |-
+        Called by the Application Authorization Backend on the Authorization Server.
+        On success the Authorization Server revokes all refresh tokens of the session,
+        including rotated ones; already issued access tokens remain valid until they
+        expire (A_29847, A_29855). Subsequent refresh requests of this session are
+        rejected with `session_terminated` (A_29856).
+
+        The operation is **idempotent**: repeated calls with the same `session_id`
+        return `200` with `accepted: true` and do not raise an error (A_29858).
+        Every call is logged in a tamper-evident way with trace id, session id,
+        trigger source, reason code and timestamp (A_29857).
+
+        Only the backend configured for this ZETA Guard instance is authorised; the
+        Authorization Server verifies the mTLS client certificate against that
+        configuration (A_xxxx4).
+      parameters:
+        - $ref: '#/components/parameters/Traceparent'
+        - name: session_id
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/SessionId' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TerminateSessionRequest' }
+      responses:
+        '200':
+          description: Termination processed (also returned for already terminated or unknown sessions, see `accepted`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TerminateSessionResponse' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+components:
+
+  securitySchemes:
+    mutualTLS:
+      type: mutualTLS
+      description: |-
+        Mutual TLS according to gemSpec_Krypt. The Authorization Server authenticates
+        with its component certificate (PrK.AuthS.TLS); the backend authenticates with
+        the certificate configured at the Authorization Server for this ZETA Guard
+        instance.
+
+  parameters:
+    Traceparent:
+      name: traceparent
+      in: header
+      required: true
+      description: W3C Trace Context header of the triggering request.
+      schema:
+        type: string
+        pattern: '^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$'
+
+  responses:
+    BadRequest:
+      description: Malformed request
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: mTLS client certificate missing or not the configured peer
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ServerError:
+      description: Internal error of the called component
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unavailable:
+      description: Called component temporarily unavailable. The Authorization Server treats this like a timeout (fail-closed).
+      headers:
+        Retry-After:
+          schema: { type: integer }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+  schemas:
+
+    TraceId:
+      type: string
+      description: W3C Trace Context trace-id of the triggering request.
+      pattern: '^[0-9a-f]{32}$'
+      example: 4bf92f3577b34da6a3ce929d0e0e4736
+
+    SessionId:
+      type: string
+      description: Identifier of the Authorization Server session (opaque to the backend).
+      minLength: 1
+      maxLength: 128
+      example: 7c2d9e0a-3f1b-4c8e-9a6d-2b5e8f1c0d47
+
+    AuthorizeAccessRequest:
+      type: object
+      additionalProperties: false
+      required: [trace_id, session_id, policy_engine_input, pdp_decision]
+      properties:
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+        session_id:
+          $ref: '#/components/schemas/SessionId'
+        policy_engine_input:
+          description: |-
+            Exactly the input the Authorization Server passed to the Policy Engine:
+            client registration data (Client-Information), user information
+            (Subject-Information) and the authorization request incl. requested
+            `scopes`, `resource`/`audience`, `amr`/`acr`. Authorization details, if
+            requested, are contained in the authorization request.
+          $ref: '../schemas/policy-engine-input.yaml'
+        pdp_decision:
+          description: "The Policy Engine decision (`allow: true`, `ttl`, `aud`)."
+          $ref: '../schemas/pdp-decision.yaml'
+
+    AuthorizeAccessResponse:
+      type: object
+      additionalProperties: false
+      required: [allow]
+      properties:
+        allow:
+          type: boolean
+          description: |-
+            `true` – issue the token set; `false` – reject with `403 access_denied`.
+        reasons:
+          type: object
+          description: |-
+            Optional denial reasons in the same shape as `pdp-decision.yaml#reasons`
+            (reason string → true). Forwarded to the client in the token response
+            `reasons` field together with the Policy Engine reasons.
+          additionalProperties:
+            type: boolean
+        additional_scopes:
+          type: array
+          description: |-
+            Scopes to add to the access token. Only scopes within the set allowed by
+            the Policy Engine decision are taken over; others are discarded and reported
+            as a security event (A_xxxx2).
+          items: { type: string }
+          uniqueItems: true
+        additional_authorization_details:
+          description: |-
+            Authorization details (RFC 9396) to add to the access token, subject to the
+            same restriction as `additional_scopes`. Array schema as in
+            authorization-details.yaml.
+          $ref: '../schemas/authorization-details.yaml'
+        additional_claims:
+          type: object
+          description: |-
+            Application-specific claims to add to the access token. Claim names MUST be
+            namespaced (`urn:gematik:params:oauth:...` or a service-specific URN) and MUST
+            NOT collide with registered JWT claims or ZETA claims (`aud`, `scope`, `acr`,
+            `amr`, `client_id`, `ver`, `cnf`, `jkt`).
+          additionalProperties: true
+        reference:
+          type: string
+          description: Optional application-side reference of the decision for audit correlation.
+          maxLength: 256
+
+    AccessDeniedNotification:
+      type: object
+      additionalProperties: false
+      required: [trace_id, policy_engine_input, pdp_decision]
+      properties:
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+        session_id:
+          description: Present only if a session already existed (refresh path).
+          $ref: '#/components/schemas/SessionId'
+        policy_engine_input:
+          $ref: '../schemas/policy-engine-input.yaml'
+        pdp_decision:
+          description: "The Policy Engine decision (`allow: false`, `reasons`)."
+          $ref: '../schemas/pdp-decision.yaml'
+
+    SessionTerminationNotification:
+      type: object
+      additionalProperties: false
+      required: [trace_id, session_id, cause, terminated_at]
+      properties:
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+        session_id:
+          $ref: '#/components/schemas/SessionId'
+        cause:
+          type: string
+          description: Why the session ended.
+          enum:
+            - expired
+            - client_logout
+            - terminate_session
+            - client_deleted
+            - identity_deleted
+            - key_invalidated
+        terminated_at:
+          type: string
+          format: date-time
+
+    TerminateSessionRequest:
+      type: object
+      additionalProperties: false
+      required: [trace_id, reason_code, trigger_source]
+      properties:
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+        reason_code:
+          type: string
+          description: |-
+            Machine-readable reason. The values below are reserved; a service may add
+            namespaced values (`urn:<service>:...`).
+          examples: [security_incident, user_blocked, consent_withdrawn, contract_ended, admin_request]
+          maxLength: 128
+        trigger_source:
+          type: string
+          description: Component or role that triggered the termination (e.g. `siem`, `fachdienst`, `operator`).
+          maxLength: 128
+        comment:
+          type: string
+          description: Free text for the audit log. MUST NOT contain personal data beyond what is needed for the audit.
+          maxLength: 1024
+
+    TerminateSessionResponse:
+      type: object
+      additionalProperties: false
+      required: [accepted]
+      properties:
+        accepted:
+          type: boolean
+          description: |-
+            `true` – the session is terminated (or was already terminated / unknown;
+            idempotent behaviour, A_29858). `false` – the request was rejected for a
+            reason given in `error`.
+        error:
+          type: string
+          description: Error code if `accepted` is false.
+          enum:
+            - invalid_request
+            - not_authorized
+            - server_error
+        revoked_refresh_tokens:
+          type: integer
+          minimum: 0
+          description: Number of refresh tokens (including rotated ones) invalidated by this call. Informational.
+
+    Error:
+      type: object
+      description: Error body, aligned with zeta-error.yaml.
+      required: [error]
+      properties:
+        error:
+          type: string
+        error_description:
+          type: string
+        error_uri:
+          type: string
+          format: uri
