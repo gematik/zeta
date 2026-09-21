@@ -1,5 +1,59 @@
 # Konzept: Laufzeitüberwachung für TI 2.0 Dienste mit ZETA Guard
 
+- [Konzept: Laufzeitüberwachung für TI 2.0 Dienste mit ZETA Guard](#konzept-laufzeitüberwachung-für-ti-20-dienste-mit-zeta-guard)
+  - [1. Ziel und Abgrenzung](#1-ziel-und-abgrenzung)
+    - [1.1 Scope](#11-scope)
+    - [1.2 Verhältnis zu bestehenden Dokumenten](#12-verhältnis-zu-bestehenden-dokumenten)
+  - [2. Rollenmodell und Grundprinzip der Aufgabenteilung](#2-rollenmodell-und-grundprinzip-der-aufgabenteilung)
+    - [2.1 Trennlinie](#21-trennlinie)
+  - [3. Schichtenmodell](#3-schichtenmodell)
+  - [4. Maßnahmen im Detail](#4-maßnahmen-im-detail)
+    - [4.1 Pod Security Standards (PSS)](#41-pod-security-standards-pss)
+    - [4.2 Admission Control](#42-admission-control)
+    - [4.3 Kommunikationsmatrix und Network Policies (L3/L4)](#43-kommunikationsmatrix-und-network-policies-l3l4)
+      - [4.3.1 Normative Kommunikationsmatrix](#431-normative-kommunikationsmatrix)
+        - [A — Eingehend von außen (über Gateway / Ingress Controller)](#a--eingehend-von-außen-über-gateway--ingress-controller)
+        - [B — Innerhalb des Clusters (Ost-West)](#b--innerhalb-des-clusters-ost-west)
+        - [C — Ausgehend aus dem Cluster (Egress)](#c--ausgehend-aus-dem-cluster-egress)
+        - [D — Clientseitig, außerhalb des Betreiber-Scopes (informativ)](#d--clientseitig-außerhalb-des-betreiber-scopes-informativ)
+        - [E — Explizit unzulässige Beziehungen (Negativliste)](#e--explizit-unzulässige-beziehungen-negativliste)
+        - [Hinweise zur Ableitung aus der Abbildung](#hinweise-zur-ableitung-aus-der-abbildung)
+      - [4.3.2 Ableitung der NetworkPolicies](#432-ableitung-der-networkpolicies)
+        - [Baustein 1 — Default-Deny in beide Richtungen und DNS](#baustein-1--default-deny-in-beide-richtungen-und-dns)
+        - [Baustein 2 — PEP HTTP Proxy (Matrix A5, A6, A16, A7 · B17, B4, B-JWKS · N4)](#baustein-2--pep-http-proxy-matrix-a5-a6-a16-a7--b17-b4-b-jwks--n4)
+        - [Baustein 3 — Authorization Server (Matrix A7, A-Admin · B13, B15, B14, B27, B-TOFU-Abfrage, B-o.Nr., B-Cluster-Transport · C1, C11, C8)](#baustein-3--authorization-server-matrix-a7-a-admin--b13-b15-b14-b27-b-tofu-abfrage-b-onr-b-cluster-transport--c1-c11-c8)
+        - [Baustein 4 — Ziele ohne eigenen Ingress von außen (Matrix N2, N3)](#baustein-4--ziele-ohne-eigenen-ingress-von-außen-matrix-n2-n3)
+        - [Baustein 5 — Telemetriedaten Service (Matrix B18, B19, B20 · C21, C22 · N7, N10)](#baustein-5--telemetriedaten-service-matrix-b18-b19-b20--c21-c22--n7-n10)
+        - [Baustein 6 — Fachdienst-Namespace (Matrix N4, N6)](#baustein-6--fachdienst-namespace-matrix-n4-n6)
+        - [Abbildung der Matrix auf die Chart-Konfiguration](#abbildung-der-matrix-auf-die-chart-konfiguration)
+      - [4.3.3 Stand im ZETA Guard und verbleibende Lücken](#433-stand-im-zeta-guard-und-verbleibende-lücken)
+    - [4.4 Service Mesh (L7 und mTLS)](#44-service-mesh-l7-und-mtls)
+    - [4.5 Ingress und Egress / Gateway](#45-ingress-und-egress--gateway)
+    - [4.6 Pod-Überwachung auf Syscall-Ebene (Cilium Tetragon)](#46-pod-überwachung-auf-syscall-ebene-cilium-tetragon)
+    - [4.7 RBAC-Härtung](#47-rbac-härtung)
+  - [5. Ergänzende Maßnahmen aus dem Betrieb sicherer Dienste](#5-ergänzende-maßnahmen-aus-dem-betrieb-sicherer-dienste)
+    - [5.1 Kubernetes API-Server-Audit-Logging](#51-kubernetes-api-server-audit-logging)
+    - [5.2 Supply-Chain-Sicherheit über die Signatur hinaus](#52-supply-chain-sicherheit-über-die-signatur-hinaus)
+    - [5.3 Secrets-Management](#53-secrets-management)
+    - [5.4 Zertifikats-, Schlüssel- und Vertrauensanker-Monitoring](#54-zertifikats--schlüssel--und-vertrauensanker-monitoring)
+    - [5.5 Integrität und Aktualität der Policy-Bundles](#55-integrität-und-aktualität-der-policy-bundles)
+    - [5.6 Verfügbarkeit als Sicherheitssignal](#56-verfügbarkeit-als-sicherheitssignal)
+    - [5.7 Autorisierungs-Anomalien (fachliche Laufzeitüberwachung)](#57-autorisierungs-anomalien-fachliche-laufzeitüberwachung)
+    - [5.8 GitOps-Drift als Sicherheitssignal](#58-gitops-drift-als-sicherheitssignal)
+    - [5.9 Zeitsynchronisation und Log-Integrität](#59-zeitsynchronisation-und-log-integrität)
+    - [5.10 Backup, Wiederanlauf und Übung](#510-backup-wiederanlauf-und-übung)
+  - [6. Telemetrie- und Meldewege](#6-telemetrie--und-meldewege)
+  - [7. Detektions-Use-Cases](#7-detektions-use-cases)
+  - [8. Ausbaustufen](#8-ausbaustufen)
+    - [Stufe 1 — MUSS (Voraussetzung für den Produktivbetrieb)](#stufe-1--muss-voraussetzung-für-den-produktivbetrieb)
+    - [Stufe 2 — SOLL (innerhalb von 6 Monaten nach Inbetriebnahme)](#stufe-2--soll-innerhalb-von-6-monaten-nach-inbetriebnahme)
+    - [Stufe 3 — KANN (Ausbau)](#stufe-3--kann-ausbau)
+  - [9. Verantwortungsmatrix (Übersicht)](#9-verantwortungsmatrix-übersicht)
+  - [10. Offene Punkte und Empfehlungen an den ZETA Guard Hersteller](#10-offene-punkte-und-empfehlungen-an-den-zeta-guard-hersteller)
+  - [11. Nachweise für die Zulassung](#11-nachweise-für-die-zulassung)
+  - [Verwandte Dokumentation](#verwandte-dokumentation)
+
+
 ## 1. Ziel und Abgrenzung
 
 Dieses Konzept beschreibt, wie die Integrität, Vertraulichkeit und Verfügbarkeit der ZETA Guard Microservices zur Laufzeit in einer Kubernetes-Infrastruktur
@@ -664,8 +718,7 @@ spec:
     # Abschnitt 4.3.1), artifactRegistry, providerArtifactRegistry: ipBlocks
 ```
 
-> **Der TOFU-E-Mail-Endpunkt ist ein Architekturvorschlag**, kein Bestandteil
-> der Spezifikation oder des Charts. Sobald er umgesetzt ist, wäre er die
+> **Der TOFU-E-Mail-Endpunkt** ist die
 > einzige Stelle, an der ein Fachdienst personenbezogene Registrierungsdaten aus
 > dem PDP abruft. Er MUSS deshalb auf einem eigenen Port liegen, mTLS mit
 > Client-Zertifikat erzwingen und darf ausschließlich vom Resource Server
