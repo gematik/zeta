@@ -2,10 +2,9 @@
 
 ## 1. Ziel und Abgrenzung
 
-Dieses Konzept beschreibt, wie die **Integrität, Vertraulichkeit und Verfügbarkeit
-der ZETA Guard Microservices zur Laufzeit** in einer Kubernetes-Infrastruktur
+Dieses Konzept beschreibt, wie die Integrität, Vertraulichkeit und Verfügbarkeit der ZETA Guard Microservices zur Laufzeit in einer Kubernetes-Infrastruktur
 überwacht und durchgesetzt werden. Es ergänzt die Härtungsmaßnahmen des Deployments
-um **Erkennung (Detection)** und **Reaktion (Response)** und ordnet jede Maßnahme
+um Erkennung (Detection) und Reaktion (Response) und ordnet jede Maßnahme
 einer verantwortlichen Rolle zu.
 
 Laufzeitüberwachung wird hier in vier Wirkstufen verstanden:
@@ -16,9 +15,6 @@ Laufzeitüberwachung wird hier in vier Wirkstufen verstanden:
 | **Isolation** | Was darf mit wem sprechen? | NetworkPolicies, Service Mesh, RBAC |
 | **Detektion** | Was passiert gerade wirklich? | Tetragon/Falco, K8s-Audit, Telemetrie |
 | **Reaktion** | Was tun wir damit? | SIEM-Use-Cases, Alarmierung, Runbooks, Quarantäne |
-
-Eine Maßnahme ohne Detektion ist unvollständig, und eine Detektion ohne definierte
-Reaktion erzeugt lediglich Log-Volumen.
 
 ### 1.1 Scope
 
@@ -44,7 +40,7 @@ Registry Cache, Egress Gateway.
 **Außerhalb des ZETA Guard, aber im selben Cluster und damit im
 Überwachungsscope des Betreibers:**
 
-* **HSM Proxy** — wird vom **Hersteller des TI 2.0 Dienstes** bereitgestellt
+* HSM Proxy — wird vom Hersteller des TI 2.0 Dienstes bereitgestellt
 * Resource Server und Application Authorization Backend des Fachdienstes
 
 **Nicht im Scope:** ZETA Client / ZETA SDK (siehe
@@ -66,35 +62,32 @@ Dieses Konzept konsolidiert und erweitert:
 | Kürzel | Rolle | Liefergegenstand |
 | --- | --- | --- |
 | **ZGH** | **ZETA Guard Hersteller** (gematik) | Helm Chart, Container-Images, OPA-Policies, Terraform-Templates, Telemetrie-Semantik, Referenz-Policies, Runbooks, Nachweisdokumente |
-| **DH** | **TI 2.0 Dienst-Hersteller** | Resource Server, Application Authorization Backend, **HSM Proxy**, Integration in den ZETA Guard |
+| **DH** | **TI 2.0 Dienst-Hersteller** | Resource Server, Application Authorization Backend, HSM Proxy, Integration in den ZETA Guard |
 | **DA** | **TI 2.0 Dienst-Anbieter / Betreiber** | Kubernetes-Plattform, Betrieb, Konfiguration, SIEM/SOC, Incident Response, Zulassungsnachweise |
 
 ### 2.1 Trennlinie
 
-Die Aufgabenteilung folgt einem einzigen Prinzip:
+Die Aufgabenteilung folgt dem Prinzip:
 
-> **Der Hersteller liefert das Wissen darüber, was normal ist.
-> Der Betreiber liefert die Plattform, die Abweichungen erkennt und darauf reagiert.**
+> Der Hersteller liefert das Wissen darüber, was normal ist.
+> Der Betreiber liefert die Plattform, die Abweichungen erkennt und darauf reagiert.
 
 Konkret bedeutet das:
 
-* **Der ZGH kann und muss liefern**, was ohne Kenntnis des Anwendungsinnenlebens
-  nicht erstellbar ist: konforme Manifeste, die **Kommunikationsmatrix**, die
-  **Prozess- und Dateipfad-Baselines** je Container, die **Telemetrie-Semantik**
+* Der ZGH kann und muss liefern, was ohne Kenntnis des Anwendungsinnenlebens
+  nicht erstellbar ist: konforme Manifeste, die Kommunikationsmatrix, die
+  Prozess- und Dateipfad-Baselines je Container, die Telemetrie-Semantik
   (welches Event bedeutet was), signierte Artefakte und Referenz-Policies.
-* **Der DA kann und muss liefern**, was ohne Kenntnis der Betriebsumgebung nicht
+* Der DA kann und muss liefern, was ohne Kenntnis der Betriebsumgebung nicht
   erstellbar ist: Cluster-Härtung, Enforcement-Werkzeuge, IP-Adressen und
   Netzsegmente, SIEM-Anbindung, Alarmierungswege, Bereitschaft und Reaktion.
-* **Der DH liefert dasselbe wie der ZGH — für seine eigenen Komponenten**,
-  insbesondere für den **HSM Proxy** und den Resource Server. Andernfalls entsteht
+* Der DH liefert dasselbe wie der ZGH — für seine eigenen Komponenten,
+  insbesondere für den HSM Proxy und den Resource Server. Andernfalls entsteht
   im selben Cluster eine nicht überwachte Zone neben einem hochgradig überwachten
   ZETA Guard.
 
-Eine häufige Fehlannahme ist, Laufzeitüberwachung sei reine Betreiberaufgabe. Das
-trifft für die *Werkzeuge* zu, nicht für die *Regeln*: Nur der Hersteller weiß, dass
-im PEP-Container niemals eine Shell startet und dass `/etc/nginx` zur Laufzeit
-niemals beschrieben wird. Ohne diese Baselines betreibt der DA ein Werkzeug ohne
-Regelwerk und erzeugt entweder Blindheit oder Fehlalarme.
+Die Laufzeitüberwachung ist daher keine reine Anbieteraufgabe. Die Werkzeuge werden vom Anbieter bereitgestellt. Die Regeln werden jedoch vom Hersteller definiert, da nur der Hersteller weiß, dass
+im PEP-Container niemals eine Shell startet und dass `/etc/nginx` zur Laufzeit niemals beschrieben wird. Ohne diese Baselines betreibt der DA ein Werkzeug ohne Regelwerk und erzeugt entweder Blindheit oder Fehlalarme.
 
 ## 3. Schichtenmodell
 
@@ -127,10 +120,8 @@ flowchart TB
     L0 --> L1 --> L2 --> L3 --> L4 --> L5 --> L6 --> L7
 ```
 
-Die Schichten sind **kumulativ, nicht alternativ**. Insbesondere ersetzt ein
-Service Mesh keine NetworkPolicies (ein kompromittierter Sidecar-Bypass umgeht L4,
-nicht L3), und Tetragon ersetzt keine Pod Security Standards (Detektion nach dem
-Start ist teurer als Verhinderung des Starts).
+Die Schichten sind kumulativ, nicht alternativ. Insbesondere ersetzt ein
+Service Mesh keine NetworkPolicies (ein kompromittierter Sidecar-Bypass umgeht L4, nicht L3), und Tetragon ersetzt keine Pod Security Standards (Detektion nach dem Start ist teurer als Verhinderung des Starts).
 
 ## 4. Maßnahmen im Detail
 
@@ -164,17 +155,9 @@ Aktivierung per Namespace-Label ist im
 [KIND-Setup](../Anleitungen/Wie_Sie_den_Cluster_lokal_mit_KIND_aufsetzen.md)
 dokumentiert.
 
-**Präzisierung zu `readOnlyRootFilesystem`:** Dieses Feld ist nicht Bestandteil
-des PSS-Profils `restricted`, sondern eine darüber hinausgehende Härtung. Im ZETA
-Guard ist es für Authserver und dessen Init-Container auf `true` gesetzt, für
-Infinispan und den Provisioning Processor derzeit auf `false`. Es muss daher per
-**Admission Policy** (Abschnitt 4.2) erzwungen und für die verbleibenden Workloads
-gezielt nachgezogen werden — die pauschale Aussage „PSS erzwingt
-`readOnlyRootFilesystem`" ist technisch unzutreffend.
+**Präzisierung zu `readOnlyRootFilesystem`:** Dieses Feld ist nicht Bestandteil des PSS-Profils `restricted`, sondern eine darüber hinausgehende Härtung. Im ZETA Guard ist es für Authserver und dessen Init-Container auf `true` gesetzt, für Infinispan und den Provisioning Processor derzeit auf `false`. Es muss daher per Admission Policy (Abschnitt 4.2) erzwungen und für die verbleibenden Workloads gezielt nachgezogen werden — die pauschale Aussage „PSS erzwingt `readOnlyRootFilesystem`" ist technisch unzutreffend.
 
-**OpenShift:** Dort gilt statt PSS die `restricted-v2` Security Context Constraint.
-`runAsUser` darf nicht gesetzt werden, siehe
-[ZETA OpenShift-Kompatibilität](../Anleitungen/ZETA_OpenShift_Kompatibilität.md).
+**OpenShift:** Dort gilt statt PSS die `restricted-v2` Security Context Constraint. `runAsUser` darf nicht gesetzt werden, siehe [ZETA OpenShift-Kompatibilität](../Anleitungen/ZETA_OpenShift_Kompatibilität.md).
 
 | Rolle | Aufgabe |
 | --- | --- |
@@ -186,10 +169,7 @@ gezielt nachgezogen werden — die pauschale Aussage „PSS erzwingt
 
 **Ziel:** Nicht-konforme Ressourcen erreichen die Cluster-Datenbank gar nicht erst.
 
-Als Policy-Engine wird **Kyverno** oder **OPA Gatekeeper** eingesetzt. Kyverno wird
-empfohlen, weil es Image-Signaturverifikation (`verifyImages`) nativ beherrscht und
-keine zweite Policy-Sprache neben Rego einführt — Rego bleibt im ZETA Guard für die
-fachliche Autorisierung in der Policy Engine reserviert.
+Als Policy-Engine wird **Kyverno** oder **OPA Gatekeeper** eingesetzt. Kyverno wird empfohlen, weil es Image-Signaturverifikation (`verifyImages`) nativ beherrscht und keine zweite Policy-Sprache neben Rego einführt — Rego bleibt im ZETA Guard für die fachliche Autorisierung in der Policy Engine reserviert.
 
 **Mindest-Policy-Set:**
 
@@ -206,20 +186,10 @@ fachliche Autorisierung in der Policy Engine reserviert.
 | `require-pdb` | PodDisruptionBudget für HA-Komponenten | SOLL |
 | `restrict-nodeport-loadbalancer` | Keine Umgehung des Ingress via NodePort | SOLL |
 
-**Zur Image-Signaturprüfung:** Im ZETA Guard wird die cosign-Vertrauenskette der
-gematik bereits als Secret (`imageTrustCertchainSecretRef`) bereitgestellt und vom
-Provisioning Processor genutzt, um das **Provisioning-Daten-Image** beim Pod-Start
-zu verifizieren. Dieselbe Vertrauenskette ist der Anker für die
-Admission-Verifikation der **Komponenten-Images**. Wichtig ist der Hinweis in
-[Wie Sie eine eigene OCI Registry verwenden](../Anleitungen/Wie_Sie_eine_eigene_OCI_Registry_verwenden.md):
-beim Spiegeln in den Registry-Cache muss `cosign save`/`load` verwendet werden,
-sonst gehen die `.sig`-Artefakte verloren und die Admission-Policy blockiert das
-gesamte Deployment.
+**Zur Image-Signaturprüfung:** Im ZETA Guard wird die cosign-Vertrauenskette der gematik bereits als Secret (`imageTrustCertchainSecretRef`) bereitgestellt und vom Provisioning Processor genutzt, um das Provisioning-Daten-Image beim Pod-Start zu verifizieren. Dieselbe Vertrauenskette ist der Anker für die Admission-Verifikation der Komponenten-Images. Wichtig ist der Hinweis in [Wie Sie eine eigene OCI Registry verwenden](../Anleitungen/Wie_Sie_eine_eigene_OCI_Registry_verwenden.md): beim Spiegeln in den Registry-Cache muss `cosign save`/`load` verwendet werden, sonst gehen die `.sig`-Artefakte verloren und die Admission-Policy blockiert das gesamte Deployment.
 
 **Rollout-Reihenfolge (verbindlich):** Jede neue Policy durchläuft
-`Audit` → `Warn` → `Enforce`. Eine Policy direkt im Enforce-Modus einzuführen ist
-der häufigste Weg, einen produktiven Dienst durch eine Sicherheitsmaßnahme
-auszufallen zu lassen.
+`Audit` → `Warn` → `Enforce`. Eine Policy direkt im Enforce-Modus einzuführen ist der häufigste Weg, einen produktiven Dienst durch eine Sicherheitsmaßnahme ausfallen zu lassen.
 
 **Verfügbarkeitsrisiko:** Ein Validating Webhook mit `failurePolicy: Fail` macht die
 Policy-Engine zur Verfügbarkeitsabhängigkeit des gesamten Clusters. Die Engine
