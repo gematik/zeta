@@ -1,0 +1,46 @@
+name: Validate Examples Against Schemas
+
+on:
+  pull_request:
+    paths:
+      - "examples/**"
+      - "src/schemas/**"
+      - "src/openapi/**"
+      - "scripts/validate_examples.py"
+      - "scripts/example-schema-mapping.yaml"
+      - "scripts/requirements-validate-examples.txt"
+      - ".github/workflows/validate-examples.yml"
+  push:
+    branches: [main, develop]
+    paths:
+      - "examples/**"
+      - "src/schemas/**"
+      - "src/openapi/**"
+      - "scripts/validate_examples.py"
+      - "scripts/example-schema-mapping.yaml"
+      - "scripts/requirements-validate-examples.txt"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-examples:
+    name: Validate examples/ against src/schemas/
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: scripts/requirements-validate-examples.txt
+
+      - name: Install dependencies
+        run: pip install -r scripts/requirements-validate-examples.txt
+
+      - name: Validate examples
+        run: python scripts/validate_examples.py
