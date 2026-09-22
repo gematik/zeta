@@ -24,21 +24,100 @@ Ziel dieses Vorschlags ist ein Client Management, das die Schutzziele des TOFU-V
 
 ## 2 Kernidee: implementierte Registrierung plus Keycloak-Objekte
 
-| Fachliches Konzept | Spec 2.0.1 | Vorschlag auf implementiertem Stand |
-| --- | --- | --- |
-| E-Mail-Verifikation (F1) | nach OIDC über `bind-email`/`verify`/`resend`, Scopes `zeta:email-binding`/`zeta:email-verify`, Bindungs-Token, Token Exchange | **unverändert wie implementiert**: `user_email` im DCR-Request, OTP-Eingabe in der App, `POST /register/verify`. Die fünf Endpunkte, Scopes, Bindungs-Token und Token Exchange entfallen |
-| Identitätsdatensatz | eigene Registry | **Keycloak-User** je TI-Identität, wie für SMC-B implementiert; für Versicherte Username = KVNR (gehasht wie die Telematik-ID), `email` und `emailVerified` als Nutzerattribute (Datenquelle des bestehenden `GET /zeta/email`) |
-| Bindung Client ↔ Identität | Status `pending_user_binding` → `bound` | **Bindungsschritt im OIDC-Flow des AuthS** (nach Verarbeitung des ID-Tokens, vor Ausstellung des AS-Authorization-Codes), analog zur implementierten SMC-B-Bindung beim ersten Token Exchange; Statusmodell bleibt `pending_attestation` → aktiv. **Kein Consent-Screen**, weder für SMC-B noch für mobile Clients |
-| TOFU-Schutz gegen kompromittierten IDP | OTP an die gespeicherte Adresse bei Folgeregistrierung | **E-Mail-Abgleich bei der Bindung**: Hat der User noch keine E-Mail, wird die per OTP verifizierte Adresse des Clients identitätsweit gepinnt (Erstnutzung). Hat der User eine E-Mail, wird nur ein Client gebunden, dessen verifizierte Adresse mit ihr übereinstimmt; sonst `403 email_mismatch` mit maskiertem Hinweis und keine Token. Ein Angreifer mit kompromittiertem IDP-Konto kann keinen Client mit fremder Adresse anhängen, weil er den Code an die gebundene Adresse nicht erhält |
-| Fast Path | Übernahme von Identität und E-Mail in die Registry | **unverändert wie implementiert**; `user_email`/`email_verified` aus dem Token gelten bei der Bindung wie eine per OTP verifizierte Adresse und unterliegen demselben Abgleich. N2 statt N1 |
-| Übersicht und Löschen eigener Clients | `GET /zeta/clients`, `DELETE /zeta/clients/{id}` | **Account REST API** (`GET /account/applications`, `DELETE /account/applications/{clientId}/consent`, `GET` und `DELETE /account/sessions`) mit dem regulären DPoP-gebundenen Access Token. Voraussetzung: der Bindungsschritt legt für mobile Clients zusätzlich ein **stilles UserConsent-Objekt** an (kein Screen). Rückfall, falls unerwünscht: zwei eigene Operationen in der DCR-Erweiterung |
-| Umbenennen, Selbst-Deregistrierung | `PUT`/`DELETE /register/{client_id}` mit Client Assertion (F2) | **übernommen**, in der DCR-Erweiterung, autorisiert mit Client Assertion (kein Registration Access Token, konsistent mit A_30101) |
-| Schlüssel-Rollover | verschachtelte JWS, `HEAD /zeta/rollover-nonce`, Overlap-Fenster | `PUT /register/{client_id}`, autorisiert mit der Client Assertion des **alten** Schlüssels, mit neuem `jwks` und `signed_hash_puk_client_sig` als Selbstsignatur des **neuen** Schlüssels über SHA-256(PuK.Client.Sig.neu || nonce) mit Nonce vom vorhandenen `nonce_endpoint` (dieselbe Prüfroutine wie bei der Registrierung mit Software-Attestierung); Replay-Schutz über Nonce und `jti` der Client Assertion; kein Overlap |
-| E-Mail-Änderung | `POST /zeta/identity/email(/verify)`, RFC 9470 Step-up, `idp_step_up`-Token | **Wiederverwendung des OTP-Transaktionsmechanismus**: `POST /register/{client_id}/email` (Client Assertion plus frisches AS-Access-Token) → `202 {transaction_id}`, Codes an alte und neue Adresse, `POST /register/verify` mit `verify_type=email_change`. Step-up = `auth_time` im eigenen Access Token, kein RFC 9470 |
-| Löschen des letzten Clients, Veto | Step-up oder Einspruchsfrist, `POST /zeta/deletions/{id}/veto` | **entfällt**: der Identitätsdatensatz (User mit E-Mail) bleibt bestehen, ein neues Gerät registriert sich mit der gebundenen Adresse |
-| Außerordentliche Löschung (OOB) | neun Operator-Endpunkte, Vier-Augen-Logik, Tombstone, zweite Bestätigung | **Admin Console / Admin REST API**, Operator-Realm mit mTLS oder Betreiber-IdP, **Admin-Event-Hash-Chain (implementiert)** als Nachweis; Sperre (`enabled=false`) → Einspruchsfrist → Löschung des Users mit seinen Clients. **Kein Tombstone**; Wiederregistrierung ist eine normale Erstnutzung |
-| Benachrichtigungen | eigener Katalog | **DCR-Erweiterung emittiert Keycloak-Standard-Events** (`GRANT_CONSENT`, `REVOKE_GRANT`, `UPDATE_EMAIL`); Zustellung von N1/N2/N3/N5 über den `email`-Event-Listener mit Theme-Templates; N7/N8 versendet die Erweiterung wie heute direkt; Push optional über Event-Listener an den Notification Service |
-| Passkey | nicht vorgesehen | **später optional**: nur sinnvoll, wenn der sekIDP-Flow im AuthS als Keycloak-Browser-Flow läuft (wie `zeta-smc-b-oidc`); dann WebAuthn Passwordless als Alternative zum OTP-Abgleich nativ ergänzbar. Nicht Teil dieses Vorschlags |
+Im Folgenden zu jedem fachliches Konzept ein Abschnitt:
+
+### Identitätsdatensatz
+
+- Die Clientdaten werden in der **Client Entität von Keycloak** gehalten. ZETA spezifische Daten, die ggf. eine Erweiterung von Keycloak erfordern, werden in der Entität ZetaGuardClientData gehalten. Diese ist über koinzidierende Primärschlüssel an die Keycloak-eigene Entität gebunden.
+- Die Identitätsdaten einer TI-Identität werden in der **User Entität von Keycloak** gehalten. ZETA spezifische Daten, die ggf. eine Erweiterung von Keycloak erfordern, werden in der Entität ZetaGuardUserData gehalten. Diese ist über koinzidierende Primärschlüssel an die Keycloak-eigene Entität gebunden.
+  - Telematik Id und KVNR werden als dediziertes User Attibut gespeichert.
+  - Auch die User-Felder (in Keycloak Pseudo-Attribute) `email` und `emailVerified` werden verwendet.
+- Diese Daten werden jeweils in der Keycloak DB gespeichert. Diese gilt pro ZETA Guard Installation. Eine Mandantentrennung innerhalb einer ZETA Guard Installation findet nicht statt.
+  - Gleichzeitig ist somit inhärent eine Trennung der Daten unterschiedlicher ZETA Guards gegeben.
+
+### Bindung Client ↔ Identität
+
+- Die Clientdaten werden in der Client Entität von Keycloak gehalten. ZETA spezifische Daten, die ggf. eine Erweiterung von Keycloak erfordern, werden in der Entität ZetaGuardClientData gehalten. Diese ist über koinzidierende Primärschlüssel an die Keycloak-eigene Entität gebunden.
+- Die Identitätsdaten werden in der User Entität von Keycloak gehalten. ZETA spezifische Daten, die ggf. eine Erweiterung von Keycloak erfordern, werden in der Entität ZetaGuardUserData gehalten. Diese ist über koinzidierende Primärschlüssel an die Keycloak-eigene Entität gebunden.
+- Die Bindung von Client an User erfolgt nicht wie bei Keycloak üblich über Sessions sonder über die ZETA-eigenen Entitäten: ZetaGuardUserData und ZetaGuardClientData sind via Fremdschlüssel aneinander gebunden.
+- **Bindungsschritt im OIDC-Flow des AuthS** nach Verarbeitung des ID-Tokens, vor Ausstellung des AS-Authorization-Codes.
+  - Im Statusmodell erfolgt hier Folgendes:
+    - `pending_user_binding` → `bound`
+    - `pending_attestation` → bleibt aktiv
+    - Es wird ein stiller Consent des Users für diesen Client angelegt. Dabei **Kein Consent-Screen**, weder für SMC-B noch für mobile Clients. Ebenso wird das Keycloak Event `GRANT_CONSENT` gefeuert.
+
+### Client Self Management
+
+Es wird eine API zur Selbstverwaltung von Clients geschaffen. Diese basiert auf dem Modell und den Operationen der Keycloak Admin API. Die Admin API selbst wird nicht zum Internet exponiert, um die Angriffsfläche gering zu halten. Ebenso entfallen alle nicht genutzten Felder im Datenmodell aus demselben Grund.
+
+Authentisierung erfolgt dort mit dem regulären DPoP-gebundenen Client Assertion Tokens (kein Registration Access Token, konsistent mit A_30101).
+
+- Übersicht und Löschen eigener Clients
+  - `GET /zeta/clients`
+    - Liste von Clients, die zum selben User gehören, wie der aufrufende Client
+    - gibt ein JSON Array mit Client Ids zurück. Die Client Ids sind Strings.
+    - _Anmerkung_: Dies ist ein ZETA eigener Endpunkt, der in der Keycloak Admin API kein Analogon hat.
+  - `DELETE /zeta/clients/{id}`
+    - Löschung eines Clients. Auch der letzte Client kann ohne Besonderheiten gelöscht werden.
+    - Deregistrierung erfolgt durch Löschen aller Clients.
+    - Response entspricht https://www.keycloak.org/docs-api/latest/rest-api/index.html#_delete_adminrealmsrealmclientsclient_uuid
+    - Es ist zu prüfen, dass der aufrufende Client und der zu löschenden Client zum selben User gehören.
+    - Es wird das Keycloak Event `REVOKE_GRANT` gefeuert und der Consent des Users zum gelöschten Client aufgehoben.
+    - Aufrufe an diese Schnittstelle werden als Admin Event protokolliert. (Umsetzungshinweis, intern die entsprechende DELETE Funktion der Admin API aufrufen)
+  - `PUT /zeta/clients/{id}`
+    - Use Cases:
+      - Umbenennen eines Clients. Durch Schreiben des entsprechenden Display Name Feldes (`name`).
+      - Rollover des Client Assertion Schlüssels. Durch schreiben des entsprechenden JWKS Attributes `jwks.string`.
+    - Es wird eine vereinfachte Version der ClientRepresentation (https://www.keycloak.org/docs-api/latest/rest-api/index.html#ClientRepresentation) verwendet. Diese ist beschränkt auf folgende Felder (alle anderen Felder werden verworfen):
+      - `name`
+      - `attributes."jwks.string"`
+    - Anmerkung: Beim Rollover ist der Replay Schutz inhärent gut genug gegeben, sofern der neue und alte Schlüssel unterschiedlich sind. Sofern neuer und alter Schlüssel gleich sind, ist die Operation harmlos. Daher kein vorerst nonce notwendig.
+    - Es ist zu prüfen, dass der aufrufende Client und der zu bearbeitende Client zum selben User gehören.
+      - Eine Fehlbedienung, bei der das JWKS eines anderen Clients am selben Nutzer geändert wird, ist nicht ausgeschlossen.
+    - Aufrufe an diese Schnittstelle werden als Admin Event protokolliert. (Umsetzungshinweis, intern die entsprechende PUT Funktion der Admin API aufrufen)
+    - **TODO** nochmal mit DCR abgleichen
+
+### Benachrichtigungen
+
+- Es werden Benachrichtigungen an den User bei folgenden Keycloak Events verschickt:
+  - `GRANT_CONSENT`,
+  - `REVOKE_GRANT`,
+  - `UPDATE_EMAIL`
+- Die Benachrichtigungen KÖNNEN über den Notification Service versendet werden.
+- Die Benachrichtigungen MÜSSEN auf jeden Fall an die E-Mail des Users versendet werden.
+- Umsetzungshinweis: Als Keycloak Event Listener implementieren.
+
+**Ab hier TODO**
+
+### E-Mail-Verifikation (F1)
+
+- nach OIDC über `bind-email`/`verify`/`resend`, Scopes `zeta:email-binding`/`zeta:email-verify`, Bindungs-Token, Token Exchange
+- **unverändert wie implementiert**: `user_email` im DCR-Request, OTP-Eingabe in der App, `POST /register/verify`. Die fünf Endpunkte, Scopes, Bindungs-Token und Token Exchange entfallen
+
+### TOFU-Schutz gegen kompromittierten IDP
+
+- OTP an die gespeicherte Adresse bei Folgeregistrierung, ansonsten ebenso Verifikation der E-Mail Adresse via OTP.
+- **E-Mail-Abgleich bei der Bindung**:
+  - Hat der User noch keine E-Mail, wird die per OTP verifizierte Adresse des Clients identitätsweit gepinnt (Erstnutzung) und verifiziert.
+  - Hat der User eine E-Mail, wird nur ein Client gebunden, dessen verifizierte Adresse mit ihr übereinstimmt; sonst `403 email_mismatch` mit maskiertem Hinweis und keine Token.
+- Ein Angreifer mit kompromittiertem IDP-Konto kann keinen Client mit fremder Adresse anhängen, weil er den Code an die gebundene Adresse nicht erhält.
+
+### Fast Path
+
+- Übernahme von Identität und E-Mail im Ziel-Guard aus dem ZETA Attestation Token.
+- **unverändert wie implementiert**; `user_email`/`email_verified` aus dem Token gelten bei der Bindung wie eine per OTP verifizierte Adresse und unterliegen demselben Abgleich. N2 statt N1
+
+### E-Mail-Änderung
+
+- `POST /zeta/identity/email(/verify)`, RFC 9470 Step-up, `idp_step_up`-Token
+- Es ist das Keycloak Event `UPDATE_EMAIL` zu feuern.
+- **Wiederverwendung des OTP-Transaktionsmechanismus**: `POST /register/{client_id}/email` (Client Assertion plus frisches AS-Access-Token) → `202 {transaction_id}`, Codes an alte und neue Adresse, `POST /register/verify` mit `verify_type=email_change`. Step-up = `auth_time` im eigenen Access Token, kein RFC 9470
+
+### Außerordentliche Löschung (OOB)
+
+- neun Operator-Endpunkte, Vier-Augen-Logik, Tombstone, zweite Bestätigung
+- **Admin Console / Admin REST API**, Operator-Realm mit mTLS oder Betreiber-IdP, **Admin-Event-Hash-Chain (implementiert)** als Nachweis; Sperre (`enabled=false`) → Einspruchsfrist → Löschung des Users mit seinen Clients. **Kein Tombstone**; Wiederregistrierung ist eine normale Erstnutzung
+
 
 ## 3 Ablauf aus Sicht des ZETA Clients
 
