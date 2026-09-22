@@ -1,6 +1,6 @@
 # Wie der Client-Lebenszyklus verwaltet wird
 
-Jede Client-Instanz durchläuft am ZETA Guard denselben Lebenszyklus: Sie
+Jede Client-Instanz durchläuft am ZETA-Guard denselben Lebenszyklus: Sie
 registriert sich per
 [dynamischer Client-Registrierung](Wie_die_dynamische_Client-Registrierung_funktioniert.md),
 ist zunächst unattestiert (`PENDING`), wird mit der ersten erfolgreichen
@@ -61,8 +61,8 @@ abgewiesen.
 Der Job läuft im Intervall `CLIENT_REGISTRATION_SCHEDULER_INTERVAL`
 (Standard: 5 Minuten), frühestens `CLIENT_REGISTRATION_STARTUP_DELAY`
 (Standard: 20 Sekunden) nach dem Serverstart. `lastAccess` wird bei jeder
-erfolgreichen Anmeldung bzw. jedem Token Exchange fortgeschrieben. Für Wartungsfenster lässt sich
-der Job über das Realm-Attribut `zeta-guard.realm.client_job.disabled=true`
+erfolgreichen Anmeldung bzw. jedem Token Exchange fortgeschrieben. Für
+Wartungsfenster lässt sich der Job über das Realm-Attribut `zeta-guard.realm.client_job.disabled=true`
 vorübergehend aussetzen. Alle Variablen sind in der
 [Konfiguration des PDP Services](../Referenzen/Konfiguration_des_PDP_Services.md)
 beschrieben.
@@ -79,14 +79,14 @@ beschrieben und werden hier nicht wiederholt.
 
 ## Sitzungen widerrufen
 
-Für den Fall eines kompromittierten Access Tokens stellt der PDP eine
+Für den Fall eines kompromittierten Access-Tokens stellt der PDP eine
 Fleet-Revocation-API bereit — beide Verben liegen auf derselben URI:
 
 ```
 /realms/{realm}/zeta-guard-revocation
 ```
 
-**Token melden (POST):** Der Body ist das betroffene Access Token als
+**Token melden (POST):** Der Body ist das betroffene Access-Token als
 `text/plain`, ohne weitere Autorisierung — die Berechtigung ist der Besitz
 eines von diesem Realm signierten Tokens. Der PDP prüft die Signatur gegen die
 Realm-Schlüssel (fremde oder unsignierte Tokens können nichts widerrufen),
@@ -145,8 +145,8 @@ sind ohne Kenntnis des Seeds nicht reparierbar. Zum Setzen des Seeds siehe die
 
 ## Client-seitige Abmeldung
 
-Das ZETA SDK bietet zwei Stufen, eine Client-Instanz lokal zurückzusetzen
-(siehe [Wie Sie das ZETA SDK integrieren](Wie_Sie_das_ZETA_SDK_integrieren.md)):
+Das ZETA-SDK bietet zwei Stufen, eine Client-Instanz lokal zurückzusetzen
+(siehe [Wie Sie das ZETA-SDK integrieren](Wie_Sie_das_ZETA_SDK_integrieren.md)):
 
 - **`clearRegistration()`** löscht Registrierung, Tokens, DPoP-Schlüssel und
   ASL-Session, behält aber den Instanzschlüssel. Beim nächsten Zugriff
@@ -174,7 +174,7 @@ Idle-TTL oder die LRU-Verdrängung.
   gemeldetes Token beendet die Session, die Client-Registrierung bleibt
   bestehen und kann sich neu anmelden.
 - Blocks aus Keycloak-Ereignissen (Logout, Grant-Widerruf, Session-Löschung)
-  werden pauschal eine Stunde gehalten. Vergibt eine OPA-Policy Access Tokens
+  werden pauschal eine Stunde gehalten. Vergibt eine OPA-Policy Access-Tokens
   mit mehr als einer Stunde Lebensdauer, wäre deren Restlaufzeit nicht
   abgedeckt.
 - Der Melde-Endpunkt akzeptiert jedes gültig signierte Token des Realms ohne

@@ -33,10 +33,10 @@ Die Proxy-Konfiguration wird automatisch von folgenden Komponenten übernommen:
 
 Folgende Komponenten erhalten bewusst keine Proxy-Konfiguration:
 
-| Komponente                            | Grund                                                |
-|---------------------------------------|------------------------------------------------------|
-| `keycloak-build` Init-Container       | Führt `kc.sh build` lokal aus, kein ausgehender HTTP |
-| `keychain-generator` Init-Container   | Nur gRPC zu cluster-internem HSM                     |
+| Komponente                          | Grund                                                        |
+|-------------------------------------|--------------------------------------------------------------|
+| `keycloak-build` Init-Container     | Führt `kc.sh build` lokal aus, kein ausgehender HTTP-Verkehr |
+| `keychain-generator` Init-Container | Nur gRPC zu cluster-internem HSM                             |
 
 ### Subcharts (manuelle Konfiguration erforderlich)
 
@@ -95,7 +95,7 @@ Alle vier Werte haben den Standard `null` (Proxy deaktiviert).
 
 ### Was in jedem Pod gesetzt wird
 
-In jedem betroffenen Container setzt der Chart jede Proxy-Variable sowohl in
+In jedem betroffenen Container setzt das Chart jede Proxy-Variable sowohl in
 Groß- als auch in Kleinschreibung — da unterschiedliche HTTP-Clients und Tools
 verschiedene Konventionen erwarten (`HTTP_PROXY` vs. `http_proxy`):
 
@@ -108,19 +108,20 @@ verschiedene Konventionen erwarten (`HTTP_PROXY` vs. `http_proxy`):
 
 Jede Variable wird nur gesetzt, wenn der entsprechende Value nicht `null` ist.
 
-Für **nginx** (PEP) erzeugt der Chart zusätzlich `env HTTP_PROXY;`-Direktiven
+Für **nginx** (PEP) erzeugt das Chart zusätzlich `env HTTP_PROXY;`-Direktiven
 in der `nginx.conf`, damit die Worker-Prozesse die Variablen erben. Der
 `reqwest`-HTTP-Client liest sie beim Start des Worker-Prozesses ein.
 
-Für **Keycloak** (Authserver) fügt der Chart `-Dhttp.nonProxyHosts=<konvertiert>`
-zu `JAVA_OPTS_APPEND` hinzu. Das Java-Format für `http.nonProxyHosts`
-unterscheidet sich vom Unix-Format in `NO_PROXY` (Pipe-Trenner, `*`-Wildcard
-statt führendem Punkt); der Chart führt die Konvertierung automatisch durch:
+Für **Keycloak** (Authserver) fügt das Chart
+`-Dhttp.nonProxyHosts=<konvertiert>` zu `JAVA_OPTS_APPEND` hinzu. Das
+Java-Format für `http.nonProxyHosts` unterscheidet sich vom Unix-Format in
+`NO_PROXY` (Pipe-Trenner, `*`-Wildcard statt führendem Punkt); das Chart führt
+die Konvertierung automatisch durch:
 
-| `noProxy`-Eintrag  | `http.nonProxyHosts`-Äquivalent |
-|--------------------|---------------------------------|
-| `authserver`       | `authserver`                    |
-| `.cluster.local`   | `*.cluster.local`               |
+| `noProxy`-Eintrag | `http.nonProxyHosts`-Äquivalent |
+|-------------------|---------------------------------|
+| `authserver`      | `authserver`                    |
+| `.cluster.local`  | `*.cluster.local`               |
 
 ---
 
@@ -136,10 +137,10 @@ noProxy: ".cluster.local"
 Der führende Punkt ist eine **De-facto-Konvention** — es gibt keinen RFC-Standard
 für die `NO_PROXY`-Syntax. Das Verhalten variiert je nach Tool:
 
-| Tool            | Verhalten von `.cluster.local`                                                                              |
-|-----------------|-------------------------------------------------------------------------------------------------------------|
-| curl, reqwest   | Suffix-Match — Punkt ist optional; trifft `foo.cluster.local` **und** `cluster.local`                       |
-| Go / grpc-go    | Nur Subdomains — trifft `foo.cluster.local`, aber **nicht** `cluster.local` selbst                          |
+| Tool          | Verhalten von `.cluster.local`                                                        |
+|---------------|---------------------------------------------------------------------------------------|
+| curl, reqwest | Suffix-Match — Punkt ist optional; trifft `foo.cluster.local` **und** `cluster.local` |
+| Go / grpc-go  | Nur Subdomains — trifft `foo.cluster.local`, aber **nicht** `cluster.local` selbst    |
 
 `.cluster.local` als einzelner Eintrag mit führendem Punkt deckt
 `*.pod.cluster.local` und alle anderen Kubernetes-internen FQDNs sowohl bei
@@ -158,6 +159,12 @@ noProxy: ".cluster.local,authserver,opa"
 > ignoriert die Leading-Dot-Konvention in `NO_PROXY`. Der Chart löst dies, indem
 > er `global.noProxy` automatisch ins `http.nonProxyHosts`-Format konvertiert.
 > Aus `.cluster.local` wird dabei `*.cluster.local` in der JVM-Systemeigenschaft.
+>
+> **Chart 1.3.0/1.3.1:** Der führende Punkt des **ersten** `noProxy`-Eintrags
+> wurde nicht konvertiert — mit `".cluster.local,…"` als erstem Eintrag lief
+> der clusterinterne Verkehr von Keycloak über den Proxy. Behoben ab Chart 1.3.2.
+> Auf älteren Charts stellen Sie einen Eintrag ohne führenden Punkt nach vorn,
+> z. B. `noProxy: "authserver,.cluster.local"`.
 
 ---
 

@@ -3,8 +3,9 @@
 ## Inhaltsverzeichnis
 
 - [Übersicht](#übersicht)
-- [libngx_pep.so](#libngxpepso)
+- [libngx_pep.so](#libngx_pepso)
   - [Header-Behandlung und `proxy_headers.conf`](#header-behandlung-und-proxy_headersconf)
+  - [Inhalt des `ZETA-User-Info`-Headers](#inhalt-des-zeta-user-info-headers)
   - [Konfigurationsparameter (PEP-Basis)](#konfigurationsparameter-pep-basis)
   - [Konfigurationsparameter (ASL)](#konfigurationsparameter-asl)
 
@@ -52,6 +53,8 @@ http {
     gzip  on;
 
     pep_pdp_issuer https://my.zeta.service.de/auth/realms/zeta-guard;
+    # Geburtsdatum im ZETA-User-Info-Header, Standardwert 1900-01-01 (Interimslösung)
+    # pep_user_info_birthdate 1900-01-01;
     # optional http client config, defaults:
     # pep_http_client_connect_timeout 2; # s
     # pep_http_client_timeout 10; # s
@@ -78,7 +81,7 @@ http {
 
             # Erbt proxy_headers.conf aus dem server-Block. Ein eigenes
             # `include proxy_headers.conf;` ist hier NUR nötig, wenn diese Location eigene
-            # proxy_set_header-Direktiven deklariert (z.B. WebSocket-Upgrade) — dann greift
+            # proxy_set_header-Direktiven deklariert (z. B. WebSocket-Upgrade) — dann greift
             # nginx' nicht-additive Vererbung (siehe Abschnitt unten).
 
             # pep_require_aud      "account other"; # optional, space-separated set, ALL must be present
@@ -152,12 +155,70 @@ Location.
 
 > **Wichtig — nicht-additive Vererbung:** nginx vererbt `proxy_set_header` *nicht*
 > additiv. Eine Location, die eigene `proxy_set_header`-Direktiven deklariert
-> (z.B. für WebSocket-Upgrades oder einen Cookie-Strip), erbt das serverweite
+> (z. B. für WebSocket-Upgrades oder einen Cookie-Strip), erbt das serverweite
 > `proxy_headers.conf` nicht und muss es selbst per `include proxy_headers.conf;`
 > erneut einbinden — sonst fehlt dort die Header-Behandlung (und auf
 > `pep on;`-Locations führt das zum oben beschriebenen HTTP 500). Umgekehrt lässt
 > sich eine Location über eine eigene `proxy_set_header`-Deklaration auch gezielt
 > von der Header-Behandlung ausnehmen.
+
+### Inhalt des `ZETA-User-Info`-Headers
+
+`ZETA-User-Info` transportiert die vom PEP festgestellte Identität des
+authentisierten Subjekts an den Fachdienst. Der Header-Wert ist ein
+Base64url-kodiertes JSON-Objekt. Anders als `ZETA-Client-Data` und
+`ZETA-PoPP-Token-Content` lässt sich der Header nicht über eine Direktive
+abschalten: Der PEP setzt ihn auf jeder `pep on;`-Location. An den Upstream
+gelangt er über die Header-Behandlung aus `proxy_headers.conf` (siehe vorigen
+Abschnitt).
+
+Der PEP bildet das Objekt aus den Claims des geprüften Access-Tokens. Optionale
+Felder lässt er **weg**, wenn der zugehörige Claim im Token fehlt — sie
+erscheinen also nicht als `null`. Fehlt `commonName`, lehnt der PEP die Anfrage
+ab.
+
+| Feld               | Typ                   | Immer gesetzt | Beschreibung                                                                                   |
+|--------------------|-----------------------|---------------|------------------------------------------------------------------------------------------------|
+| `identifier`       | string                | ja            | Telematik-ID, KVNR oder anderer eindeutiger Identifikator des Subjekts (aus dem `sub`-Claim).  |
+| `professionOID`    | string                | ja            | Profession-OID des Subjekts.                                                                   |
+| `commonName`       | string                | ja            | Kurzname der Institution.                                                                      |
+| `organizationName` | string                | nein          | Name der Organisation oder Institution. Entfällt, wenn der Access-Token den Claim nicht trägt. |
+| `birthdate`        | string (`YYYY-MM-DD`) | nein          | Geburtsdatum des Versicherten nach ISO 8601 (A_27558). Nur bei Versicherten-Token (`professionOID` `1.2.276.0.76.4.49`); bei SMC-B-/LEI-Token entfällt das Feld. Siehe Hinweis unten. |
+
+Dekodiertes Beispiel:
+
+```json
+{
+  "identifier": "9-SMC-B-Testkarte-883110000116873",
+  "professionOID": "1.2.276.0.76.4.50",
+  "commonName": "Zentral-Apotheke am Markt",
+  "organizationName": "Zentral-Apotheke am Markt gGmbH"
+}
+```
+
+Dekodiertes Beispiel für ein Versicherten-Token (mit `birthdate`):
+
+```json
+{
+  "identifier": "X110411675",
+  "professionOID": "1.2.276.0.76.4.49",
+  "commonName": "Max Mustermann",
+  "birthdate": "1900-01-01"
+}
+```
+
+> **Hinweis — Interimslösung für `birthdate`:** A_27558 verlangt das Geburtsdatum
+> als Pflichtfeld, der Authorization Server liefert dafür derzeit jedoch keinen
+> Claim. Der PEP setzt deshalb für Token mit der Versicherten-`professionOID`
+> `1.2.276.0.76.4.49` einen festen Wert — standardmäßig `1900-01-01`, pro
+> Umgebung über [`pep_user_info_birthdate`](#konfigurationsparameter-pep-basis)
+> überschreibbar. Bei allen anderen Token (SMC-B, LEI) fehlt das Feld. Bei
+> Versicherten-Token ist es damit immer vorhanden, trägt aber **kein echtes
+> Geburtsdatum**. Fachdienste dürfen den Wert bis auf Weiteres nicht fachlich
+> auswerten. Sobald der Authorization Server das einwilligungsabhängige
+> `birthdate` des sektoralen IDP weitergibt (A_26973-02), tritt der echte Claim
+> an die Stelle des festen Werts; das Feld kann dann entfallen, wenn keine
+> Freigabe des Nutzers vorliegt.
 
 ### Konfigurationsparameter (PEP-Basis)
 
@@ -198,6 +259,18 @@ Location.
     * Pflichtfeld: Nein (aber siehe Beschreibung)
     * Context: `http`
     * Standardwert: nicht gesetzt
+* `pep_user_info_birthdate`
+    * Typ: string (Datum im Format `YYYY-MM-DD`)
+    * Beschreibung: Wert, den der PEP im Feld `birthdate` des
+      `ZETA-User-Info`-Headers ausliefert (A_27558, siehe
+      [Inhalt des `ZETA-User-Info`-Headers](#inhalt-des-zeta-user-info-headers)).
+      Interimslösung, solange der Authorization Server keinen `birthdate`-Claim
+      liefert: Das Feld ist stets gesetzt, enthält aber kein echtes
+      Geburtsdatum. Einen leeren oder nicht als ISO-8601-Datum interpretierbaren
+      Wert lehnt der PEP beim Start ab.
+    * Pflichtfeld: Nein
+    * Context: `http`
+    * Standardwert: `1900-01-01`
 * `pep_http_client_connect_timeout`, `pep_http_client_timeout`
     * Typ: integer
     * Beschreibung: Konfigurationen für den pep-spezifischen HTTP client. Dieser
@@ -229,9 +302,9 @@ Location.
       `audience1 audience2`
     * Beschreibung: Prüft ZETA-Guard-Access-Tokens auf das Vorhandensein von
       `aud`-Claims.
-      Die Anforderung ist "und"-verknüpft: **alle** konfigurierten Audiences
+      Die Anforderung ist „und“-verknüpft: **alle** konfigurierten Audiences
       müssen im `aud`-Claim des Access-Tokens enthalten sein. Fehlt eine davon,
-      ist das Ergebnis "HTTP 401 Unauthorized".
+      ist das Ergebnis `HTTP 401 Unauthorized`.
       Wenn keine erforderlichen Audiences konfiguriert sind, wird die Prüfung
       übersprungen.
     * Pflichtfeld: Nein
@@ -242,10 +315,10 @@ Location.
       `openid profile email`
     * Beschreibung: Konfiguriert die zu verifizierenden Scopes in den
       ZETA-Guard-Access-Tokens.
-      Die Anforderung ist "und"-verknüpft: **alle** konfigurierten Scopes müssen
+      Die Anforderung ist „und“-verknüpft: **alle** konfigurierten Scopes müssen
       im `scope`-Claim des Access-Tokens enthalten sein, wobei die Reihenfolge
       keine Rolle spielt. Fehlt einer davon, ist das Ergebnis
-      "HTTP 401 Unauthorized".
+      `HTTP 401 Unauthorized`.
       Es kann nicht auf ein beliebiges aus einer Menge alternativer Scopes
       geprüft werden.
     * Pflichtfeld: Nein
@@ -290,7 +363,7 @@ Location.
 * `pep_require_popp`
     * Typ: `on` | `off`
     * Beschreibung: Verlangt pro Endpunkt das Vorhandensein des `PoPP`-Request-Headers
-      und validiert das enthaltene PoPP-Token (A_26477). Geprüft werden u.a. die
+      und validiert das enthaltene PoPP-Token (A_26477). Geprüft werden u. a. die
       Signatur des PoPP-Servers sowie die Übereinstimmung des Claims
       `actorId` mit dem `sub` der zum Access-Token gehörenden Nutzer-Daten. Die
       dekodierten Claims werden als Header `ZETA-PoPP-Token-Content` an den Upstream
@@ -310,7 +383,7 @@ Location.
       selben Kalenderquartal (UTC) liegen müssen (siehe gemSpec_ZETA — A_26477).
       Alternativ kann eine feste Dauer seit `iat` angegeben werden. Mögliche
       Einheiten sind `d` Tage, `h` Stunden, `m` Minuten oder `s` Sekunden (Standard,
-      wenn keine Einheit angegeben ist), z.B. `1d` oder `86400`.
+      wenn keine Einheit angegeben ist), z. B. `1d` oder `86400`.
       In beiden Fällen wird `pep_leeway` als Toleranz addiert.
     * Pflichtfeld: Nein
     * Context: `http`, `server`, `location`
@@ -322,19 +395,19 @@ Diese Parameter werden nur benötigt, wenn tatsächlich ASL verwendet werden
 soll. Pflichtfeld ist in diesem Sinne zu verstehen.
 
 **Die Datei-Direktiven haben keinen eingebauten Standardwert.** Ohne Angabe
-bleibt der Wert leer; die Pfade in den Beispielen dieses Kapitels und im Helm
-Chart sind Konventionen des jeweiligen Deployments, nicht Vorbelegungen des
+bleibt der Wert leer; die Pfade in den Beispielen dieses Kapitels und im
+Helm-Chart sind Konventionen des jeweiligen Deployments, nicht Vorbelegungen des
 Moduls. Weiterhin gilt für alle ASL-Direktiven:
 
 - **Leere Werte werden abgelehnt.** `pep_asl_ocsp ""` oder
-  `pep_asl_root_ca ""` führen zum Startfehler, statt als „nicht gesetzt"
+  `pep_asl_root_ca ""` führen zum Startfehler, statt als „nicht gesetzt“
   behandelt zu werden. Eine Direktive, die nicht wirken soll, lässt man weg.
 - **Pfade dürfen relativ sein.** Relative Angaben löst der PEP gegen das
   Konfigurationsverzeichnis des nginx auf (`<nginx-prefix>/conf`).
 - **Der ASL-Signer-Schlüssel kann im HSM bleiben.** Beginnt der Wert von
   `pep_asl_signer_key` mit `store:`, lädt der PEP den Schlüssel nicht als Datei,
-  sondern über den OpenSSL-Provider `ossl_hsm` (`store:hsm:<key-id>`, im Helm
-  Chart über `pepproxy.asl_hsm_key` — siehe
+  sondern über den OpenSSL-Provider `ossl_hsm` (`store:hsm:<key-id>`, im
+  Helm-Chart über `pepproxy.asl_hsm_key` — siehe
   [HSM-Konfiguration (ASL-Signaturschlüssel)](Referenz_des_Helm_Charts.md#hsm-konfiguration-asl-signaturschlüssel)).
   Für Zertifikate und roots.json gilt das nicht — sie werden immer als Datei
   gelesen.
@@ -351,7 +424,8 @@ Moduls. Weiterhin gilt für alle ASL-Direktiven:
 
 * `asl`
     * Typ: `on` | `off`
-    * Beschreibung: Konfiguriert, ob der nginx ASL spricht (i.d.R. auf `location /ASL`)
+    * Beschreibung: Konfiguriert, ob der nginx ASL spricht (i. d. R. auf
+      `location /ASL`)
     * Pflichtfeld: Ja
     * Context: `http`, `server`, `location`
     * Standardwert: `off`
@@ -362,7 +436,7 @@ Moduls. Weiterhin gilt für alle ASL-Direktiven:
       ausstellenden CA. Typischerweise ein Secret-Mount.
     * Pflichtfeld: Ja
     * Context: `http`
-    * Standardwert: nicht gesetzt (das Helm Chart schreibt
+    * Standardwert: nicht gesetzt (das Helm-Chart schreibt
       `/etc/nginx/signer_key.pem`, `/etc/nginx/signer_cert.pem` und
       `/etc/nginx/issuer_cert.pem` in die nginx.conf)
 * `pep_asl_roots_json`
@@ -371,7 +445,7 @@ Moduls. Weiterhin gilt für alle ASL-Direktiven:
       Typischerweise ein Secret-Mount.
     * Pflichtfeld: Ja
     * Context: `http`
-    * Standardwert: nicht gesetzt (das Helm Chart schreibt
+    * Standardwert: nicht gesetzt (das Helm-Chart schreibt
       `/var/trust-data/roots.json` in die nginx.conf)
 * `pep_asl_testing`
     * Typ: `on` | `off`
@@ -397,6 +471,9 @@ Moduls. Weiterhin gilt für alle ASL-Direktiven:
         * Eine URL — Override dieser Adresse. Normalerweise nur zu Testzwecken.
         * `off` — deaktiviert das OCSP Stapling. Normalerweise nur zu
           Testzwecken.
+
+      Einen leeren Wert oder eine nicht interpretierbare URL lehnt der PEP beim
+      Start ab.
     * Pflichtfeld: Nein
     * Context: `http`
     * Standardwert: `cert`

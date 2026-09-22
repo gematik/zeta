@@ -1,10 +1,11 @@
-# Wie Sie den ZETA Testdriver als Container nutzen
+# Wie Sie den ZETA-Testdriver als Container nutzen
 
-Diese Anleitung unterstützt Tester dabei, den ZETA-Testclient auszuführen.
-Der Testclient nutzt die API des Test-Fachdienstes und bietet eine Benutzerschnittstelle dafür.
+Diese Anleitung unterstützt Tester und Entwickler dabei, den ZETA-Testdriver als
+Container zu konfigurieren und zu betreiben.
 
-Der Testdriver ist ein HttpServer, der auf der einen Seite HTTP Anfragen annimmt, auf der anderen
-Seite den Aufruf an den ZETA_Guard weiterleitet. Er kann daher einfach für Tests verwendet werden.
+Der Testdriver ist ein HTTP-Server: Auf der einen Seite nimmt er HTTP-Anfragen
+an, auf der anderen leitet er sie über den ZETA-Guard weiter. Damit lässt er
+sich einfach für Tests einsetzen.
 
 ---
 
@@ -22,15 +23,18 @@ Zielgruppe: Tester und Entwickler
 
 ## Überblick
 
-In diesem Dokument wird beschrieben, wie, basierend auf dem gebauten Testdriver Container image (siehe [Wie Sie den Testdriver bauen](Wie_Sie_den_Testdriver_bauen.md))
-einen Container konfigurieren, der in einem Kubernetes als Proxy zwischen einem Fachlichen Testtreiber und dem ZETA-Guard genutzt werden kann.
+Dieses Dokument zeigt, wie Sie aus dem gebauten Testdriver-Container-Image
+(siehe [Wie Sie den Testdriver bauen](Wie_Sie_den_Testdriver_bauen.md)) einen
+Container konfigurieren. Dieser dient in einem Kubernetes-Cluster als Proxy
+zwischen einem fachlichen Testtreiber und dem ZETA-Guard.
 
-Die Konfiguration des Containers geschieht über Umgebungsvariablen, die die Endpunkte des ZETA Guards festlegen.
-Die Definition der Umgebungsvariablen ist unten beschrieben.
+Konfiguriert wird der Container über Umgebungsvariablen, die die Endpunkte des
+ZETA-Guards festlegen; sie sind unten beschrieben.
 
 ## Ausführen des Containers
 
-Der Container kann mit einer hier beschriebenen deployment.yml installiert werden.
+Installieren lässt sich der Container mit der hier beschriebenen
+`deployment.yml`.
 
 Hierbei sind anzupassen:
 
@@ -46,16 +50,16 @@ Hierbei sind anzupassen:
 | SMCB_WORKSPACE_ID         | <workspace_id>  für den Konnektor-Aufruf                                                         |                                                            |
 | SMCB_USER_ID              | <user-id> - diese wird nach Konnektor-Spezifikation für SMC-B Signaturen benötigt aber ignoriert |                                                            |
 | SMCB_CARD_HANDLE          | <smcb-card-handle> für den Konnektor-Aufruf                                                      |                                                            |
-| POPP_TOKEN                | Wert eines PoPP Tokens, welches an den PEP mitgegeben wird (optional)                            | eyJhbGciOiJFUzI1NiI......                                  |
-| DISABLE_SERVER_VALIDATION | falls auf "true" gesetzt, wird die TLS Zertifikateprüfung des Servers ausgesetzt (für Tests)     |                                                            |
+| POPP_TOKEN                | Wert eines PoPP-Tokens, welches an den PEP mitgegeben wird (optional)                            | eyJhbGciOiJFUzI1NiI......                                  |
+| DISABLE_SERVER_VALIDATION | Falls auf `true` gesetzt, wird die TLS-Zertifikatsprüfung des Servers ausgesetzt (für Tests)     |                                                            |
 
-Im Beispiel unten werden die Werte durch helm Variablen gesetzt, sodass sie
+Im Beispiel unten werden die Werte durch Helm-Variablen gesetzt, sodass sie
 umgebungsspezifisch gesetzt werden können.
 
-Die Keystore-Datei wird als kubernetes Secret gemounted.
+Die Keystore-Datei wird als Kubernetes-Secret gemountet.
 
-Anderer Werte werden ebenfalls durch helm Variablen gesetzt, wie das zu nutzende Container-Repository,
-Version etc.
+Andere Werte werden ebenfalls durch Helm-Variablen gesetzt, etwa das zu nutzende
+Container-Repository, die Version etc.
 
 ```
 apiVersion: apps/v1
@@ -132,7 +136,7 @@ spec:
 ```
 
 
-Die service.yml dazu sieht wie folgt aus:
+Die `service.yml` dazu sieht wie folgt aus:
 
 ```
 apiVersion: v1
@@ -152,17 +156,18 @@ spec:
 
 ## Nutzen des Testdrivers
 
-Der Testdriver erlaubt es, Aufrufe z.B. eines Testframeworks für den Fachdienst
-über den Testdriver als ZETA Client, den ZETA-Guard an einen Fachdienst zu stellen.
+Mit dem Testdriver richtet etwa ein Testframework seine Aufrufe an den
+Fachdienst: Der Testdriver tritt dabei als ZETA-Client auf und leitet über den
+ZETA-Guard weiter.
 
-Der Request an den Fachdienst wird als normaler HTTP Request gestellt, unter
-Nutzung des ZETA nund ggf. ASL Protokolls weitergeleitet an den ZETA-Guard, und
-von dort an den Fachdienst geleitet.
+Das Testframework stellt einen normalen HTTP-Request. Der Testdriver leitet ihn
+über das ZETA- und ggf. das ASL-Protokoll an den ZETA-Guard weiter, von dort
+geht er an den Fachdienst.
 
-Dies erlaubt einfache Tests um sicherzustellen dass eine ZETA-Guard Installation
-korrrekt erfolgt ist.
+So lässt sich mit einfachen Tests prüfen, ob eine ZETA-Guard-Installation
+korrekt aufgesetzt ist.
 
-Die URLs die der Testdriver anbietet sind dabei diese:
+Die URLs, die der Testdriver anbietet, sind dabei diese:
 
 | endpoint                     | access type      | purpose                                                                                                                                                                                                                       |
 |------------------------------|------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|

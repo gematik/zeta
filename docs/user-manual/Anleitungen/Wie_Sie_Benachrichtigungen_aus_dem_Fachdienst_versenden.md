@@ -33,7 +33,7 @@ Zielgruppe: Fachdienst-Hersteller
 
 - **Notification Service aktiviert:** Der Betreiber muss den mitgelieferten
   Notification Service im ZETA-Guard-Deployment einschalten
-  (`notificationService.enabled: true` im Helm Chart) und konfigurieren. Details
+  (`notificationService.enabled: true` im Helm-Chart) und konfigurieren. Details
   siehe [Konfiguration des Notification Service](../Referenzen/Konfiguration_des_Notification_Service.md).
 - **mTLS-Zugang zum RS-Deployment:** Die RS-seitige API wird als eigenes
   Deployment mit dem Image-Suffix `-rs` betrieben (getrennt vom FdV-seitigen
@@ -56,10 +56,10 @@ Die normative Schnittstellenbeschreibung ist die OpenAPI-Spezifikation
 aggregierten Status. Der Nutzer wird über den Pfadparameter `userId` und den
 **verpflichtenden** Query-Parameter `id_type` identifiziert:
 
-| Parameter          | Ort   | Pflicht | Beschreibung                                                        |
-|--------------------|-------|---------|---------------------------------------------------------------------|
-| `userId`           | Pfad  | ja      | Identifikator des Nutzers (KVNR oder Telematik-ID)                  |
-| `id_type`          | Query | ja      | `kvnr` oder `telematik-id`                                          |
+| Parameter          | Ort   | Pflicht | Beschreibung                                                           |
+|--------------------|-------|---------|------------------------------------------------------------------------|
+| `userId`           | Pfad  | ja      | Identifikator des Nutzers (KVNR oder Telematik-ID)                     |
+| `id_type`          | Query | ja      | `kvnr` oder `telematik-id`                                             |
 | `include_inactive` | Query | nein    | `true`: alle bekannten Kanäle; `false` (Default): nur Status `enabled` |
 
 Die Kanal-Konfiguration ist **gerätegebunden** (pro `pushkey`); die Antwort
@@ -100,7 +100,7 @@ Zustellung an das Gerät.
 Felder des Request-Bodys:
 
 | Feld        | Pflicht | Beschreibung                                                                                     |
-|-------------|---------|---------------------------------------------------------------------------------------------------|
+|-------------|---------|--------------------------------------------------------------------------------------------------|
 | `user`      | ja      | `{ "id_type": "kvnr" \| "telematik-id", "value": "…" }`                                          |
 | `channel`   | ja      | Ziel-Kanal, z. B. `epa.documents.new`                                                            |
 | `payload`   | ja      | Use-case-spezifisches JSON-Objekt; das Schema legt die Spezifikation des Fachdienstes fest       |
@@ -142,13 +142,13 @@ curl --cert fachdienst.crt --key fachdienst.key \
 Die `202`-Antwort enthält `notification_id`, `status`, `channel` und
 `accepted_at`. Mögliche Status-Werte:
 
-| Status              | Bedeutung                                                                             |
-|---------------------|----------------------------------------------------------------------------------------|
-| `accepted`          | Angenommen, Validierung läuft bzw. steht aus                                          |
-| `queued`            | Zur Weiterleitung an das Push Gateway eingereiht                                      |
-| `no_active_channel` | Terminal: Der Kanal ist auf keinem Gerät des Nutzers aktiv; es erfolgt kein Versand   |
+| Status              | Bedeutung                                                                           |
+|---------------------|-------------------------------------------------------------------------------------|
+| `accepted`          | Angenommen, Validierung läuft bzw. steht aus                                        |
+| `queued`            | Zur Weiterleitung an das Push Gateway eingereiht                                    |
+| `no_active_channel` | Terminal: Der Kanal ist auf keinem Gerät des Nutzers aktiv; es erfolgt kein Versand |
 
-Die Vorbedingung „Kanal aktiv" wird synchron geprüft: Ist der Kanal auf keinem
+Die Vorbedingung „Kanal aktiv“ wird synchron geprüft: Ist der Kanal auf keinem
 registrierten Gerät `enabled`, trägt bereits die `202`-Antwort den terminalen
 Status `no_active_channel`. Wer solche Einreichungen vermeiden will, fragt
 vorab `GET /users/{userId}/channels` ab. Das endgültige Zustellergebnis wird
@@ -158,17 +158,17 @@ vorab `GET /users/{userId}/channels` ab. Das endgültige Zustellergebnis wird
 
 Alle Fehler haben die Form `{"errorCode": "…", "errorDetail": "…"}`.
 
-| Status | errorCode (Beispiel)  | Bedeutung                                                                                   |
-|--------|-----------------------|------------------------------------------------------------------------------------------------|
-| 400    | `INVALID_PARAM`       | Ungültiger Request (z. B. fehlendes `id_type`)                                              |
-| 401    | `UNAUTHENTICATED`     | Fehlendes oder ungültiges mTLS-Client-Zertifikat                                            |
-| 403    | `FORBIDDEN`           | Technischer Nutzer für diese Operation nicht berechtigt                                     |
-| 404    | `USER_NOT_FOUND`      | Kein Nutzer mit registriertem Gerät für den Identifikator bekannt                          |
+| Status | errorCode (Beispiel)  | Bedeutung                                                                                     |
+|--------|-----------------------|-----------------------------------------------------------------------------------------------|
+| 400    | `INVALID_PARAM`       | Ungültiger Request (z. B. fehlendes `id_type`)                                                |
+| 401    | `UNAUTHENTICATED`     | Fehlendes oder ungültiges mTLS-Client-Zertifikat                                              |
+| 403    | `FORBIDDEN`           | Technischer Nutzer für diese Operation nicht berechtigt                                       |
+| 404    | `USER_NOT_FOUND`      | Kein Nutzer mit registriertem Gerät für den Identifikator bekannt                             |
 | 413    | `PAYLOAD_TOO_LARGE`   | Payload überschreitet die Maximalgröße; Implementierungen müssen mindestens 3 KB unterstützen |
-| 422    | `UNKNOWN_CHANNEL`     | Syntaktisch gültig, aber nicht verarbeitbar (z. B. Kanal für den Nutzer unbekannt)          |
-| 429    | `RATE_LIMITED`        | Rate Limit erreicht; `Retry-After`-Header beachten                                          |
-| 500    | `INTERNAL_ERROR`      | Interner Fehler des Notification Service                                                    |
-| 503    | `SERVICE_UNAVAILABLE` | Temporär nicht verfügbar (z. B. Dispatch-Queue voll); `Retry-After`-Header beachten         |
+| 422    | `UNKNOWN_CHANNEL`     | Syntaktisch gültig, aber nicht verarbeitbar (z. B. Kanal für den Nutzer unbekannt)            |
+| 429    | `RATE_LIMITED`        | Rate Limit erreicht; `Retry-After`-Header beachten                                            |
+| 500    | `INTERNAL_ERROR`      | Interner Fehler des Notification Service                                                      |
+| 503    | `SERVICE_UNAVAILABLE` | Temporär nicht verfügbar (z. B. Dispatch-Queue voll); `Retry-After`-Header beachten           |
 
 ## Test-Umgebung
 
@@ -194,7 +194,7 @@ durch (Kanal-Aggregation, asynchrone `202`, Idempotenz, Retry-Verhalten,
 Fehler-Mapping) und gibt eine Zusammenfassung aus.
 
 Für Tests im Cluster lässt sich der Notification Service im lokalen
-KIND-Setup über das Helm Chart aktivieren (`notificationService.enabled`),
+KIND-Setup über das Helm-Chart aktivieren (`notificationService.enabled`),
 siehe [Wie Sie den Cluster lokal mit KIND aufsetzen](Wie_Sie_den_Cluster_lokal_mit_KIND_aufsetzen.md)
 und [Konfiguration des Notification Service](../Referenzen/Konfiguration_des_Notification_Service.md).
 

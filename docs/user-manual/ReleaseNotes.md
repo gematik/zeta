@@ -2,6 +2,165 @@
 
 # Release Notes ZETA SDK und ZETA Guard Helm Charts
 
+## Release 1.3.3
+
+### changed
+
+- Hotfix-Release: Komponenten-Release-Notes um PEP Proxy 1.3.3 und ZETA Guard
+  Helm Chart 1.3.3 ergänzt
+  ([Release Notes ZETA Guard Komponenten](ReleaseNotes/ZetaGuard/ReleaseNotes.md)).
+
+## Release 1.3.2
+
+### added
+
+- _Sicherheitsrelevant_ Hinweis für konkret notwendige Werte der DB
+  Verschlüsselung bei VAU Betrieb ergänzt. Bezieht sich auf ANFTI2-902.
+- Neue Anleitung
+  [Wie Sie ZETA Guard aktualisieren](Anleitungen/Wie_Sie_ZETA_Guard_aktualisieren.md):
+  der unterstützte Update-Weg (`helm upgrade` plus PDP-Konfiguration), wie der
+  Terraform-State das Update übersteht und wie Sie einen bestehenden Realm nach
+  einem State-Verlust übernehmen, statt neu zu installieren. Terraform verwaltet
+  ausschließlich Realm-Konfiguration — Nutzer und per DCR registrierte Clients
+  liegen in der Datenbank und sind von einem Apply nie betroffen. Mit Querverweis
+  aus dem [Quickstart](Anleitungen/ZETA_Guard_Quickstart.md#wann-und-wie-oft-die-pdp-konfiguration-laufen-muss).
+- Neuer Abschnitt
+  [Pflichtschritt: Update von 1.3.0/1.3.1 auf 1.3.2](Anleitungen/Wie_Sie_ZETA_Guard_aktualisieren.md#pflichtschritt-update-von-130131-auf-132)
+  in der Update-Anleitung: die korrigierte Liquibase-Migration der Tabellen
+  `ZETA_USER_DATA`/`ZETA_CLIENT_DATA` verlangt vor dem `helm upgrade` das
+  Löschen beider Tabellen samt Liquibase-Buchführung; dynamisch registrierte
+  Clients gehen dabei verloren und registrieren sich neu.
+- [Konfiguration des Notification Service](Referenzen/Konfiguration_des_Notification_Service.md):
+  `notificationService.db.kind` (`NOTIFICATION_DATASOURCE_DB_KIND`, ab Image
+  1.3.2 erforderlich) und die variantenspezifischen Tags
+  `notificationService.rs.image.tag`/`fdv.image.tag` dokumentiert.
+- Komponenten-Release-Notes um Release 1.3.2 ergänzt
+  ([Release Notes ZETA Guard Komponenten](ReleaseNotes/ZetaGuard/ReleaseNotes.md)).
+- AccessMode und StorageClass des Telemetry-Gateway-PVC sind über
+  `telemetryGatewaySendingQueuePVCAccessModes` (Standard `[ReadWriteOnce]`) und
+  `telemetryGatewaySendingQueuePVCStorageClass` konfigurierbar — `ReadWriteMany`
+  für Shared-Filesystem-Storage. Beide waren vorher im Template festgeschrieben;
+  `…StorageClass` war bereits dokumentiert, aber wirkungslos. Siehe
+  [4. Telemetriedaten Service konfigurieren](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md#4-telemetriedaten-service-opentelemetry-collector-konfigurieren).
+- Der `ZETA-User-Info`-Header trägt für Versicherten-Token (`professionOID`
+  `1.2.276.0.76.4.49`) jetzt zusätzlich das Feld `birthdate` (A_27558); bei
+  SMC-B-/LEI-Token entfällt es. Da der Authorization Server bislang keinen
+  `birthdate`-Claim liefert, setzt der PEP als Interimslösung einen festen Wert
+  (Standard `1900-01-01`), der über die neue Direktive `pep_user_info_birthdate`
+  je Umgebung überschreibbar ist. Neu dokumentiert ist auch die vollständige
+  Feldliste des Headers:
+  [Inhalt des `ZETA-User-Info`-Headers](Referenzen/Konfiguration_des_PEP_Http_Proxy.md#inhalt-des-zeta-user-info-headers).
+- Betreiberpflicht bei eigenem Ingress dokumentiert:
+  [Client-seitige Forwarding-Header verwerfen](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md#client-seitige-forwarding-header-verwerfen)
+  beschreibt, warum der `ip_address`-Claim aus `Forwarded`, `X-Forwarded-For`
+  und `X-Real-IP` abgeleitet wird, welche eingehenden Header der mitgelieferte
+  Ingress-Controller deshalb an der Außengrenze verwirft und dass dieses
+  Verwerfen bei `nginxIngressEnabled: false` selbst sicherzustellen ist — sonst
+  kann ein Client seine IP-Adresse wählen und die No-Travel-Prüfung umgehen.
+  Mit neuem Referenzabschnitt
+  [Client-IP-Ermittlung und Forwarding-Header](Referenzen/Referenz_des_Helm_Charts.md#client-ip-ermittlung-und-forwarding-header).
+- Neue Anleitung
+  [Wie Sie einen eigenen Ingress Controller verwenden](Anleitungen/Wie_Sie_einen_eigenen_Ingress_Controller_verwenden.md):
+  welche der am mitgelieferten F5 NIC konfigurierten Einstellungen eine Funktion
+  des ZETA Guard tragen und deshalb nachzubilden sind (Sitzungsaffinität für ASL
+  und Nonces, WebSocket-Upgrade, TLS zum Authserver, Verwerfen der
+  Forwarding-Header, Sperre des Revocation-Endpunkts), welche dem AFO-Nachweis
+  dienen und welche reine Betriebsparameter des NIC sind. Mit Checkliste und
+  Pfadtabelle für eigene Ingress-Ressourcen.
+- Neuer Referenzabschnitt
+  [Ingress](Referenzen/Referenz_des_Helm_Charts.md#ingress) in der
+  Helm-Chart-Referenz: `nginx-ingress.enabled` (installiert den Controller),
+  `nginxIngressEnabled` (rendert nur die F5-Annotationen) und `ingressEnabled`
+  (erzeugt die Ingress-Ressourcen) sind drei unabhängige Schalter; dazu
+  `nginxIngressLbMethod`, `nginxIngressHsm`, `ingressClassName` und die
+  Annotations-Values.
+- [Komponentenübersicht](Referenzen/Komponentenuebersicht.md) um eine Tabelle der
+  optionalen Komponenten erweitert: Helm-Schalter, Funktion und Folge des
+  Verzichts — Ingress Controller, Telemetriedaten Service, gematik-Anbindung,
+  KPI-Persistenz, Notification Service, OPA-Simulation, NetworkPolicies, Istio,
+  cert-manager-Issuer, Admin-Hostname, externe Datenbank, externer Infinispan.
+
+### changed
+
+- Fehlermeldungen des PEP bei Fehlkonfiguration nennen jetzt die betroffene
+  Direktive. Bisher stand dort wörtlich ``$name`` — jede Fehlkonfiguration
+  protokollierte ``nginx: [emerg] `$name`: …``, unabhängig von der Direktive.
+  Jetzt z.B. ``nginx: [emerg] `pep_user_info_birthdate`: invalid date
+  "01.01.1900", expected YYYY-MM-DD``. Wenn Sie Logauswertungen oder
+  SIEM-Regeln auf diesen Text stützen, passen Sie sie an. Die `on`/`off`- und
+  Sekunden-Direktiven melden zudem einheitlich, was erwartet wird.
+- Ein unlesbarer Wert von `pep_asl_ocsp` (weder `off`/`cert` noch eine
+  interpretierbare URL) brach den nginx-Start bisher mit einem Panic ab; jetzt
+  wird er wie jede andere Fehlkonfiguration als `[emerg]` mit Angabe der
+  Direktive abgelehnt.
+- `opa.logDecisions` ist standardmäßig `false`: Decision-Logs gehen nur noch an
+  das Telemetry-Gateway, nicht mehr in das Konsolen-Log der OPA-Pods. Angepasst
+  in [Referenz des Helm Charts](Referenzen/Referenz_des_Helm_Charts.md#opa-policy-engine)
+  und [Troubleshooting](Anleitungen/Troubleshooting_und_Debugging.md).
+- Die `*/dienst_hersteller`-Pipelines des Telemetry-Gateways liefern keine rein
+  sicherheitsbezogenen Signale mehr (Attack-Detection-Events, `authn_*`-Events,
+  OPA Decision-Logs, Metriken `attack.detection.*`/`zeta_guard_kpi.*`,
+  Span-Attribut `app.installation.id`; A_28960). Beschrieben in
+  [Wie der Telemetrie-Daten Service funktioniert](Erklärungen/Wie_der_Telemetrie-Daten_Service_funktioniert.md).
+- `authserver.provider.smcB.ocspFailClosed` wirkt erst ab Chart 1.3.2 — in
+  1.3.0/1.3.1 wurde der Wert nicht an den Authserver durchgereicht. Hinweis in
+  der [Referenz des Helm Charts](Referenzen/Referenz_des_Helm_Charts.md).
+- `global.noProxy`: ein führender Punkt am **ersten** Eintrag wurde bis Chart
+  1.3.1 nicht in das `http.nonProxyHosts`-Format konvertiert. Hinweis mit
+  Workaround für ältere Charts in
+  [Wie Sie einen Forward Proxy konfigurieren](Anleitungen/Wie_Sie_einen_Forward_Proxy_konfigurieren.md#empfehlungen-für-noproxy).
+- Telemetrie-Doku präzisiert: die Sending-Queue wird nur für die beiden an die
+  gematik sendenden Exporter (`otlp_grpc/ti_siem`, `otlp_grpc/ti_sim`) auf den
+  PVC persistiert, nicht für alle Exporter. Betrifft
+  [4. Telemetriedaten Service konfigurieren](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md#4-telemetriedaten-service-opentelemetry-collector-konfigurieren)
+  und [Wie der Telemetrie-Daten Service funktioniert](Erklärungen/Wie_der_Telemetrie-Daten_Service_funktioniert.md#resilienz).
+- [Wie Sie ZETA Guard auf OpenShift betreiben](Anleitungen/ZETA_OpenShift_Kompatibilität.md):
+  Schritt 3 korrigiert. Für das Telemetry-Gateway reicht es **nicht**, `runAsUser`
+  einfach wegzulassen — das Chart setzt dort `runAsUser: 1000` und `fsGroup: 1000` als
+  Default, und Helm merged Maps. Beide Werte müssen explizit auf `null` gesetzt
+  werden. Neuer Schritt 4 zur StorageClass des Sending-Queue-PVC ergänzt.
+- [Referenz des Helm Charts](Referenzen/Referenz_des_Helm_Charts.md#security-contexts):
+  Die pauschale Aussage, `runAsUser` werde standardmäßig nicht gesetzt, gilt nicht
+  für das Telemetry-Gateway — Ausnahme dokumentiert.
+- Telemetrie-Anleitung: Hinweis auf ggf. login-pflichtigen Zugang zum
+  gematik-Onboarding-Wiki ergänzt und beschrieben, welche Werte (TI-SIEM-/
+  TI-SIM-Audiences und Service-Accounts, WIF-Pool/Projektnummer/Provider) man
+  aus dem Onboarding-Prozess erhält.
+- Die Terraform-Variable `audience_scope_name` ist jetzt **erforderlich** und hat
+  keinen Standardwert mehr — der Name des Audience-Scopes muss in jeder Stage
+  gesetzt werden. Angepasst in
+  [Quickstart](Anleitungen/ZETA_Guard_Quickstart.md#2-pdp-konfigurieren),
+  [Wie Sie ZETA Guard in Kubernetes konfigurieren](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md)
+  und der [Helm-Chart-Referenz](Referenzen/Referenz_des_Helm_Charts.md).
+- Die Tabelle der Terraform-Variablen in der Helm-Chart-Referenz führt jetzt
+  alle Variablen der PDP-Konfiguration mit ihren Standardwerten.
+- Im lokalen Modus (`use_kubernetes = false`) wird der Kubernetes-Provider nicht
+  mehr benötigt und von `terraform init` auch nicht mehr heruntergeladen.
+  Dokumentation angepasst in
+  [Quickstart](Anleitungen/ZETA_Guard_Quickstart.md#2-pdp-konfigurieren) und
+  [Wie Sie ZETA Guard in Kubernetes konfigurieren](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md).
+- `enable_sekidp = true` setzt jetzt `use_kubernetes = true` voraus.
+- Für die PDP-Konfiguration wird jetzt **Terraform 1.11 oder neuer** benötigt.
+  Die Keycloak-Admin-Zugangsdaten landen nicht mehr im Terraform-State: sie sind
+  als `ephemeral` deklariert, in beiden Betriebsmodi erforderlich und müssen bei
+  jedem Terraform-Aufruf bereitgestellt werden. Terraform liest das Secret
+  `authserver-admin` nicht mehr selbst — das neue Skript
+  `terraform/authserver/scripts/kc-admin-env.sh` füllt die Variablen daraus.
+  Siehe
+  [Quickstart – Terraform Variablen definieren](Anleitungen/ZETA_Guard_Quickstart.md#terraform-variablen-definieren).
+- Telemetrie-Doku korrigiert: Beispiel-Pipelines an den aktuellen Chart-Stand
+  angeglichen (Connector `spanmetrics` in Receiver- und Exporter-Listen
+  ergänzt), Warnung + vollständige Beispiele für `extraVolumes`/`-Mounts`
+  (Helm ersetzt Listen — Token-Export und Sending-Queue brachen sonst),
+  Collector-Manifest-Links aktualisiert; Telemetrie-Attribute
+  (`gematik.zeta.kind`-Wert `spanmetrics`, Quelle von `zeta.client.id/ip`) und
+  Security-Events-Referenz (Attack-Event-Endpoint) präzisiert.
+
+### removed
+
+- Anleitung zum Filtern von Telemetrie, die nicht mehr benötigt wird, und nicht
+  verwendet werden darf.
+
 ## Release 1.3.1
 
 ### changed

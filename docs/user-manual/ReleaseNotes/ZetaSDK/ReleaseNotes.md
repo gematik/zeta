@@ -1,16 +1,15 @@
-# Release Notes ZETA SDK
 
-## ZETA SDK
+# RELEASE NOTES ZETA-SDK
 
-### Version: v1.3.0
+## Version: v1.3.2
 
 This version implements the ZETA protocol for the ZETA client SDK.
 
 It provides SDK bindings for kotlin (as original implementation), Java, C++, and C#
 
-#### Included Features:
+### Included Features:
 
-##### General Protocol:
+#### General Protocol:
 
 The implementation covers two main use cases, with a large overlap. The general functions are:
 
@@ -33,7 +32,7 @@ For insurant-side implementations ("Stufe 2"), the following features are implem
 - OIDC-based login using a SekIDP
 - Support for mobile clients (see below)
 
-##### Clients:
+#### Clients:
 
 This section has the available client implementations, all based on the SDK:
 
@@ -42,31 +41,49 @@ This section has the available client implementations, all based on the SDK:
 The other clients use this SDK and show how to integrate the SDK into the various, supported
 runtime environments.
 
-###### Test clients
+##### Test clients
 - testdriver client as container image to use as a proxy for a resource server in test setups, using the JDK-based runtime.
 - nativedriver client as container image to use as a proxy for a resource server in test setups, using the native build runtime.
 - kotlin-based demo client to manually test against the test Fachdienst (resource server)
 
-###### Stationary clients:
+##### Stationary clients:
 - Java-client example for how to integrate and use the SDK in a Java application
 - C++ client build
 - C# client build
 
-###### Mobile clients:
+##### Mobile clients:
 - Demo client app for Android
 - Demo client app for iOS
 
-#### Known issues:
+### Known issues:
 
-- Android devices currently supported from API >= 37 (due to change in Android crypto API.
-  Will be fixed in the following release)
 - TLS validation is not fully implemented on iOS
 - The SDK does not fully handle paths parts in the AS well-known URL. The AS well-known is defined
   as on the root path, so this is WONTFIX.
 
-### Changes in 1.3.0 (from 1.2.5)
 
-#### New Features
+## Changes in 1.3.2 (from 1.3.0)
+
+### New Features
+
+- Updated Gradle dependencies to the latest compatible versions.
+- Refactored time handling across the SDK by introducing the ZetaClock interface,
+ allowing a custom clock implementation to be injected.
+
+### Behavioural Changes
+
+- N/A
+
+### Bug Fixes
+
+- Added support for extracting stapled OCSP responses on Android API levels below 37.
+- ANFTI2-915 / ANFTI2-781: Updated ktor-client-fork with upstream changes to resolve reported WebSocket issues.
+- ANFTI2-889: Updated the RevocationChecker HTTP client to use the configured SDK HTTP settings, including proxy and timeout configuration.
+- Fixed OCSP stapled-response handling to comply with A_27379-01.
+
+## Changes in 1.3.0 (from 1.2.5)
+
+### New Features
 
 Please note that mobile device features ("Stufe 2") are preview only.
 
@@ -82,11 +99,11 @@ Other new features are:
 
 - new version API to return the (hardcoded at build time) client SDK version.
 
-#### Behavioural Changes
+### Behavioural Changes
 
-- Revocation caching configurable
+- ZETAP-1387: Revocation caching configurable
 
-#### Bug Fixes
+### Bug Fixes
 
 - ANFTI2-781: C# WebSocket WsSession.ReceiveNext doesn't always return the complete message (frame fragmentation fix)
 - ANFTI2-788/-782: regression regarding using handling multiple Guards
@@ -103,29 +120,29 @@ Other new features are:
 - CVE-2026-8484: Jansi vulnerability fix
 - Bump BouncyCastle to v1.85 to fix vulnerabilities found in v1.84
 
-### Changes in 1.2.5 (from 1.2.4)
+## Changes in 1.2.5 (from 1.2.4)
 
 - Fix regression in JVM revocation checker
 - Use correct timestamp for OCSP cache time
 
-### Changes in 1.2.4 (from 1.2.3)
+## Changes in 1.2.4 (from 1.2.3)
 
 - RSA key length adapted to requirements for gematik PKI CA infrastructure
 
-### Changes in 1.2.3 (from 1.2.2)
+## Changes in 1.2.3 (from 1.2.2)
 
-#### New Features
+### New Features
 
 - Demo App has more options regarding TLS (burger menu with
   option to enable/disable TLS validation, upload CA files)
   Also now has buttons for explicit discovery, registration, and authentication
 
-#### Behavioral Changes
+### Behavioral Changes
 
 - Adaption of the validation of the TLS certificate chain to achieve compatibility
   with the gematik PKI CA infrastructure. This mainly affects the ASL functionality.
 
-#### Bug Fixes
+### Bug Fixes
 
 - Caching for TLS/ASL revocation and trust data (OCSP, CRL, ASL certificates)
 - ASL error handling (parsing json vs. cbor)
@@ -137,23 +154,23 @@ Other new features are:
 - ANFTI2-744: discover/register/authenticate propagate CapabilityResult.Error as a failed Result
 - ANFTI2-753: C++ Correct Headers count
 
-### Changes in 1.2.2 (from 1.2.0)
+## Changes in 1.2.2 (from 1.2.0)
 
-#### New Features
+### New Features
 
 - Log verbosity in load driver is configurable
 
-#### Bug Fixes
+### Bug Fixes
 
 - ANFTI-697: websocket fragmentation
 - ANFTI-651: C# Exception Handling
 - ANFTI2-735: rework Access Token storage to reduce key size (was too big) and include ability for scope-specific access tokens for the same resource (DiPag)
-- Removal of SMCB Subject Token provider as it was a test tool and never meant for production
+- Removal of SMCB Subject Token provider as it was a test tool and never meant for production (see  [README](README.md))
 - Netty CVE finding in testdriver
 
-### Changes in 1.2.0 (from 1.0.2)
+## Changes in 1.2.0 (from 1.0.2)
 
-#### New Features
+### New Features
 
 - More API Methods in C/C# API (discover, authenticate, ...)
 - Proxy configuration for C/C# clients
@@ -161,13 +178,13 @@ Other new features are:
 - Cookie management in HTTP client to support load balancing
 - clearRegistration() API method added
 
-#### Specification Updates
+### Specification Updates
 
 - Schema-Updates for AS-well-known, lenient Json validation
 - Use of registration_endpoint,
 - Removal of Client Self Assessment (urn:telematik:client-self-assessment attribute)
 
-#### Bug fixes
+### Bug fixes
 
 - Use of correct audience in Subject Token and token request parameter
 - Findings in OCSP validation (JVM und Native SDKs)
@@ -183,57 +200,57 @@ Other new features are:
 - Fixed status always returning REGISTERED_NO_VALID_TOKENS
 - Persist `zeta_route` cookie via SdkStorage for sticky session
 
-### Changes in 1.0.2 (from 1.0.1)
+## Changes in 1.0.2 (from 1.0.1)
 
 - Hotfix: The C# client compilation error has been solved. Missing files have added.
 
-### Changes in 1.0.1 (from 1.0.0)
+## Changes in 1.0.1 (from 1.0.0)
 
-#### New Features
+### New Features
 - Custom SMC-B Connector: inject your own SMC-B connector implementation via `AuthConfig`.
 - Custom Storage: replace the default platform storage with a custom `SdkStorage` implementation
 - Custom Log Provider: redirect SDK log output via `ZetaLogger`, configurable log level (`DEBUG`, `INFO`, `WARN`, `ERROR`, `NONE`), default is `ERROR`
 
-#### Bug Fixes
+### Bug Fixes
 - Step-up authentication: client registration storage is now cleared during step-up, forcing re-registration with a new `client_id` when a 401 is received
 - EC curve validation: TLS handshake now enforces allowed EC curves at the OpenSSL level
 - Proxy password: not sent as a pointer representation, instead of the actual string value
 
-#### Improvements
+### Improvements
 - Logging now uses a unified implementation across all platforms. SLF4J dependency removed from JVM. Default output now uses `println`
 - Ktor HTTP client logging now delegates to the SDK log system
 
-### Changes in 1.0.0 (from 0.5.1)
+## Changes in 1.0.0 (from 0.5.1)
 
 - C# client
 - Bugfixes
 - CVE fixes
 - Code Quality activities
 
-### Changes from 0.5.0
+## Changes from 0.5.0
 
 - Update versions of kotlin, gradle, netty-codec, and others
 
-### Changes from 0.4.2
+## Changes from 0.4.2
 
 - Fix TLS Cipher suite validation for TLS 1.2. OkHttp returns IANA names but validator was comparing against OpenSSL names,
 - causing all TLS 1.2 connections to fail compliance check.
 - Update aus gemspec_ZETA RC 26_1
   - key thumbprints in SubjectToken
 
-### Changes from 0.4.1
+## Changes from 0.4.1
 
 - Refactored C++ client: Moved C++ API types and bindings from the example client into the SDK itself The SDK now ships a single header file (`libzeta_sdk_api.h` / `zeta_sdk_api.h`) with full HTTP CRUD and WebSocket STOMP support
 - Added standalone C++ native client (`zeta-nativeclient-cpp`) with Makefile for cross-platform builds (macOS, Linux, Windows) without requiring Gradle
 - Added all HTTP methods to JVM `HttpClientExtension`: `putAsync`, `patchAsync`, `deleteAsync`, `headAsync`, `optionsAsync`
 
-### Changes from 0.4.0
+## Changes from 0.4.0
 
 - C++ API now has length restrictions in the strings
 - removed dynamic linking in C++ client
 - disable TLS validation configurable in C++ client
 
-### Changes from 0.3.1
+## Changes from 0.3.1
 
 - Hinzufügen fehlender dependency Check results zu den reporting Artefakten
 - Triggern der Testsuite bei jedem Commit auf einem Merge-Request
@@ -248,11 +265,11 @@ Other new features are:
 - Erweiterungen einiger Logs um Zeitmessungen
 - Fix websocket communication in Java client
 
-### Changes from 0.3.0
+## Changes from 0.3.0
 
 - Fixed demo client to enable functionalities (add, edit, delete) when the attestation state is unknown
 
-### Changes from 0.2.12
+## Changes from 0.2.12
 
 - Attestation service for Linux (TPM based)
 - Increase code coverage for modules Crypto and ASL
@@ -262,7 +279,7 @@ Other new features are:
   - Improvement for reading registration number from SM-B certificate
   - Handling of X-Forwarded headers when using ASL
 
-### Changes from 0.2.11
+## Changes from 0.2.11
 
 - Fix websockets on C++ client
 
@@ -270,23 +287,23 @@ Other new features are:
   - Integrate tpm2-tss library bindings to access TPM (only linux)
   - Implement TPM commands
 
-### Changes from 0.2.10 (internal)
+## Changes from 0.2.10 (internal)
 
 - Add missing copyright header
 
-### Changes from 0.2.9
+## Changes from 0.2.9
 
 - Update of release Notes
 
-### Changes from 0.2.8
+## Changes from 0.2.8
 
 - Rollback of the netty version due to intermittent errors in the test framework
 
-### Changes from 0.2.7
+## Changes from 0.2.7
 
 - Filtering of the included ktor-client-curl library
 
-### Changes from 0.2.6
+## Changes from 0.2.6
 
 - Significant adjustments to the C++ client through integration of ktor-client-curl for updated OpenSSL version with support for post-quantum cryptography
 - Implemented cryptographic functions for desktop clients using OpenSSL
@@ -294,25 +311,25 @@ Other new features are:
 - Improvements for ASL error handling
 - Version updates
 
-### Changes from 0.2.5
+## Changes from 0.2.5
 
 - Send clientId and clientIdIssuedAt within client assessment data for token exchange (websockets)
 
-### Changes from 0.2.4
+## Changes from 0.2.4
 
 - Correct the field platform name
 
-### Changes from 0.2.3
+## Changes from 0.2.3
 
 - fix for asl debug header
 - fix for web sockets
 - fix for sending client-/user-data
 
-### Changes from 0.2.2
+## Changes from 0.2.2
 
 - fix for Host header
 
-### Changes from 0.2.1
+## Changes from 0.2.1
 
 - minor bug fixes
 - Version updates

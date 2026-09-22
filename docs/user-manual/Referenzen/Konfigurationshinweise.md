@@ -1,8 +1,7 @@
 # Konfigurationshinweise
 
-Die Konfiguration des ZETA-Guard umfasst eine Vielzahl von Punkten, die wir hier
-übergreifend
-darstellen, um das Verständnis der Umsetzung zu erleichtern.
+Die Konfiguration des ZETA-Guard umfasst viele Einzelpunkte. Dieses Dokument
+stellt sie übergreifend dar, damit die Umsetzung verständlich bleibt.
 
 ## Inhaltsverzeichnis
 
@@ -17,65 +16,58 @@ darstellen, um das Verständnis der Umsetzung zu erleichtern.
 Der Client nutzt grundsätzlich vier Endpunkte am ZETA-Guard, die sich auf
 zwei Hostnamen verteilen.
 
-Die Hinweise hier dienen dazu die Abhängigkeiten zwischen den verschiedenen
-Konfigurationen darzustellen und eine korrekte Konfiguration zu unterstützen.
+Die folgenden Hinweise zeigen die Abhängigkeiten zwischen den einzelnen
+Konfigurationen und helfen so, sie korrekt zu setzen.
 
 ### Abstrakte Sicht
 
-Die Vier Endpunkte sind:
+Die vier Endpunkte sind:
 
-1. Well-known-Datei des PEP
-2. PEP Endpunkt für Zugriffe auf den Fachdienst (inkl. `/ASL`Pfad)
-3. Well-known-Datei des PDP
-4. PDP Endpunkte für Nonce, Token, Registrierung etc.
+1. Well-Known-Datei des PEP
+2. PEP-Endpunkt für Zugriffe auf den Fachdienst (inkl. `/ASL`-Pfad)
+3. Well-Known-Datei des PDP
+4. PDP-Endpunkte für Nonce, Token, Registrierung etc.
 
-Das folgende Diagram zeigt eine Übersicht.
+Das folgende Diagramm zeigt eine Übersicht.
 
-![ZETA Guard Endpunkte für den Client](../assets/images/zeta-endpunkte.png)
+![ZETA-Guard-Endpunkte für den Client](../assets/images/zeta-endpunkte.png)
 
 Hierbei ist zu beachten, dass der Client (das SDK) mit einer einzigen
-URL beginnen, der Fachdienst-URL.
-Durch Ersatz des Pfades der Fachdienst-URL durch den Pfad der Well-Known-Datei
-wird
-diese gefunden.
+URL beginnt, der Fachdienst-URL. Er ersetzt deren Pfad durch den Pfad der
+Well-Known-Datei und findet so die Datei.
 
-In der Well-Known-Datei des PEP steht dann wiederum die URL des Authorization
-Servers. Dessen Well-Known-Datei wird gefunden, in dem der Hostname der URL
-des Authorization Servers mit dem Well-known-Pfad ergänzt wird.
-Dort finden sich dann die URLs der verschiedenen Endpunkte (nonce, token, ...)
+In der Well-Known-Datei des PEP steht wiederum die URL des Authorization
+Servers. Deren Hostname plus Well-Known-Pfad ergibt die Well-Known-Datei des
+Authorization Servers. Dort stehen schließlich die URLs der einzelnen Endpunkte
+(Nonce, Token, …).
 
 ### Konkrete Konfiguration
 
-Das folgende Diagram zeigt, wie die Konfiguration des ZETA-Guard
+Das folgende Diagramm zeigt, wie die Konfiguration des ZETA-Guard
 umgesetzt werden kann, um in Produktion mit den beiden Hostnamen die vier
 Endpunkte aufzubauen.
 
-Das folgende Diagram zeigt einen Ingress, der die beiden Hostnamen abbildet,
-und die verschiedenen Pfade auf die Endpunkte des PEP und PDP routet.
-Die weißen Boxen sind dabei konkrete Komponenten bzw. Deployments im kubernetes,
-die hell-orangen Boxen
-fassen die beiden (externen) Hostnamen zusammen, die geroutet werden müssen. In
-den Komponenten sind dabei
-die wesentlichen Konfigurationsdateien genannt, mit denen die Konfiguration
-durchgeführt wird.
+Das folgende Diagramm zeigt einen Ingress, der die beiden Hostnamen abbildet und
+die verschiedenen Pfade auf die Endpunkte von PEP und PDP routet. Die weißen
+Boxen stehen für konkrete Komponenten bzw. Deployments in Kubernetes, die
+hellorangen für die beiden externen Hostnamen, die geroutet werden müssen. In
+den Komponenten stehen jeweils die wesentlichen Konfigurationsdateien.
 
 In einem OpenShift-Umfeld wird der Ingress mit TLS-Konfiguration verwendet;
 der OpenShift-Ingress-to-Route-Controller erzeugt daraus automatisch
-edge-terminated Routes (
-siehe [OpenShift-Kompatibilität](../Anleitungen/ZETA_OpenShift_Kompatibilität.md)).
+edge-terminated Routes
+(siehe [OpenShift-Kompatibilität](../Anleitungen/ZETA_OpenShift_Kompatibilität.md)).
 
 ![Konkrete Endpunktkonfiguration](../assets/images/zeta-config-trg.png)
 
-Für ein Testsystem kann zusätzlich der testdriver mit genutzt werden, der nur
-für
-Testsysteme (optional) vorgesehen ist. In Produktion darf dieser nicht
+Für ein Testsystem kann zusätzlich der Testdriver mit genutzt werden, der nur
+für Testsysteme (optional) vorgesehen ist. In Produktion darf dieser nicht
 installiert werden.
 
-![img.png](../assets/images/zeta-config-trg-test.png)
+![Endpunktkonfiguration mit Testdriver](../assets/images/zeta-config-trg-test.png)
 
-Die Komplikation die sich hier ergibt, ist dass die Well-known-Datei des
-keycloak (PDP) nicht unter dem Root-Pfad zu finden ist, sondern in einem
-Unterpfad, welcher durch den Ingress umgesetzt wird.
+Schwierig ist dabei, dass die Well-Known-Datei von Keycloak (PDP) nicht unter
+dem Root-Pfad liegt, sondern in einem Unterpfad, den der Ingress umsetzt.
 
 ### Auslieferungsstand
 
@@ -91,45 +83,40 @@ unter einem einzigen Hostnamen vor.
 
 Hierbei ist zu beachten, dass der Ingress
 
-- die Pfade unter `/proxy` auf den testdriver routet; dieser schneidet den Pfad
-  `/proxy`
-  bei der Weiterleitung an den PEP ab.
-- die Pfade unter `/auth` auf den keycloak routet
-- alle anderen Pfade auf das PEP Modul routet, welcher diese dann entsprechend
+- die Pfade unter `/proxy` auf den Testdriver routet; dieser schneidet den Pfad
+  `/proxy` bei der Weiterleitung an den PEP ab.
+- die Pfade unter `/auth` auf Keycloak routet,
+- alle anderen Pfade auf das PEP-Modul routet, das diese dann entsprechend
   der Konfiguration zum Fachdienst weiterleitet. Hinweis: In den
-  Konfigurationsbeispielen, auf die auch der testdriver abgestimmt ist, betrifft
-  dies insb. die Pfade unter `/pep`. Diese werden zum Fachdienst durch das PEP
-  Modul geroutet; bei der Weiterleitung wird dort der Pfad `/pep` abgeschnitten.
-- der PEP http-proxy dann die Pfad-Umsetzung für die Well-Known-Datei des
-  Auth-Servers vornimmt.
-  Dies wird sich in späteren Releases noch ändern und in den Ingress wandern.
+  Konfigurationsbeispielen, auf die auch der Testdriver abgestimmt ist, betrifft
+  dies insbesondere die Pfade unter `/pep`. Diese werden zum Fachdienst durch
+  das PEP-Modul geroutet; bei der Weiterleitung wird dort der Pfad `/pep`
+  abgeschnitten.
+- der PEP HTTP Proxy die Pfad-Umsetzung für die Well-Known-Datei des
+  Auth-Servers übernimmt. Das ändert sich in späteren Releases: Die Umsetzung
+  wandert in den Ingress.
 
 Ein Aufruf durch den Test erfolgt dann wie folgt (anhand des VSDM als Beispiel):
 
 1. Client ruft `https://<testdriver-host>/proxy/vsdservice....`. Dadurch wird
-   der Testdriver,
-   angesprochen. Dieser ruft dann in dieser Reihenfolge (unter der Annahme, dass
-   kein Access Token
-   vorhanden ist) die folgenden URLs auf, wobei der `pep-host`aus der
-   Konfiguration `FACHDIENST_URL` stammt:
+   der Testdriver angesprochen. Dieser ruft dann in dieser Reihenfolge (unter
+   der Annahme, dass kein Access-Token vorhanden ist) die folgenden URLs auf,
+   wobei der `pep-host` aus der Konfiguration `FACHDIENST_URL` stammt:
 2. Testdriver ruft `https://<pep-host>/.well-known/oauth-protected-resource` zum
-   Lesen der oauth-protected-resource Well-Known auf.
-   Diese Datei enthält die URL des Authorization Servers (des PDP). Daraus wird
-   der `pdp-host` genommen, der
-   im Folgenden genutzt wird:
+   Lesen der Well-Known-Datei `oauth-protected-resource` auf.
+   Diese Datei enthält die URL des Authorization Servers (des PDP); daraus
+   stammt der `pdp-host` für die folgenden Aufrufe.
 3. Testdriver ruft `https://<pdp-host>/.well-known/oauth-authorization-server`
-   zum Lesen der PDP well-known Datei.
-4. Testdriver ruft mehrere Endpunkte unter `https://<pdp-host>/realm/...` (
-   nonce, registration, authentication, endpunkte siehe PEP .well-known Datei)
-5. Testdriver ruft `<FACHDIENST_URL>/vsdservice....` wobei die `FACHDIENST_URL`
-   durch den Pfad des ursprünglichen
-   Requests ergänzt wird. In dem hier gezeigten Fall besteht die
-   `FACHDIENST_URL`aus `https://<pep-host>/pep/`, so dass am Ende
-   der PEP-Endpunkt aufgerufen wird
-6. PEP ruft den Fachdienst mit `<fachdienst-url>/vsdservice...`, da der
-   Pfad-Prefix `/pep` vom Ingress entfernt wird.
-   Die `fachdienst-url` wird dabei in der Konfiguration des pepproxy in den helm
-   charts konfiguriert.
+   zum Lesen der Well-Known-Datei des PDP.
+4. Testdriver ruft mehrere Endpunkte unter `https://<pdp-host>/realms/...` auf
+   (Nonce, Registration, Authentication; Endpunkte siehe Well-Known-Datei des
+   PEP)
+5. Testdriver ruft `<FACHDIENST_URL>/vsdservice....`, wobei die `FACHDIENST_URL`
+   um den Pfad des ursprünglichen Requests ergänzt wird. Hier lautet sie
+   `https://<pep-host>/pep/`, sodass am Ende der PEP-Endpunkt aufgerufen wird.
+6. PEP ruft den Fachdienst mit `<fachdienst-url>/vsdservice...` auf, da der
+   Ingress das Pfad-Präfix `/pep` entfernt. Die `fachdienst-url` stammt aus der
+   pepproxy-Konfiguration in den Helm-Charts.
 
 #### Variante mit separatem Admin-Hostnamen
 
@@ -145,7 +132,7 @@ title: Routing mit separatem Admin-Hostnamen
 ---
 flowchart LR
     Client["`**Client**
-    (Primärsystem, ZETA SDK)`"]
+    (Primärsystem, ZETA-SDK)`"]
     Runner["`**Terraform / CI-CD**`"]
 
     subgraph Pub["`Ingress — Haupthostname`"]

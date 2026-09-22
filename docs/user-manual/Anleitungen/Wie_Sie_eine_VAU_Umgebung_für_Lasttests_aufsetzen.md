@@ -6,12 +6,11 @@ Status: In Arbeit
 
 Zielgruppe: Systemadministratoren der Fachdienst-Anbieter
 
-_Inhalt: „Kochbuch" für das Aufsetzen einer vollständigen, HSM-gestützten
+_Inhalt: „Kochbuch“ für das Aufsetzen einer vollständigen, HSM-gestützten
 ZETA-Guard-Umgebung nach VAU-Randbedingungen, die für Last- und
-Performance-Tests geeignet ist. Beschreibt Voraussetzungen, Architektur, das
-schrittweise Vorgehen sowie Betriebs- und Fehlerbehebungshinweise. Diese
-Anleitung fasst die Einzelanleitungen zusammen und ergänzt die Einstellungen,
-die die Umgebung hochverfügbar, HSM-gestützt und in sich geschlossen machen._
+Performance-Tests geeignet ist. Es beschreibt die Voraussetzungen, die
+Architektur, das schrittweise Vorgehen sowie Betriebs- und
+Fehlerbehebungshinweise._
 
 ---
 
@@ -34,10 +33,10 @@ die die Umgebung hochverfügbar, HSM-gestützt und in sich geschlossen machen._
 
 ## Überblick
 
-Diese Anleitung beschreibt einen **vollständigen ZETA-Guard-Stack**, der wie
-eine
-VAU gehärtet und so dimensioniert ist, dass er **Last- und Performance-Tests**
-bedienen kann.
+Diese Anleitung beschreibt einen **vollständigen ZETA-Guard-Stack**, der als
+[VAU](https://en.wikipedia.org/wiki/Trusted_execution_environment)
+(Vertrauenswürdige Ausführungsumgebung) gehärtet und so dimensioniert ist, dass
+er **Last- und Performance-Tests** bedienen kann.
 
 | Bereich               | Aufbau                                                                                                 |
 |-----------------------|--------------------------------------------------------------------------------------------------------|
@@ -54,16 +53,15 @@ bedienen kann.
 > **ASL über HSM** ist in diesem Rezept **noch nicht** enthalten — der
 > ASL-*Signaturschlüssel* wird weiterhin aus einer gemounteten Datei geladen.
 > Nur das ASL-*TLS* nutzt das HSM. Die Verlagerung des ASL-Signaturschlüssels
-> ins
-> HSM wird separat verfolgt.
+> ins HSM wird separat verfolgt.
 
-> **HSM-Umfang:** Dieses Rezept beschreibt den vollen HSM-Ausbau (TLS an
-> Authserver, PEP, Infinispan und Ingress sowie Tokensignierung). Für reine
-> Lasttests kann der HSM-Einsatz auch auf die DB-Verschlüsselung (KEK)
-> beschränkt werden, indem die übrigen `hsm`-Schalter deaktiviert bleiben —
-> bisherige Lasttest-Umgebungen liefen in dieser reduzierten Variante. Der
-> volle Ausbau ist entsprechend weniger erprobt; planen Sie dafür zusätzliche
-> Verifikationsläufe ein.
+> **HSM-Umfang:** Dieses Rezept beschreibt den vollen HSM-Ausbau (TLS an PDP,
+> PEP, Infinispan und Ingress sowie die Tokensignierung). Für reine Lasttests
+> können Sie den HSM-Einsatz auch auf die DB-Verschlüsselung beschränken
+> (siehe [SIP](../Referenzen/Konfiguration_VAU.md#aktivierung)), indem Sie die
+> übrigen `hsm`-Schalter deaktiviert lassen — bisherige Lasttest-Umgebungen
+> liefen in dieser reduzierten Variante. Der volle Ausbau ist entsprechend
+> weniger erprobt; planen Sie dafür zusätzliche Verifikationsläufe ein.
 
 ## Voraussetzungen (Randbedingungen)
 
@@ -77,13 +75,12 @@ bedienen kann.
   siehe [HSM und Schlüssel](#2-hsm-und-schlüssel).
 - Ein **Registry-Pull-Secret** im Namespace.
 - **Ressourcen**: Pods so dimensionieren, dass die Hardware bei Lasttests
-  *nicht*
-  der Flaschenhals ist (vergleichbar mit einer produktionsnahen Stage). Die
-  Chart-Defaults für `authserver`/`pepproxy` definieren CPU-/Speicher-Requests
-  und ein Speicher-Limit (bewusst kein CPU-Limit); Requests prüfen und ggf.
-  anheben — siehe
-  [Wie Sie Ressourcen für ZETA Guard Pods verwalten](Wie_Sie_Ressourcen_für_ZETA_Guard_Pods_verwalten.md)
-  und [Referenz des Helm Charts](../Referenzen/Referenz_des_Helm_Charts.md).
+  *nicht* der Flaschenhals ist (vergleichbar mit einer produktionsnahen Stage).
+  Die Chart-Defaults für `authserver`/`pepproxy` definieren
+  CPU-/Speicher-Requests und ein Speicher-Limit (bewusst kein CPU-Limit);
+  Requests prüfen und ggf. anheben — siehe
+  [Wie Sie Ressourcen für ZETA-Guard-Pods verwalten](Wie_Sie_Ressourcen_für_ZETA_Guard_Pods_verwalten.md)
+  und [Referenz des Helm-Charts](../Referenzen/Referenz_des_Helm_Charts.md).
 
 ## Architektur
 
@@ -121,7 +118,7 @@ halten):
 HSM-Proxy-Endpunkt zeigen lassen und die o. g. Schlüssel importieren/erzeugen.
 Die TLS-/Signatur-Zertifikate müssen zu den HSM-Schlüsseln passen.
 
-**HSM-Simulator (`hsm-sim`, nur Test):** das mitgelieferte `hsm-sim`-Subchart
+**HSM-Simulator (`hsm-sim`, nur Test):** Das mitgelieferte `hsm-sim`-Subchart
 aktivieren. Es *leitet* EC-Schlüssel deterministisch aus der Schlüssel-ID ab
 (IDs mit Endung `.p256` → P-256) und stellt passende Zertifikate aus seiner
 eigenen CA aus. Die benötigten öffentlichen Zertifikate über `hsmsim.extraKeys`
@@ -138,7 +135,7 @@ Funktions-/Lasttests, nicht dem Produktivbetrieb.
 Zur HSM-TLS-Verdrahtung (`store:hsm:`-Schlüssel über den ossl_hsm-Provider)
 siehe
 [Konfiguration einer VAU](../Referenzen/Konfiguration_VAU.md) und
-[Referenz des Helm Charts](../Referenzen/Referenz_des_Helm_Charts.md).
+[Referenz des Helm-Charts](../Referenzen/Referenz_des_Helm_Charts.md).
 
 ### 3. Secrets
 
@@ -162,7 +159,7 @@ Vor dem Deployment im Namespace anlegen:
   die Keychain mit dem HSM-KEK (`vau-db-kek-v1`, aus
   `authserver.hsm.dbEnc.keyId`) — er erzeugt das Secret also nicht. Anlegen des
   Secrets und die Verdrahtung der drei zusammengehörigen Values siehe
-  [Wie Sie ZETA Guard in Kubernetes konfigurieren, Abschnitt 10 —
+  [Wie Sie ZETA-Guard in Kubernetes konfigurieren, Abschnitt 10 —
   Keychain-Secret bereitstellen](Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md#keychain-secret-bereitstellen).
 - **Truststore-Passwort** (`pdp-truststores-pw`) und optional **`opa-bearer`**
   für OPA-Bundle-Pulls.
@@ -188,44 +185,43 @@ global:
                 ...HSM-CA-Zertifikat...
                 -----END CERTIFICATE-----
 
-zeta-guard:
-    databaseMode: cloudnative       # 1× CloudNativePG PostgreSQL
+databaseMode: cloudnative       # 1× CloudNativePG PostgreSQL
 
-    authserver:
-        replicaCount: 2               # 2× Keycloak
+authserver:
+    replicaCount: 2               # 2× Keycloak
+    dbEnc:
+        enabled: true               # DB-Spaltenverschlüsselung + Integritätsprüfung
+    hsm:
+        enabled: true
+        endpoint: "hsm-sim:50051"   # oder Ihr HSM-Proxy
         dbEnc:
-            enabled: true               # DB-Spaltenverschlüsselung + Integritätsprüfung
-        hsm:
-            enabled: true
-            endpoint: "hsm-sim:50051"   # oder Ihr HSM-Proxy
-            dbEnc:
-                keyId: "vau-db-kek-v1"
-            tls:
-                enabled: true             # Authserver-TLS über HSM
-                keyId: "zeta-guard-keycloak-tls-es256-v1.p256"
-            tokenSigning:
-                enabled: true             # JWT-Signierung über HSM (Realm muss ES256 nutzen)
-                keyId: "zeta-guard-keycloak-token-es256-v1.p256"
+            keyId: "vau-db-kek-v1"
+        tls:
+            enabled: true             # Authserver-TLS über HSM
+            keyId: "zeta-guard-keycloak-tls-es256-v1.p256"
+        tokenSigning:
+            enabled: true             # JWT-Signierung über HSM (Realm muss ES256 nutzen)
+            keyId: "zeta-guard-keycloak-token-es256-v1.p256"
 
-    pepproxy:
-        replicaCount: 2               # 2× PEP
-        asl_enabled: true             # ASL
-        aslOcsp: "off"                # OCSP aus (PEP-ASL)
-        hsmProxyAddr: "hsm-sim:50051" # PEP-TLS über HSM (ossl_hsm)
+pepproxy:
+    replicaCount: 2               # 2× PEP
+    asl_enabled: true             # ASL
+    aslOcsp: "off"                # OCSP aus (PEP-ASL)
+    hsmProxyAddr: "hsm-sim:50051" # PEP-TLS über HSM (ossl_hsm)
 
-    nginxIngressHsm: true           # HSM-TLS am NIC-Ingress
+nginxIngressHsm: true           # HSM-TLS am NIC-Ingress
 
-    provisioningProcessor:
-        tslOcspEnabled: false         # OCSP aus (Authserver/SMC-B-TSL)
+provisioningProcessor:
+    tslOcspEnabled: false         # OCSP aus (Authserver/SMC-B-TSL)
 ```
 
 Hinweise:
 
 - **2× Keycloak erfordert externen Infinispan** (der eingebettete Cache wird
   nicht über Pods geteilt).
-- **OCSP aus sind zwei Einstellungen**: `pepproxy.aslOcsp: "off"` (PEP) *und*
-  `provisioningProcessor.tslOcspEnabled: false` (Authserver). Wird nur eine
-  gesetzt, bleibt OCSP teilweise aktiv.
+- **OCSP abzuschalten erfordert zwei Einstellungen**: `pepproxy.aslOcsp: "off"`
+  (PEP) *und* `provisioningProcessor.tslOcspEnabled: false` (Authserver). Wird
+  nur eine gesetzt, bleibt OCSP teilweise aktiv.
 - **Tokensignierung über HSM** benötigt am Realm `defaultSignatureAlgorithm:
   ES256`; die KeyProvider-Komponente wird bei der nachgelagerten Konfiguration
   registriert, nicht vom Plugin selbst.
@@ -240,22 +236,23 @@ Hinweise:
 ### 5. Deployment
 
 Das Umbrella-Chart mit Ihrer Werte-Datei deployen — siehe
-[Wie Sie ZETA Guard in Kubernetes konfigurieren](Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md).
+[Wie Sie ZETA-Guard in Kubernetes konfigurieren](Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md).
 Beim **ersten** Install zusätzlich `authserver.admin.password`,
-`authserver.genesisHash` und `authserver.smcbHashingPepper` angeben.
+`authserver.genesisHash` und `authserver.smcbHashingPepper` angeben — Formate
+und Rotationsverhalten siehe
+[Referenz des Helm-Charts – Initiale Secrets](../Referenzen/Referenz_des_Helm_Charts.md#initiale-secrets-genesis-hash-und-smc-b-pepper).
 
 ### 6. Nachgelagerte Konfiguration
 
 Die Keycloak-Realm-/Policy-Konfiguration (Terraform) ausführen, damit der Realm
 existiert und der ES256-HSM-KeyProvider registriert ist. Siehe
-[Wie Sie OPA in ZETA Guard konfigurieren](Wie_Sie_OPA_in_ZETA_Guard_konfigurieren.md)
+[Wie Sie OPA in ZETA-Guard konfigurieren](Wie_Sie_OPA_in_ZETA_Guard_konfigurieren.md)
 und die nachgelagerte Realm-Konfiguration.
 
 ### 7. Verifikation
 
 - `kubectl get pods` — 2× Authserver, 2× PEP, 1× Infinispan, 1× DB, Testsuite
-  und
-  Monitoring alle „Ready".
+  und Monitoring alle „Ready“.
 - Authserver-Log zeigt den verbundenen externen Infinispan (Hot Rod) und, bei
   deaktiviertem OCSP, `OCSP checking disabled` (kein `ocsp-signers.p12`-Fehler).
 - PEP-Log zeigt, dass der ossl_hsm-Provider den TLS-Schlüssel aus dem HSM lädt
@@ -272,14 +269,11 @@ und die nachgelagerte Realm-Konfiguration.
 - **PEP-Skalierung / Sticky Sessions.** Bei `pepproxy.replicaCount > 1` ist der
   ASL-Session-Zustand pod-lokal; Client-Anfragen müssen auf demselben PEP-Pod
   bleiben. Der Ingress muss daher ein konsistentes/Sticky-Routing verwenden,
-  damit
-  ein Client für die Dauer seiner ASL-Session am selben Pod bleibt.
+  damit ein Client für die Dauer seiner ASL-Session am selben Pod bleibt.
 - **Last-Reserve.** CPU-/Speicher-Requests, Speicher-Limits und DB-Pool-Größen
-  so anheben, dass die Plattform — nicht ZETA Guard — der begrenzende Faktor
+  so anheben, dass die Plattform — nicht ZETA-Guard — der begrenzende Faktor
   ist. Die Chart-Defaults setzen bewusst keine CPU-Limits (kein Throttling
-  unter Last).
-  Infinispan-
-  und DB-Pods unter Dauerlast beobachten.
+  unter Last). Infinispan- und DB-Pods unter Dauerlast beobachten.
 - **HSM-KEK-Stabilität** (siehe Schritt 2) — die häufigste Ursache für ein
   fehlgeschlagenes Re-Deployment.
 
@@ -295,10 +289,10 @@ und die nachgelagerte Realm-Konfiguration.
 
 ## Verwandte Dokumente
 
-- [Wie Sie ZETA Guard in Kubernetes konfigurieren](Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md)
-- [Wie Sie Ressourcen für ZETA Guard Pods verwalten](Wie_Sie_Ressourcen_für_ZETA_Guard_Pods_verwalten.md)
+- [Wie Sie ZETA-Guard in Kubernetes konfigurieren](Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md)
+- [Wie Sie Ressourcen für ZETA-Guard-Pods verwalten](Wie_Sie_Ressourcen_für_ZETA_Guard_Pods_verwalten.md)
 - [Wie Sie ein Observability-Backend anschließen](Wie_Sie_ein_Observability-Backend_an_ZETA-Guard_anschließen.md)
 - [Wie Sie einen Ende-zu-Ende-Integrationstest ausführen](Wie_Sie_einen_Ende_zu_Ende_Integrationstest_ausführen.md)
 - [Konfiguration einer VAU (DB-Verschlüsselung/Integrität)](../Referenzen/Konfiguration_VAU.md)
-- [Referenz des Helm Charts](../Referenzen/Referenz_des_Helm_Charts.md)
+- [Referenz des Helm-Charts](../Referenzen/Referenz_des_Helm_Charts.md)
 - [Deploymentszenarien](../Referenzen/Deploymentszenarien.md)

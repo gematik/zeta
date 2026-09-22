@@ -8,12 +8,12 @@ Discovery fehl oder es werden Tokens abgelehnt.
 Eine Übersicht über die vier Client-Endpunkte und das grundsätzliche Routing
 findet sich in den [Konfigurationshinweisen](Konfigurationshinweise.md). Die
 reine Value-Tabelle steht in der
-[Referenz des Helm Charts](Referenz_des_Helm_Charts.md#well-known-discovery-dokument).
+[Referenz des Helm-Charts](Referenz_des_Helm_Charts.md#well-known-discovery-dokument).
 
 ## Zweck und RFC-Bezug
 
 Der PEP-Proxy stellt unter `/.well-known/oauth-protected-resource` das
-OAuth Protected Resource Metadata Dokument nach
+OAuth-Protected-Resource-Metadata-Dokument nach
 [RFC 9728](https://www.rfc-editor.org/rfc/rfc9728) bereit. Es benennt
 
 - unter `resource` den Bezeichner der geschützten Ressource,
@@ -33,7 +33,7 @@ Beispiel eines gültigen Dokuments:
 ```
 
 Das Feld `zeta_asl_use` ist **nicht** fest auf `required` gesetzt, sondern wird
-aus dem Helm Value `pepproxy.asl_enabled` abgeleitet: `required`, wenn ASL
+aus dem Helm-Value `pepproxy.asl_enabled` abgeleitet: `required`, wenn ASL
 aktiviert ist, sonst `not_supported`. Da `asl_enabled` standardmäßig `false` ist,
 weist ein unverändertes Deployment `not_supported` aus — der Client verzichtet
 dann auf den ASL-Handshake. Wer ASL erwartet, muss `pepproxy.asl_enabled: true`
@@ -56,9 +56,9 @@ Daraus folgen zwei zentrale Konsequenzen für die Konfiguration:
   Pfad.** Ein falscher Pfad führt also nicht automatisch zu einem 404 bei der
   Discovery – der Fehler zeigt sich erst später.
 - **Das Feld `resource` wird weiterverwendet.** Der PEP nutzt genau diesen Wert
-  als Audience (`aud`) bei der Token-Ausstellung und prüft eingehende Access
-  Tokens dagegen. Weicht `resource` von der tatsächlich extern erreichbaren URL
-  ab, werden gültige Tokens mit 401/403 abgelehnt.
+  als Audience (`aud`) bei der Token-Ausstellung und prüft eingehende
+  Access-Tokens dagegen. Weicht `resource` von der tatsächlich extern
+  erreichbaren URL ab, werden gültige Tokens mit 401/403 abgelehnt.
 
 Deshalb muss `pepproxy.wellKnownBase` immer die von außen (aus Client-Sicht)
 erreichbare Basis-URL sein – nicht ein clusterinterner Name.
@@ -116,13 +116,12 @@ PEP und Authorization Server sind unter demselben Hostnamen erreichbar, der
 Fachdienst hängt unter `/pep/`.
 
 ```yaml
-zeta-guard:
-    pepproxy:
-        wellKnownBase: "https://zeta.example.com"
-        wellKnownResourceSuffix: /pep/
-    authserver:
-        hostname: "zeta.example.com"
-        wellKnownAuthServerPath: /
+pepproxy:
+    wellKnownBase: "https://zeta.example.com"
+    wellKnownResourceSuffix: /pep/
+authserver:
+    hostname: "zeta.example.com"
+    wellKnownAuthServerPath: /
 ```
 
 Ergebnis: `resource = https://zeta.example.com/pep/`,
@@ -135,10 +134,9 @@ Wird Keycloak unter `/auth` betrieben (u. a. immer dann, wenn
 Authorization Servers das widerspiegeln:
 
 ```yaml
-zeta-guard:
-    authserver:
-        hostname: "zeta.example.com"
-        wellKnownAuthServerPath: /auth
+authserver:
+    hostname: "zeta.example.com"
+    wellKnownAuthServerPath: /auth
 ```
 
 Ergebnis: `authorization_servers = [https://zeta.example.com/auth]`.
@@ -149,10 +147,9 @@ Liegt der Fachdienst nicht unter `/pep/`, sondern direkt unter der Basis-URL
 (z. B. in OpenShift-Setups), wird das Suffix auf `/` gesetzt:
 
 ```yaml
-zeta-guard:
-    pepproxy:
-        wellKnownBase: "https://zeta.example.com"
-        wellKnownResourceSuffix: /
+pepproxy:
+    wellKnownBase: "https://zeta.example.com"
+    wellKnownResourceSuffix: /
 ```
 
 Ergebnis: `resource = https://zeta.example.com/`.
@@ -211,9 +208,9 @@ unerreichbaren Endpunkt zeigt.
 
    ```bash
    helm template zeta-guard <chart> \
-     --set zeta-guard.pepproxy.wellKnownBase=https://zeta.example.com \
-     --set zeta-guard.authserver.hostname=zeta.example.com \
-     -s charts/zeta-guard/templates/pep/pep-well-known.yaml
+     --set pepproxy.wellKnownBase=https://zeta.example.com \
+     --set authserver.hostname=zeta.example.com \
+     -s templates/pep/pep-well-known.yaml
    ```
 
 2. Beide Well-Knowns zur Laufzeit abrufen und auf Konsistenz prüfen – der
@@ -228,9 +225,10 @@ unerreichbaren Endpunkt zeigt.
 ## Well-Known-Dokument des Notification Service
 
 Ist der Notification Service aktiviert (`notificationService.enabled: true` —
-Vorschau, Standard `false`), stellt der PEP ein **zweites** Protected Resource
-Metadata Dokument nach RFC 9728 bereit, denn der Notification Service ist
-gegenüber den Clients eine eigene geschützte Ressource mit eigener Audience:
+Vorschau, Standard `false`), stellt der PEP ein **zweites**
+Protected-Resource-Metadata-Dokument nach RFC 9728 bereit, denn der Notification
+Service ist gegenüber den Clients eine eigene geschützte Ressource mit eigener
+Audience:
 
 ```
 /.well-known/oauth-protected-resource/notification-service
@@ -239,7 +237,7 @@ gegenüber den Clients eine eigene geschützte Ressource mit eigener Audience:
 Das letzte Pfadsegment stammt aus `notificationService.wellKnownResourceSuffix`
 (Standard `/notification-service`); der Wert muss genau ein Pfadsegment mit
 führendem `/` sein, sonst bricht das Chart-Rendern ab. Das Dokument wird nach
-demselben Konkatenationsmodell gebildet wie das des Fachdiensts:
+demselben Konkatenationsmodell gebildet wie das des Fachdienstes:
 
 ```text
 resource               = pepproxy.wellKnownBase + notificationService.wellKnownResourceSuffix
@@ -255,7 +253,7 @@ Inhaltlich unterscheidet es sich vom Fachdienst-Dokument in drei Punkten:
   `notificationService.historyEnabled: true` — und muss dann zusätzlich über
   die Terraform-Variable `notification_history_enabled` in Keycloak angelegt
   werden (die beiden Schalter sind nicht automatisch gekoppelt).
-- **`dpop_bound_access_tokens_required: true`** — Access Tokens für den
+- **`dpop_bound_access_tokens_required: true`** — Access-Tokens für den
   Notification Service müssen DPoP-gebunden sein.
 - **`zeta_asl_use: "not_supported"`** — die Notification-API wird ohne ASL
   angesprochen.
@@ -271,10 +269,10 @@ ausgestelltes Token wird dort abgelehnt und umgekehrt. Damit gilt auch hier —
 
    ```bash
    helm template zeta-guard <chart> \
-     --set zeta-guard.notificationService.enabled=true \
-     --set zeta-guard.pepproxy.wellKnownBase=https://zeta.example.com \
-     --set zeta-guard.authserver.hostname=zeta.example.com \
-     -s charts/zeta-guard/templates/pep/pep-well-known-resources.yaml
+     --set notificationService.enabled=true \
+     --set pepproxy.wellKnownBase=https://zeta.example.com \
+     --set authserver.hostname=zeta.example.com \
+     -s templates/pep/pep-well-known-resources.yaml
    ```
 
 2. Zur Laufzeit abrufen und prüfen, dass `resource` zur externen URL passt und
@@ -291,7 +289,7 @@ Weitere Details zum Notification Service stehen in der
 
 - [Konfigurationshinweise](Konfigurationshinweise.md) – Request-Routing und die
   vier Client-Endpunkte
-- [Referenz des Helm Charts](Referenz_des_Helm_Charts.md#well-known-discovery-dokument)
+- [Referenz des Helm-Charts](Referenz_des_Helm_Charts.md#well-known-discovery-dokument)
   – Value-Tabelle
-- [How to deploy ZETA Guard](https://github.com/gematik/zeta-guard-helm/blob/main/docs/how-to_guides/How_to_deploy_ZETA_Guard.md)
+- [How to deploy ZETA-Guard](https://github.com/gematik/zeta-guard-helm/blob/main/docs/how-to_guides/How_to_deploy_ZETA_Guard.md)
   – Deployment-Anleitung im Helm-Repository

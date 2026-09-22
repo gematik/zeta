@@ -1,15 +1,15 @@
 # Wie Sie Telemetrie des Resource Servers an die gematik schicken
 
-Der Telemetrie-Daten Service empfängt die Selbstauskunfts- und Tracing-Daten vom
-TI 2.0 Dienst und kann Daten vom SIEM und Monitoring des TI 2.0
-Dienst-Herstellers entgegennehmen und an den gematik-Telemetriedaten-Empfänger
-sowie das TI SIEM der gematik weiterleiten. Für den Empfang von Telemetrie muss
-ein OpenTelemetry-Receiver im Telemetry-Gateway verwendet werden. Für den Export
-von Telemetrie an die gematik sind bereits zwei Exporter im Telemetry-Gateway
-vorkonfiguriert. Diese Exporter werden sowohl für Hersteller-Telemetrie als auch
-ZETA-Guard-eigene Telemetrie verwendet. Verbindungen zwischen dem
-Telemetry-Gateway und ZETA-Guard-externen Diensten müssen über mTLS abgesichert
-werden.
+Der Telemetriedaten-Service empfängt die Selbstauskunfts- und Tracing-Daten vom
+TI-2.0-Dienst und kann Daten vom SIEM und Monitoring des
+TI-2.0-Dienst-Herstellers entgegennehmen und an den
+gematik-Telemetriedaten-Empfänger sowie das TI-SIEM der gematik weiterleiten.
+Für den Empfang von Telemetrie muss ein OpenTelemetry-Receiver im
+Telemetry-Gateway verwendet werden. Für den Export von Telemetrie an die gematik
+sind bereits zwei Exporter im Telemetry-Gateway vorkonfiguriert. Diese Exporter
+werden sowohl für Hersteller-Telemetrie als auch für ZETA-Guard-eigene
+Telemetrie verwendet. Verbindungen zwischen dem Telemetry-Gateway und
+ZETA-Guard-externen Diensten müssen über mTLS abgesichert werden.
 
 ```mermaid
 ---
@@ -20,7 +20,7 @@ flowchart LR
      Monitoring**`"]
     DienstAnbieterSiem["`**TI 2.0 Dienst Hersteller
      SIEM**`"]
-    Gateway["`**ZETA Guard
+    Gateway["`**ZETA-Guard
      Telemetry-Gateway**
      [OTelCol]
      bündelt, filtert und
@@ -54,7 +54,7 @@ Das Telemetry-Gateway ist ein OpenTelemetry-Collector, und Sie können
 die [offizielle Dokumentation des Collectors](https://opentelemetry.io/docs/collector/configuration/)
 und seiner Module verwenden. Die im Telemetry-Gateway verfügbaren Receiver und
 Authenticator-Extensions können Sie
-im [Build-Manifest des Collectors](https://github.com/open-telemetry/opentelemetry-collector-releases/blob/v0.145.0/distributions/otelcol-k8s/manifest.yaml)
+im [Build-Manifest des Collectors](https://github.com/open-telemetry/opentelemetry-collector-releases/blob/v0.156.0/distributions/otelcol-k8s/manifest.yaml)
 nachschlagen.
 
 <!-- Future Work Link zum Build-Manifest aktualisieren, sobald eigene Collectoren veröffentlicht wurden. -->
@@ -70,15 +70,15 @@ Wenn Sie ZETA-Guard in einem Cluster mit einem Service-Mesh für mTLS verwenden,
 können Sie Telemetrie an den bestehenden OTLP-Receiver des Telemetry-Gateways
 exportieren. In diesem Fall ist keine Konfigurationsänderung am
 Telemetry-Gateway erforderlich. Sie können den OTLP-gRPC-Exporter in der
-ConfigMap des Telemetry-Gateways als Vorlage für ihren eigenen Exporter
+ConfigMap des Telemetry-Gateways als Vorlage für Ihren eigenen Exporter
 verwenden.
 
 Wenn Sie kein Service-Mesh für mTLS verwenden, müssen Sie einen neuen, separaten
 OTLP-Receiver für das Telemetry-Gateway konfigurieren. Der Receiver muss separat
 sein, da er mTLS-bedingt ausschließlich Telemetrie von Ihrem Exporter empfangen
-kann. Das folgende Beispiel beschreibt diesen Fall. Die Konfiguration des
-Telemetry-Gateways erfolgt über die Values des `zeta-guard` Helm-Charts, und
-kann wie folgt aussehen:
+kann. Das folgende Beispiel beschreibt diesen Fall. Das Telemetry-Gateway
+konfigurieren Sie über die Values des `zeta-guard`-Helm-Charts, zum Beispiel
+so:
 
 ```yaml
 telemetry-gateway:
@@ -120,6 +120,7 @@ telemetry-gateway:
                         - otlp
                         - otlp/dienst_hersteller
                         - prometheus
+                        - spanmetrics
                 metrics/ti_sim:
                     receivers:
                         - otlp
@@ -144,31 +145,55 @@ telemetry-gateway:
                         - otlp/dienst_hersteller
 
     extraVolumeMounts:
+        # die ersten drei Einträge stammen aus dem zeta-guard-Chart, siehe Hinweis unten
+        -   name: ti-siem-token
+            mountPath: /etc/ti-siem
+            readOnly: true
+        -   name: ti-sim-token
+            mountPath: /etc/ti-sim
+            readOnly: true
+        -   name: file-storage
+            mountPath: /var/lib/storage/otc
         -   name: tls
             mountPath: "/etc/tls"
             readOnly: true
     extraVolumes:
+        -   name: ti-siem-token
+            secret:
+                secretName: ti-siem-token
+        -   name: ti-sim-token
+            secret:
+                secretName: ti-sim-token
+        -   name: file-storage
+            persistentVolumeClaim:
+                claimName: '{{ include "opentelemetry-collector.fullname" . }}-file-storage'
         -   name: tls
             secret:
                 secretName: gematik-telemetrie-mtls  # dieses Secret müssen Sie anlegen
 ```
 
 Dieses Beispiel verwendet einen
-gemeinsamen [OTLP Receiver](https://github.com/open-telemetry/opentelemetry-collector/blob/main/receiver/otlpreceiver/README.md)
+gemeinsamen [OTLP-Receiver](https://github.com/open-telemetry/opentelemetry-collector/blob/main/receiver/otlpreceiver/README.md)
 mit [mTLS-Konfiguration](https://opentelemetry.io/docs/collector/configuration/#mtls-configuration-mutual-tls)
 für Logs, Metriken und Traces. Die Beispielkonfiguration definiert einen neuen
 Receiver und fügt ihn in die bestehenden Pipelines des Telemetry-Gateways ein.
 Achten Sie darauf, außer dem neuen Receiver auch alle Receiver aus dem
-`zeta-guard`-Chart zu nennen, um keinen Receiver versehentlich zu deaktiviren.
-Das Secret `gematik-telemetrie-mtls` ist ebenfalls nicht Teil des `zeta-guard`
--Helm-Charts, und muss von Ihnen mit den erforderlichen Dateien angelegt werden.
+`zeta-guard`-Chart zu nennen, um keinen Receiver versehentlich zu deaktivieren.
+Dasselbe gilt für `extraVolumeMounts` und `extraVolumes`: Helm ersetzt Listen
+vollständig, statt sie zusammenzuführen. Nennen Sie deshalb neben Ihrem neuen
+Volume auch die Volumes aus dem `zeta-guard`-Chart (`ti-siem-token`,
+`ti-sim-token`, `file-storage`) — ohne sie brechen der Bearer-Token-Export an
+die gematik und die persistente Sending-Queue.
+Das Secret `gematik-telemetrie-mtls` ist ebenfalls nicht Teil des
+`zeta-guard`-Helm-Charts und muss von Ihnen mit den erforderlichen Dateien
+angelegt werden.
 
-Zusätzlich muss ihr Resource-Server
-den [OpenTelemetry Service-Name](https://opentelemetry.io/docs/specs/semconv/registry/attributes/service/#service-attributes)
-"resource server" verwenden oder das Präfix "rs." besitzen. Die Pipelines
+Zusätzlich muss Ihr Resource Server
+den [OpenTelemetry-Service-Namen](https://opentelemetry.io/docs/specs/semconv/registry/attributes/service/#service-attributes)
+`resource server` verwenden oder das Präfix `rs.` besitzen. Die Pipelines
 `*/ti_sim` verwenden den Prozessor `filter/ti_sim`, der sich auf bekannte
 Service-Namen verlässt und Logs und Spans mit unbekannten Service-Namen
-entfernt. Die Pipelines `*/ti_siem` und den Prozessor `filter/ti_siem`
+entfernt. Die Pipelines `*/ti_siem` und der Prozessor `filter/ti_siem`
 funktionieren analog. Der Service-Name lässt sich über die
 Umgebungsvariable [OTEL_SERVICE_NAME](https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/#general-sdk-configuration)
 steuern.
@@ -179,19 +204,22 @@ Das Telemetry-Gateway ist mit zwei Exportern – `otlp_grpc/ti_siem` und
 `otlp_grpc/ti_sim` – vorkonfiguriert, durch die Logs, Metriken und Traces an die
 gematik exportiert werden. Die Exporter verwenden TLS statt mTLS, müssen aber
 einen Bearer-Token mitsenden. Wenn Sie Workload-Identity-Federation zwischen
-ihrem Cluster und der gematik eingerichtet haben, werden diese Tokens von den
+Ihrem Cluster und der gematik eingerichtet haben, werden diese Tokens von den
 CronJobs `ti-siem-token-renewer-cronjob` und `ti-sim-token-renewer-cronjob`
-erzeugt und regelmäßig erneuert, und in den Secrets `ti-siem-token`und
-`ti-sim-token` gespeichert. Das Telematik-Gateway liest diese Secrets aus, um
+erzeugt, regelmäßig erneuert und in den Secrets `ti-siem-token` und
+`ti-sim-token` gespeichert. Das Telemetry-Gateway liest diese Secrets aus, um
 die Bearer-Tokens zu erhalten.
 
-Wie Sie Workload-Identity-Federation zwischen ihrem Cluster und der
+Wie Sie Workload-Identity-Federation zwischen Ihrem Cluster und der
 gematik einrichten,
 wird [hier](https://wiki.gematik.de/spaces/TI2AUSTAUSCH/pages/729779095/ZETA+Onboarding)
-aus organisatorischer Perspektive beschrieben. Nachdem Sie Ihren ZETA-Cluster
+aus organisatorischer Perspektive beschrieben (Zugang ggf. login-pflichtig;
+alternativ über Ihren gematik-Ansprechpartner). Nachdem Sie Ihren ZETA-Cluster
 registriert haben, müssen Sie ZETA-Guard für die Authentifizierung gegen die
-gematik konfigurieren. Die erforderliche Konfiguration erhalten Sie von der
-gematik. Die Values für den ZETA-Guard-Chart sehen so aus:
+gematik konfigurieren. Im Rahmen dieser Registrierung erhalten Sie von der
+gematik die Audiences und Service-Accounts zur Tokenerstellung für TI-SIEM und
+TI-SIM sowie die Werte für die Workload-Identity-Federation (Pool, Projektnummer,
+Provider). Die Values für den ZETA-Guard-Chart sehen so aus:
 
 ```yaml
 global:
