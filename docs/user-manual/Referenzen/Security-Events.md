@@ -5,25 +5,29 @@ In ZETA-Guard sind Security-Events als strukturierte Logs umgesetzt.
 ## Event authn_client_deleted:clientId
 
 **Beschreibung:** Eine Client-Registrierung wurde von ZETA-Guard gelöscht, z. B. die am längsten
-ungenutzte Registrierung eines Nutzers, weil die maximale Anzahl an Client-Registrierungen pro
-Nutzer (`SMCB_USER_MAX_CLIENTS`) durch eine neue Registrierung überschritten wurde (A_25748-02)
+nicht mehr verwendete Registrierung eines Nutzers, weil die maximale Anzahl an
+Client-Registrierungen pro Nutzer (`SMCB_USER_MAX_CLIENTS`) durch eine neue Registrierung
+überschritten wurde (A_25748-02)
 
 **Level:** INFO
 
-**Endpoints:** POST
-/realms/zeta-guard/protocol/openid-connect/token
+**Endpoints:** Die Verdrängung läuft beim Verknüpfen eines Clients mit einem
+Nutzer, nicht am Registrierungs-Endpunkt. Je nach Anmeldeweg also entweder POST
+/realms/zeta-guard/protocol/openid-connect/token (SMC-B-Token-Exchange) oder
+/realms/zeta-guard/broker/zeta-sekidp-oidc/endpoint (Broker-Callback im
+mobilen Client-Flow über den SekIDP)
 
 **Properties:**
 
-| Key                  | Requirement Level | Value Type | Beschreibung                            | Example Values         |
-|----------------------|-------------------|------------|------------------------------------------|-------------------------|
-| `auth.client_id`     | mandatory         | string     | Client id des gelöschten Clients          |                         |
-| `zeta-client.reason` | mandatory         | string     | Grund, warum der Client gelöscht wurde    | `max_clients_exceeded`  |
-| `event_type`         | mandatory         | string     | Security event type                       | `authn_client_deleted`  |
+| Key                  | Requirement Level | Value Type | Beschreibung                           | Example Values         |
+|----------------------|-------------------|------------|----------------------------------------|------------------------|
+| `auth.client_id`     | mandatory         | string     | Client-ID des gelöschten Clients       |                        |
+| `zeta-client.reason` | mandatory         | string     | Grund, warum der Client gelöscht wurde | `max_clients_exceeded` |
+| `event_type`         | mandatory         | string     | Security event type                    | `authn_client_deleted` |
 
 ## Event authn_client_registered:clientId
 
-**Beschreibung:** Client-Registrierung am Authorization-Server
+**Beschreibung:** Client-Registrierung am Authorization Server
 
 **Level:** INFO
 
@@ -34,13 +38,13 @@ Nutzer (`SMCB_USER_MAX_CLIENTS`) durch eine neue Registrierung überschritten wu
 
 | Key              | Requirement Level | Value Type | Beschreibung        | Example Values            |
 |------------------|-------------------|------------|---------------------|---------------------------|
-| `auth.client_id` | mandatory         | string     | Client id           |                           |
+| `auth.client_id` | mandatory         | string     | Client-ID           |                           |
 | `event_type`     | mandatory         | string     | Security event type | `authn_client_registered` |
 
 ## Event authn_client_registration_fail:clientId
 
 **Beschreibung:** Fehlgeschlagene oder abgelaufene Client-Registrierung am
-Authorization-Server
+Authorization Server
 
 **Level:** INFO
 
@@ -57,31 +61,9 @@ erzeugt ein interner Scheduler das Event (kein Endpoint)
 
 | Key                  | Requirement Level | Value Type | Beschreibung        | Example Values                                                                                                |
 |----------------------|-------------------|------------|---------------------|---------------------------------------------------------------------------------------------------------------|
-| `auth.client_id`     | mandatory         | string     | Client id           |                                                                                                               |
+| `auth.client_id`     | mandatory         | string     | Client-ID           |                                                                                                               |
 | `event_type`         | mandatory         | string     | Security event type | `authn_client_registration_fail`                                                                              |
 | `zeta-client.reason` | mandatory         | string     | Grund des Fehlers   | `integrity_provider_unavailable`, `attestation_failed`, `registration_expired`, `too_many_clients_registered` |
-
-## Event authn_client_deleted:clientId
-
-**Beschreibung:** Löschung einer Client-Registrierung durch den ZETA-Guard,
-z.B. die automatische Verdrängung der am längsten inaktiven Registrierung,
-wenn die maximale Anzahl von Clients pro Nutzer überschritten wird (A_25748)
-
-**Level:** INFO
-
-**Endpoints:** Die Verdrängung läuft beim Verknüpfen eines Clients mit einem
-Nutzer, nicht am Registrierungs-Endpunkt. Je nach Anmeldeweg also entweder POST
-/realms/zeta-guard/protocol/openid-connect/token (SMC-B-Token-Exchange) oder
-/realms/zeta-guard/broker/zeta-sekidp-oidc/endpoint (Broker-Callback im
-mobilen Client-Flow über den SekIDP)
-
-**Properties:**
-
-| Key                  | Requirement Level | Value Type | Beschreibung           | Example Values         |
-|----------------------|-------------------|------------|------------------------|------------------------|
-| `auth.client_id`     | mandatory         | string     | Gelöschter Client      |                        |
-| `event_type`         | mandatory         | string     | Security event type    | `authn_client_deleted` |
-| `zeta-client.reason` | mandatory         | string     | Grund der Löschung     | `max_clients_exceeded` |
 
 ## Event authn_authorization_code_invalid
 
@@ -113,12 +95,12 @@ sektoralen IDP (mobiler Client-Flow)
 
 | Key              | Requirement Level | Value Type | Beschreibung                               | Example Values                         |
 |------------------|-------------------|------------|--------------------------------------------|----------------------------------------|
-| `auth.client_id` | mandatory         | string     | Client id, der die Änderung ausgeführt hat | `13c32c3e-57e6-42c2-82f1-d8346fcc7ed1` |
+| `auth.client_id` | mandatory         | string     | Client-ID, die die Änderung ausgeführt hat | `13c32c3e-57e6-42c2-82f1-d8346fcc7ed1` |
 | `event_type`     | mandatory         | string     | Security event type                        | `authn_email_change`                   |
 
 ## Event authn_token_created:clientId
 
-**Beschreibung:** Token-Exchange am Authorization-Server
+**Beschreibung:** Token-Exchange am Authorization Server
 
 **Level:** INFO
 
@@ -127,21 +109,22 @@ sektoralen IDP (mobiler Client-Flow)
 
 **Properties:**
 
-| Key                                  | Requirement Level       | Value Type | Beschreibung                            | Example Values                |
-|--------------------------------------|-------------------------|------------|-----------------------------------------|-------------------------------|
-| `auth.client_id`                     | mandatory               | string     | Client id                               |                               |
-| `client_registration.client.os.name` | conditionally mandatory | string     | Client operating system name            | `android`                     |
-| `client_registration.datetime`       | mandatory               | int        | Timestamp of client registration        | `1784561340`                  |
-| `client_registration.result`         | mandatory               | string     | Result of attempted client registration | `PENDING`, `VALID`, `INVALID` |
-| `event_type`                         | mandatory               | string     | Security event type                     | `authn_token_created`         |
+| Key                                  | Requirement Level       | Value Type | Beschreibung                                         | Example Values                |
+|--------------------------------------|-------------------------|------------|------------------------------------------------------|-------------------------------|
+| `auth.client_id`                     | mandatory               | string     | Client-ID                                            |                               |
+| `client_registration.client.os.name` | conditionally mandatory | string     | Client operating system name (derzeit immer gesetzt) | `android`                     |
+| `client_registration.datetime`       | mandatory               | int        | Timestamp of client registration                     | `1784561340`                  |
+| `client_registration.result`         | mandatory               | string     | Result of attempted client registration              | `PENDING`, `VALID`, `INVALID` |
+| `event_type`                         | mandatory               | string     | Security event type                                  | `authn_token_created`         |
 
-## Event "Possible attack detected"
+## Event „Possible attack detected“
 
 **Beschreibung:** Angriffsversuch erkannt
 
 **Level:** WARN
 
-**Endpoints:** unterschiedlich
+**Endpoints:** derzeit POST
+/realms/zeta-guard/protocol/openid-connect/token; perspektivisch weitere
 
 **Properties:**
 

@@ -8,9 +8,8 @@ Der ZETA-Guard und der ZETA-Client bzw. das ZETA-SDK sind essenzielle
 Bestandteile der Telematikinfrastruktur 2.0. Sie schützen die fachlichen
 Ressourcen gegen unautorisierte Zugriffe.
 
-In diesem Produkthandbuch werden die einzelnen Komponenten beschrieben
-sowie dargelegt, wie die Komponenten integriert, betrieben, und fachlich
-genutzt werden können.
+Dieses Produkthandbuch beschreibt die einzelnen Komponenten und zeigt, wie Sie
+sie integrieren, betreiben und fachlich nutzen.
 
 ### Dokumenteninformation
 
@@ -25,16 +24,18 @@ genutzt werden können.
 | 1.0.0   | 04.05.26 | Update auf ZETA release 1.0.0 Sicherheitsleistungen Guard-Betreiber, Client-Hersteller, Egress-NetworkPolicies, Client Build-Beschreibungen                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | 1.0.1   | 13.05.26 | Überschrift für Releases 1.0.0 und 1.0.1 in Release Notes ergänzt.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | 1.2.0   | 11.06.26 | Update auf ZETA release 1.2.0                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| 1.2.1   | 22.06.26 | Eränzung eines Sicherheitshinweis und kleiner Umformulierungen                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| 1.3.0   | 28.08.26 | Provisioning-Registry (CA aus Secret/ConfigMap, Zugangsdaten, `extraEnv`/`extraVolumes`); cert-manager-`issuer` für Ingress-TLS; Well-Known-Endpunkte dokumentiert; konfigurierbarer DNS-Egress-Peer (OpenShift); OPA: privates Bundle mit eigener CA, Bundle-Healthcheck, `rolloutRestart`; Truststore-Reload im laufenden Betrieb; `telemetryGatewayHost`; mTLS zum Resource Server ohne Service Mesh; SMC-B-OCSP-Timeouts und `ocspFailClosed`; Telemetrie: Filterung, Attribut-Referenz, TI-SIEM; Troubleshooting-Anleitung; separater Admin-Hostname und Admin-API-Absicherung; Terraform-Hinweise im Quickstart (Zeitpunkt, RBAC, lokaler Modus); `kubeVersion >=1.32`; Known Issues auf Top-Level; mobiler Client-Flow (GesundheitsID über SekIDP, E-Mail-Bindung; standardmäßig deaktiviert); Konfiguration für VAU-Betriebsszenarien (Verschlüsselung und Integritätsprüfung der Authserver-Datenbank); Konfiguration für externen Infinispan für Authserver; Notification Service (Vorschau: Funktionsweise, Konfigurations-Referenz, Versand aus dem Fachdienst, SDK Notifications-Modul); dynamische Client-Registrierung und Client-Lebenszyklus dokumentiert; mobiler Client-Flow aus SDK-Sicht; Plattform-/Feature-Matrix des SDK |
+| 1.2.1   | 22.06.26 | Ergänzung eines Sicherheitshinweises und kleiner Umformulierungen                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| 1.3.0   | 28.08.26 | Provisioning-Registry (CA aus Secret/ConfigMap, Zugangsdaten, `extraEnv`/`extraVolumes`); cert-manager-`issuer` für Ingress-TLS; Well-Known-Endpunkte dokumentiert; konfigurierbarer DNS-Egress-Peer (OpenShift); OPA: privates Bundle mit eigener CA, Bundle-Healthcheck, `rolloutRestart`; Truststore-Reload im laufenden Betrieb; `telemetryGatewayHost`; mTLS zum Resource Server ohne Service Mesh; SMC-B-OCSP-Timeouts und `ocspFailClosed`; Telemetrie: Filterung, Attribut-Referenz, TI-SIEM; Troubleshooting-Anleitung; separater Admin-Hostname und Admin-API-Absicherung; Terraform-Hinweise im Quickstart (Zeitpunkt, RBAC, lokaler Modus); `kubeVersion >=1.32`; Known Issues auf Top-Level; mobiler Client-Flow (GesundheitsID über SekIDP, E-Mail-Bindung; standardmäßig deaktiviert); Konfiguration für VAU-Betriebsszenarien (Verschlüsselung und Integritätsprüfung der Authserver-Datenbank); Konfiguration für externen Infinispan für Authserver; Notification Service (Vorschau: Funktionsweise, Konfigurations-Referenz, Versand aus dem Fachdienst, SDK-Notifications-Modul); dynamische Client-Registrierung und Client-Lebenszyklus dokumentiert; mobiler Client-Flow aus SDK-Sicht; Plattform-/Feature-Matrix des SDK |
 | 1.3.1   | 28.08.26 | Korrektur der ReleaseNotes Version                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| 1.3.2   | 16.09.26 | Update auf ZETA release 1.3.2: Update-/Migrationsanleitung inkl. Pflichtschritt beim Update von 1.3.0/1.3.1 (Liquibase-Migration `ZETA_USER_DATA`/`ZETA_CLIENT_DATA`); Notification Service `db.kind` und variantenspezifische Image-Tags; `opa.logDecisions` standardmäßig aus; keine sicherheitsbezogenen Signale mehr in den `dienst_hersteller`-Pipelines; Audience-Scope muss jetzt gesetzt werden, kein Default-Wert mehr; Terraform 1.11 oder neuer erforderlich; die Keycloak-Admin-Zugangsdaten landen nicht mehr im Terraform-State und werden über `TF_VAR_keycloak_username`/`TF_VAR_keycloak_password` bzw. `scripts/kc-admin-env.sh` bereitgestellt                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| 1.3.3   | 21.09.26 | Hotfix-Release: Komponenten-Release-Notes um PEP Proxy 1.3.3 und Helm Chart 1.3.3 ergänzt (Härtung der Ziel-URL-Validierung bei ASL-Subrequests); Handbuch sonst unverändert gegenüber 1.3.2 |
 
-Detaillierte Informationen finden sich in den [Release Notes des Produkhandbuchs](ReleaseNotes.md).
+Detaillierte Informationen finden sich in den [Release Notes des Produkthandbuchs](ReleaseNotes.md).
 
 ## Inhaltsverzeichnis
 
 - [Einführung und Übersicht](#einführung-und-übersicht)
-- [Über dieses Dokument: Zielgruppe, Scope, und verwendete Versionen](#über-dieses-dokument-zielgruppe-scope-und-verwendete-versionen)
+- [Über dieses Dokument: Zielgruppe, Scope und verwendete Versionen](#über-dieses-dokument-zielgruppe-scope-und-verwendete-versionen)
 - [Architektur-Übersicht](#architektur-übersicht)
 - [Fachdienst-Hersteller](#fachdienst-hersteller-1)
 - [Fachdienst-Betreiber](#fachdienst-betreiber-1)
@@ -43,63 +44,59 @@ Detaillierte Informationen finden sich in den [Release Notes des Produkhandbuchs
 - [Index / Schnellzugriff](#index--schnellzugriff)
 - [License](#license)
 
-## Über dieses Dokument: Zielgruppe, Scope, und verwendete Versionen
+## Über dieses Dokument: Zielgruppe, Scope und verwendete Versionen
 
-In diesem Dokument werden unterschiedliche Zielgruppen berücksichtigt:
+Dieses Dokument richtet sich an mehrere Zielgruppen:
 
 ### Fachdienst-Hersteller
 
-Dieser Bereich ist für Hersteller von Fachdiensten, die mit ZETA-Guard
-betrieben werden müssen. Hier wird beschrieben, wie der ZETA-Guard
-mit einem Fachdienst integriert werden kann. Hier wird insbesondere
-auf Test-Setups eingegangen, mit denen die Funktion des Fachdienstes vom
-Client über ZETA-SDK und ZETA-Guard hinweg, und damit die Interaktion
-des Fachdienstes mit dem ZETA-Guard getestet werden kann.
+Dieser Bereich richtet sich an Hersteller von Fachdiensten, die mit ZETA-Guard
+betrieben werden müssen. Er beschreibt, wie Sie den ZETA-Guard in einen
+Fachdienst integrieren, und geht besonders auf Test-Setups ein: Mit ihnen prüfen
+Sie den Fachdienst über die gesamte Kette vom Client über ZETA-SDK und
+ZETA-Guard hinweg und damit auch das Zusammenspiel von Fachdienst und
+ZETA-Guard.
 
 ### Fachdienst-Betreiber
 
-Dieser Bereich ist für Betreiber von Fachdiensten, die den ZETA-Guard
-integrieren. Hier werden verschiedene Produktionssetups dargestellt sowie
-gezeigt, wie ZETA-Guard konfiguriert und betrieben werden kann.
+Dieser Bereich richtet sich an Betreiber von Fachdiensten, die den ZETA-Guard
+integrieren. Er stellt verschiedene Produktionssetups vor und zeigt, wie Sie
+ZETA-Guard konfigurieren und betreiben.
 
 ### Primärsystem-Hersteller
 
-Dieser Bereich ist für Hersteller von Primärsystemen (also
-Praxisverwaltungssysteme,
-Krankenhausinformationssysteme, oder Apothekenmanagementsysteme), die einen
-ZETA-Client integrieren müssen, um auf die TI 2.0 Dienste mit ZETA zugreifen zu
-können. Hier wird insbesondere die Integration des ZETA-SDK in einen
-existierenden Fachdienst-Client beschrieben, und wie Testsetups aufgesetzt und
-genutzt werden können.
+Dieser Bereich richtet sich an Hersteller von Primärsystemen (also
+Praxisverwaltungssystemen, Krankenhausinformationssystemen oder
+Apothekenmanagementsystemen), die einen ZETA-Client integrieren müssen, um mit
+ZETA auf die TI-2.0-Dienste zuzugreifen. Er beschreibt vor allem, wie Sie das
+ZETA-SDK in einen bestehenden Fachdienst-Client integrieren und wie Sie
+Testsetups aufsetzen und nutzen.
 
 ## Architektur-Übersicht
 
-Die ZETA Komponenten sitzen grundsätzlich zwischen
-den fachlichen Clients und den Fachdiensten. Sie ermöglichen
-den sicheren Zugriff auf geschützte Ressourcen über
-ein ungeschütztes Netzwerk (Internet).
+Die ZETA-Komponenten sitzen zwischen den fachlichen Clients und den
+Fachdiensten. Sie ermöglichen den sicheren Zugriff auf geschützte Ressourcen
+über ein ungeschütztes Netzwerk (Internet).
 
 ![High Level Architekturübersicht](assets/images/ZETA-AOD-High-Level.png)
 
-Der verfolgte Ansatz ist hier, dass sich die ZETA-Komponenten möglichst
-transparent zwischen Client und Fachdienst einfügen – dabei aber die notwendigen
-Sicherheitsniveaus für die Kommunikation mit geschützten Ressourcen
-bereitstellen.
+Die ZETA-Komponenten fügen sich dabei möglichst transparent zwischen Client und
+Fachdienst ein und stellen zugleich die nötigen Sicherheitsniveaus für die
+Kommunikation mit geschützten Ressourcen bereit.
 
-Das folgende Diagram zeigt die interne ZETA-Architekturübersicht mit einem Fokus
-auf die zu betreibenden Komponenten.
+Das folgende Diagramm zeigt die interne ZETA-Architekturübersicht mit einem
+Fokus auf die zu betreibenden Komponenten.
 
 ![ZETA-Architekturübersicht](assets/images/ZETA-Architektur_gemSpec_ZETA_V1.3.0_CC.svg)
 
-Die folgenden Bereiche betrachten die Spezifika fokussiert
-auf die Interessen der einzelnen, wie oben identifizierten
-Zielgruppen des Produkthandbuchs.
+Die folgenden Bereiche behandeln die Besonderheiten für die oben genannten
+Zielgruppen.
 
 ## Fachdienst-Hersteller
 
 Fachdienst-Hersteller stellen die Software her, die zur Bereitstellung und
-Betrieb eines Fachdienstes nötig ist. Dies können zum Beispiel Hersteller von
-VSDM 2.0 Diensten, oder des PoPP-Dienstes sein. In späteren Ausbaustufen der
+zum Betrieb eines Fachdienstes nötig ist. Dies können zum Beispiel Hersteller
+von VSDM-2.0-Diensten oder des PoPP-Dienstes sein. In späteren Ausbaustufen der
 TI 2.0 können weitere Fachdienste hinzukommen.
 
 Informationen spezifisch für Fachdienst-Hersteller finden sich in
@@ -119,7 +116,7 @@ Informationen spezifisch für Fachdienst-Betreiber finden sich in
 Primärsystem-Hersteller binden das ZETA-SDK in ihre Primärsystemanwendungen
 ein, um Dienste der TI 2.0 aufzurufen.
 
-Informationen spezifisch für Fachdienst-Betreiber finden sich in
+Informationen spezifisch für Primärsystem-Hersteller finden sich in
 [Readme für Primärsystem-Hersteller](ReadMePrimaersystemHersteller.md).
 
 ## Hersteller Mobiler Anwendungen
@@ -127,41 +124,41 @@ Informationen spezifisch für Fachdienst-Betreiber finden sich in
 App-Hersteller binden das ZETA-SDK in ihre Apps
 ein, um Dienste der TI 2.0 aufzurufen.
 
-Informationen spezifisch für Fachdienst-Betreiber finden sich in
+Informationen spezifisch für App-Hersteller finden sich in
 [Readme für App-Hersteller](ReadMeMobileClientHersteller.md).
 
 ## Known Issues
 
-Dieses Kapitel beschreibt übergreifende Known Issues und Won't Fix items.
+Dieses Kapitel beschreibt übergreifende Known Issues und Won't-Fix-Einträge.
 
 - Das SDK geht nicht korrekt mit Pfad-Anteilen in der URL des AS-Well-Known um.
-  Daher werden die Authserver URLs ohne Pfad definiert. (WONTFIX)
+  Daher werden die Authserver-URLs ohne Pfad definiert. (WONTFIX)
 
 ## Index / Schnellzugriff
 
-Dieses Produkthandbuch beinhaltet einerseits Anleitungsdokumente unter
-[Anleitungen](Anleitungen/). Anderseits beinhaltet es Referenzen unter
-[Referenzen](Referenzen/), welche die einzelnen Komponenten des ZETA-Guard,
-ZETA-SDK und ZETA-Testclients im Detail erklären. Die Referenzen werden ggf.
-in Zukunft in die jeweiligen Repositories der Subkomponenten verschoben.
+Dieses Produkthandbuch enthält zum einen Anleitungen unter
+[Anleitungen](Anleitungen/), zum anderen Referenzen unter
+[Referenzen](Referenzen/), die die einzelnen Komponenten von ZETA-Guard,
+ZETA-SDK und ZETA-Testclient im Detail erklären. Die Referenzen wandern
+möglicherweise künftig in die Repositories der jeweiligen Subkomponenten.
 
 Als Einstieg eignen sich folgende Dokumente besonders gut:
 
 * Für ein testweises Installieren eines ZETA-Guard:
-  [ZETA-Guard Quickstart für lokales deployment.md](Anleitungen/ZETA_Guard_Quickstart.md)
+  [ZETA-Guard-Quickstart für lokales Deployment](Anleitungen/ZETA_Guard_Quickstart.md)
 * Für das Einrichten des ZETA-Demo-Clients:
-  [Wie Sie den ZETA-Demo-Client ausführen.md](Anleitungen/Wie_Sie_den_ZETA_Demo_client_ausführen.md)
+  [Wie Sie den ZETA-Demo-Client ausführen](Anleitungen/Wie_Sie_den_ZETA_Demo_client_ausführen.md)
 * Für das Integrieren des ZETA-Client-SDK:
-  [Wie Sie das ZETA-SDK integrieren.md](Anleitungen/Wie_Sie_das_ZETA_SDK_integrieren.md)
-* Für das Bauen des ZETA-Testdrivers (ein ZETA-Client, der als Proxy dient)
+  [Wie Sie das ZETA-SDK integrieren](Anleitungen/Wie_Sie_das_ZETA_SDK_integrieren.md)
+* Für das Bauen des ZETA-Testdrivers (ein ZETA-Client, der als Proxy dient):
   [Wie Sie den Testdriver bauen](Anleitungen/Wie_Sie_den_Testdriver_bauen.md)
-* Für das Ausführen des ZETA-Testdrivers
+* Für das Ausführen des ZETA-Testdrivers:
   [Wie Sie den Testdriver nutzen](Anleitungen/Wie_Sie_den_Testdriver_nutzen.md)
-* Wie Sie einen Ende-zu-Ende-Integrationstest ausführen
+* Wie Sie einen Ende-zu-Ende-Integrationstest ausführen:
   [Wie Sie einen Ende-zu-Ende-Integrationstest ausführen](Anleitungen/Wie_Sie_einen_Ende_zu_Ende_Integrationstest_ausführen.md)
-* Wie Sie den ZETA-Guard Cluster lokal in einem `KIND` Setup ausführen
+* Wie Sie den ZETA-Guard-Cluster lokal in einem `KIND`-Setup ausführen:
   [Wie Sie den Cluster lokal mit KIND aufsetzen](Anleitungen/Wie_Sie_den_Cluster_lokal_mit_KIND_aufsetzen.md)
-* Konfigurationshinweise für den ZETA-Guard
+* Konfigurationshinweise für den ZETA-Guard:
   [Konfigurationshinweise](Referenzen/Konfigurationshinweise.md)
 
 Für den produktiven Betrieb des ZETA-Guard empfehlen sich zusätzlich folgende
@@ -169,7 +166,7 @@ Dokumente:
 
 * Leitszenarien des Deployments des ZETA-Guard für unterschiedliche Fachdienste:
   [Deploymentszenarien](Referenzen/Deploymentszenarien.md)
-* Konfiguration des ZETA-Guard mit Details zu allen relevanten Komponenten
+* Konfiguration des ZETA-Guard mit Details zu allen relevanten Komponenten:
   [Wie Sie ZETA-Guard in Kubernetes konfigurieren](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md)
 * [Wie Sie Telemetrie des Resource Servers an die gematik schicken](Anleitungen/Wie_Sie_Telemetrie_des_Resource_Servers_an_die_gematik_schicken.md)
 * [Wie Sie ein Observability-Backend anschließen](Anleitungen/Wie_Sie_ein_Observability-Backend_an_ZETA-Guard_anschließen.md)
@@ -177,18 +174,18 @@ Dokumente:
 
 Für die Vorschau-Funktionen (mobile Clients und Push-Benachrichtigungen):
 
-* Wie die dynamische Client-Registrierung am ZETA-Guard abläuft
+* Wie die dynamische Client-Registrierung am ZETA-Guard abläuft:
   [Wie die dynamische Client-Registrierung funktioniert](Anleitungen/Wie_die_dynamische_Client-Registrierung_funktioniert.md)
-* Wie Client-Registrierungen ablaufen, verdrängt oder widerrufen werden
+* Wie Client-Registrierungen ablaufen, verdrängt oder widerrufen werden:
   [Wie der Client-Lebenszyklus verwaltet wird](Anleitungen/Wie_der_Client-Lebenszyklus_verwaltet_wird.md)
-* Funktionsweise und Konfiguration des Notification Service
+* Funktionsweise und Konfiguration des Notification Service:
   [Wie der Notification Service funktioniert](Anleitungen/Wie_der_Notification_Service_funktioniert.md) und
   [Konfiguration des Notification Service](Referenzen/Konfiguration_des_Notification_Service.md)
-* Versand von Benachrichtigungen aus dem eigenen Fachdienst
+* Versand von Benachrichtigungen aus dem eigenen Fachdienst:
   [Wie Sie Benachrichtigungen aus dem Fachdienst versenden](Anleitungen/Wie_Sie_Benachrichtigungen_aus_dem_Fachdienst_versenden.md)
-* SDK-Sicht: mobiler Client-Flow und Notifications-Modul
-  [Wie Sie den mobilen Client-Flow mit dem ZETA SDK umsetzen](Anleitungen/Wie_Sie_den_mobilen_Client-Flow_mit_dem_ZETA_SDK_umsetzen.md) und
-  [Wie Sie das SDK Notifications-Modul verwenden](Anleitungen/Wie_Sie_das_SDK_Notifications-Modul_verwenden.md)
+* SDK-Sicht auf mobilen Client-Flow und Notifications-Modul:
+  [Wie Sie den mobilen Client-Flow mit dem ZETA-SDK umsetzen](Anleitungen/Wie_Sie_den_mobilen_Client-Flow_mit_dem_ZETA_SDK_umsetzen.md) und
+  [Wie Sie das SDK-Notifications-Modul verwenden](Anleitungen/Wie_Sie_das_SDK_Notifications-Modul_verwenden.md)
 
 ## License
 

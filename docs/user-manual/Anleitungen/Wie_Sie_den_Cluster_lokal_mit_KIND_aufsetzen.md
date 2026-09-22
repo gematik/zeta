@@ -3,7 +3,7 @@
 Diese Anleitung unterstützt Tester und Entwickler dabei,
 den Cluster lokal mit [KIND](https://kind.sigs.k8s.io/) aufzusetzen und
 auszuprobieren.
-Dies stellt eine Alternative für das Kubernetes Deployment z. B. in ein
+Dies stellt eine Alternative für das Kubernetes-Deployment z. B. in einem
 Rechenzentrum dar.
 
 ---
@@ -14,15 +14,17 @@ Zielgruppe: Tester und Entwickler
 
 > [!NOTE]
 > Für diese Anleitung werden folgende Dateien/Keys/Tokens benötigt:
-> - Self signed Zertifikate für TLS Tests: authserver-tls.crt.pem authserver-tls.key.pem
-> - pdp-keystore.b64: Base-64 kodierter Keystore mit SMCB-Zertifikat,
-    Trust-Chain und privatem Schlüssel. Entsprechende SM(C)-B Zertifikate
-    können über die Gematik bezogen werden: https://fachportal.gematik.de/shop/testkarten
-> - pdp-keystore-pass: Passwort für Keystore
-> - REGISTRY_URL: Url zu der Registry
-> - Optional: DOCKER_REGISTRY_TOKEN: Token mit Leserechten für die Docker Registry
-    (startet mit `glpat-`)
-> - Optional: DOCKER_REGISTRY_TOKEN_NAME: Zum Token dazugehöriger Username
+> - Selbstsignierte Zertifikate für TLS-Tests: authserver-tls.crt.pem,
+    authserver-tls.key.pem
+> - pdp-keystore.b64: Base64-kodierter Keystore mit SMC-B-Zertifikat,
+    Trust-Chain und privatem Schlüssel. Entsprechende SM(C)-B-Zertifikate können
+    über die gematik bezogen werden:
+    https://fachportal.gematik.de/shop/testkarten
+> - pdp-keystore-pass: Passwort für den Keystore
+> - REGISTRY_URL: URL der Registry
+> - Optional: DOCKER_REGISTRY_TOKEN: Token mit Leserechten für die
+    Docker-Registry (startet mit `glpat-`)
+> - Optional: DOCKER_REGISTRY_TOKEN_NAME: zum Token gehörender Benutzername
 > - GIT_URL: URL des Helm-Repositories (SSH oder HTTPS, je nach Git-Host)
 > - Docker Desktop (mit aktivierter WSL-Integration) ist vorab installiert
     (https://docs.docker.com/desktop/install/windows-install/). In WSL sollte
@@ -30,27 +32,27 @@ Zielgruppe: Tester und Entwickler
 
 ## Inhaltsverzeichnis
 
-- [Anleitung für Windows Rechner](#anleitung-für-windows-rechner)
+- [Anleitung für Windows-Rechner](#anleitung-für-windows-rechner)
   - [Schritt 0: WSL 2 installieren](#schritt-0-wsl-2-installieren)
   - [Schritt 1: Linux aktualisieren](#schritt-1-linux-aktualisieren)
   - [Schritt 2: Benötigte Tools installieren](#schritt-2-benötigte-tools-installieren)
-- [Schritt 3: zeta-kind.local als localhost (127.0.0.1) in der wsl auflösen](#schritt-3-zeta-kindlocal-als-localhost-127001-in-der-wsl-auflösen)
+- [Schritt 3: zeta-kind.local als localhost (127.0.0.1) in der WSL auflösen](#schritt-3-zeta-kindlocal-als-localhost-127001-in-der-wsl-auflösen)
 - [Schritt 4: IP-Adresse ermitteln und Windows bekanntgeben](#schritt-4-ip-adresse-ermitteln-und-windows-bekanntgeben)
 - [Schritt 5: Cluster konfigurieren und starten](#schritt-5-cluster-konfigurieren-und-starten)
-  - [Schritt 5.1: Repository clonen](#schritt-51-repository-clonen)
+  - [Schritt 5.1: Repository klonen](#schritt-51-repository-klonen)
   - [Schritt 5.2: Keystore und Passwort setzen](#schritt-52-keystore-und-passwort-setzen)
-  - [Schritt 5.3 Cluster bauen](#schritt-53-cluster-bauen)
-  - [Schritt 5.4: Docker Secret für die Registry erstellen](#schritt-54-docker-secret-für-die-registry-erstellen)
+  - [Schritt 5.3: Cluster bauen](#schritt-53-cluster-bauen)
+  - [Schritt 5.4: Docker-Secret für die Registry und TLS-Zertifikat erstellen](#schritt-54-docker-secret-für-die-registry-und-tls-zertifikat-erstellen)
   - [Schritt 5.5: Komponenten aus der Registry ziehen](#schritt-55-komponenten-aus-der-registry-ziehen)
   - [Schritt 5.6: Cluster-Status prüfen](#schritt-56-cluster-status-prüfen)
 - [Schritt 6: Deployment verifizieren](#schritt-6-deployment-verifizieren)
 - [Schritt 7: Hilfe](#schritt-7-hilfe)
   - [Schritt 7.1: Reset](#schritt-71-reset)
-  - [Schritt 7.1: Reset der Tiger Testsuite](#schritt-71-reset-der-tiger-testsuite-1)
+  - [Schritt 7.2: Reset der Tiger-Testsuite](#schritt-72-reset-der-tiger-testsuite)
 
-## Anleitung für Windows Rechner
+## Anleitung für Windows-Rechner
 
-Für Linux und MacOS ist die Anleitung ggf. anzupassen.
+Für Linux und macOS ist die Anleitung ggf. anzupassen.
 
 ### Schritt 0: WSL 2 installieren
 
@@ -61,15 +63,15 @@ Default-Linux-Installation, Ubuntu Linux, installieren:
 wsl --install
 ```
 
-Gegebenenfalls muss die WSL noch geupdated werden.
+Gegebenenfalls muss die WSL noch aktualisiert werden.
 
 ```bash
 wsl.exe --update
 ```
 
-Falls beim Update Schwierigkeiten auftreten, kann die neuste Version
-(bitte identische Versionsnummer zu ``wsl.exe --version`` verwenden) auch aus
-dem github heruntergeladen und die Installation repariert werden:
+Falls beim Update Schwierigkeiten auftreten, kann die neueste Version
+(bitte identische Versionsnummer zu ``wsl.exe --version`` verwenden) auch von
+GitHub heruntergeladen und die Installation repariert werden:
 https://github.com/microsoft/WSL/releases/tag/2.6.2
 (Download:
 https://github.com/microsoft/WSL/releases/download/2.6.2/wsl.2.6.2.0.x64.msi)
@@ -168,7 +170,7 @@ sudo apt-get update
 sudo apt-get install helm
 ```
 
-Um zu testen, ob helm richtig installiert ist, den folgenden Befehl ausführen:
+Um zu testen, ob Helm richtig installiert ist, den folgenden Befehl ausführen:
 
 ```shell
 helm version
@@ -250,7 +252,7 @@ ausführen:
 kubectl version --client
 ```
 
-## Schritt 3: zeta-kind.local als localhost (127.0.0.1) in der wsl auflösen
+## Schritt 3: zeta-kind.local als localhost (127.0.0.1) in der WSL auflösen
 
 localhost ``(127.0.0.1)`` soll als ``zeta-kind.local``
 aufgelöst werden.
@@ -288,19 +290,19 @@ nslookup host.docker.internal
 ```
 
 > [!NOTE]
-> Die IP Adresse ändert sich bei Wechsel von WLAN / Netzwerk.
-> Ggf. die IP Adresse des Rechners im lokalen Netzwerk verwenden.
+> Die IP-Adresse ändert sich bei Wechsel von WLAN / Netzwerk.
+> Ggf. die IP-Adresse des Rechners im lokalen Netzwerk verwenden.
 
 Die Ausgabe sieht ähnlich zu dem Folgenden aus:
 
 ```text
 ;; Got recursion not available from 10.255.255.254
-Server:         10.255.255.256
-Address:        10.255.255.256#44
+Server:         10.255.255.254
+Address:        10.255.255.254#44
 
 Name:   host.docker.internal
 Address: 192.168.40.10
-;; Got recursion not available from 10.255.255.256
+;; Got recursion not available from 10.255.255.254
 ```
 
 Die IP-Adresse ist demzufolge: ``192.168.40.10``
@@ -309,7 +311,7 @@ Die IP-Adresse mit Domain-Namen in Windows in
 ``C:\Windows\System32\Drivers\etc\hosts`` eintragen:
 
 > [!NOTE]
-> Um dies zu tun braucht man Administratorrechte. Nach einem Neustart von WSL
+> Um dies zu tun, braucht man Administratorrechte. Nach einem Neustart von WSL
 > ändert sich die IP häufig; daher Schritt 4 bei Bedarf wiederholen.
 
 ```text
@@ -325,12 +327,12 @@ ping zeta-kind.local
 
 ## Schritt 5: Cluster konfigurieren und starten
 
-### Schritt 5.1: Repository clonen
+### Schritt 5.1: Repository klonen
 
 Es wird [git](https://git-scm.com/) unter Windows benutzt.
 
 Unter Windows in einem Terminal in das Projektverzeichnis wechseln und das
-helm-Repository clonen:
+Helm-Repository klonen:
 
 ```shell
 cd C:\Users\username\Projects\ZETA\git-zeta
@@ -344,15 +346,14 @@ git clone $GIT_URL
 ```
 
 > [!NOTE]
-> Bitte das README.md aus dem zeta-guard-helm Repository beachten! Insbesondere
-> die Warnungen zu unsicheren Services und die Hinweise zum base64
-> encodierten SM(C)-B Keystore. Entsprechende SM(C)-B Zertifikate können über die
-> Gematik bezogen werden: https://fachportal.gematik.de/shop/testkarten
-
+> Bitte die README.md aus dem `zeta-guard-helm`-Repository beachten!
+> Insbesondere die Warnungen zu unsicheren Services und die Hinweise zum
+> base64-kodierten SM(C)-B-Keystore. Entsprechende SM(C)-B-Zertifikate können
+> über die gematik bezogen werden: https://fachportal.gematik.de/shop/testkarten
 
 ### Schritt 5.2: Keystore und Passwort setzen
 
-Erstellung eines Base-64 kodierter Keystore mit SMCB-Zertifikat
+Erstellung eines Base64-kodierten Keystores mit SMC-B-Zertifikat:
 
 ```shell
 printf "password: " && read -rs pw && printf "\n" && printf "%s" "$pw" > pdp-keystore-pass
@@ -360,8 +361,8 @@ base64 -w0 ../path/to/smcb-certificates.p12 > pdp-keystore.b64 # or
 # or base64 -w0 -i ../path/to/smcb-certificates.p12 -o pdp-keystore.b64
 ```
 
-Den SM(C)-B Keystore und das zugehörige Passwort in einem Verzeichnis parallel zum
-zeta-guard-helm Verzeichnis ablegen und entpacken.
+Den SM(C)-B-Keystore und das zugehörige Passwort in einem Verzeichnis parallel
+zum `zeta-guard-helm`-Verzeichnis ablegen und entpacken.
 Dann in Ubuntu die folgenden Umgebungsvariablen setzen:
 
 ```shell
@@ -378,16 +379,16 @@ export SMB_KEYSTORE_PW_FILE=/keystore/pdp-keystore-pass
 export SMB_KEYSTORE_FILE_B64=/keystore/pdp-keystore.b64
 ```
 
-Diese Exports könne auch in die ``~/.bashrc`` hinterlegt werden,
-damit die Exports nicht in jeder neuen Bash neu ausgeführt werden müssen.
+Diese Exports können auch in der ``~/.bashrc`` hinterlegt werden,
+damit sie nicht in jeder neuen Bash erneut ausgeführt werden müssen.
 
-### Schritt 5.3 Cluster bauen
+### Schritt 5.3: Cluster bauen
 
 > [!NOTE]
 > Für diesen Schritt muss Docker Desktop laufen.
 
-In der Ubuntu-Shell in den Ordner vom zeta-guard-helm Repository navigieren und
-Folgendes eingeben:
+In der Ubuntu-Shell in den Ordner des `zeta-guard-helm`-Repositorys navigieren
+und Folgendes eingeben:
 
 ```shell
 cd zeta-guard-helm/
@@ -436,7 +437,7 @@ kubectl get ns zeta-local --show-labels
 > Delete/Create und der Kontext in Schritt 5.6 zusammenpassen.
 > Falls ein anderer Name verwendet wird, Befehle entsprechend anpassen.
 
-### Schritt 5.4: Docker Secret für die Registry und TLS Zertifikat erstellen
+### Schritt 5.4: Docker-Secret für die Registry und TLS-Zertifikat erstellen
 
 In der Ubuntu-Shell folgendes eingeben, dabei docker password (...) und docker
 email (username@domain) im Aufruf anpassen:
@@ -485,22 +486,23 @@ and your administration frontend is at
 In der Ubuntu-Shell Folgendes eingeben:
 
 ```shell
-make config stage=local TF_VAR_keycloak_password=local-dev-password
+make config stage=local
 ```
 
-Der Befehl sollte Folgendes zurückgeben:
+Der Befehl sollte mit einer Ausgabe wie dieser enden. Die Anzahl der Ressourcen
+und die Scope-Liste hängen von der Stage-Konfiguration ab — zusätzliche Scopes
+erscheinen nur, wenn `pdp_scopes` in der tfvars-Datei gesetzt ist:
 
 ```text
-Apply complete! Resources: 15 added, 0 changed, 0 destroyed.
+Apply complete!
 Outputs:
 
 pdp_supported_optional_scopes = toset([
+  "notification.channel.read",
+  "notification.channel.write",
+  "notification.pusher.read",
+  "notification.pusher.write",
   "zero:audience",
-  "zero:manage",
-  "zero:read",
-  "zero:register",
-  "zero:update",
-  "zero:write",
 ])
 pdp_token_signing_algorithm = "ES256"
 policy_deletion_results = tomap({
@@ -527,17 +529,17 @@ Alle Pods sollten im Status ``Running`` oder ``Completed`` sein.
 
 ## Schritt 6: Deployment verifizieren
 
-Nun zur Verifikation mit folgende URLs im Browser den Tiger Proxy öffnen und
-eine Resource Abfrage über den Testtreiber (ZETA-Client) durchführen:
+Nun zur Verifikation mit den folgenden URLs im Browser den Tiger-Proxy öffnen
+und eine Resource-Abfrage über den Testtreiber (ZETA-Client) durchführen:
 
 ```text
-# Tiger Proxy
+# Tiger-Proxy
 http://zeta-kind.local:9999
-# Tiger Testsuite
+# Tiger-Testsuite
 http://zeta-kind.local:9010
-# Reset Zeta-Client
+# Reset ZETA-Client
 https://zeta-kind.local/testdriver-api/reset
-# Resource Abfrage über Zeta Guard
+# Resource-Abfrage über ZETA-Guard
 https://zeta-kind.local/proxy/achelos_testfachdienst/hellozeta
 ```
 
@@ -548,10 +550,10 @@ https://zeta-kind.local/proxy/achelos_testfachdienst/hellozeta
 In Schritt 5.3 wird mittels `kind delete cluster --name zeta-local` der Cluster
 komplett gelöscht und in der Folge wird der Cluster komplett neu aufgesetzt.
 
-### Schritt 7.1: Reset der Tiger Testsuite
+### Schritt 7.2: Reset der Tiger-Testsuite
 
-Hat sich die Tiger Testsuite mit einem Fehler beendet, kann mittel klick auf den Beenden
-Button oben links im Browser Fenster der Pod neu gestartet werden.
+Hat sich die Tiger-Testsuite mit einem Fehler beendet, kann der Pod mit einem
+Klick auf den Beenden-Button oben links im Browserfenster neu gestartet werden.
 
 > [!NOTE]
 > Die Zertifikate sind ggf. selbstsigniert; Browser-Warnungen sind daher

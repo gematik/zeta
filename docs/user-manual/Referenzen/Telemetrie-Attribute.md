@@ -22,12 +22,12 @@ referenzieren [Common Attack Pattern Enumerations and Classifications (CAPEC)](h
 ## Policy-Entscheidungen
 
 Diese Attribute treten bei Logs und Spans im Zusammenhang mit
-Policy-Entscheidungen auf – u.a. bei OPA Decision Logs.
+Policy-Entscheidungen auf – u. a. bei OPA-Decision-Logs.
 
-| Key              | Value Type | Description | Example Values |
-|------------------|------------|-------------|----------------|
-| `zeta.client.id` | string     |             |                |
-| `zeta.client.ip` | string     |             |                |
+| Key              | Value Type | Description                                                             | Example Values |
+|------------------|------------|-------------------------------------------------------------------------|----------------|
+| `zeta.client.id` | string     | Client-ID; gesetzt auf dem Span des OPA-Aufrufs im Authorization Server |                |
+| `zeta.client.ip` | string     | Client-IP; gesetzt auf dem Span des OPA-Aufrufs im Authorization Server |                |
 
 ## Test-Monitoring-Service
 
@@ -37,6 +37,6 @@ unterscheiden zu können. Da der Test-Monitoring-Service nicht für den
 Produktiveinsatz gedacht ist, sollten diese Attribute nicht in einem
 Produktivsystem erscheinen.
 
-| Key                 | Value Type | Description                                        | Example Values                            |
-|---------------------|------------|----------------------------------------------------|-------------------------------------------|
-| `gematik.zeta.kind` | string     | Markiert Telemetrie abhängig von Exporter/Receiver | `dienst_hersteller`, `sim`, `siem` |
+| Key                 | Value Type | Description                                        | Example Values                                    |
+|---------------------|------------|----------------------------------------------------|---------------------------------------------------|
+| `gematik.zeta.kind` | string     | Markiert Telemetrie abhängig von Exporter/Receiver | `dienst_hersteller`, `sim`, `siem`, `spanmetrics` |

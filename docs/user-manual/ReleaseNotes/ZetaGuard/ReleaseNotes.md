@@ -2,9 +2,33 @@
 
 ## Keycloak Authserver (ZETA PDP)
 
-## Release 1.3.1
+### Release 1.3.2
 
-### changed:
+#### changed:
+- bumps the BouncyCastle dependencies shipped with Keycloak
+- return HTTP 400 instead of 403 for a malformed/invalid client assertion claim, e.g.
+  `client_statement` sent as a JSON string instead of an object (A_26661)
+- disable Keycloak HTTP-server metrics binder — arbitrary HTTP methods could grow
+  `http_server_requests` unbounded → OOM (CVE-2026-40984)
+- **BREAKING** fixed inconsistent upper-/lowercase table and column references in the
+  `ZETA_USER_DATA`/`ZETA_CLIENT_DATA` Liquibase migration (`jpa-changelog-26.6.3.xml`),
+  which broke on case-sensitive databases (MariaDB). Editing the already-applied
+  changesets in place changes their Liquibase checksums — **existing deployments must,
+  before upgrading, drop the `ZETA_USER_DATA`/`ZETA_CLIENT_DATA` tables AND delete the
+  file's Liquibase bookkeeping** — the plugin migrations track state in their own
+  `databasechangelog_zeta_guard` table, and dropping the tables alone is not enough (the
+  stored checksums still fail validation):
+  ```sql
+  DROP TABLE IF EXISTS zeta_client_data, zeta_user_data CASCADE;
+  DELETE FROM databasechangelog_zeta_guard WHERE filename LIKE '%jpa-changelog-26.6.3%';
+  ```
+  On startup this release then re-runs the whole changelog and recreates both tables.
+  Registered DCR clients are lost by the drop and have to re-register. Step-by-step
+  procedure: [Pflichtschritt: Update von 1.3.0/1.3.1 auf 1.3.2](../../Anleitungen/Wie_Sie_ZETA_Guard_aktualisieren.md#pflichtschritt-update-von-130131-auf-132).
+
+### Release 1.3.1
+
+#### changed:
 - bump version of spree-integrity-provider (SPI) to 2.0.5
 
 ### Release 1.3.0
@@ -275,6 +299,30 @@
 
 ## PEP Proxy (ZETA PEP)
 
+### Release 1.3.3
+
+#### fixed
+- bugfix
+
+### Release 1.3.2
+
+#### added
+- `ZETA-User-Info` carries a `birthdate` field for insurant tokens (ANFTI2-922 / A_27558):
+  DiPag rejects insurant requests without it, but no PDP claim carries a birthdate yet.
+  **Interim solution** — for tokens with professionOID `1.2.276.0.76.4.49` (Versicherte) the
+  PEP emits the fixed date `1900-01-01`, overridable per environment with
+  `pep_user_info_birthdate <YYYY-MM-DD>;` (http level); other client types (SMC-B/LEI) get
+  no `birthdate`. An invalid value aborts the nginx start. To be replaced by the real claim
+  once the authorization server forwards the sectoral IDP's `birthdate`.
+
+#### changed
+- Configuration errors now name the offending directive: `conf_handler!` printed the literal
+  `` `$name` `` instead of substituting it, so every misconfiguration logged
+  ``nginx: [emerg] `$name`: …``. The `on`/`off` and seconds-valued directives now report a
+  consistent ``expected `on` or `off`, got "maybe"`` / `invalid seconds value "abc"`.
+- `pep_asl_ocsp` with an unparseable responder URL used to panic (`unparseable pep_asl_ocsp`)
+  and abort the nginx start; it now fails as a regular `[emerg]` naming the directive.
+
 ### Release 1.3.0
 
 #### fixed
@@ -311,6 +359,11 @@
 - Bumps headers more to 0.40
 - To fulfill A_25669-01 the authorization, dpop and popp headers are forwarded
   to the upstream and not overridden by PEP. In future versions this will be configurable.
+
+### Release 1.2.1
+
+#### fixed
+- bugfix
 
 ### Release 1.2.0
 
@@ -526,6 +579,25 @@
 
 ## Notification Service
 
+### Release 1.3.2
+
+#### added
+- Support for every database Keycloak supports — PostgreSQL, MariaDB, MySQL, Microsoft SQL Server
+  and Oracle. A single image carries all five drivers, and the engine is selected at deploy time by
+  the JDBC url alone: `QUARKUS_DATASOURCE_JDBC_URL` / `_USERNAME` / `_PASSWORD` as before, with the
+  engine taken from the url's prefix. Only an ambiguous url needs
+  `NOTIFICATION_DATASOURCE_DB_KIND` (`postgresql`, `mariadb`, `mysql`, `mssql`, `oracle`) — a
+  MariaDB server reached through a `jdbc:mysql:` url, above all.
+
+#### changed
+- An existing PostgreSQL deployment needs no configuration change: its
+  `QUARKUS_DATASOURCE_JDBC_URL` / `_USERNAME` / `_PASSWORD` keep working unchanged, and
+  `jdbc:postgresql:` identifies the engine on its own. Schema migration `V2` converts the table in
+  place on first start. The per-engine keys (`QUARKUS_DATASOURCE_POSTGRESQL_*`) are also accepted
+  and take precedence, should a deployment prefer to be explicit.
+- The scheduled purge now claims a lease with an ordinary compare-and-set write instead of taking a
+  PostgreSQL advisory lock. Running several instances remains safe.
+
 ### Release 1.3.0
 
 Initial release of the ZETA Notification Service.
@@ -580,6 +652,15 @@ Initial release of the ZETA Notification Service.
 
 ## Provisioning Processor
 
+### Release 1.3.2
+
+#### fixed:
+
+- `cosign login` was called with `--registry-cacert`, a flag it does not support, so the
+  provisioning container could not be fetched from a registry that requires both credentials
+  and a private CA (`Error: unknown flag: --registry-cacert`). The registry CA is only needed
+  by `cosign save`, which still receives it. (ANFTI2-912)
+
 ### Release 1.3.0
 
 #### added:
@@ -627,6 +708,111 @@ Initial release of the ZETA Notification Service.
 - processing of policy signer certs
 
 ## ZETA Guard Helm Charts
+
+### Release 1.3.3
+
+#### changed:
+
+- pepproxy image `1.3.3`
+
+### Release 1.3.2
+
+#### ⚠️ breaking — read before upgrading from 1.3.0/1.3.1:
+
+- keycloak-zeta 1.3.2 fixes the identifier casing in the `ZETA_USER_DATA`/
+  `ZETA_CLIENT_DATA` Liquibase migration. The already-applied changesets were edited in
+  place, so their checksums changed: **every stage installed with 1.3.0/1.3.1 must, before
+  upgrading, drop the `ZETA_USER_DATA`/`ZETA_CLIENT_DATA` tables AND delete the file's
+  Liquibase bookkeeping** in the plugin's own `databasechangelog_zeta_guard` table — dropping
+  alone is not enough, the stored checksums still fail validation and the authserver does not
+  start:
+  ```sql
+  DROP TABLE IF EXISTS zeta_client_data, zeta_user_data CASCADE;
+  DELETE FROM databasechangelog_zeta_guard WHERE filename LIKE '%jpa-changelog-26.6.3%';
+  ```
+  On startup the migration then re-runs and recreates both tables. Registered DCR clients
+  are lost by the drop and have to re-register. Step-by-step procedure:
+  [Pflichtschritt: Update von 1.3.0/1.3.1 auf 1.3.2](../../Anleitungen/Wie_Sie_ZETA_Guard_aktualisieren.md#pflichtschritt-update-von-130131-auf-132).
+
+#### added:
+
+- `telemetryGatewaySendingQueuePVCAccessModes` (default `[ReadWriteOnce]`) and
+  `telemetryGatewaySendingQueuePVCStorageClass` (default `""`, i.e. the cluster's default
+  class) make the telemetry-gateway's sending-queue PVC match your storage system —
+  `ReadWriteMany` for shared filesystems.
+- Documented how to run the telemetry-gateway on OpenShift: it is the only component pinning
+  `runAsUser`/`fsGroup` and both must be handed to the SCC with an explicit `null` — omitting
+  the keys silently inherits the chart default because Helm merges maps.
+- `notificationService.db.kind`: database kind for the notification-service
+  (`NOTIFICATION_DATASOURCE_DB_KIND`, required by images >= 1.3.2), default `postgresql`;
+  cloudnative mode accepts only `postgresql`.
+- [How to upgrade ZETA Guard](https://github.com/gematik/zeta-guard-helm/blob/main/docs/how-to_guides/How_to_upgrade_ZETA_Guard.md): the
+  supported upgrade path (`helm upgrade` + `make config`), what protects the Terraform state,
+  and how to adopt an existing realm when the state was lost. Every step is given as both the
+  `make` target and the plain `terraform` command.
+
+#### changed:
+
+- updates keycloak-zeta, ngx_pep, notification-service, provisioning-processor, testdriver and
+  nativedriver to 1.3.2
+- updates zeta-telemetry-gateway to v0.156.0
+- updates OPA image to 1.19.1-static
+- The Keycloak admin credentials no longer reach the Terraform state. Terraform no longer reads
+  the `authserver-admin` Secret at all — the new `terraform/authserver/scripts/kc-admin-env.sh`
+  fills `TF_VAR_keycloak_username`/`TF_VAR_keycloak_password` from it, and both are now
+  `ephemeral` and required in either mode. The SMC-B identity provider secret moved to the
+  provider's write-only argument; bump the new `smc_b_client_secret_version` to push a rotated
+  value. **Terraform 1.11 or newer is required.**
+- The Terraform variable `audience_scope_name` has no default any more and must be set in every
+  stage tfvars. It names the only scope carrying the access-token claims the PEP validates, so a
+  silent `zero:audience` fallback hid misconfiguration.
+- `terraform/authserver/environments/demo.tfvars` now documents every accepted Terraform
+  variable with its default and works as a copy-paste template.
+- `enable_sekidp = true` now requires `use_kubernetes = true` and fails the plan otherwise.
+- `values-demo.yaml` brought back in sync with `values.yaml`.
+- the pre-1.3.0 flat `gematik.idTokenAudience` / `gematik.serviceAccountEmailAddress` are gone
+  for good. Setting either value now fails the render with a pointer to `gematik.tiSim.*` /
+  `gematik.tiSiem.*` instead of silently renewing a token for an empty service account.
+- `gematik.tiSiem` is now also declared in `values.schema.json`.
+- Logs, metrics and span attributes that serve solely security purposes are no longer
+  available to Dienstherstellers (`filter/dienst_hersteller`, `transform/dienst_hersteller`).
+- OPA decision logs are no longer written to console (`opa.logDecisions` default `false`).
+
+#### fixed:
+
+- `notificationService.<rs|fdv>.image.tag` had no effect: the documented per-variant tag
+  override was ignored by the image helper (only `image.digest` was honored).
+- `terraform import` against an existing realm aborted with `Invalid for_each argument` before
+  importing anything; both notification mapper resources now key their `for_each` off a local,
+  instance keys are unchanged, so an applied stage plans no changes.
+- `make config-import` imported `keycloak_realm.pdp_realm`, an address renamed before 0.2.0,
+  and its error fallback swallowed the failure. It now imports `keycloak_realm.zeta_realm`,
+  skips a realm already in the state and fails loudly otherwise.
+- rendering the chart with a disabled telemetry pipeline
+  (`telemetry-gateway.config.service.pipelines.<name>: null`) aborted with
+  `index of untyped nil`; the opentelemetry-collector chart's deprecated-name auto-rewrite is
+  now off (`telemetry-gateway.rewriteDeprecatedComponentNames: false`), rendered output is
+  unchanged.
+- With `use_kubernetes = false` the Kubernetes provider is no longer a provider requirement —
+  `terraform init` no longer downloads it.
+- `authserver.provider.smcB.ocspFailClosed` had no effect: the value was accepted and
+  documented, but the authserver deployment never rendered the corresponding env var.
+- `global.noProxy`: a leading dot on the **first** entry (e.g. `".cluster.local,…"`, exactly
+  what the forward-proxy guide recommends) was not converted to `*.` for
+  `http.nonProxyHosts` — Java ignores `.cluster.local`, so Keycloak sent cluster-internal
+  traffic through the forward proxy.
+
+#### removed
+
+- The fixed client scopes `zero:register` and `zero:manage` and their authorization-server
+  audience mapper. A terraform apply deletes them from existing realms; clients still
+  requesting either scope must drop it.
+
+### Release 1.3.1
+
+#### changed:
+
+- Raise tag versions
 
 ### Release 1.3.0
 
@@ -900,6 +1086,12 @@ Initial release of the ZETA Notification Service.
 - dead values `opa.workloadIdentityFederation.sts.{audience,tokenUrl,iamUrl,scope}` and
   `…gar.host` from schema/examples — never read by any template; the schema now rejects
   unknown `sts` keys.
+
+### Release 1.2.4
+
+#### changed:
+
+- pepproxy image `1.2.1`
 
 ### Release 1.2.3
 

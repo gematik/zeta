@@ -1,13 +1,15 @@
-# ZETA-Guard Helm Chart Referenz
+# Referenz des ZETA-Guard-Helm-Charts
 
-Hier folgt eine Referenzdokumentation der wichtigsten Values des Helm Charts.
+Hier folgt eine Referenzdokumentation der wichtigsten Values des Helm-Charts.
 Als vollständige Vorlage mit Standardwerten dient die
 [values-demo.yaml](https://github.com/gematik/zeta-guard-helm/blob/main/charts/zeta-guard/values-demo.yaml).
 
 ## Inhaltsverzeichnis
 
 - [Globale Proxy-Konfiguration](#globale-proxy-konfiguration)
+- [Ingress](#ingress)
 - [Authserver](#authserver)
+    - [Initiale Secrets (Genesis-Hash und SMC-B-Pepper)](#initiale-secrets-genesis-hash-und-smc-b-pepper)
     - [ServiceAccount](#serviceaccount)
     - [Replicas und PodDisruptionBudget](#replicas-und-poddisruptionbudget)
     - [Ressourcen](#ressourcen)
@@ -19,13 +21,14 @@ Als vollständige Vorlage mit Standardwerten dient die
     - [Connection Pooling (Keycloak)](#connection-pooling-keycloak)
     - [HSM-Konfiguration](#hsm-konfiguration)
     - [SMC-B OCSP-Sperrprüfung](#smc-b-ocsp-sperrprüfung)
-    - [Spree integrity provider (VAU)](#spree-integrity-provider-vau)
+    - [Spree Integrity Provider (VAU)](#spree-integrity-provider-vau)
     - [Mobiler Client-Flow (OIDC)](#mobiler-client-flow-oidc)
 - [PEP-Proxy](#pep-proxy)
     - [ServiceAccount](#serviceaccount-1)
     - [Replicas und Sticky Sessions](#replicas-und-sticky-sessions)
+    - [Client-IP-Ermittlung und Forwarding-Header](#client-ip-ermittlung-und-forwarding-header)
     - [Security Context](#security-context)
-    - [Well-Known Discovery Dokument](#well-known-discovery-dokument)
+    - [Well-Known-Discovery-Dokument](#well-known-discovery-dokument)
     - [PoPP-Token-Validierung](#popp-token-validierung)
     - [nginx-Konfiguration (Fachdienst-Routing)](#nginx-konfiguration-fachdienst-routing)
     - [HSM-Konfiguration (TLS)](#hsm-konfiguration-tls)
@@ -49,8 +52,8 @@ Als vollständige Vorlage mit Standardwerten dient die
     - [Workload Identity Federation (GAR-Zugriff)](#workload-identity-federation-gar-zugriff)
     - [Geplanter Rollout-Restart](#geplanter-rollout-restart)
 - [Provisioning Processor](#provisioning-processor)
-    - [Provisioning Container je Umgebung](#provisioning-container-je-umgebung)
-    - [Eigene Registry für den Provisioning Container](#eigene-registry-für-den-provisioning-container)
+    - [Provisioning-Container je Umgebung](#provisioning-container-je-umgebung)
+    - [Eigene Registry für den Provisioning-Container](#eigene-registry-für-den-provisioning-container)
     - [CA-Zertifikat für private Registries](#ca-zertifikat-für-private-registries)
     - [Zugangsdaten für die Provisioning-Container-Registry](#zugangsdaten-für-die-provisioning-container-registry)
     - [Cosign-Vertrauenskette für Image-Verifikation](#cosign-vertrauenskette-für-image-verifikation)
@@ -79,10 +82,12 @@ global:
     noProxy: ".cluster.local"
 ```
 
-Für nginx (PEP) erzeugt der Chart zusätzlich `env`-Direktiven in der
+Für nginx (PEP) erzeugt das Chart zusätzlich `env`-Direktiven in der
 `nginx.conf`. Für Keycloak (Authserver) wird `global.noProxy` automatisch in das
 `-Dhttp.nonProxyHosts`-Format konvertiert (Pipe-Trenner, `*`-Wildcard statt
-führendem Punkt). Subcharts wie `telemetry-gateway` sind upstream-Charts und
+führendem Punkt; bis Chart 1.3.1 wurde der führende Punkt des **ersten**
+Eintrags dabei nicht umgesetzt, siehe
+[Wie Sie einen Forward Proxy konfigurieren](../Anleitungen/Wie_Sie_einen_Forward_Proxy_konfigurieren.md#empfehlungen-für-noproxy)). Subcharts wie `telemetry-gateway` sind upstream-Charts und
 konsumieren `global` nicht — diese müssen bei Bedarf manuell konfiguriert
 werden.
 
@@ -91,7 +96,77 @@ Konvertierungslogik, der Subchart-Konfiguration und der Überprüfung nach dem
 Deployment findet sich in der Anleitung
 [Wie Sie einen Forward Proxy konfigurieren](../Anleitungen/Wie_Sie_einen_Forward_Proxy_konfigurieren.md).
 
+## Ingress
+
+Drei Values steuern unabhängig voneinander, was das Chart im Bereich Ingress
+erzeugt:
+
+| Value                   | Beschreibung                                                                                                                                                                                                                                     | Standard |
+|-------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
+| `nginx-ingress.enabled` | Installiert den mitgelieferten F5 NGINX Ingress Controller (NIC) als Subchart. `false`, wenn der NIC clusterweit außerhalb des Charts betrieben wird.                                                                                            | `true`   |
+| `nginxIngressEnabled`   | Rendert die F5-spezifischen Annotationen an den Ingress-Ressourcen (`mergeable-ingress-type`, `lb-method`, `websocket-services`, `ssl-services`, HSTS, Location-Snippets). Installiert nichts. Für fremde Ingress-Controller auf `false` setzen. | `true`   |
+| `ingressEnabled`        | Erzeugt die Ingress-Ressourcen des Charts. `false` überlässt Definition und Pflege vollständig dem Betreiber.                                                                                                                                    | `true`   |
+
+Ergänzend:
+
+| Value                      | Beschreibung                                                                                                                                                                                                                                             | Standard  |
+|----------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
+| `ingressClassName`         | `ingressClassName` der erzeugten Ingress-Ressourcen. Mit dem mitgelieferten NIC identisch mit `nginx-ingress.controller.ingressClass.name` zu halten, sonst auf die eigene Class zu setzen.                                                              | `"nginx"` |
+| `nginxIngressLbMethod`     | Rendert die Cookie-basierte Sitzungsaffinität (`lb-method: hash $zeta_route consistent`) an den Minions. Setzt voraus, dass der Controller die `$zeta_route`-Snippets kennt — bei einem extern installierten NIC ohne diese Snippets auf `false` setzen. | `true`    |
+| `nginxIngressHsm`          | Unterdrückt `spec.tls` der Master-Ressource, damit TLS über ein Server-Snippet in `ingressMasterAnnotations` konfiguriert werden kann (HSM-gehaltener TLS-Schlüssel über einen OpenSSL-Provider). Nur mit dem mitgelieferten NIC.                        | `false`   |
+| `ingressMasterAnnotations` | Zusätzliche Annotationen an den Master-Ressourcen (öffentlicher und Admin-Hostname).                                                                                                                                                                     | `{}`      |
+| `ingressMinionAnnotations` | Zusätzliche Annotationen an den Minion-Ressourcen, z. B. für das Rate Limit.                                                                                                                                                                             | `{}`      |
+| `openshiftIngress.enabled` | Ergänzt die Ingress-Ressourcen um TLS-Blöcke für den OpenShift-Ingress-to-Route-Controller, siehe [OpenShift-Kompatibilität](../Anleitungen/ZETA_OpenShift_Kompatibilität.md).                                                                           | `false`   |
+
+Ein Teil der ZETA-Guard-Funktionalität hängt an der Konfiguration des
+mitgelieferten NIC — Sitzungsaffinität, WebSocket-Upgrade, das Verwerfen
+client-gesetzter Forwarding-Header und die Sperre des Revocation-Endpunkts nach
+außen. Welche dieser Einstellungen bei einem fremden Ingress-Controller
+nachzubilden sind und welche entfallen können, beschreibt
+[Wie Sie einen eigenen Ingress-Controller verwenden](../Anleitungen/Wie_Sie_einen_eigenen_Ingress_Controller_verwenden.md).
+
 ## Authserver
+
+### Initiale Secrets (Genesis-Hash und SMC-B-Pepper)
+
+Zwei Geheimnisse müssen beim **ersten** `helm install` gesetzt werden; fehlen
+sie, bricht das Rendering mit einer `required`-Fehlermeldung ab:
+
+```yaml
+authserver:
+    # 64-stelliger Hex-String, z. B. $(openssl rand -hex 32)
+    genesisHash: "4841c2142fef441daa6ee6c57db65c011935964b14e94a6c8f5ec0447b83526c"
+    # UUID, z. B. $(uuidgen)
+    smcbHashingPepper: "085c1245-1234-5678-95b4-97496bec6182"
+```
+
+Das Chart legt daraus die Secrets `genesis-hash` (Key `hash`) und
+`smcb-hashing-pepper` (Key `pepper`) an und reicht sie als `GENESIS_HASH` bzw.
+`SMCB_HASHING_PEPPER` in den Authserver-Pod — siehe
+[Konfiguration des PDP Services](Konfiguration_des_PDP_Services.md).
+
+Bei **Upgrades** bleiben beide Values leer: Das Chart liest das bestehende
+Secret per `lookup` aus dem Cluster und schreibt es unverändert zurück. Ein
+explizit gesetzter Wert **rotiert** das Secret. **Achtung:** Eine Änderung von
+`genesisHash` bricht die Integrität der Admin-Event-Hash-Chain, eine Änderung
+von `smcbHashingPepper` invalidiert alle bestehenden SMC-B-Nutzer-Hashes.
+
+Alternativ lassen sich beide Secrets außerhalb des Charts verwalten und nur
+referenzieren. Dann legt das Chart kein eigenes Secret an, und
+`genesisHash`/`smcbHashingPepper` entfallen auch bei der Erstinstallation:
+
+```yaml
+authserver:
+    genesisHashSecretRef: "genesis-hash"                # Secret mit Key 'hash'
+    smcbHashingPepperSecretRef: "smcb-hashing-pepper"   # Secret mit Key 'pepper'
+```
+
+| Value                                   | Beschreibung                                                                                              | Standard |
+|-----------------------------------------|-----------------------------------------------------------------------------------------------------------|----------|
+| `authserver.genesisHash`                | Seed der Admin-Event-Hash-Chain. Empfohlenes Format: 64-stelliger Hex-String (`openssl rand -hex 32`)     | `null`   |
+| `authserver.smcbHashingPepper`          | Pepper für SMC-B-Nutzer-Hashes. Empfohlenes Format: UUID (`uuidgen`)                                      | `null`   |
+| `authserver.genesisHashSecretRef`       | Name eines selbst verwalteten Secrets mit dem Key `hash`. Leer: Das Chart erzeugt `genesis-hash`          | `""`     |
+| `authserver.smcbHashingPepperSecretRef` | Name eines selbst verwalteten Secrets mit dem Key `pepper`. Leer: Das Chart erzeugt `smcb-hashing-pepper` | `""`     |
 
 ### ServiceAccount
 
@@ -99,11 +174,10 @@ Für den Authserver wird standardmäßig ein dedizierter ServiceAccount erzeugt,
 der den automatischen Token-Mount deaktiviert:
 
 ```yaml
-zeta-guard:
-    authserver:
-        serviceAccount:
-            create: true
-            name: authserver
+authserver:
+    serviceAccount:
+        create: true
+        name: authserver
 ```
 
 Setzen Sie `create: false`, um einen bereits bestehenden ServiceAccount zu
@@ -112,12 +186,11 @@ nutzen.
 ### Replicas und PodDisruptionBudget
 
 ```yaml
-zeta-guard:
-    authserver:
-        replicaCount: 2
-        podDisruptionBudget:
-            enabled: true
-            minAvailable: 1
+authserver:
+    replicaCount: 2
+    podDisruptionBudget:
+        enabled: true
+        minAvailable: 1
 ```
 
 Das PodDisruptionBudget ist standardmäßig deaktiviert. Es kann entweder
@@ -126,33 +199,31 @@ gleichzeitig.
 
 ### Ressourcen
 
-Ressourcen werden separat für den Hauptcontainer (
-`authserver.container.resources`)
-und den Keycloak-Build-Init-Container (`authserver.initContainer.resources`)
-konfiguriert. Der Provisioning-Processor-Init-Container ist ein gemeinsamer
+Ressourcen werden separat für den Hauptcontainer
+(`authserver.container.resources`) und den Keycloak-Build-Init-Container
+(`authserver.initContainer.resources`) konfiguriert. Der Provisioning-Processor-Init-Container ist ein gemeinsamer
 Container und wird separat unter `provisioningProcessor.*` konfiguriert (siehe
 unten und
 [Wie Sie Ressourcen für ZETA-Guard-Pods verwalten](../Anleitungen/Wie_Sie_Ressourcen_für_ZETA_Guard_Pods_verwalten.md)):
 
 ```yaml
-zeta-guard:
-    authserver:
-        container:
-            resources:
-                limits:
-                    cpu: "8"
-                    memory: "4Gi"
-                requests:
-                    cpu: "4"
-                    memory: "4Gi"
-        initContainer:
-            resources:
-                limits:
-                    cpu: "2"
-                    memory: "2Gi"
-                requests:
-                    cpu: "500m"
-                    memory: "512Mi"
+authserver:
+    container:
+        resources:
+            limits:
+                cpu: "8"
+                memory: "4Gi"
+            requests:
+                cpu: "4"
+                memory: "4Gi"
+    initContainer:
+        resources:
+            limits:
+                cpu: "2"
+                memory: "2Gi"
+            requests:
+                cpu: "500m"
+                memory: "512Mi"
 ```
 
 ### Security Contexts
@@ -160,56 +231,62 @@ zeta-guard:
 Pod- und Container-Security-Contexts sind konfigurierbar:
 
 ```yaml
-zeta-guard:
-    authserver:
-        podSecurityContext:
-            seccompProfile:
-                type: RuntimeDefault
-        container:
-            containerSecurityContext:
-                allowPrivilegeEscalation: false
-                readOnlyRootFilesystem: true
-                runAsNonRoot: true
-                capabilities:
-                    drop: [ "ALL" ]
-        initContainer:
-            containerSecurityContext:
-                allowPrivilegeEscalation: false
-                readOnlyRootFilesystem: true
-                runAsNonRoot: true
-                capabilities:
-                    drop: [ "ALL" ]
+authserver:
+    podSecurityContext:
+        seccompProfile:
+            type: RuntimeDefault
+    container:
+        containerSecurityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+                drop: [ "ALL" ]
+    initContainer:
+        containerSecurityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+                drop: [ "ALL" ]
 ```
 
-Hinweis: `runAsUser` wird standardmäßig nicht gesetzt, da OpenShift dies nicht
-unterstützt.
+Hinweis: `runAsUser` wird für diese Komponenten standardmäßig **nicht** gesetzt, da
+OpenShift feste User-IDs nicht unterstützt (die SCC vergibt sie pro Namespace).
+
+**Ausnahme Telemetry-Gateway:** Dort setzt das Chart `securityContext.runAsUser: 1000`
+und `podSecurityContext.fsGroup: 1000`, weil der Collector eine bekannte
+Non-Root-Identität braucht, die auf den PersistentVolumeClaim der Sending-Queue
+schreiben kann. Auf OpenShift müssen beide Werte **explizit auf `null`** gesetzt
+werden — ein Weglassen der Keys genügt nicht, da Helm Maps merged und die `1000`
+dann aus den Chart-Defaults erhalten bleibt. Siehe
+[Wie Sie ZETA-Guard auf OpenShift betreiben](../Anleitungen/ZETA_OpenShift_Kompatibilität.md).
 
 ### Probes
 
 Die Parameter für Liveness-, Readiness- und Startup-Probes sind konfigurierbar:
 
 ```yaml
-zeta-guard:
-    authserver:
-        probes:
-            liveness:
-                initialDelaySeconds: 0
-                periodSeconds: 15
-                failureThreshold: 5
-            readiness:
-                initialDelaySeconds: 30
-                periodSeconds: 10
-                failureThreshold: 5
-            startup:
-                initialDelaySeconds: 30
-                periodSeconds: 10
-                failureThreshold: 20
+authserver:
+    probes:
+        liveness:
+            initialDelaySeconds: 0
+            periodSeconds: 15
+            failureThreshold: 5
+        readiness:
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 5
+        startup:
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 20
 ```
 
 ### Admin-API-Absicherung
 
-Die Keycloak Admin REST API und die Admin Console (`/auth/admin/*`) dürfen nicht
-über den öffentlichen Hostnamen zugänglich sein. Das Helm Chart unterstützt eine
+Die Keycloak-Admin-REST-API und die Admin Console (`/auth/admin/*`) dürfen nicht
+über den öffentlichen Hostnamen zugänglich sein. Das Helm-Chart unterstützt eine
 integrierte Absicherung über einen separaten Admin-Hostnamen.
 
 Wenn `authserver.adminHostname` gesetzt ist, aktiviert das Chart zwei
@@ -239,23 +316,21 @@ NGINX-Konfiguration des PEP beruht — nicht auf controller-spezifischen
 Annotationen.
 
 ```yaml
-zeta-guard:
-    authserver:
-        hostname: "zeta.example.com"
-        # Separater Hostname für den Keycloak-Admin-Zugriff.
-        # Wenn gesetzt, wird /auth/admin auf dem Haupthostnamen an den PEP-Proxy
-        # geroutet und dort mit 403 gesperrt; zusätzlich wird ein dedizierter
-        # Admin-Ingress für diesen Hostnamen erzeugt.
-        adminHostname: "admin.zeta.example.com"
+authserver:
+    hostname: "zeta.example.com"
+    # Separater Hostname für den Keycloak-Admin-Zugriff.
+    # Wenn gesetzt, wird /auth/admin auf dem Haupthostnamen an den PEP-Proxy
+    # geroutet und dort mit 403 gesperrt; zusätzlich wird ein dedizierter
+    # Admin-Ingress für diesen Hostnamen erzeugt.
+    adminHostname: "admin.zeta.example.com"
 ```
 
 Für Umgebungen, in denen kein ClusterIssuer für den Admin-Hostnamen verfügbar
-ist (z.B. KIND), kann ein bestehendes TLS-Secret wiederverwendet werden:
+ist (z. B. KIND), kann ein bestehendes TLS-Secret wiederverwendet werden:
 
 ```yaml
-zeta-guard:
-    authserver:
-        adminTlsSecretName: "zeta-guard-tls"  # bestehendes Secret wiederverwenden
+authserver:
+    adminTlsSecretName: "zeta-guard-tls"  # bestehendes Secret wiederverwenden
 ```
 
 Um die Funktion zu deaktivieren, entfernen Sie `adminHostname` (oder setzen Sie
@@ -282,7 +357,7 @@ da es sonst keinen Zugang mehr gäbe.
 > danach zurück auf den Admin-Hostnamen. Die Admin-REST-Aufrufe und alle
 > statischen Ressourcen bleiben dagegen auf dem Admin-Hostnamen
 > (`/auth/admin/...`) — deshalb steht die `403`-Sperre auf dem Haupthostnamen der
-> Admin UI nicht im Weg.
+> Admin-UI nicht im Weg.
 >
 > Folge für den Netzentwurf: Den Admin-Hostnamen auf ein internes Netz zu
 > beschränken ist unproblematisch, aber ein Arbeitsplatz, der *ausschließlich*
@@ -311,15 +386,13 @@ ausschließende Varianten:
 Standardmäßig wird `clusterIssuer` verwendet (Standardwert `letsencrypt`, sofern
 nicht überschrieben). Ist `issuer` gesetzt, hat dieser **Vorrang** und das Chart
 emittiert ausschließlich die `cert-manager.io/issuer`-Annotation. Der
-referenzierte
-`Issuer` muss dann im Deployment-Namespace existieren.
+referenzierte `Issuer` muss dann im Deployment-Namespace existieren.
 
 ```yaml
-zeta-guard:
-    # Namespace-lokaler Issuer — Vorrang vor clusterIssuer
-    issuer: "letsencrypt-namespaced"
-    # Clusterweiter Issuer — nur wirksam, wenn issuer leer ist
-    clusterIssuer: "letsencrypt"
+# Namespace-lokaler Issuer — Vorrang vor clusterIssuer
+issuer: "letsencrypt-namespaced"
+# Clusterweiter Issuer — nur wirksam, wenn issuer leer ist
+clusterIssuer: "letsencrypt"
 ```
 
 > **Wann `issuer` statt `clusterIssuer`?** Wenn Governance- oder
@@ -335,11 +408,10 @@ Im Datenbankmodus `cloudnative` sind JDBC-URL, Secret-Name und Schema
 konfigurierbar:
 
 ```yaml
-zeta-guard:
-    databaseMode: cloudnative
-    cloudnativeDbUrl: "jdbc:postgresql://keycloak-db-rw:5432/keycloak"
-    cloudnativeDbSecretName: "keycloak-db-app"
-    cloudnativeDbSchema: "public"
+databaseMode: cloudnative
+cloudnativeDbUrl: "jdbc:postgresql://keycloak-db-rw:5432/keycloak"
+cloudnativeDbSecretName: "keycloak-db-app"
+cloudnativeDbSchema: "public"
 ```
 
 Die Standardwerte verweisen auf den vom CloudNativePG-Operator erzeugten Service
@@ -348,15 +420,13 @@ Datenbankinstanz verwenden.
 
 Tuning-Parameter, die direkt an die PostgreSQL-Konfiguration des
 CloudNativePG-Clusters durchgereicht werden, sind unter
-`cloudnativePg.parameters`
-konfigurierbar:
+`cloudnativePg.parameters` konfigurierbar:
 
 ```yaml
-zeta-guard:
-    cloudnativePg:
-        parameters:
-            sharedBuffers: 512MB
-            maxConnections: 250
+cloudnativePg:
+    parameters:
+        sharedBuffers: 512MB
+        maxConnections: 250
 ```
 
 | Value                                     | Beschreibung                 | Standard |
@@ -366,8 +436,8 @@ zeta-guard:
 
 > **Hinweis:** Die mitgelieferte `values-demo.yaml` verwendet kleinere Werte
 > (`sharedBuffers: 24MB`, `maxConnections: 100`) für ressourcenarme
-> Test-Cluster.
-> `maxConnections` muss zu den Keycloak-Pool-Größen (siehe unten) passen.
+> Test-Cluster. `maxConnections` muss zu den Keycloak-Pool-Größen (siehe unten)
+> passen.
 
 ### Connection Pooling (Keycloak)
 
@@ -375,13 +445,12 @@ Keycloak hält serverseitig einen JDBC-Datenbank-Pool sowie einen
 HTTP-Worker-Pool. Beide sind konfigurierbar:
 
 ```yaml
-zeta-guard:
-    authserver:
-        dbPool:
-            minSize: 10
-            maxSize: 100
-        httpPool:
-            maxThreads: 300
+authserver:
+    dbPool:
+        minSize: 10
+        maxSize: 100
+    httpPool:
+        maxThreads: 300
 ```
 
 | Value                            | Beschreibung                                     | Standard |
@@ -403,18 +472,17 @@ zeta-guard:
 HSM-Integration für TLS und Token-Signierung:
 
 ```yaml
-zeta-guard:
-    authserver:
-        hsm:
-            enabled: false                                          # HSM-Proxy-Anbindung aktivieren
-            endpoint: "hsm-proxy:50051"                             # gRPC-Endpunkt des HSM-Proxy
-            tls:
-                enabled: false                                      # Pod-Level TLS via HSM
-                keyId: "zeta-guard-keycloak-tls-es256-v1.p256"      # Schlüssel-ID für TLS
-            tokenSigning:
-                enabled: false                                      # HSM_PROXY_TOKEN_KEY_ID setzen
-                keyId: "zeta-guard-keycloak-token-es256-v1.p256"    # Schlüssel-ID für Token-Signierung
-                failClosed: true                                    # kein Software-Key-Fallback bei nicht erreichbarem HSM
+authserver:
+    hsm:
+        enabled: false                                          # HSM-Proxy-Anbindung aktivieren
+        endpoint: "hsm-proxy:50051"                             # gRPC-Endpunkt des HSM-Proxy
+        tls:
+            enabled: false                                      # Pod-Level TLS via HSM
+            keyId: "zeta-guard-keycloak-tls-es256-v1.p256"      # Schlüssel-ID für TLS
+        tokenSigning:
+            enabled: false                                      # HSM_PROXY_TOKEN_KEY_ID setzen
+            keyId: "zeta-guard-keycloak-token-es256-v1.p256"    # Schlüssel-ID für Token-Signierung
+            failClosed: true                                    # kein Software-Key-Fallback bei nicht erreichbarem HSM
 ```
 
 | Value                                    | Beschreibung                                                                                                                                                                                                                                                             | Standard |
@@ -441,13 +509,12 @@ SMC-B-Zertifikats per OCSP. Die Timeouts der OCSP-Anfrage sowie das Verhalten
 bei nicht bestimmbarem Sperrstatus sind konfigurierbar:
 
 ```yaml
-zeta-guard:
-    authserver:
-        provider:
-            smcB:
-                ocspConnectTimeoutMs: 1000    # Connect-Timeout der OCSP-Anfrage (ms)
-                ocspReadTimeoutMs: 3000       # Read-Timeout der OCSP-Anfrage (ms)
-                ocspFailClosed: false         # nur bei REVOKED ablehnen; unbestimmter Status erlaubt (fail-open)
+authserver:
+    provider:
+        smcB:
+            ocspConnectTimeoutMs: 1000    # Connect-Timeout der OCSP-Anfrage (ms)
+            ocspReadTimeoutMs: 3000       # Read-Timeout der OCSP-Anfrage (ms)
+            ocspFailClosed: false         # nur bei REVOKED ablehnen; unbestimmter Status erlaubt (fail-open)
 ```
 
 | Value                                           | Beschreibung                                                         | Standard |
@@ -464,16 +531,18 @@ zeta-guard:
 > betriebsfähig bleibt. Mit `ocspFailClosed: true` wird zusätzlich abgelehnt,
 > wenn der Sperrstatus nicht bestimmt werden kann (strenger, gemäß TUC_PKI_006,
 > gemSpec_PKI). Ein `REVOKED`-Zertifikat wird unabhängig von dieser Einstellung
-> immer abgelehnt. Ist kein OCSP-Signer-Truststore hinterlegt, ist die Prüfung
+> immer abgelehnt. **`ocspFailClosed` wirkt erst ab Chart 1.3.2** — in 1.3.0/1.3.1
+> wurde der Wert zwar angenommen, aber nicht an den Authserver durchgereicht,
+> sodass dort immer fail-open galt. Ist kein OCSP-Signer-Truststore hinterlegt, ist die Prüfung
 > deaktiviert und der Token-Exchange läuft ohne Sperrprüfung (nur für
 > Testumgebungen).
 
 ---
 
-### Spree integrity provider (VAU)
+### Spree Integrity Provider (VAU)
 
-Konfiguration des Spree integrity providers (VAU-DB-Verschlüsselung und
-Integritätsprüfungen)
+Konfiguration des Spree Integrity Providers (VAU-DB-Verschlüsselung und
+Integritätsprüfungen):
 
 ```yaml
 authserver:
@@ -510,15 +579,14 @@ authserver:
 
 Die Keychain-Datei wird über `authserver.extraVolumes` aus einem Secret
 bereitgestellt. Ein vollständiges Beispiel siehe
-[Wie Sie ZETA Guard in Kubernetes konfigurieren, Abschnitt 10](../Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md#10-besonderheiten-vau-und-keycloak-datenbank).
+[Wie Sie ZETA-Guard in Kubernetes konfigurieren, Abschnitt 10](../Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md#10-besonderheiten-vau-und-keycloak-datenbank).
 
 ### Mobiler Client-Flow (OIDC)
 
 ```yaml
-zeta-guard:
-    authserver:
-        config:
-            oidcFlowEnabled: false
+authserver:
+    config:
+        oidcFlowEnabled: false
 ```
 
 | Value                               | Beschreibung                                                                                                                                                             | Standard |
@@ -534,56 +602,70 @@ konfiguriert sein — siehe die SMTP-Variablen unter
 ### ServiceAccount
 
 ```yaml
-zeta-guard:
-    pepproxy:
-        serviceAccount:
-            create: true
-            name: pep-proxy
+pepproxy:
+    serviceAccount:
+        create: true
+        name: pep-proxy
 ```
 
 ### Replicas und Sticky Sessions
 
 ```yaml
-zeta-guard:
-    pepproxy:
-        replicaCount: 3
+pepproxy:
+    replicaCount: 3
 ```
 
 Der Standardwert ist `1`. Bei `replicaCount > 1` werden Sticky Sessions
 automatisch über den mitgelieferten NGINX Ingress Controller realisiert: NIC
-setzt beim ersten Request einen opaken `zeta_route`-Cookie und routet
+setzt beim ersten Request ein opakes `zeta_route`-Cookie und routet
 nachfolgende Requests desselben Clients via Consistent Hashing konsistent auf
-denselben PEP-Pod. Dies ist eine Sicherheitsanforderung, da der ASL Session
-Cache pro Pod im nginx Shared Memory liegt und nicht zwischen Pods geteilt wird.
-Voraussetzung: der Client unterstützt HTTP-Cookies.
+denselben PEP-Pod. Dies ist eine Sicherheitsanforderung, da der
+ASL-Session-Cache pro Pod im nginx-Shared-Memory liegt und nicht zwischen Pods
+geteilt wird. Voraussetzung: Der Client unterstützt HTTP-Cookies.
 
-Wird ein anderer Ingress Controller verwendet (`nginxIngressEnabled: false`),
+Wird ein anderer Ingress-Controller verwendet (`nginxIngressEnabled: false`),
 muss der Betreiber Sticky Sessions am eigenen Ingress-Layer sicherstellen.
+
+### Client-IP-Ermittlung und Forwarding-Header
+
+Der Authserver leitet den `ip_address`-Claim des Access-Tokens aus den Headern
+`Forwarded`, `X-Forwarded-For` und `X-Real-IP` ab (in dieser Reihenfolge, erst
+danach aus der TCP-Quelladresse). Der PEP prüft diesen Claim bei aktivierter
+No-Travel-Prüfung (`pepproxy.nginxConf.noTravel`) gegen die Adresse jeder
+Anfrage. Der mitgelieferte Ingress-Controller verwirft client-gesetzte
+Forwarding-Header deshalb an der Außengrenze — umgesetzt im Value
+`nginx-ingress.controller.config.entries.http-snippets`.
+
+Wird ein anderer Ingress-Controller verwendet (`nginxIngressEnabled: false`),
+muss der Betreiber diese Header selbst verwerfen oder durch vertrauenswürdige
+Werte ersetzen. Andernfalls kann ein Client seine IP-Adresse frei wählen und
+damit die No-Travel-Prüfung sowie ein IP-basiertes Rate Limit umgehen.
+Die vollständige Header-Liste und der Sonderfall eines vorgelagerten
+vertrauenswürdigen Proxys sind beschrieben in
+[Client-seitige Forwarding-Header verwerfen](../Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md#client-seitige-forwarding-header-verwerfen).
 
 ### Security Context
 
 ```yaml
-zeta-guard:
-    pepproxy:
-        podSecurityContext:
-            seccompProfile:
-                type: RuntimeDefault
+pepproxy:
+    podSecurityContext:
+        seccompProfile:
+            type: RuntimeDefault
 ```
 
-### Well-Known Discovery Dokument
+### Well-Known-Discovery-Dokument
 
-Der PEP-Proxy stellt das OAuth Protected Resource Metadata Dokument (RFC 9728)
+Der PEP-Proxy stellt das OAuth-Protected-Resource-Metadata-Dokument (RFC 9728)
 unter `/.well-known/oauth-protected-resource` bereit. Die Pfadanteile der beiden
 enthaltenen URLs sind konfigurierbar:
 
 ```yaml
-zeta-guard:
-    pepproxy:
-        wellKnownBase: "https://zeta.example.com"   # öffentliche Basis-URL des PEP
-        wellKnownResourceSuffix: /pep/              # Pfad-Suffix für das resource-Feld
-    authserver:
-        hostname: "zeta.example.com"
-        wellKnownAuthServerPath: /                  # Pfad-Suffix für authorization_servers
+pepproxy:
+    wellKnownBase: "https://zeta.example.com"   # öffentliche Basis-URL des PEP
+    wellKnownResourceSuffix: /pep/              # Pfad-Suffix für das resource-Feld
+authserver:
+    hostname: "zeta.example.com"
+    wellKnownAuthServerPath: /                  # Pfad-Suffix für authorization_servers
 ```
 
 Das erzeugte Dokument hat dann folgendes Format:
@@ -599,7 +681,7 @@ Das erzeugte Dokument hat dann folgendes Format:
 ```
 
 Das Feld `zeta_asl_use` wird aus `pepproxy.asl_enabled` abgeleitet und ist nicht
-fest `required`: bei deaktiviertem ASL — dem Standard — weist das Dokument
+fest `required`: Bei deaktiviertem ASL — dem Standard — weist das Dokument
 `not_supported` aus.
 
 | Value                                | Beschreibung                                                                                   | Standard           |
@@ -612,12 +694,11 @@ fest `required`: bei deaktiviertem ASL — dem Standard — weist das Dokument
 > **Achtung:** Der Default `http://localhost` ist nur für lokale Setups (KIND)
 > gedacht und **muss** in jeder erreichbaren Umgebung überschrieben werden –
 > anderenfalls enthält `resource` eine von außen unerreichbare URL und
-> Token-Prüfungen
-> schlagen fehl.
+> Token-Prüfungen schlagen fehl.
 >
 > Die beiden URLs werden durch einfache Verkettung ohne Normalisierung
 > gebildet (`resource = wellKnownBase + wellKnownResourceSuffix`). Ein Schema im
-> `hostname`, ein doppelter `/` oder ein doppelter Pfadanteil (z.B.
+> `hostname`, ein doppelter `/` oder ein doppelter Pfadanteil (z. B.
 > `/pep/pep/`) landet unverändert im Dokument und kann zu doppelten
 > Well-Knowns führen.
 
@@ -637,18 +718,18 @@ beschrieben.
 
 Steuert die Validierung des PoPP-Tokens am PEP (A_26477). Ist
 `pepproxy.nginxConf.poppIssuer` gesetzt, verlangt der PEP auf allen Locations
-das Vorhandensein des `PoPP` -Headers und validiert das Token
+das Vorhandensein des `PoPP`-Headers und validiert das Token
 (`pep_require_popp on;`); mit `null` ist die PoPP-Prüfung deaktiviert.
 `pepproxy.nginxConf.poppValidity` legt die Gültigkeitsdauer des Tokens ab
 Ausstellung fest — `quarter` (selbes Kalenderquartal) oder eine feste Dauer
-seit `iat` mit Einheit `d`/`h`/`m`/`s` (z.B. `1d`, `86400`).
+seit `iat` mit Einheit `d`/`h`/`m`/`s` (z. B. `1d`, `86400`).
 
 | Value                             | Beschreibung                                                                                                                                                | Standard  |
 |-----------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
 | `pepproxy.nginxConf.poppIssuer`   | Issuer des PoPP-Servers (Entity Statement unter `/.well-known/openid-federation`). Wenn gesetzt, wird PoPP verlangt und validiert; `null` deaktiviert PoPP. | `null`    |
 | `pepproxy.nginxConf.poppValidity` | Gültigkeitsdauer des PoPP-Tokens ab `iat`: `quarter` oder feste Dauer (`d`/`h`/`m`/`s`, Standardeinheit `s`).                                               | `quarter` |
 
-Details zu PEP-Direktiven `pep_require_popp` und`pep_popp_validity` siehe
+Details zu den PEP-Direktiven `pep_require_popp` und `pep_popp_validity` siehe
 [PEP-Konfiguration](Konfiguration_des_PEP_Http_Proxy.md).
 
 ### nginx-Konfiguration (Fachdienst-Routing)
@@ -658,19 +739,23 @@ Das Chart kann die nginx-ConfigMap des PEP-Proxy aus Values generieren
 wie eingehende Requests an den Resource Server (Fachdienst) weitergeleitet
 werden.
 
-| Value                                             | Beschreibung                                                                                                                                                                                                                              | Standard         |
-|---------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------|
-| `pepproxy.nginxConf.generateConfigMap`            | Wenn `true`, generiert das Chart die nginx-ConfigMap aus den untenstehenden Values. Bei `false` muss eine ConfigMap mit dem Namen `configMapName` extern bereitgestellt werden; alle weiteren `nginxConf.*`-Values werden dann ignoriert. | `false`          |
-| `pepproxy.nginxConf.configMapName`                | Name der ConfigMap, die in den PEP-Pod gemountet wird — unabhängig davon, ob das Chart sie generiert oder sie extern existiert.                                                                                                           | `pep-nginx-conf` |
-| `pepproxy.nginxConf.pepIssuer`                    | OIDC-Issuer des Authorization Servers. Wird für die Token-Validierung (`pep_issuer`) und den JWKS-Abruf verwendet.                                                                                                                        | `""`             |
-| `pepproxy.nginxConf.requiredAudience`             | Audience, die ein gültiges Access-Token enthalten muss (`pep_require_aud`).                                                                                                                                                               | `""`             |
-| `pepproxy.nginxConf.requiredScopes`               | Liste der geforderten Scopes (`pep_require_scope`).                                                                                                                                                                                       | `[]`             |
-| `pepproxy.nginxConf.proxyLocations`               | Strukturierte Definition der Fachdienst-Pfade (siehe unten). Kann nicht zusammen mit `locations` verwendet werden.                                                                                                                        | `[]`             |
-| `pepproxy.nginxConf.locations`                    | **Deprecated und zur Entfernung vorgesehen.** Roher nginx-Location-Block als Go-Template-String. Schließt sich mit `proxyLocations` aus (siehe Hinweis unten).                                                                            | `""`             |
-| `pepproxy.nginxConf.fachdienstUrl`                | **Deprecated.** Optionale Hilfsvariable, die im `locations`-Template referenziert werden kann.                                                                                                                                            | `""`             |
-| `pepproxy.nginxConf.httpClientAcceptInvalidCerts` | Akzeptiert ungültige TLS-Zertifikate bei internen HTTP-Verbindungen des PEP (JWKS, OIDC Discovery). **Nur für Testumgebungen.**                                                                                                           | `false`          |
-| `pepproxy.nginxConf.aslTestmode`                  | Aktiviert den ASL-Testmodus (deaktiviert Verschlüsselung). **Niemals in Produktion setzen.**                                                                                                                                              | `false`          |
-| `pepproxy.nginxConf.noTravel`                     | Aktiviert (`true`) oder deaktiviert (`false`) die No-Travel-Prüfung (IP-Bindung).                                                                                                                                                         | `false`          |
+| Value                                             | Beschreibung                                                                                                                                                                                                                                                                                                                                                                                   | Standard                                   |
+|---------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------|
+| `pepproxy.nginxConf.generateConfigMap`            | Wenn `true`, generiert das Chart die nginx-ConfigMap aus den untenstehenden Values. Bei `false` muss eine ConfigMap mit dem Namen `configMapName` extern bereitgestellt werden; alle weiteren `nginxConf.*`-Values werden dann ignoriert.                                                                                                                                                      | `false`                                    |
+| `pepproxy.nginxConf.configMapName`                | Name der ConfigMap, die in den PEP-Pod gemountet wird — unabhängig davon, ob das Chart sie generiert oder sie extern existiert.                                                                                                                                                                                                                                                                | `pep-nginx-conf`                           |
+| `pepproxy.nginxConf.pepIssuer`                    | Öffentlicher OIDC-Issuer des Authorization Servers. Immer der `iss`, den der PEP in Access-Tokens erwartet (`pep_pdp_issuer`). Dient zugleich als Basis-URL für OIDC-Discovery und JWKS-Abruf.                                                                                                                                                | `""`                                       |
+| `pepproxy.nginxConf.requiredAudience`             | Audience, die ein gültiges Access-Token enthalten muss (`pep_require_aud`).                                                                                                                                                                                                                                                                                                                    | `""`                                       |
+| `pepproxy.nginxConf.requiredScopes`               | Liste der geforderten Scopes (`pep_require_scope`).                                                                                                                                                                                                                                                                                                                                            | `[]`                                       |
+| `pepproxy.nginxConf.proxyLocations`               | Strukturierte Definition der Fachdienst-Pfade (siehe unten). Kann nicht zusammen mit `locations` verwendet werden.                                                                                                                                                                                                                                                                             | `[]`                                       |
+| `pepproxy.nginxConf.locations`                    | **Deprecated und zur Entfernung vorgesehen.** Roher nginx-Location-Block als Go-Template-String. Schließt sich mit `proxyLocations` aus (siehe Hinweis unten).                                                                                                                                                                                                                                 | `""`                                       |
+| `pepproxy.nginxConf.fachdienstUrl`                | **Deprecated.** Optionale Hilfsvariable, die im `locations`-Template referenziert werden kann.                                                                                                                                                                                                                                                                                                 | `""`                                       |
+| `pepproxy.nginxConf.httpClientAcceptInvalidCerts` | Akzeptiert ungültige TLS-Zertifikate bei internen HTTP-Verbindungen des PEP (JWKS, OIDC Discovery). **Nur für Testumgebungen.**                                                                                                                                                                                                                                                                | `false`                                    |
+| `pepproxy.nginxConf.aslTestmode`                  | Aktiviert den ASL-Testmodus (deaktiviert Verschlüsselung). **Niemals in Produktion setzen.**                                                                                                                                                                                                                                                                                                   | `false`                                    |
+| `pepproxy.nginxConf.noTravel`                     | Aktiviert (`true`) oder deaktiviert (`false`) die No-Travel-Prüfung (IP-Bindung).                                                                                                                                                                                                                                                                                                              | `false`                                    |
+
+> **Hinweis zu `noTravel`:** Die IP-Bindung ist nur so verlässlich wie die
+> Ermittlung der Client-IP-Adresse an der Außengrenze — siehe
+> [Client-IP-Ermittlung und Forwarding-Header](#client-ip-ermittlung-und-forwarding-header).
 
 #### ASL-Values
 
@@ -739,7 +824,7 @@ Details zu den vom PEP gesetzten nginx-Direktiven (`pep on`, `pep_require_aud`,
 `proxy_headers.conf`) siehe
 [PEP-Konfiguration](Konfiguration_des_PEP_Http_Proxy.md).
 Für vollständige Konfigurationsbeispiele inkl. mTLS siehe
-[Wie Sie ZETA Guard in Kubernetes konfigurieren](../Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md#7-policy-enforcement-point-nginx-konfigurieren).
+[Wie Sie ZETA-Guard in Kubernetes konfigurieren](../Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md#7-policy-enforcement-point-nginx-konfigurieren).
 
 ### HSM-Konfiguration (TLS)
 
@@ -750,11 +835,10 @@ TLS-Handshakes werden per gRPC an den HSM-Proxy delegiert. Das zugehörige
 Zertifikat liegt als gewöhnliche PEM-Datei im Container vor.
 
 ```yaml
-zeta-guard:
-    pepproxy:
-        hsmProxyAddr: "hsm-proxy:50051"   # gRPC-Adresse des HSM-Proxy; null deaktiviert die HSM-Anbindung
-        hsmTlsKeyId: "tls.p256"           # Schlüssel-ID des TLS-Schlüssels im HSM
-        hsmTlsCert: "tls.p256.pem"        # zum HSM-Schlüssel passende Zertifikatsdatei (relativ zu /etc/nginx)
+pepproxy:
+    hsmProxyAddr: "hsm-proxy:50051"   # gRPC-Adresse des HSM-Proxy; null deaktiviert die HSM-Anbindung
+    hsmTlsKeyId: "tls.p256"           # Schlüssel-ID des TLS-Schlüssels im HSM
+    hsmTlsCert: "tls.p256.pem"        # zum HSM-Schlüssel passende Zertifikatsdatei (relativ zu /etc/nginx)
 ```
 
 Ist `pepproxy.hsmProxyAddr` gesetzt,
@@ -794,11 +878,10 @@ Auch der ASL-Signaturschlüssel kann im HSM verbleiben, statt als Datei aus dem
 Secret `asl-identity` gemountet zu werden:
 
 ```yaml
-zeta-guard:
-    pepproxy:
-        asl_enabled: true
-        hsmProxyAddr: "hsm-proxy:50051"
-        asl_hsm_key: "store:hsm:asl-signer.p256"   # zum Signaturzertifikat passender HSM-Schlüssel, Format store:hsm:<key-id>
+pepproxy:
+    asl_enabled: true
+    hsmProxyAddr: "hsm-proxy:50051"
+    asl_hsm_key: "store:hsm:asl-signer.p256"   # zum Signaturzertifikat passender HSM-Schlüssel, Format store:hsm:<key-id>
 ```
 
 | Value                  | Beschreibung                                                                                                                                                                                                                         | Standard |
@@ -812,13 +895,13 @@ zeta-guard:
 > abgelehnten ASL-Signaturen.
 
 Siehe auch
-[Wie Sie ZETA Guard in Kubernetes konfigurieren](../Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md).
+[Wie Sie ZETA-Guard in Kubernetes konfigurieren](../Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md).
 
 ### Extra Volumes
 
 Über `pepproxy.extraVolumes` und `pepproxy.extraVolumeMounts` lassen sich
 beliebige zusätzliche Volumes in den PEP-Container mounten — etwa das
-Client-Zertifikat und der Truststore für mTLS zum Resource Server oder ein
+Client-Zertifikat und den Truststore für mTLS zum Resource Server oder ein
 eigenes TLS-Zertifikat für die HSM-Konfiguration.
 
 | Value                        | Beschreibung                                                                          | Standard |
@@ -827,7 +910,7 @@ eigenes TLS-Zertifikat für die HSM-Konfiguration.
 | `pepproxy.extraVolumeMounts` | Zugehörige `volumeMounts`-Einträge des nginx-Containers                               | `[]`     |
 
 Ein vollständiges Beispiel für mTLS zum Resource Server siehe
-[Wie Sie ZETA Guard in Kubernetes konfigurieren, Abschnitt 9](../Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md#9-mtls-zum-resource-server-ohne-service-mesh).
+[Wie Sie ZETA-Guard in Kubernetes konfigurieren, Abschnitt 9](../Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md#9-mtls-zum-resource-server-ohne-service-mesh).
 
 ---
 
@@ -843,7 +926,7 @@ Subchart `infinispan-external`. Dieses ist eine Dependency des Umbrella-Charts
 (Testumgebung `zeta-testenv`, Helm-Tag `infinispan-external`) und nicht des
 `zeta-guard`-Charts. Das `zeta-guard`-Chart konsumiert die Values unter
 `global.infinispanExternal.*` lediglich, um den Authserver zu konfigurieren
-(„clusterless“ Modus, `KC_CACHE_REMOTE_*`). Bei einer Installation ohne dieses
+(„clusterless“-Modus, `KC_CACHE_REMOTE_*`). Bei einer Installation ohne dieses
 Subchart müssen Sie deshalb eine selbst betriebene Instanz über
 `remote.host`/`remote.port` angeben.
 
@@ -853,7 +936,7 @@ Subchart müssen Sie deshalb eine selbst betriebene Instanz über
 Sind beide Werte gesetzt, wird kein Infinispan-Deployment erzeugt und der
 Authserver verbindet sich gegen die angegebene Adresse. Sind sie leer, deployt
 das Subchart Infinispan und der Authserver verwendet den chart-internen Service
-`infinispan:11222`. Die Werte wirken nur gemeinsam: ist nur einer gesetzt, gilt
+`infinispan:11222`. Die Werte wirken nur gemeinsam: Ist nur einer gesetzt, gilt
 ebenfalls der Fallback `infinispan:11222`.
 
 ```yaml
@@ -869,7 +952,7 @@ global:
 | Value                                    | Beschreibung                                                           | Standard |
 |------------------------------------------|------------------------------------------------------------------------|----------|
 | `global.infinispanExternal.enabled`      | Externen Infinispan aktivieren, Authserver auf „clusterless“ umstellen | `false`  |
-| `global.infinispanExternal.replicaCount` | Anzahl der Infinispan-Pods (nur bei chart-eigenem Deployment)          | `3`      |
+| `global.infinispanExternal.replicaCount` | Anzahl der Infinispan-Pods (nur bei chart-eigenem Deployment)          | `1`      |
 | `global.infinispanExternal.remote.host`  | Host einer eigenständig betriebenen Infinispan-Instanz                 | leer     |
 | `global.infinispanExternal.remote.port`  | Port dieser Instanz                                                    | leer     |
 
@@ -979,29 +1062,28 @@ global:
 
 Der Open Policy Agent trifft die Autorisierungsentscheidung, die der
 Authorization Service beim Token-Exchange abfragt. Alle Values liegen unter
-`zeta-guard.opa`.
+`opa`.
 
 Dieser Abschnitt ist die reine Value-Referenz. Wie die Policy-Quelle gewählt
 wird, wie der Zugriff auf eine private Registry eingerichtet wird und wie sich
 fehlgeschlagene Bundle-Downloads diagnostizieren lassen, beschreibt die Anleitung
-[Wie Sie OPA in ZETA Guard konfigurieren](../Anleitungen/Wie_Sie_OPA_in_ZETA_Guard_konfigurieren.md).
+[Wie Sie OPA in ZETA-Guard konfigurieren](../Anleitungen/Wie_Sie_OPA_in_ZETA_Guard_konfigurieren.md).
 
 ### Deployment und Betrieb
 
 ```yaml
-zeta-guard:
-    opa:
-        replicaCount: 2
-        image:
-            repository: opa
-            tag: 1.19.0-static
+opa:
+    replicaCount: 2
+    image:
+        repository: opa
+        tag: 1.19.1-static
 ```
 
 | Value                                | Beschreibung                                                                                          | Standard         |
 |--------------------------------------|-------------------------------------------------------------------------------------------------------|------------------|
 | `opa.replicaCount`                   | Anzahl der OPA-Replicas. OPA ist zustandslos und horizontal skalierbar.                               | `1`              |
 | `opa.image.repository`               | Image-Repository                                                                                      | `opa`            |
-| `opa.image.tag`                      | Image-Tag                                                                                             | `1.19.0-static`  |
+| `opa.image.tag`                      | Image-Tag                                                                                             | `1.19.1-static`  |
 | `opa.image.registry`                 | Registry-Präfix. Nicht vorbelegt — ohne Angabe aus `global.registry_host` + `registry_name` gebildet. | —                |
 | `opa.image.digest`                   | Digest-Pinning. Nicht vorbelegt; wird als `@<digest>` hinter den Tag gehängt.                         | —                |
 | `opa.imagePullPolicy`                | Pull-Policy des OPA-Images                                                                            | `IfNotPresent`   |
@@ -1032,7 +1114,7 @@ Standardressourcen: `limits.memory: 1Gi`, `requests.cpu: 100m`,
 | Value                  | Beschreibung                                                        | Standard |
 |------------------------|---------------------------------------------------------------------|----------|
 | `opa.logLevel`         | Log-Level des OPA-Servers: `debug`, `info`, `warn` oder `error`     | `info`   |
-| `opa.logDecisions`     | Policy-Entscheidungen als Decision Logs auf die Konsole schreiben   | `true`   |
+| `opa.logDecisions`     | Policy-Entscheidungen zusätzlich als Decision Logs auf die Konsole schreiben (an das Telemetry-Gateway gehen sie immer) | `false`  |
 | `opa.logStatusUpdates` | Status-Updates (u. a. Bundle-Aktivierung) auf die Konsole schreiben | `false`  |
 
 Die beiden folgenden Values liegen **nicht** unter `opa`, sondern auf der
@@ -1149,24 +1231,23 @@ Vertrauensanker täglich neu erzeugt, siehe
 [Zeitgesteuerte Aktualisierung](#zeitgesteuerte-aktualisierung-der-vertrauensanker):
 
 ```yaml
-zeta-guard:
-    provisioningProcessor:
-        resources:
-            limits:
-                cpu: "1"
-                memory: "200Mi"
-            requests:
-                cpu: "100m"
-                memory: "100Mi"
-        containerSecurityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: false
-            runAsNonRoot: true
-            capabilities:
-                drop: [ "ALL" ]
+provisioningProcessor:
+    resources:
+        limits:
+            cpu: "1"
+            memory: "200Mi"
+        requests:
+            cpu: "100m"
+            memory: "100Mi"
+    containerSecurityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: false
+        runAsNonRoot: true
+        capabilities:
+            drop: [ "ALL" ]
 ```
 
-### Provisioning Container je Umgebung
+### Provisioning-Container je Umgebung
 
 `provisioningProcessor.provisioningContainer` bestimmt, welches
 Provisioning-Daten-Image geladen wird. Die Vorbelegung des Charts zeigt auf das
@@ -1174,18 +1255,17 @@ Image der **RU/RUDEV**-Umgebung; für TU und PU ist der Wert vom Betreiber zu
 setzen, passend zur jeweiligen Vertrauenskette in
 `imageTrustCertchainSecretRef`. Die Image-Referenzen und Bezugsquellen der
 Vertrauensanker je Umgebung stehen in
-[Wie Sie ZETA Guard in Kubernetes konfigurieren — Provisioning Processor](../Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md#64-provisioning-processor-image-vertrauenskette-konfigurieren).
+[Wie Sie ZETA-Guard in Kubernetes konfigurieren — Provisioning Processor](../Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md#64-provisioning-processor-image-vertrauenskette-konfigurieren).
 
-### Eigene Registry für den Provisioning Container
+### Eigene Registry für den Provisioning-Container
 
 Standardmäßig lädt der Provisioning Processor das Daten-Image von der
 gematik-Registry. Für Umgebungen ohne direkten Internetzugang kann eine eigene
 Registry-Spiegelung konfiguriert werden:
 
 ```yaml
-zeta-guard:
-    provisioningProcessor:
-        provisioningContainer: "my.registry.corp.internal/zetaguard-provisioning:latest"
+provisioningProcessor:
+    provisioningContainer: "my.registry.corp.internal/zetaguard-provisioning:latest"
 ```
 
 ### Zeitgesteuerte Aktualisierung der Vertrauensanker
@@ -1203,12 +1283,11 @@ diese Automatik werden Vertrauensanker erst mit dem nächsten Pod-Neustart
 wirksam — eine widerrufene CA bliebe also bis dahin gültig.
 
 ```yaml
-zeta-guard:
-    provisioningProcessor:
-        schedule:
-            enabled: true
-            time: "03:00"
-            timezone: "Europe/Berlin"
+provisioningProcessor:
+    schedule:
+        enabled: true
+        time: "03:00"
+        timezone: "Europe/Berlin"
 ```
 
 | Value                                     | Beschreibung                                                                                        | Standard          |
@@ -1217,7 +1296,7 @@ zeta-guard:
 | `provisioningProcessor.schedule.time`     | Uhrzeit des täglichen Laufs im Format `HH:MM`. Kein Cron-Ausdruck.                                  | `"03:00"`         |
 | `provisioningProcessor.schedule.timezone` | IANA-Zeitzone, in der die Uhrzeit ausgewertet wird.                                                 | `"Europe/Berlin"` |
 
-Die Uhrzeit sollte in eine Phase geringer Last fallen: der Lauf lädt das
+Die Uhrzeit sollte in eine Phase geringer Last fallen: Der Lauf lädt das
 signierte Provisioning-Image erneut und prüft dessen cosign-Signatur.
 
 > **Voraussetzung Kubernetes 1.32.** Das Chart setzt mindestens **Kubernetes
@@ -1226,29 +1305,26 @@ signierte Provisioning-Image erneut und prüft dessen cosign-Signatur.
 > deshalb mit einer klaren Meldung fehl, statt später im Betrieb aufzufallen.
 
 > **Voraussetzung Image.** Der Sidecar braucht ein Provisioning-Processor-Image,
-> das
-> `SCHEDULE_TIME` unterstützt, **Version 1.3.0 aufwärts**. Wird
-> `provisioningProcessor.image.tag` auf eine ältere Version gepinnt, beendet
-> sich der Container nach seinem Lauf und wird
-> endlos neu gestartet — inklusive erneutem Laden und Verifizieren des
-> signierten
-> Provisioning-Images bei jedem Versuch. Erkennbar an einem stetig steigenden
+> das `SCHEDULE_TIME` unterstützt, **Version 1.3.0 aufwärts**. Wird
+> `provisioningProcessor.image.tag` auf eine ältere Version gepinnt, beendet sich
+> der Container nach seinem Lauf und wird endlos neu gestartet — inklusive
+> erneutem Laden und Verifizieren des signierten Provisioning-Images bei jedem
+> Versuch. Erkennbar an einem stetig steigenden
 > `RESTARTS`-Zähler des Init-Containers `trust-anchor-provisioning-processor`.
 
-Ein Startup-Probe stellt sicher, dass Keycloak erst startet, wenn der erste Lauf
-alle Ergebnisdateien veröffentlicht hat — ein Sidecar muss im Gegensatz zu einem
-Init-Container nicht vorher beendet sein.
+Eine Startup-Probe stellt sicher, dass Keycloak erst startet, wenn der erste
+Lauf alle Ergebnisdateien veröffentlicht hat — ein Sidecar muss im Gegensatz zu
+einem Init-Container nicht vorher beendet sein.
 
-Die beiden Optionen gehören zusammen: ohne den Sidecar wird zur Laufzeit nichts
+Die beiden Optionen gehören zusammen: Ohne den Sidecar wird zur Laufzeit nichts
 neu geschrieben, und ohne den Reload liest Keycloak die Dateien nur beim Start.
 Wird eine davon abgeschaltet, verliert die andere ihre Wirkung.
 
 ```yaml
-zeta-guard:
-    authserver:
-        truststoreReload:
-            enabled: true
-            interval: PT1H
+authserver:
+    truststoreReload:
+        enabled: true
+        interval: PT1H
 ```
 
 | Value                                  | Beschreibung                                                                                                                     | Standard |
@@ -1257,7 +1333,7 @@ zeta-guard:
 | `authserver.truststoreReload.interval` | Prüfintervall als ISO-8601-Dauer, höchstens Stunden (`PT1H`, nicht `P1D`). Die erste Prüfung läuft ein Intervall nach dem Start. | `PT1H`   |
 
 Das Prüfintervall darf deutlich kürzer sein als der Provisioning-Lauf:
-verglichen wird ein Hash über die Dateibytes, gelesen und geparst wird nur bei
+Verglichen wird ein Hash über die Dateibytes, gelesen und geparst wird nur bei
 einer Änderung. Ein kürzeres Intervall verkürzt damit vor allem die Zeitspanne,
 in der eine widerrufene CA noch akzeptiert wird.
 
@@ -1267,13 +1343,13 @@ Verhalten: [Konfiguration des Authentication Services](Konfiguration_des_PDP_Ser
 > **Hinweis:** Das gespiegelte Image muss zusammen mit seiner cosign-Signatur
 > übertragen werden. Ein einfaches `docker pull/push` überträgt die Signatur
 > nicht. Siehe
-> [Wie Sie eine eigene OCI Registry verwenden](../Anleitungen/Wie_Sie_eine_eigene_OCI_Registry_verwenden.md).
+> [Wie Sie eine eigene OCI-Registry verwenden](../Anleitungen/Wie_Sie_eine_eigene_OCI_Registry_verwenden.md).
 
 ### CA-Zertifikat für private Registries
 
 Wenn die Registry ein TLS-Zertifikat verwendet, das von einer internen CA
 ausgestellt wurde, muss das CA-Zertifikat dem Init-Container mitgegeben werden.
-Das Zertifikat wird aus einem Kubernetes Secret als Datei in den Init-Container
+Das Zertifikat wird aus einem Kubernetes-Secret als Datei in den Init-Container
 gemountet. Diese Variante vermeidet das Kernel-Limit `ARG_MAX`, das bei der
 Übergabe von Zertifikatsketten als Umgebungsvariable überschritten werden kann.
 
@@ -1285,30 +1361,28 @@ Für OPA wird die CA dem System-Truststore des Images **hinzugefügt**
 unterschiedlich vertrauenswürdigen Registries geladen, muss die Datei deshalb
 ein vollständiges CA-Bundle enthalten — sonst schlägt der Abruf des
 Provisioning-Daten-Images fehl. Details:
-[Wie Sie eine eigene OCI Registry verwenden](../Anleitungen/Wie_Sie_eine_eigene_OCI_Registry_verwenden.md).
+[Wie Sie eine eigene OCI-Registry verwenden](../Anleitungen/Wie_Sie_eine_eigene_OCI_Registry_verwenden.md).
 
 ```yaml
-zeta-guard:
-    provisioningProcessor:
-        provisioningContainerCaSecretRef:
-            name: registry-ca        # Name des Kubernetes Secrets
-            key: ca.crt              # Key innerhalb des Secrets
+provisioningProcessor:
+    provisioningContainerCaSecretRef:
+        name: registry-ca        # Name des Kubernetes-Secrets
+        key: ca.crt              # Key innerhalb des Secrets
 ```
 
 Alternativ kann das CA-Zertifikat aus einer **ConfigMap** gemountet werden (die
 öffentlichen CA-Teile sind nicht geheim). Das passt zum OpenShift-Mechanismus
-[„Configuring a custom PKI"](https://docs.openshift.com/container-platform/latest/networking/configuring-a-custom-pki.html),
+[„Configuring a custom PKI“](https://docs.openshift.com/container-platform/latest/networking/configuring-a-custom-pki.html),
 der das CA-Bundle als ConfigMap bereitstellt.
 `provisioningContainerCaSecretRef` und `provisioningContainerCaConfigMapRef`
 schließen sich gegenseitig aus; ist beides gesetzt, hat die Secret-Referenz
 Vorrang.
 
 ```yaml
-zeta-guard:
-    provisioningProcessor:
-        provisioningContainerCaConfigMapRef:
-            name: zeta-guard-openshift-ca-bundle   # Name der Kubernetes ConfigMap
-            key: ca-bundle.crt                     # Key innerhalb der ConfigMap
+provisioningProcessor:
+    provisioningContainerCaConfigMapRef:
+        name: zeta-guard-openshift-ca-bundle   # Name der Kubernetes-ConfigMap
+        key: ca-bundle.crt                     # Key innerhalb der ConfigMap
 ```
 
 Für beliebige andere Einbindungen stehen die generischen Werte
@@ -1317,35 +1391,33 @@ Init-Container zur Verfügung. Damit werden Volume, Mount und die
 Umgebungsvariable `PROVISIONING_CONTAINER_REGISTRY_CA_FILE` selbst verdrahtet:
 
 ```yaml
-zeta-guard:
-    provisioningProcessor:
-        extraEnv:
-            -   name: PROVISIONING_CONTAINER_REGISTRY_CA_FILE
-                value: /var/custom-ca/ca.crt
-        extraVolumes:
-            -   name: custom-ca
-                configMap:
-                    name: my-ca-bundle
-        extraVolumeMounts:
-            -   name: custom-ca
-                mountPath: /var/custom-ca
-                readOnly: true
+provisioningProcessor:
+    extraEnv:
+        -   name: PROVISIONING_CONTAINER_REGISTRY_CA_FILE
+            value: /var/custom-ca/ca.crt
+    extraVolumes:
+        -   name: custom-ca
+            configMap:
+                name: my-ca-bundle
+    extraVolumeMounts:
+        -   name: custom-ca
+            mountPath: /var/custom-ca
+            readOnly: true
 ```
 
 ### Zugangsdaten für die Provisioning-Container-Registry
 
 Erlaubt die Registry keinen anonymen Zugriff, können Benutzername und Token aus
-einem Kubernetes Secret bereitgestellt werden. Der Init-Container führt damit
+einem Kubernetes-Secret bereitgestellt werden. Der Init-Container führt damit
 vor dem Laden des Images ein `cosign login` aus. Das Secret wird über
 `provisioningProcessor.registryCredentialsSecretRef` referenziert.
 
 ```yaml
-zeta-guard:
-    provisioningProcessor:
-        registryCredentialsSecretRef:
-            name: registry-credentials   # Name des Kubernetes Secrets
-            usernameKey: username        # Key des Benutzernamens (Standard: username)
-            tokenKey: token              # Key des Tokens (Standard: token)
+provisioningProcessor:
+    registryCredentialsSecretRef:
+        name: registry-credentials   # Name des Kubernetes-Secrets
+        usernameKey: username        # Key des Benutzernamens (Standard: username)
+        tokenKey: token              # Key des Tokens (Standard: token)
 ```
 
 `usernameKey` und `tokenKey` sind optional und müssen nur gesetzt werden, wenn
@@ -1356,7 +1428,7 @@ gesetzte Referenz erfolgt der Zugriff anonym.
 
 ### Cosign-Vertrauenskette für Image-Verifikation
 
-Der Helm Value `imageTrustCertchainSecretRef` benennt ein Kubernetes Secret, das
+Der Helm-Value `imageTrustCertchainSecretRef` benennt ein Kubernetes-Secret, das
 die CA-Zertifikatskette der gematik enthält. Der Provisioning Processor prüft
 damit die cosign-Signatur des Provisioning-Daten-Images beim Pod-Start.
 
@@ -1368,12 +1440,11 @@ des Provisioning Processors jedes der folgenden Deployments eingebunden:
 Container lautet `/var/image-trustchain/certchain.pem` (Umgebungsvariable
 `TRUST_CERTCHAIN_FILE`).
 
-> **Pflichtfeld:** Das Helm Chart bricht beim Rendern mit einem Fehler ab, wenn
+> **Pflichtfeld:** Das Helm-Chart bricht beim Rendern mit einem Fehler ab, wenn
 > `imageTrustCertchainSecretRef` nicht gesetzt ist.
 
 ```yaml
-zeta-guard:
-    imageTrustCertchainSecretRef: my-image-signer
+imageTrustCertchainSecretRef: my-image-signer
 ```
 
 Das Secret wird typischerweise so angelegt:
@@ -1385,7 +1456,7 @@ kubectl create secret generic my-image-signer \
 ```
 
 Die Zertifikatskette ist von der gematik zu beziehen. Für Testumgebungen enthält
-das Helm Chart im Verzeichnis `templates/` ein vorgefertigtes Secret
+das Helm-Chart im Verzeichnis `templates/` ein vorgefertigtes Secret
 `gematik-image-signer-test` mit den Testzertifikaten GEM.KOMP-CA61 und GEM.RCA7
 (jeweils TEST-ONLY). Der Standardwert in `values-demo.yaml` verweist auf dieses
 Test-Secret.
@@ -1393,8 +1464,7 @@ Test-Secret.
 > **Wichtig:** Das Test-Secret `gematik-image-signer-test` enthält
 > Testzertifikate und darf **nicht** in Produktivumgebungen verwendet werden.
 > Für den Produktivbetrieb muss das Secret mit den von der gematik
-> bereitgestellten
-> Produktivzertifikaten befüllt werden.
+> bereitgestellten Produktivzertifikaten befüllt werden.
 
 ---
 
@@ -1408,13 +1478,12 @@ sowie im Standardmodus eine dedizierte CNPG-Datenbank.
 Zwei Werte sind Pflicht — ohne sie startet der Dienst nicht:
 
 ```yaml
-zeta-guard:
-    notificationService:
-        enabled: true
-        env:
-            pushGatewayAllowedBaseUrls:
-                - "https://push-gateway.example/push/v1/"
-            channelsAllowed: "epa.documents.new,epa.consent.changed"
+notificationService:
+    enabled: true
+    env:
+        pushGatewayAllowedBaseUrls:
+            - "https://push-gateway.example/push/v1/"
+        channelsAllowed: "epa.documents.new,epa.consent.changed"
 ```
 
 Alle Werte des Blocks `notificationService.*` (Image und Varianten, Datenbank,
@@ -1473,48 +1542,65 @@ für Bestandsdeployments nichts ändert.
 > [Wann und wie oft die PDP-Konfiguration laufen muss](../Anleitungen/ZETA_Guard_Quickstart.md#wann-und-wie-oft-die-pdp-konfiguration-laufen-muss)
 > im Quickstart.
 
-Die PDP-Konfiguration erfolgt über Terraform. Zu den wichtigsten Variablen
-gehört:
+Die PDP-Konfiguration erfolgt über Terraform. Variablen ohne Standardwert (`—`)
+sind **erforderlich**; ein Apply ohne sie schlägt fehl. Eine kommentierte
+Vorlage mit allen Variablen liegt unter
+[demo.tfvars](https://github.com/gematik/zeta-guard-helm/blob/main/terraform/authserver/environments/demo.tfvars).
 
-| Variable                               | Standard                  | Beschreibung                                                                                                                                                        |
-|----------------------------------------|---------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `use_kubernetes`                       | `true`                    | Terraform-Betriebsmodus (`true` = K8s-Backend, `false` = lokal)                                                                                                     |
-| `keycloak_url`                         | —                         | Externe URL des Keycloak-Servers (bei Admin-API-Absicherung: URL des Admin-Hostnamens)                                                                              |
-| `keycloak_namespace`                   | —                         | Kubernetes-Namespace des Authservers                                                                                                                                |
-| `pdp_scopes`                           | `[]`                      | Zusätzliche PDP-Scopes                                                                                                                                              |
-| `audience_scope_name`                  | `"zero:audience"`         | Name des Audience-Scopes — trägt die Pflicht-Claims des Access-Tokens (siehe Hinweis unter der Tabelle)                                                             |
-| `audience`                             | `""`                      | Expliziter Audience-Wert im Access Token. Erforderlich, wenn `keycloak_url` auf einen Admin-Hostnamen zeigt (siehe unten).                                          |
-| `insecure_tls`                         | `false`                   | Selbst signierte Zertifikate zulassen                                                                                                                               |
-| `smtp_host`                            | `""`                      | SMTP-Server für den Realm (OTP-Versand der E-Mail-Bindung im mobilen Client-Flow). Leer lässt den `smtp_server`-Block des Realms komplett weg.                      |
-| `smtp_port`                            | `"25"`                    | SMTP-Port                                                                                                                                                           |
-| `smtp_from`                            | `""`                      | Absenderadresse der Realm-Mails — von Keycloak verlangt, sobald `smtp_host` gesetzt ist                                                                             |
-| `notification_history_enabled`         | `false`                   | Legt den Keycloak-Scope `notification.history.read` an (A_29974). Manuell synchron zu `notificationService.historyEnabled` halten — nicht automatisch gekoppelt.    |
-| `notification_service_resource_suffix` | `"/notification-service"` | Resource-Suffix des Notification Service für den Audience-Mapper der Notification-Scopes. Manuell synchron zu `notificationService.wellKnownResourceSuffix` halten. |
+| Variable                                    | Standard                  | Beschreibung                                                                                                                                                                     |
+|---------------------------------------------|---------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `keycloak_url`                              | —                         | Externe URL des Keycloak-Servers (bei Admin-API-Absicherung: URL des Admin-Hostnamens)                                                                                           |
+| `keycloak_namespace`                        | —                         | Kubernetes-Namespace des Authservers                                                                                                                                             |
+| `audience_scope_name`                       | —                         | Name des Audience-Scopes — trägt die Pflicht-Claims des Access-Tokens (siehe Hinweis unter der Tabelle)                                                                          |
+| `use_kubernetes`                            | `true`                    | Terraform-Betriebsmodus (`true` = K8s-Backend, `false` = lokal)                                                                                                                  |
+| `config_path`                               | `"~/.kube/config"`        | Pfad zur kubeconfig; nur bei `use_kubernetes = true` verwendet                                                                                                                   |
+| `keycloak_admin_secret`                     | `"authserver-admin"`      | Name des Secrets mit den Keycloak-Admin-Zugangsdaten. Terraform liest es nicht selbst; die mitgelieferten Skripte lösen die Zugangsdaten daraus zur Laufzeit auf.                |
+| `keycloak_username`                         | `""`                      | Keycloak-Admin-Benutzer. In **beiden** Modi erforderlich, `ephemeral`. Ausschließlich über `TF_VAR_keycloak_username` setzen — nicht in einer tfvars-Datei.                      |
+| `keycloak_password`                         | `""`                      | Keycloak-Admin-Passwort. In **beiden** Modi erforderlich, `ephemeral`. Ausschließlich über `TF_VAR_keycloak_password` setzen — nicht in einer tfvars-Datei.                      |
+| `insecure_tls`                              | `false`                   | Selbst signierte Zertifikate zulassen                                                                                                                                            |
+| `skip_external_resources`                   | `false`                   | Überspringt die externen Skripte, die sonst bereits bei `terraform plan` laufen                                                                                                  |
+| `audience`                                  | `""`                      | Expliziter Audience-Wert im Access-Token. Erforderlich, wenn `keycloak_url` auf einen Admin-Hostnamen zeigt (siehe unten). Leer = aus `keycloak_url` abgeleitet.                 |
+| `pdp_scopes`                                | `[]`                      | Zusätzliche PDP-Scopes, als optionale Realm-Scopes angelegt. Sie tragen **keinen** Claim-Mapper und können den Audience-Scope daher nicht ersetzen.                              |
+| `smc_b_client_secret`                       | `"**********"`            | Client-Secret des SMC-B-Identity-Providers. `ephemeral` und über ein write-only-Argument gesetzt — landet nicht im Terraform-State.                                              |
+| `smc_b_client_secret_version`               | `1`                       | Hochzählen, wenn `smc_b_client_secret` geändert wird. Ein write-only-Argument ist für Terraform nach dem Apply unsichtbar, ein geändertes Secret allein erzeugt also kein Diff.  |
+| `enable_sekidp`                             | `false`                   | Registriert den IDP `zeta-sekidp-oidc`, die mobilen Browser-/First-Login-Flows, die Entity-Statement-Schlüssel und die E-Mail-Binding-Scopes                                     |
+| `sekidp_fedmaster_url`                      | `""`                      | Fedmaster-URL für die Föderations-Vertrauensauflösung. Muss die extern erreichbare Ingress-URL sein (z. B. `https://<host>/sekidp-fedmaster`), nicht die Service-URL im Cluster. |
+| `use_fake_sekidp_testrealm`                 | `false`                   | **Nie in Produktion verwenden.** Legt einen minimalen Fake-SekIDP-Realm für lokale Tests an.                                                                                     |
+| `dummy_client_for_fake_sekidp_clientsecret` | `""`                      | **Nie in Produktion verwenden.** Client-Secret des Dummy-Testclients                                                                                                             |
+| `dummy_user_for_fake_sekidp_password`       | `""`                      | **Nie in Produktion verwenden.** Passwort des Dummy-Testbenutzers                                                                                                                |
+| `smtp_host`                                 | `""`                      | SMTP-Server für den Realm (OTP-Versand der E-Mail-Bindung im mobilen Client-Flow). Leer lässt den `smtp_server`-Block des Realms komplett weg.                                   |
+| `smtp_port`                                 | `"25"`                    | SMTP-Port                                                                                                                                                                        |
+| `smtp_from`                                 | `""`                      | Absenderadresse der Realm-Mails — von Keycloak verlangt, sobald `smtp_host` gesetzt ist                                                                                          |
+| `notification_history_enabled`              | `false`                   | Legt den Keycloak-Scope `notification.history.read` an (A_29974). Manuell synchron zu `notificationService.historyEnabled` halten — nicht automatisch gekoppelt.                 |
+| `notification_service_resource_suffix`      | `"/notification-service"` | Resource-Suffix des Notification Service für den Audience-Mapper der Notification-Scopes. Manuell synchron zu `notificationService.wellKnownResourceSuffix` halten.              |
+| `hsm_token_signing_enabled`                 | `false`                   | Registriert einen HSM-gestützten ES256-KeyProvider im Realm `zeta-guard`                                                                                                         |
+| `hsm_token_signing_endpoint`                | `""`                      | gRPC-Endpunkt des HSM-Proxy (z. B. `hsm-sim:50051`)                                                                                                                              |
+| `hsm_token_signing_key_id`                  | `""`                      | Kennung des Signaturschlüssels im HSM                                                                                                                                            |
+| `hsm_token_signing_priority`                | `"200"`                   | Priorität des Providers; höher gewinnt (Software-Schlüssel liegen bei `100`)                                                                                                     |
+| `hsm_token_signing_remove_software_keys`    | `true`                    | Entfernt die Software-Signaturschlüssel nach der HSM-Registrierung                                                                                                               |
+| `use_vau_db_enc`                            | `false`                   | Clientseitige Verschlüsselung des Realms. Nur empfohlen beim Betrieb in einer vertrauenswürdigen Ausführungsumgebung (VAU).                                                      |
 
 > **Hinweis zu SMTP in Testumgebungen:** Für Test- und Demo-Stages bringt das
 > Helm-Repository ein `mailcatcher`-Subchart mit (SMTP-Port `1025`, Web-UI
-> `1080`). `smtp_host` wird dann auf den mailcatcher-Service gezeigt, sodass
+> `1080`). `smtp_host` zeigt dann auf den mailcatcher-Service, sodass
 > OTP-Mails ohne echten Mailserver eingesehen werden können.
 
 > **Hinweis zu `audience_scope_name`:** An diesem Scope hängen die Mapper, die
-> die vom PEP
-> geforderten Access-Token-Claims setzen (`aud`, `profession_oid`, `client_id`,
-> `ip_address`,
-> `product_id`, `product_version`, `common_name`, `organization_name`). Der
-> Client muss den
-> Scope anfragen. Verlangt ein Fachdienst einen bestimmten Scope-Namen — z. B.
-> `vsdservice`
-> für das VSDM (A_26744) —, setzen Sie `audience_scope_name` auf diesen Wert und
-> führen ihn
+> die vom PEP geforderten Access-Token-Claims setzen (`aud`, `profession_oid`,
+> `client_id`, `ip_address`, `product_id`, `product_version`, `common_name`,
+> `organization_name`). Der Client muss den Scope anfragen. Verlangt ein
+> Fachdienst einen bestimmten Scope-Namen — z. B. `vsdservice` für das VSDM
+> (A_26744) —, setzen Sie `audience_scope_name` auf diesen Wert und führen ihn
 > **nicht** zusätzlich in `pdp_scopes` (doppelter Scope-Name → Fehler beim
-> Apply). Andernfalls
-> fehlen dem Token die Claims und der PEP lehnt die Anfrage vor der
-> Policy-Auswertung ab.
+> Apply). Andernfalls fehlen dem Token die Claims und der PEP lehnt die Anfrage
+> vor der
+> Policy-Auswertung ab. Pro Realm existiert genau ein Audience-Scope — der
+> gesetzte Name ist der einzige, der angelegt wird.
 
 Wenn `adminHostname` gesetzt ist und `keycloak_url` auf den Admin-Hostnamen
 zeigt, muss `audience` explizit auf den **öffentlichen Haupthostnamen** gesetzt
 werden — andernfalls würde der Audience-Wert aus der URL abgeleitet und stimmte
-nicht mit dem überein, was die Access Tokens tragen:
+nicht mit dem überein, was die Access-Tokens tragen:
 
 ```hcl
 keycloak_url = "https://admin.zeta.example.com/auth"

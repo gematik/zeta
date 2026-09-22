@@ -1,14 +1,14 @@
-# Wie Sie den mobilen Client-Flow mit dem ZETA SDK umsetzen
+# Wie Sie den mobilen Client-Flow mit dem ZETA-SDK umsetzen
 
 Diese Anleitung beschreibt die Client-Seite des mobilen Client-Flows: die
-interaktive Anmeldung über einen sektoralen IDP (SekIDP) mit dem ZETA SDK,
+interaktive Anmeldung über einen sektoralen IDP (SekIDP) mit dem ZETA-SDK,
 inklusive der E-Mail-Bindung bei der Erstanmeldung. Die Server-Sicht auf
 denselben Flow beschreibt
 [Wie der mobile Client-Flow funktioniert](Wie_der_mobile_Client-Flow_funktioniert.md).
 
 > [!WARNING]
 > Der mobile Client-Flow ist ein **Vorschau-Feature**. Serverseitig muss der
-> ZETA Guard mit `ZETA_OIDC_FLOW_ENABLED=true` betrieben werden; die
+> ZETA-Guard mit `ZETA_OIDC_FLOW_ENABLED=true` betrieben werden; die
 > Attestierung mobiler Clients ist dort derzeit gemockt.
 
 ---
@@ -31,13 +31,13 @@ Zielgruppe: Primärsystem-Hersteller (FdV-/App-Entwickler)
 
 ## Voraussetzungen
 
-- Ein ZETA Guard mit aktiviertem OIDC-Flow (`ZETA_OIDC_FLOW_ENABLED=true` an
+- Ein ZETA-Guard mit aktiviertem OIDC-Flow (`ZETA_OIDC_FLOW_ENABLED=true` an
   Keycloak- und Konfigurations-Container) und konfiguriertem SMTP für den
   OTP-Versand (siehe [Wie der mobile Client-Flow funktioniert](Wie_der_mobile_Client-Flow_funktioniert.md)).
 - Ein erreichbarer SekIDP (für Tests: Fake-SekIDP, siehe
   [Test-Umgebung](#test-umgebung)).
 - Grundlegende SDK-Integration wie in
-  [Wie Sie das ZETA SDK integrieren](Wie_Sie_das_ZETA_SDK_integrieren.md)
+  [Wie Sie das ZETA-SDK integrieren](Wie_Sie_das_ZETA_SDK_integrieren.md)
   beschrieben.
 
 ## Konfiguration
@@ -76,10 +76,10 @@ val sdk = ZetaSdk.build(
 bei der Dynamic Client Registration automatisch als `redirect_uris`
 registriert werden:
 
-| URI                  | Rolle                                                          |
-|----------------------|-----------------------------------------------------------------|
-| `{requestUri}/oidc`  | **Innerer** Callback: signalisiert den Abschluss beim SekIDP   |
-| `{requestUri}/app`   | **Äußerer** Callback: signalisiert den Abschluss beim ZETA Guard |
+| URI                 | Rolle                                                            |
+|---------------------|------------------------------------------------------------------|
+| `{requestUri}/oidc` | **Innerer** Callback: signalisiert den Abschluss beim SekIDP     |
+| `{requestUri}/app`  | **Äußerer** Callback: signalisiert den Abschluss beim ZETA-Guard |
 
 Alle weiteren Endpunkte (PAR, Authorization, Broker, bind-email) löst das SDK
 nach der Discovery selbst aus dem ermittelten Issuer auf; die App muss keine
@@ -88,10 +88,10 @@ Guard-Endpunkte konfigurieren.
 ## Anmeldung starten
 
 PAR und PKCE übernimmt das SDK vollständig: Beim ersten `authenticate()` bzw.
-beim ersten Aufruf über den `ZetaHttpClient` erzeugt es PKCE-Verifier/
--Challenge und `state`, sendet den Pushed Authorization Request (mit
-`redirect_uri`, `oidc_redirect_uri`, `idp_iss` und Client Assertion) und
-erhält eine `request_uri`.
+beim ersten Aufruf über den `ZetaHttpClient` erzeugt es PKCE-Verifier/-Challenge
+und `state`, sendet den Pushed Authorization Request (mit `redirect_uri`,
+`oidc_redirect_uri`, `idp_iss` und Client Assertion) und erhält eine
+`request_uri`.
 
 Den Browser-Schritt liefert die App über den `AuthenticationCallback`: Er
 bekommt `clientId` und `request_uri`, öffnet
@@ -116,7 +116,7 @@ der SDK-API — Apps können ihn als Vorlage übernehmen oder einen eigenen
 
 Bei der Erstanmeldung eines mobilen Clients wird die Identität an eine
 E-Mail-Adresse gebunden (TOFU-Faktor F1). Erkennungsmerkmal: Die Token-Antwort
-enthält den Scope `zeta:email-verify` und noch kein Refresh Token; die
+enthält den Scope `zeta:email-verify` und noch kein Refresh-Token; die
 Antwort nennt außerdem den `binding_mode` (`collect_email` oder `verify_otp`)
 und ggf. einen `email_hint`. Das SDK führt die Bindung dann automatisch über
 den `OtpCallback` der `OidcConfig`:
@@ -144,8 +144,8 @@ Ablauf im SDK (`completeEmailBinding`):
      `status = bound` endet die Schleife, bei einem abgelehnten Code wird der
      Nutzer mit `rejected = true` erneut gefragt.
    - `OtpSubmission.Resend` → `POST …/bind-email/resend`.
-3. Das reduzierte Binding-Token wird per Token Exchange gegen den
-   vollwertigen Token-Satz (Access + Refresh Token) getauscht und persistiert.
+3. Das reduzierte Binding-Token wird per Token Exchange gegen den vollwertigen
+   Token-Satz (Access- und Refresh-Token) getauscht und persistiert.
 
 Eine minimale Implementierung, die die UI entkoppelt (angelehnt an den
 `TestDriverOtpCallback` im Repository; für eine Compose-UI-Variante siehe
@@ -222,5 +222,5 @@ Details (Benachrichtigung der alten Adresse, Security-Event) beschreibt
 - Der OIDC-Flow ist nur in der Kotlin-Multiplatform-API verfügbar; die
   C#-, C++- und Java-Anbindungen enthalten ihn derzeit nicht
   (siehe [SDK-Übersicht](../Referenzen/SDK-Uebersicht.md)).
-- Das reduzierte Binding-Token ist kurzlebig (300 s, kein Refresh Token);
+- Das reduzierte Binding-Token ist kurzlebig (300 s, kein Refresh-Token);
   bricht die E-Mail-Bindung ab, muss die Anmeldung neu gestartet werden.

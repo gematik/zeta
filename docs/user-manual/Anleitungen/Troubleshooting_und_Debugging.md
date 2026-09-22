@@ -1,6 +1,6 @@
 # Troubleshooting & Debugging
 
-Dieses Dokument richtet sich an Betreiber von Fachdiensten, die ZETA Guard
+Dieses Dokument richtet sich an Betreiber von Fachdiensten, die ZETA-Guard
 betreiben. Es beschreibt im Sinne eines Betriebshandbuchs, wo sich die Logs und
 Metriken der einzelnen ZETA-Guard-Komponenten finden, welche Ereignisse geloggt
 werden, wie sich Log-Level für eine Fehleranalyse erhöhen lassen und welche
@@ -28,7 +28,7 @@ Verwandte Dokumente:
 ## Wo sich Logs und Metriken finden
 
 Alle ZETA-Guard-Komponenten schreiben ihre Logs nach `stdout`/`stderr` des
-jeweiligen Containers. ZETA Guard bringt keinen eigenen Log-Collector mit. Sie
+jeweiligen Containers. ZETA-Guard bringt keinen eigenen Log-Collector mit. Sie
 können aber Container-Logs über die Kubernetes-üblichen Mechanismen des
 Betreibers einsehen: `kubectl logs` für die Ad-hoc-Analyse, ein Log-Agent des
 Betreibers für die dauerhafte Sammlung.
@@ -39,13 +39,20 @@ Telemetry-Gateway (OpenTelemetry Collector).
 Dessen `*/dienst_hersteller`-Pipelines sind für das eigene Observability-Backend
 des Betreibers vorgesehen,
 siehe [Wie Sie ein Observability-Backend anschließen](Wie_Sie_ein_Observability-Backend_an_ZETA-Guard_anschließen.md).
+Rein sicherheitsbezogene Signale (Attack-Detection-Logs, die Security-Events
+`authn_client_registered`/`authn_client_registration_fail`/
+`authn_client_deleted`/`authn_token_created`, OPA Decision-Logs, Metriken
+`attack.detection.*`/`zeta_guard_kpi.*`) werden in diesen Pipelines
+herausgefiltert und stehen nur im Container-Log der
+Komponenten (Decision-Logs nur mit `opa.logDecisions: true`) sowie im Export an
+TI-SIEM/TI-SIM zur Verfügung (A_28960).
 
 ```mermaid
 ---
 title: Wo Logs und Metriken anfallen (vereinfacht)
 ---
 flowchart LR
-    subgraph ZetaGuard["`**ZETA Guard**`"]
+    subgraph ZetaGuard["`**ZETA-Guard**`"]
         direction TB
         AuthServer["`**Authorization Server**`"]
         HttpProxy["`**HTTP Proxy**`"]
@@ -94,7 +101,7 @@ flowchart LR
 
 Alle Container schreiben ihre Logs nach `stdout`/`stderr` (Pfeile zu
 „Container-Logs“).
-Innerhalb von ZETA Guard senden die Komponenten zusätzlich Logs (teilweise),
+Innerhalb von ZETA-Guard senden die Komponenten zusätzlich Logs (teilweise),
 Metriken und Traces an das Telemetry-Gateway; die gestrichelten Pfeile stehen
 für das Abfragen der Metrik-Endpunkte durch das Gateway. „Container-Logs“ ist
 keine Komponente, sondern steht für den Kubernetes-Log-Mechanismus, dessen
@@ -104,7 +111,7 @@ Sammlung und Speicherung der Betreiber verantwortet.
 |------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Authorization Server (`authserver`, Keycloak)                    | `stdout`, JSON-Format (Helm-Value `authServerLogConsoleOutput`)                                                                                                                                          | Helm-Value `authserver.log.level` (Default `INFO`), wird als `KC_LOG_LEVEL` gesetzt                                                                                   | Management-Port `9000`, Pfad `/auth-mgmt/metrics` (Prometheus-Format)                                                                                  |
 | HTTP Proxy (`pep-proxy`, nginx)                                  | nginx-Access- und -Error-Log auf `stdout`, beide zusätzlich per Syslog an das Telemetry-Gateway; Modul-Logs auf `stdout` und per OTLP an das Telemetry-Gateway                                           | Derzeit kein Helm-Value; Modul-Logs (stdout und OTLP) filtern über die Umgebungsvariable `RUST_LOG` (Default `info`), siehe [Debugging](#debugging-log-level-erhöhen) | Optionaler `nginx-prometheus-exporter`-Sidecar auf Port `9113` (Helm-Value `pepproxyMetricsEnabled`); Modul-Metriken per OTLP an das Telemetry-Gateway |
-| Policy Engine (`opa`)                                            | `stdout`/`stderr` (Server-Log); Decision-Logs und Status-Updates an das Telemetry-Gateway, im Konsolen-Log nur je nach `opa.logDecisions` (Default `true`) bzw. `opa.logStatusUpdates` (Default `false`) | Helm-Values `opa.logLevel` (`debug`/`info`/`warn`/`error`), `opa.logDecisions`, `opa.logStatusUpdates`                                                                | OPA-API auf Port `8181` (`/metrics`); Status-/Bundle-Metriken über Helm-Value `opaStatusPrometheus`                                                    |
+| Policy Engine (`opa`)                                            | `stdout`/`stderr` (Server-Log); Decision-Logs und Status-Updates an das Telemetry-Gateway, im Konsolen-Log nur je nach `opa.logDecisions` (Default `false`) bzw. `opa.logStatusUpdates` (Default `false`) | Helm-Values `opa.logLevel` (`debug`/`info`/`warn`/`error`), `opa.logDecisions`, `opa.logStatusUpdates`                                                                | OPA-API auf Port `8181` (`/metrics`); Status-/Bundle-Metriken über Helm-Value `opaStatusPrometheus`                                                    |
 | Telemetry-Gateway (`telemetry-gateway`, OpenTelemetry Collector) | `stdout`/`stderr`                                                                                                                                                                                        | Über die Collector-Konfiguration (Helm-Values unter `telemetry-gateway`)                                                                                              | Eigenmetriken auf Port `8888`                                                                                                                          |
 | Datenbank (`keycloak-db`, CloudNativePG/PostgreSQL)              | `stdout` (vom CloudNativePG-Operator verwaltet)                                                                                                                                                          | PostgreSQL-Parameter über die CloudNativePG-Konfiguration                                                                                                             | Optional PodMonitor über Helm-Value `cloudnativePg.monitoring` (erfordert Prometheus-Operator)                                                         |
 
@@ -120,8 +127,8 @@ Telemetry-Gateway):
 |--------------------------------|-----------------|-------------|-----------------------------------------------------------------------------------|
 | `http.server.request.duration` | Histogram       | `s`         | Dauer aller Requests am HTTP Proxy (Attribute: HTTP-Methode, Statuscode)          |
 | `zeta.asl.sessions.active`     | Gauge           |             | Einträge (Handshakes + Sessions) im ASL-Session-Cache                             |
-| `zeta.jwk_cache.age`           | Gauge           | `s`         | Sekunden seit der letzten erfolgreichen JWKS-Update (Attribut: `target`)          |
-| `zeta.jwk_cache.refresh`       | Counter         |             | JWKS-Updatesversuche nach Ziel und Ergebnis (Attribute: `target`, `outcome`)      |
+| `zeta.jwk_cache.age`           | Gauge           | `s`         | Sekunden seit dem letzten erfolgreichen JWKS-Update (Attribut: `target`)          |
+| `zeta.jwk_cache.refresh`       | Counter         |             | JWKS-Update-Versuche nach Ziel und Ergebnis (Attribute: `target`, `outcome`)      |
 | `zeta.ocsp.response.age`       | Gauge           | `s`         | Sekunden seit dem letzten erfolgreichen OCSP-Abruf                                |
 | `zeta.asl.signer_cert.expiry`  | Gauge           | `s`         | Ablaufzeitpunkt (`not_after`) des ASL-Signaturzertifikats in Unix-Epochensekunden |
 
@@ -142,7 +149,7 @@ Proxy sowie die Metrik-Endpunkte sind nur clusterintern erreichbar.
 
 ### Security-Events
 
-ZETA Guard setzt Security-Events als strukturierte Logs um. Die vollständige
+ZETA-Guard setzt Security-Events als strukturierte Logs um. Die vollständige
 Übersicht mit Log-Level, Endpunkten und Properties findet sich in der Referenz
 [Übersicht über alle Security-Events von ZETA-Guard](../Referenzen/Security-Events.md).
 Derzeit umfasst sie:
@@ -182,9 +189,9 @@ Jede Policy-Entscheidung erzeugt ein Decision-Log; es enthält die Ein- und
 Ausgabe der Policy-Auswertung (u. a. Client-ID und Client-IP in den
 Eingabedaten). Decision-Logs und Status-Updates (Bundle-/Plugin-Status) werden
 an das Telemetry-Gateway gesendet; im Konsolen-Log der OPA-Pods erscheinen sie
-nur abhängig von `opa.logDecisions` (Default `true`) bzw.
+nur abhängig von `opa.logDecisions` (Default `false`) bzw.
 `opa.logStatusUpdates` (Default `false`). Auf dem zugehörigen Trace des
-Authorization Servers werden dieAttribute `zeta.client.id` und `zeta.client.ip`
+Authorization Servers werden die Attribute `zeta.client.id` und `zeta.client.ip`
 gesetzt (siehe [Telemetrie-Attribute](../Referenzen/Telemetrie-Attribute.md)).
 
 ### HTTP Proxy
@@ -205,8 +212,8 @@ gesetzt (siehe [Telemetrie-Attribute](../Referenzen/Telemetrie-Attribute.md)).
 
 ## Personenbezogene Daten in Logs und Telemetrie
 
-Auf den Standard-Log-Leveln (INFO und höher) enthalten Logs und Telemetrie (
-Traces, Decision-Logs) folgende personenbeziehbare Daten:
+Auf den Standard-Log-Leveln (INFO und höher) enthalten Logs und Telemetrie
+(Traces, Decision-Logs) folgende personenbeziehbare Daten:
 
 * **Client-IP-Adressen**: im Access-Log des HTTP Proxy (`$remote_addr`,
   `X-Forwarded-For`), im Attribut `attackDetection.clientIP` der
@@ -220,7 +227,7 @@ Traces, Decision-Logs) folgende personenbeziehbare Daten:
 
 Die Metriken tragen bewusst keine client-identifizierenden Attribute.
 
-Access Token, Refresh Token und die Telematik-ID werden von den
+Access-Token, Refresh-Token und die Telematik-ID werden von den
 ZETA-Guard-Komponenten auf INFO/WARN/ERROR nicht geloggt. Auf DEBUG-Level
 können jedoch Token-Claims und vollständige OPA-Eingabedaten im Log erscheinen
 (siehe [Debugging: Log-Level erhöhen](#debugging-log-level-erhöhen)).
@@ -291,7 +298,7 @@ Filtern der Log-Meldungen in einem Observability-Backend.
 }
 ```
 
-**WARN — Proxy-Modul, fehlgeschlagene JWKS-Update (Cache noch gültig):**
+**WARN — Proxy-Modul, fehlgeschlagenes JWKS-Update (Cache noch gültig):**
 
 ```text
 2026-07-30T09:17:30Z  WARN ngx_pep::jwk_cache: error=connection refused refresh failed (in grace, cache kept)
@@ -370,11 +377,11 @@ entstandenen Logs entsprechend schutzbedürftig.
 
 ## Aufbewahrung und Rotation
 
-ZETA Guard schreibt keine Log-Dateien in den Containern; alle Logs laufen über
+ZETA-Guard schreibt keine Log-Dateien in den Containern; alle Logs laufen über
 `stdout`/`stderr`. Damit gelten für Rotation und Aufbewahrung folgende Hinweise:
 
 * **Rotation** erfolgt durch die Container-Runtime bzw. das Kubelet
-  (Log-Rotation der Container-Logs auf den Nodes). ZETA Guard bringt keine
+  (Log-Rotation der Container-Logs auf den Nodes). ZETA-Guard bringt keine
   eigene Rotationskonfiguration mit und benötigt keine.
 * **Aufbewahrung (Retention)** liegt in der Verantwortung des Betreibers und
   richtet sich nach den für den jeweiligen Fachdienst geltenden regulatorischen
@@ -418,8 +425,8 @@ Betreiber-SIEM dienen können. Als Ausgangspunkt empfehlen sich:
 
 Einige Logdaten fallen konstruktionsbedingt mehrfach an, da Authorization
 Server, Policy Engine und HTTP Proxy Teile ihrer Logs zusätzlich zu `stdout`/
-`stderr` an das Telemetry-Gateway senden. Wenn Sie sowohl die Container-Logs (
-`stdout`/`stderr`) sammeln als auch die `*/dienst_hersteller`-Pipelines des
+`stderr` an das Telemetry-Gateway senden. Wenn Sie sowohl die Container-Logs
+(`stdout`/`stderr`) sammeln als auch die `*/dienst_hersteller`-Pipelines des
 Telemetry-Gateways an ein eigenes Backend anschließen, erhalten Sie diese
 Einträge doppelt.
 
@@ -428,14 +435,15 @@ Hinweise zur Optimierung des Logvolumens:
 * Legen Sie fest, welche Quelle für Ihr Log-Backend führend ist: die
   Container-Log-Sammlung oder die `dienst_hersteller`-Pipelines des Gateways.
   Der Export an TI-SIM/TI-SIEM ist davon unabhängig und bleibt in beiden
-  Fällen unverändert. Beachten Sie dabei: Das Telemetry-Gateway puffert nur im
-  Arbeitsspeicher — bei einem Ausfall des Gateways oder des Backends können
-  Telemetriedaten verloren gehen, während die Container-Logs davon unberührt
-  bleiben.
-* OPA Decision-Logs: Mit `opa.logDecisions: false` entfallen die Decision-Logs
-  im Konsolen-Log der OPA-Pods; sie werden weiterhin an das Telemetry-Gateway
-  gesendet. Das reduziert das Log-Volumen der OPA-Pods deutlich, da sonst
-  jede Policy-Entscheidung doppelt anfällt.
+  Fällen unverändert. Beachten Sie dabei: Für die `dienst_hersteller`-Exporter
+  puffert das Telemetry-Gateway nur im Arbeitsspeicher (nur die Sending-Queues
+  der beiden gematik-Exporter liegen auf dem PVC) — bei einem Ausfall des
+  Gateways oder des Backends können Telemetriedaten verloren gehen, während die
+  Container-Logs davon unberührt bleiben.
+* OPA Decision-Logs: Standardmäßig (`opa.logDecisions: false`) erscheinen
+  Decision-Logs nicht im Konsolen-Log der OPA-Pods, sondern gehen nur an das
+  Telemetry-Gateway. Mit `true` fallen sie zusätzlich auf der Konsole an und
+  verdoppeln das Log-Volumen der OPA-Pods.
 * Access- und Error-Log des HTTP Proxy werden per Syslog an das
   Telemetry-Gateway gespiegelt und erscheinen zusätzlich auf `stdout`; die
   Modul-Logs des HTTP Proxy fallen ebenfalls doppelt an (`stdout` und OTLP).

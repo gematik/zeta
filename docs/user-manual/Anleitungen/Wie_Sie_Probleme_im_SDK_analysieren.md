@@ -1,25 +1,26 @@
-# Wie sie Probleme im SDK analysieren können
+# Wie Sie Probleme im SDK analysieren können
 
-Dieser Abschnitt beschreibt Schritte, wie mögliche Probleme im Client analysiert werden können.
-Im Laufe der weiteren Entwicklung wird dieser Bereich noch fortgeschrieben.
+Dieser Abschnitt zeigt, wie Sie Probleme im Client analysieren. Er wächst mit
+der weiteren Entwicklung.
 
-## Wie komme ich an Log-Informationen
+## Wie komme ich an Log-Informationen?
 
-Das SDK wird in einen Client eingebunden. Der Client gibt dem SDK die Möglichkeit, Log-Ausgaben
-auszugeben. Dazu wird dem SDK ein Log Provider in der Konfiguration übergeben.
+Das SDK wird in einen Client eingebunden; der Client stellt ihm über die
+Konfiguration einen Log-Provider bereit, über den das SDK seine Ausgaben
+schreibt.
 
-Dort werden dann bis zum Debug Level Ausgaben ermöglicht. Diese erlauben eine tiefe Analyse
-auch der Aufrufe und Antworten des Guards.
+Der Provider nimmt Ausgaben bis zum Debug-Level entgegen. Damit lassen sich auch
+die Aufrufe und Antworten des Guards genau analysieren.
 
-Wie das im einzelnen geschieht hängt von der Plattform ab und ist in der jeweiligen API-Beschreibung
-nachzulesen.
+Wie das im Einzelnen aussieht, hängt von der Plattform ab und steht in der
+jeweiligen API-Beschreibung.
 
 ## Beispiel-Ausgaben
 
 ### Interne Logs
 
-Interne Logs werden mit dem Log-Level gekennzeichnet, z.B. `[DEBUG]`. Für bestimmte Module werden hier zusätzlich
-Modulkenner wie `[STORAGE]` hinzugefügt.
+Interne Logs tragen den Log-Level als Präfix, z. B. `[DEBUG]`. Bei einigen
+Modulen kommt ein Modulkenner wie `[STORAGE]` hinzu.
 
 ````
 [DEBUG] [Zeta] Getting ASL session
@@ -32,11 +33,13 @@ Modulkenner wie `[STORAGE]` hinzugefügt.
 [DEBUG] [Zeta] PROCEED: iteration=1
 ````
 
-Die Log Ausgaben des Storage Moduls ermöglichen die Prüfung wie ein ggf. durch den Client bereitgestelltes Storage Modul verwendet wird.
+An den Log-Ausgaben des Storage-Moduls lässt sich ablesen, wie das SDK ein vom
+Client bereitgestelltes Storage-Modul verwendet.
 
 #### Timing-Ausgaben
 
-Verschiedene Funktionen sind mit Zeitmessungen instrumentiert. Diese werden mit `-TIMING` gekennzeichnet.
+Verschiedene Funktionen sind mit Zeitmessungen instrumentiert. Diese werden mit
+`-TIMING` gekennzeichnet.
 ````
 [DEBUG] [Zeta] [ORCHESTRATOR-TIMING] url=https://zeta-dev.*****/pep/achelos_testfachdienst/api/erezept executeRequest=443.004400ms total=488.275100ms
 ...
@@ -55,14 +58,14 @@ Verschiedene Funktionen sind mit Zeitmessungen instrumentiert. Diese werden mit 
 [DEBUG] [Zeta] [CRYPTO-TIMING] signWithDpopKey(rs:https://zeta-dev.*******/pep/achelos_testfachdienst/:zero:audience)=1.547900ms inputSize=624
 ````
 
-#### Request und Response-Logs
+#### Request- und Response-Logs
 
-Im Log-Level Info werden weiterhin die Requests und Responses an den ZETA Guard geloggt.
-Dies betrifft sowohl PDP als auch PEP Anfragen.
+Im Log-Level Info werden weiterhin die Requests und Responses an den ZETA-Guard
+geloggt. Dies betrifft sowohl PDP- als auch PEP-Anfragen.
 
 Dabei werden Cookies und Header ebenso mitgeschrieben.
 
-Für ASL Requests sind allerdings nur die äußeren Requests sichtbar.
+Für ASL-Requests sind allerdings nur die äußeren Requests sichtbar.
 
 ````
 [INFO] [Zeta] REQUEST: https://zeta-dev.********/ASL/426204a8-f3f7-4697-b1b3-1e50f65675d8
@@ -81,5 +84,5 @@ BODY Content-Type: application/octet-stream
 BODY START
 ````
 
-Aus diesen Log-Ausgaben können dann alle notwendigen Informationen extrahiert werden.
-So können die JWTs extrahiert und dann mit anderen Tools sichtbar gemacht werden.
+Diesen Log-Ausgaben lassen sich alle nötigen Informationen entnehmen — etwa die
+JWTs, die Sie dann mit anderen Werkzeugen sichtbar machen.

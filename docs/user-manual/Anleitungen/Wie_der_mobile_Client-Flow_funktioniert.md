@@ -1,16 +1,17 @@
 # Wie der mobile Client-Flow funktioniert
 
-Der mobile Client-Flow erlaubt Versicherten die Anmeldung am ZETA Guard mit ihrer
-GesundheitsID über einen sektoralen IDP (SekIDP) statt mit einer SMC-B. Er umfasst
-die Anbindung an die OpenID-Föderation, einen `authorization_code`-Grant für mobile
-Clients und die Bindung der Identität an eine E-Mail-Adresse.
+Der mobile Client-Flow erlaubt Versicherten die Anmeldung am ZETA-Guard mit
+ihrer GesundheitsID über einen sektoralen IDP (SekIDP) statt mit einer SMC-B. Er
+umfasst die Anbindung an die OpenID-Föderation, einen `authorization_code`-Grant
+für mobile Clients und die Bindung der Identität an eine E-Mail-Adresse.
 
 Der gesamte Flow ist über die Umgebungsvariable **`ZETA_OIDC_FLOW_ENABLED`**
 geschaltet (Standard: `false`). Solange sie nicht gesetzt ist, verhält sich der
-Guard wie bisher; alle unten beschriebenen Endpunkte und Provider sind dann inaktiv.
+Guard wie bisher; alle unten beschriebenen Endpunkte und Provider sind dann
+inaktiv.
 
 Die Umsetzung auf Client-Seite beschreibt
-[Wie Sie den mobilen Client-Flow mit dem ZETA SDK umsetzen](Wie_Sie_den_mobilen_Client-Flow_mit_dem_ZETA_SDK_umsetzen.md).
+[Wie Sie den mobilen Client-Flow mit dem ZETA-SDK umsetzen](Wie_Sie_den_mobilen_Client-Flow_mit_dem_ZETA_SDK_umsetzen.md).
 
 ## Ablauf
 
@@ -36,7 +37,7 @@ Die Umsetzung auf Client-Seite beschreibt
    Registrierungsstatus des Clients:
    - Status `CONFIRMED` → OPA-Autorisierung, danach der vollwertige Token-Satz.
    - sonst → ein **reduziertes E-Mail-Binding-Token**: 300 s Lebensdauer, kein
-     Refresh Token, Audience `zeta-guard-as`, Scopes nur `zeta:email-binding` /
+     Refresh-Token, Audience `zeta-guard-as`, Scopes nur `zeta:email-binding` /
      `zeta:email-verify`. Die Token-Antwort enthält `binding_mode`
      (`collect_email` oder `verify_otp`) und bei `verify_otp` einen `email_hint`;
      in diesem Fall wird sofort ein OTP an die bereits gebundene Adresse gemailt.
@@ -70,7 +71,7 @@ Redirect-URIs der Clients des Realms werden gemäß A_25656 gelistet.
   Access-Token-Mapper für die vom PDP vorgegebenen Lebensdauern gelesen (A_28527).
 - Bei mobilen Sessions ist die **KVNR** das Token-Subject; die Produkt-Claims
   stammen aus dem bei der Registrierung hinterlegten Client Statement.
-  Refresh Tokens bleiben DPoP-gebunden (A_25663).
+  Refresh-Tokens bleiben DPoP-gebunden (A_25663).
 - Die Professions-Liste der OPA-Daten enthält zusätzlich `1.2.276.0.76.4.49`
   (Versicherte).
 
@@ -145,6 +146,6 @@ dort ablegen). Unvollständige Konfiguration bricht den Start ab (fail closed).
   (keine Templates, keine Internationalisierung).
 - `require_pushed_authorization_requests: true` wird ausgewiesen, aber noch
   nicht pro Client erzwungen.
-- Die ausgelieferte IdP-Konfiguration zielt auf die lokale Mock-Föderation
+- Die ausgelieferte IDP-Konfiguration zielt auf die lokale Mock-Föderation
   (`fedmasterUrl` über HTTP); produktive Umgebungen benötigen HTTPS und echte
   Föderations-Endpunkte.

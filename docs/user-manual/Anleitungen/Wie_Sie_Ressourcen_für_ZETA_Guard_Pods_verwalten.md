@@ -1,7 +1,7 @@
 # Wie Sie Ressourcen für ZETA-Guard-Pods verwalten
 
 Der `zeta-guard`-Chart
-unterstützt [Kubernetes Syntax für Resource-Requests und -Limits](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/).
+unterstützt [Kubernetes-Syntax für Resource-Requests und -Limits](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/).
 Die Requests/Limits werden auf Container-Ebene angewandt.
 
 ## Inhaltsverzeichnis
@@ -20,24 +20,23 @@ Keycloak-Build-Init-Container konfiguriert werden:
 - `authserver.container.resources` — der laufende Keycloak-Prozess
 
 ```yaml
-zeta-guard:
-    authserver:
-        initContainer:
-            resources:
-                limits:
-                    cpu: "2"
-                    memory: "2Gi"
-                requests:
-                    cpu: "500m"
-                    memory: "512Mi"
-        container:
-            resources:
-                limits:
-                    cpu: "8"
-                    memory: "4Gi"
-                requests:
-                    cpu: "4"
-                    memory: "4Gi"
+authserver:
+    initContainer:
+        resources:
+            limits:
+                cpu: "2"
+                memory: "2Gi"
+            requests:
+                cpu: "500m"
+                memory: "512Mi"
+    container:
+        resources:
+            limits:
+                cpu: "8"
+                memory: "4Gi"
+            requests:
+                cpu: "4"
+                memory: "4Gi"
 ```
 
 > **Migration von 0.5.3:** Die Authserver-Container-Ressourcen wurden von
@@ -52,38 +51,36 @@ einmalig als Top-Level-Key im `zeta-guard`-Subchart konfiguriert — nicht unter
 `authserver`:
 
 ```yaml
-zeta-guard:
-    provisioningProcessor:
-        resources:
-            limits:
-                cpu: "1"
-                memory: "200Mi"
-            requests:
-                cpu: "100m"
-                memory: "100Mi"
+provisioningProcessor:
+    resources:
+        limits:
+            cpu: "1"
+            memory: "200Mi"
+        requests:
+            cpu: "100m"
+            memory: "100Mi"
 ```
 
 ## Weitere Kernkomponenten
 
 ```yaml
-zeta-guard:
-    opa:
-        resources:
-            limits:
-                memory: 1Gi
-        workloadIdentityFederation:
-            worker:
-                resources:
-                    limits:
-                        memory: 1Gi
-    pepproxy:
-        resources:
-            limits:
-                memory: 1Gi
-    telemetry-gateway:
-        resources:
-            limits:
-                memory: 1Gi
+opa:
+    resources:
+        limits:
+            memory: 1Gi
+    workloadIdentityFederation:
+        worker:
+            resources:
+                limits:
+                    memory: 1Gi
+pepproxy:
+    resources:
+        limits:
+            memory: 1Gi
+telemetry-gateway:
+    resources:
+        limits:
+            memory: 1Gi
 ```
 
 ## Infinispan

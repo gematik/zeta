@@ -1,8 +1,8 @@
-# Wie Sie das SDK Notifications-Modul verwenden
+# Wie Sie das SDK-Notifications-Modul verwenden
 
 Diese Anleitung beschreibt, wie eine App über das Notifications-Modul des
-ZETA SDK Push-Registrierungen (Pusher) und Benachrichtigungskanäle beim
-Notification Service des ZETA Guards verwaltet. Der Empfang und die Anzeige
+ZETA-SDK Push-Registrierungen (Pusher) und Benachrichtigungskanäle beim
+Notification Service des ZETA-Guards verwaltet. Der Empfang und die Anzeige
 der eigentlichen Push-Nachrichten (FCM/APNs) ist Aufgabe der einbettenden App,
 nicht des Moduls.
 
@@ -33,7 +33,7 @@ die interne Test-Variante `notificationsForTesting()` (siehe unten).
 ## Voraussetzungen
 
 - Ein über `ZetaSdk.build()` erstellter, registrierter und authentifizierbarer
-  Client (siehe [Wie Sie das ZETA SDK integrieren](Wie_Sie_das_ZETA_SDK_integrieren.md)).
+  Client (siehe [Wie Sie das ZETA-SDK integrieren](Wie_Sie_das_ZETA_SDK_integrieren.md)).
 - Der Notification Service muss im ZETA-Guard-Deployment aktiviert sein, siehe
   [Konfiguration des Notification Service](../Referenzen/Konfiguration_des_Notification_Service.md).
 - Notifications sind **Opt-in**: In der `BuildConfig` muss ein
@@ -54,11 +54,11 @@ val notifications = sdk.notifications() // nur Android/iOS
 
 Felder von `NotificationConfig` (alle mit Defaults):
 
-| Feld                   | Default                  | Beschreibung                                                                                                       |
-|------------------------|--------------------------|--------------------------------------------------------------------------------------------------------------------|
+| Feld                   | Default                  | Beschreibung                                                                                                      |
+|------------------------|--------------------------|-------------------------------------------------------------------------------------------------------------------|
 | `wellKnownSubpath`     | `notification-service`   | Subpfad der Well-Known-Metadaten des NS: `https://{resource-host}/.well-known/oauth-protected-resource/{subpath}` |
-| `apiBasePath`          | `/push/v1`               | API-Präfix des Notification Service am PEP                                                                         |
-| `rateLimitRetryPolicy` | `RateLimitRetryPolicy()` | Retry-Verhalten bei `429` (Default: max. 2 Wiederholungen, Start-Backoff 500 ms)                                   |
+| `apiBasePath`          | `/push/v1`               | API-Präfix des Notification Service am PEP                                                                        |
+| `rateLimitRetryPolicy` | `RateLimitRetryPolicy()` | Retry-Verhalten bei `429` (Default: max. 2 Wiederholungen, Start-Backoff 500 ms)                                  |
 
 Der Notification Service läuft per Definition auf dem Host des Resource
 Servers; seine Basis-URL wird daher aus der Resource-URL abgeleitet. Der
@@ -70,7 +70,7 @@ Operationsaufruf, wo auch Fehler sichtbar werden.
 
 Das Token-Handling übernimmt das SDK vollständig, die App muss nichts tun:
 
-- Jeder Aufruf verwendet ein **dienstspezifisches Access Token** für den
+- Jeder Aufruf verwendet ein **dienstspezifisches Access-Token** für den
   Notification Service (eigene `resource`/Scopes, getrennt vom Token für den
   Resource Server) mit Least-Privilege-Scope pro Operation gemäß der
   normativen Scope-Tabelle (A_29979): `notification.pusher.read`/`.write`,

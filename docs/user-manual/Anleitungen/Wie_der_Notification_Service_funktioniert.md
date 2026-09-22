@@ -6,7 +6,7 @@ sprechen: Der Fachdienst übergibt die Benachrichtigung dem Notification Service
 dieser ermittelt die registrierten Geräte mit aktivem Kanal und leitet den Push
 asynchron an das Push Gateway des App-Anbieters weiter, das die Zustellung an
 die Plattformdienste (APNs/FCM) übernimmt. Mobile Clients verwalten ihre
-Push-Ziele und Kanäle über das ZETA SDK.
+Push-Ziele und Kanäle über das ZETA-SDK.
 
 Der Notification Service gehört zur Umsetzungsstufe 2 und ist eine
 **Vorschau-Komponente**: Er ist über den Helm-Wert
@@ -27,7 +27,7 @@ Konfigurationsreferenz steht in
    entsprechen, sonst wird später nichts zugestellt. Derselbe Endpunkt
    aktualisiert (`kind: "http"`) und löscht (`kind: null`) Pusher;
    `GET /pushers` listet sie. Details siehe
-   [Wie Sie das SDK Notifications-Modul verwenden](Wie_Sie_das_SDK_Notifications-Modul_verwenden.md).
+   [Wie Sie das SDK-Notifications-Modul verwenden](Wie_Sie_das_SDK_Notifications-Modul_verwenden.md).
 2. **Kanäle konfigurieren:** `GET /channels` liefert die für den Nutzer
    verfügbaren Kanäle aus der statischen Allowlist
    (`notificationService.env.channelsAllowed`; es gibt keine
@@ -75,14 +75,14 @@ Die Client-Seite (FdV-API) ist ausschließlich über den PEP erreichbar. Der PEP
 bildet die öffentlichen Pfade unter `/push/v1/` auf die Wurzelpfade des
 Dienstes ab und verlangt je Route einen Scope:
 
-| Öffentlicher Pfad (PEP)             | Methode | Scope                        | Zweck                                        |
-|--------------------------------------|---------|------------------------------|-----------------------------------------------|
-| `/push/v1/pushers`                  | GET     | `notification.pusher.read`   | Registrierte Pusher des Nutzers auflisten    |
-| `/push/v1/pushers/set`              | POST    | `notification.pusher.write`  | Pusher anlegen, ändern oder löschen          |
-| `/push/v1/channels`                 | GET     | `notification.channel.read`  | Verfügbare Kanäle (Allowlist) abrufen        |
-| `/push/v1/channels/{pushkey}`       | GET     | `notification.channel.read`  | Kanalzustände eines Geräts lesen             |
-| `/push/v1/channels/{pushkey}`       | POST    | `notification.channel.write` | Kanalzustände eines Geräts setzen            |
-| `/push/v1/history/…`                | GET     | `notification.history.read`  | Nachrichten-Historie (nur bei `historyEnabled`) |
+| Öffentlicher Pfad (PEP)       | Methode | Scope                        | Zweck                                           |
+|-------------------------------|---------|------------------------------|-------------------------------------------------|
+| `/push/v1/pushers`            | GET     | `notification.pusher.read`   | Registrierte Pusher des Nutzers auflisten       |
+| `/push/v1/pushers/set`        | POST    | `notification.pusher.write`  | Pusher anlegen, ändern oder löschen             |
+| `/push/v1/channels`           | GET     | `notification.channel.read`  | Verfügbare Kanäle (Allowlist) abrufen           |
+| `/push/v1/channels/{pushkey}` | GET     | `notification.channel.read`  | Kanalzustände eines Geräts lesen                |
+| `/push/v1/channels/{pushkey}` | POST    | `notification.channel.write` | Kanalzustände eines Geräts setzen               |
+| `/push/v1/history/…`          | GET     | `notification.history.read`  | Nachrichten-Historie (nur bei `historyEnabled`) |
 
 Alle übrigen Pfade unter `/push/v1/` beantwortet der PEP mit `403`. Die
 History-Route existiert im PEP immer; ohne aktivierte Historie wird der
@@ -92,16 +92,16 @@ scheitern.
 Die Fachdienst-Seite (RS-API) wird nicht über den PEP geroutet, sondern
 clusterintern direkt am Service `notification-service-rs` aufgerufen:
 
-| Pfad                          | Methode | Zweck                                                        |
-|--------------------------------|---------|---------------------------------------------------------------|
-| `/users/{userId}/channels`    | GET     | Aktive Kanäle eines Nutzers abfragen (`id_type` erforderlich) |
-| `/notifications`              | POST    | Benachrichtigung einliefern (`202` + `notification_id`)       |
+| Pfad                       | Methode | Zweck                                                         |
+|----------------------------|---------|---------------------------------------------------------------|
+| `/users/{userId}/channels` | GET     | Aktive Kanäle eines Nutzers abfragen (`id_type` erforderlich) |
+| `/notifications`           | POST    | Benachrichtigung einliefern (`202` + `notification_id`)       |
 
 ## Authentifizierung
 
 Die beiden APIs des Dienstes sind unterschiedlich abgesichert:
 
-- **FdV-Seite (Client/SDK):** Der PEP prüft Access Token, DPoP-Bindung
+- **FdV-Seite (Client/SDK):** Der PEP prüft Access-Token, DPoP-Bindung
   (`dpop_bound_access_tokens_required: true`) und die je Route geforderten
   Scopes; alle nicht gelisteten Pfade unter `/push/v1/` beantwortet der PEP
   mit `403`. Der Dienst selbst vertraut der vom PEP weitergereichten
