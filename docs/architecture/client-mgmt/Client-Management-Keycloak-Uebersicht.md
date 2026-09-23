@@ -74,6 +74,7 @@ Authentisierung erfolgt dort mit dem regulären DPoP-gebundenen Client Assertion
     - Anmerkung: Beim Rollover ist der Replay Schutz inhärent gut genug gegeben, sofern der neue und alte Schlüssel unterschiedlich sind. Sofern neuer und alter Schlüssel gleich sind, ist die Operation harmlos. Daher kein vorerst nonce notwendig.
     - Es ist zu prüfen, dass der aufrufende Client und der zu bearbeitende Client zum selben User gehören.
       - Eine Fehlbedienung, bei der das JWKS eines anderen Clients am selben Nutzer geändert wird, ist nicht ausgeschlossen.
+    - Es wird das Keycloak Event `CLIENT_UPDATE` gefeuert.
     - Aufrufe an diese Schnittstelle werden als Admin Event protokolliert. (Umsetzungshinweis, intern die entsprechende PUT Funktion der Admin API aufrufen)
     - **TODO** nochmal mit DCR abgleichen
 
@@ -82,7 +83,8 @@ Authentisierung erfolgt dort mit dem regulären DPoP-gebundenen Client Assertion
 - Es werden Benachrichtigungen an den User bei folgenden Keycloak Events verschickt:
   - `GRANT_CONSENT`,
   - `REVOKE_GRANT`,
-  - `UPDATE_EMAIL`
+  - `UPDATE_EMAIL`,
+  - `CLIENT_UPDATE`
 - Die Benachrichtigungen KÖNNEN über den Notification Service versendet werden.
 - Die Benachrichtigungen MÜSSEN auf jeden Fall an die E-Mail des Users versendet werden.
 - Umsetzungshinweis: Als Keycloak Event Listener implementieren.
