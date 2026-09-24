@@ -50,9 +50,8 @@ Im Folgenden zu jedem fachliches Konzept ein Abschnitt:
 
 Es wird eine API zur Selbstverwaltung von Clients geschaffen. Diese basiert auf dem Modell und den Operationen der Keycloak Admin API. Die Admin API selbst wird nicht zum Internet exponiert, um die Angriffsfläche gering zu halten. Ebenso entfallen alle nicht genutzten Felder im Datenmodell aus demselben Grund.
 
-Authentisierung erfolgt dort mit dem regulären DPoP-gebundenen Client Assertion Tokens (kein Registration Access Token, konsistent mit A_30101).
-
-- Übersicht und Löschen eigener Clients
+- Übersicht, Verändern und Löschen eigener Clients
+  - Authentisierung erfolgt hier mit dem regulären DPoP-gebundenen ZETA Access Tokens.
   - `GET /zeta/clients`
     - Liste von Clients, die zum selben User gehören, wie der aufrufende Client
     - gibt ein JSON Array mit Client Ids zurück. Die Client Ids sind Strings.
@@ -68,6 +67,8 @@ Authentisierung erfolgt dort mit dem regulären DPoP-gebundenen Client Assertion
     - Use Cases:
       - Umbenennen eines Clients. Durch Schreiben des entsprechenden Display Name Feldes (`name`).
       - Rollover des Client Assertion Schlüssels. Durch schreiben des entsprechenden JWKS Attributes `jwks.string`.
+        - attestation_pop vom neuen Schlüssel in Header `zeta-attestation-pop`
+        - Prüfung des attestation_pop und des Attestation Keys
     - Es wird eine vereinfachte Version der ClientRepresentation (https://www.keycloak.org/docs-api/latest/rest-api/index.html#ClientRepresentation) verwendet. Diese ist beschränkt auf folgende Felder (alle anderen Felder werden verworfen):
       - `name`
       - `attributes."jwks.string"`
@@ -76,7 +77,19 @@ Authentisierung erfolgt dort mit dem regulären DPoP-gebundenen Client Assertion
       - Eine Fehlbedienung, bei der das JWKS eines anderen Clients am selben Nutzer geändert wird, ist nicht ausgeschlossen.
     - Es wird das Keycloak Event `CLIENT_UPDATE` gefeuert.
     - Aufrufe an diese Schnittstelle werden als Admin Event protokolliert. (Umsetzungshinweis, intern die entsprechende PUT Funktion der Admin API aufrufen)
-    - **TODO** nochmal mit DCR abgleichen
+- Verwalten der Identitätsdaten
+  - Authentisierung über Client Assertion Token ohne DPoP
+  - `POST /zeta/identity/email` EMail Adresse Ändern
+    - Es ist das Keycloak Event `UPDATE_EMAIL` zu feuern.
+    - Aufrufe an diese Schnittstelle werden als Admin Event protokolliert. (Umsetzungshinweis, intern die entsprechende PUT Funktion der Admin API aufrufen)
+    - _Anmerkung_: Dies ist ein ZETA eigener Endpunkt, der in der Keycloak Admin API kein Analogon hat.
+- Bei der Client Registrierung.
+  - **TODO** Nochmal klären ob E-Mail Binding oder Client Assertion Token ohne DPoP.
+  - `POST /zeta/identity/bind-email` Initiales setzen der EMail.
+    - Ist bereits eine EMail Adresse gesetzt, so darf hier keine andere Adresse akzeptiert werden. Eine falsche Adresse wird mit `403 email_mismatch` abgelehnt.
+  - `POST /zeta/identity/bind-email/resend` Neu versenden der initialen EMail
+  - `POST /zeta/identity/bind-email/verify` Verifikation eines EMail Changes oder der initialen EMail Verifikation.
+    - Es muss das Keycloak Event `CLIENT_REGISTER` mit angehängter User Id gefeuert werden.
 
 ### Benachrichtigungen
 
@@ -84,42 +97,24 @@ Authentisierung erfolgt dort mit dem regulären DPoP-gebundenen Client Assertion
   - `GRANT_CONSENT`,
   - `REVOKE_GRANT`,
   - `UPDATE_EMAIL`,
+  - `CLIENT_REGISTER` sofern am Event eine User mit Telematik Identität angehängt ist (notwendig, um technische Use Cases abzugrenzen),
   - `CLIENT_UPDATE`
 - Die Benachrichtigungen KÖNNEN über den Notification Service versendet werden.
 - Die Benachrichtigungen MÜSSEN auf jeden Fall an die E-Mail des Users versendet werden.
 - Umsetzungshinweis: Als Keycloak Event Listener implementieren.
 
-**Ab hier TODO**
 
-### E-Mail-Verifikation (F1)
-
-- nach OIDC über `bind-email`/`verify`/`resend`, Scopes `zeta:email-binding`/`zeta:email-verify`, Bindungs-Token, Token Exchange
-- **unverändert wie implementiert**: `user_email` im DCR-Request, OTP-Eingabe in der App, `POST /register/verify`. Die fünf Endpunkte, Scopes, Bindungs-Token und Token Exchange entfallen
-
-### TOFU-Schutz gegen kompromittierten IDP
-
-- OTP an die gespeicherte Adresse bei Folgeregistrierung, ansonsten ebenso Verifikation der E-Mail Adresse via OTP.
-- **E-Mail-Abgleich bei der Bindung**:
-  - Hat der User noch keine E-Mail, wird die per OTP verifizierte Adresse des Clients identitätsweit gepinnt (Erstnutzung) und verifiziert.
-  - Hat der User eine E-Mail, wird nur ein Client gebunden, dessen verifizierte Adresse mit ihr übereinstimmt; sonst `403 email_mismatch` mit maskiertem Hinweis und keine Token.
-- Ein Angreifer mit kompromittiertem IDP-Konto kann keinen Client mit fremder Adresse anhängen, weil er den Code an die gebundene Adresse nicht erhält.
+**TODO: ab hier noch zu klären**
 
 ### Fast Path
 
 - Übernahme von Identität und E-Mail im Ziel-Guard aus dem ZETA Attestation Token.
 - **unverändert wie implementiert**; `user_email`/`email_verified` aus dem Token gelten bei der Bindung wie eine per OTP verifizierte Adresse und unterliegen demselben Abgleich. N2 statt N1
 
-### E-Mail-Änderung
-
-- `POST /zeta/identity/email(/verify)`, RFC 9470 Step-up, `idp_step_up`-Token
-- Es ist das Keycloak Event `UPDATE_EMAIL` zu feuern.
-- **Wiederverwendung des OTP-Transaktionsmechanismus**: `POST /register/{client_id}/email` (Client Assertion plus frisches AS-Access-Token) → `202 {transaction_id}`, Codes an alte und neue Adresse, `POST /register/verify` mit `verify_type=email_change`. Step-up = `auth_time` im eigenen Access Token, kein RFC 9470
-
 ### Außerordentliche Löschung (OOB)
 
 - neun Operator-Endpunkte, Vier-Augen-Logik, Tombstone, zweite Bestätigung
 - **Admin Console / Admin REST API**, Operator-Realm mit mTLS oder Betreiber-IdP, **Admin-Event-Hash-Chain (implementiert)** als Nachweis; Sperre (`enabled=false`) → Einspruchsfrist → Löschung des Users mit seinen Clients. **Kein Tombstone**; Wiederregistrierung ist eine normale Erstnutzung
-
 
 ## 3 Ablauf aus Sicht des ZETA Clients
 
