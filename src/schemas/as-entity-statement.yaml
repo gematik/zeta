@@ -13,11 +13,6 @@ description: >-
   andere ZETA Guards seine ZETA Attestation Token prüfen
   (Metadatenblock oauth_authorization_server, gemSpec_ZETA A_25668-01).
 
-  Das Entity Statement enthält keine Adresse einer Ressource. Abweichend von
-  gemSpec_IDP_FedMaster Kap. 4.4 ist gemäß gemSpec_ZETA (führend) die
-  Discovery umgekehrt: Der ZETA Client ermittelt den AuthS über die Protected
-  Resource Metadata der Ressource (RFC 9728, opr-well-known.yaml).
-
   Nicht in draft-07 ausdrückbare Regeln, die zusätzlich gelten:
   (1) payload.iss und payload.sub sind identisch (OpenID Federation 1.1, Entity
   Configuration).
