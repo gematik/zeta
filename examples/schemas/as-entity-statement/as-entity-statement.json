@@ -82,7 +82,7 @@
         "id_token_signed_response_alg": "ES256",
         "id_token_encrypted_response_alg": "ECDH-ES",
         "id_token_encrypted_response_enc": "A256GCM",
-        "scope": "openid urn:telematik:display_name urn:telematik:versicherter",
+        "scope": "openid urn:telematik:display_name urn:telematik:geburtsdatum urn:telematik:versicherter",
         "ti_features_supported": {
           "id_token_version_supported": [
             "1.0.0",

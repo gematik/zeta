@@ -388,8 +388,23 @@ definitions:
         description: >-
           Durch Leerzeichen getrennte Liste der beim sektoralen IDP angefragten
           Scopes, wie bei der Registrierung hinterlegt (A_27504-01). Enthält
-          mindestens "openid".
-        pattern: "^(.+ )?openid( .+)?$"
+          mindestens "openid" und sonst nur die fachlich benötigten Scopes aus
+          gemSpec_IDP_Sek Tabelle "Scope und Claims" (A_22989-02, A_23036-02):
+          urn:telematik:geburtsdatum (birthdate),
+          urn:telematik:alter (urn:telematik:claims:alter),
+          urn:telematik:display_name (urn:telematik:claims:display_name),
+          urn:telematik:family_name (urn:telematik:claims:family_name),
+          urn:telematik:given_name (urn:telematik:claims:given_name),
+          urn:telematik:geschlecht (urn:telematik:claims:geschlecht),
+          urn:telematik:email (urn:telematik:claims:email) und
+          urn:telematik:versicherter (urn:telematik:claims:profession =
+          professionOID, urn:telematik:claims:id = unveränderlicher Teil der KVNR,
+          urn:telematik:claims:organization = IK-Nummer der Kasse).
+          Eine per urn:telematik:email erhaltene Adresse ist vom AuthS vor der
+          Verwendung zu verifizieren.
+        allOf:
+          - pattern: "^(.+ )?openid( .+)?$"
+          - pattern: "^(openid|urn:telematik:(geburtsdatum|alter|display_name|family_name|given_name|geschlecht|email|versicherter))( (openid|urn:telematik:(geburtsdatum|alter|display_name|family_name|given_name|geschlecht|email|versicherter)))*$"
       ti_features_supported:
         type: object
         description: Unterstützte TI-Feature-Versionen (A_27505, Tabelle 6).
