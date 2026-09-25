@@ -89,12 +89,9 @@ properties:
             items:
               allOf:
                 - $ref: "#/definitions/ecP256Jwk"
-                - type: object
-                  properties:
+                - properties:
                     use:
                       const: sig
-                    alg:
-                      const: ES256
         required:
           - keys
       authority_hints:
@@ -241,7 +238,9 @@ definitions:
       sektoralen IDPs als JWK mit use=sig und gesetztem x5c (A_23183, RFC 8705
       Abschnitt 2.2), und
       (b) den öffentlichen Schlüssel zur Verschlüsselung des ID_TOKEN mit
-      use=enc und alg=ECDH-ES (A_23194).
+      use=enc (A_23194). Das Verfahren (ECDH-ES) legt
+      id_token_encrypted_response_alg fest; alg im JWK ist optional und wird
+      nicht eingeschränkt.
       Während eines Schlüsselwechsels dürfen je Zweck mehrere Schlüssel
       enthalten sein; entschlüsselt wird mit einem Schlüssel bis zum exp des
       Dokuments, in dem er zuletzt veröffentlicht wurde (A_28209).
@@ -264,8 +263,6 @@ definitions:
               properties:
                 use:
                   const: enc
-                alg:
-                  const: ECDH-ES
               required:
                 - use
     required:
