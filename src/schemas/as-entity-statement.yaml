@@ -1,0 +1,490 @@
+# Schema for the Entity Configuration (self-signed Entity Statement) of the
+# ZETA Guard Authorization Server as Relying Party of the TI-Föderation.
+# Served at GET <iss>/.well-known/openid-federation
+# (Content-Type: application/entity-statement+jwt).
+$schema: "http://json-schema.org/draft-07/schema#"
+schemaVersion: "1.0.0"
+title: ZETA Guard Authorization Server Entity Statement
+description: >-
+  Entity Configuration des ZETA Guard Authorization Servers (AuthS) in der
+  TI-Föderation, dargestellt als decodierter JWS (header + payload). Der AuthS
+  ist gegenüber den sektoralen IDPs Relying Party (Metadatenblock
+  openid_relying_party) und veröffentlicht zusätzlich die Schlüssel, mit denen
+  andere ZETA Guards seine ZETA Attestation Token prüfen
+  (Metadatenblock oauth_authorization_server, gemSpec_ZETA A_25668-01).
+
+  Nicht in draft-07 ausdrückbare Regeln, die zusätzlich gelten:
+  (1) payload.iss und payload.sub sind identisch (OpenID Federation 1.1, Entity
+  Configuration).
+  (2) payload.exp - payload.iat <= 86400 s; das Statement wird vor Ablauf und bei
+  jeder Änderung neu ausgestellt (A_28857).
+  (3) header.kid referenziert einen Schlüssel aus payload.jwks.
+  (4) redirect_uris und scope dürfen erst nach positiver Rückmeldung des Superiors
+  geändert werden; iss ist unveränderlich (A_27504-01).
+  (5) Neue Signaturschlüssel werden mindestens 24 h vor Verwendung in
+  payload.jwks veröffentlicht (A_28859); alle Schlüssel werden nach maximal
+  398 Tagen getauscht (A_23185-01).
+type: object
+properties:
+  header:
+    type: object
+    description: JOSE Header des Entity Statement (gemSpec_IDP_FD Tabelle 3).
+    properties:
+      alg:
+        type: string
+        description: Signaturalgorithmus. Zulässig ist nur ES256 (P-256, A_23196).
+        const: ES256
+      kid:
+        $ref: "#/definitions/uuidv7"
+        description: >-
+          Key Identifier des Federation Entity Signing Key im UUIDv7-Format
+          (RFC 9562). Referenziert einen Schlüssel aus payload.jwks.
+      typ:
+        type: string
+        description: Typ des JWS gemäß OpenID Federation 1.1.
+        const: entity-statement+jwt
+    required:
+      - alg
+      - kid
+      - typ
+
+  payload:
+    type: object
+    description: Claims der Entity Configuration (gemSpec_IDP_FD Tabelle 4).
+    properties:
+      iss:
+        $ref: "#/definitions/entityIdentifier"
+        description: >-
+          Entity Identifier des AuthS und damit sein dauerhafter Identifier in der
+          TI-Föderation. Identisch mit sub. Für den ZETA Guard ist dies die
+          Basis-URL des Dienstes auf Host-Ebene (z. B. https://zeta-guard.example.de)
+          ohne Pfad, Query, Fragment oder abschließenden Schrägstrich. Der Identifier
+          enthält keine Implementierungsdetails (Context-Path, Realm), weil jede
+          Änderung eine Deregistrierung und Neuregistrierung erzwingt (Hinweis zu
+          A_27504-01). Die Entity Configuration liegt entsprechend unter
+          <iss>/.well-known/openid-federation (gemSpec_ZETA, Schnittstellen des
+          Authorization Servers).
+      sub:
+        $ref: "#/definitions/entityIdentifier"
+        description: Entity Identifier des AuthS. MUSS identisch mit iss sein.
+      iat:
+        type: integer
+        description: Ausstellungszeitpunkt in Sekunden seit 1970 (RFC 7519).
+      exp:
+        type: integer
+        description: >-
+          Ablaufzeitpunkt in Sekunden seit 1970 (RFC 7519). exp - iat darf
+          86400 s nicht überschreiten (A_28857).
+      jwks:
+        type: object
+        description: >-
+          Öffentliche Federation Entity Signing Keys, mit denen dieses Entity
+          Statement signiert ist bzw. künftig signiert wird (Rollover, A_28859).
+          Enthält ausschließlich diese Schlüssel; TLS-, Verschlüsselungs- und
+          Token-Signaturschlüssel stehen in den Metadatenblöcken.
+        properties:
+          keys:
+            type: array
+            minItems: 1
+            items:
+              allOf:
+                - $ref: "#/definitions/ecP256Jwk"
+                - properties:
+                    use:
+                      const: sig
+        required:
+          - keys
+      authority_hints:
+        type: array
+        description: >-
+          Entity Identifier der Superior Entity, bei der der AuthS als Subordinate
+          registriert ist. Zulässig sind der Federation Master der jeweiligen
+          Umgebung (direkte Registrierung) oder, sobald verfügbar, der ZETA
+          TI-Intermediate (gemSpec_IDP_FedMaster Kap. 4.4, A_28986). Solange es
+          den ZETA TI-Intermediate nicht gibt, registriert sich der AuthS direkt
+          beim Federation Master.
+        minItems: 1
+        maxItems: 1
+        items:
+          $ref: "#/definitions/entityIdentifier"
+      trust_marks:
+        type: array
+        description: >-
+          Optional. Für den AuthS ausgestellte Trust Marks gemäß OpenID Federation
+          1.1. Vorerst optional, weil weder der Federation Master noch der ZETA
+          TI-Intermediate Trust Marks ausstellen. Zielbild ist die vom ZETA
+          TI-Intermediate ausgestellte Trust Mark vom Typ
+          https://gemspec.gematik.de/trustmarks/zeta_guard (gemSpec_IDP_FedMaster
+          Kap. 4.4, A_28985, A_30010), höchstens 30 Tage gültig und spätestens
+          14 Tage vor Ablauf erneuert. Werden Trust Marks veröffentlicht, prüft der
+          AuthS spätestens alle 24 h am federation_trust_mark_endpoint des
+          Ausstellers auf eine neuere Trust Mark, veröffentlicht stets die jüngste
+          und entfernt abgelaufene oder widerrufene Trust Marks unverzüglich
+          (A_30009, A_30006, A_30007).
+        items:
+          type: object
+          properties:
+            trust_mark_type:
+              type: string
+              format: uri
+            trust_mark:
+              type: string
+              description: Trust Mark als signiertes JWT (JWS Compact Serialization).
+              pattern: "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"
+          required:
+            - trust_mark_type
+            - trust_mark
+      metadata:
+        type: object
+        description: Metadatenblöcke nach Entity Type.
+        properties:
+          openid_relying_party:
+            $ref: "#/definitions/openidRelyingParty"
+          oauth_authorization_server:
+            $ref: "#/definitions/oauthAuthorizationServer"
+          federation_entity:
+            type: object
+            description: >-
+              Optional. Informationen zur Organisation des Betreibers gemäß
+              OpenID Federation 1.1 (z. B. organization_name, contacts,
+              homepage_uri). Der AuthS ist Leaf Entity und veröffentlicht
+              keine Federation-Endpunkte.
+        required:
+          - openid_relying_party
+          - oauth_authorization_server
+    required:
+      - iss
+      - sub
+      - iat
+      - exp
+      - jwks
+      - authority_hints
+      - metadata
+
+required:
+  - header
+  - payload
+
+definitions:
+  uuidv7:
+    type: string
+    description: UUID Version 7 gemäß RFC 9562 (A_28208).
+    pattern: "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+
+  entityIdentifier:
+    type: string
+    format: uri
+    description: HTTPS-URL ohne Query, Fragment, Nutzerinformation und abschließenden Schrägstrich.
+    pattern: "^https://[^/?#@\\s]+(/[^?#\\s]*[^/?#\\s])?$"
+
+  httpsRedirectUri:
+    type: string
+    format: uri
+    description: >-
+      Gültige HTTPS-URL ohne Query, Fragment, Nutzerinformation und Wildcards
+      (A_27585).
+    pattern: "^https://[^/?#@*\\s]+(/[^?#*\\s]*)?$"
+    maxLength: 2048
+
+  ecP256Jwk:
+    type: object
+    description: >-
+      Öffentlicher EC-Schlüssel auf Kurve P-256 (A_23196). kid im UUIDv7-Format,
+      der den Erzeugungszeitpunkt widerspiegelt (A_28208).
+    properties:
+      kty:
+        const: EC
+      crv:
+        const: P-256
+      x:
+        type: string
+        pattern: "^[A-Za-z0-9_-]{43}$"
+      y:
+        type: string
+        pattern: "^[A-Za-z0-9_-]{43}$"
+      kid:
+        $ref: "#/definitions/uuidv7"
+      use:
+        type: string
+        enum:
+          - sig
+          - enc
+      alg:
+        type: string
+      x5c:
+        type: array
+        description: X.509-Zertifikatskette, Base64 (nicht Base64url) DER, Blattzertifikat zuerst.
+        minItems: 1
+        items:
+          type: string
+          pattern: "^[A-Za-z0-9+/]+={0,2}$"
+    required:
+      - kty
+      - crv
+      - x
+      - y
+      - kid
+      - use
+    not:
+      description: Keine privaten Schlüsselanteile.
+      required:
+        - d
+
+  rpJwks:
+    type: object
+    description: >-
+      Schlüsselsatz der Relying Party. MUSS mindestens enthalten:
+      (a) das mTLS-Client-Zertifikat für self_signed_tls_client_auth gegenüber
+      sektoralen IDPs als JWK mit use=sig und gesetztem x5c (A_23183, RFC 8705
+      Abschnitt 2.2), und
+      (b) den öffentlichen Schlüssel zur Verschlüsselung des ID_TOKEN mit
+      use=enc (A_23194). Das Verfahren (ECDH-ES) legt
+      id_token_encrypted_response_alg fest; alg im JWK ist optional und wird
+      nicht eingeschränkt.
+      Während eines Schlüsselwechsels dürfen je Zweck mehrere Schlüssel
+      enthalten sein; entschlüsselt wird mit einem Schlüssel bis zum exp des
+      Dokuments, in dem er zuletzt veröffentlicht wurde (A_28209).
+    properties:
+      keys:
+        type: array
+        items:
+          $ref: "#/definitions/ecP256Jwk"
+        allOf:
+          - contains:
+              type: object
+              properties:
+                use:
+                  const: sig
+              required:
+                - use
+                - x5c
+          - contains:
+              type: object
+              properties:
+                use:
+                  const: enc
+              required:
+                - use
+    required:
+      - keys
+
+  openidRelyingParty:
+    type: object
+    description: >-
+      Metadatenblock openid_relying_party (gemSpec_IDP_FD Tabelle 5). Über ihn
+      registriert sich der AuthS per Automatic Registration beim sektoralen IDP.
+    properties:
+      signed_jwks_uri:
+        type: string
+        format: uri
+        description: >-
+          URL eines signierten JWKS (Aufbau gemäß gemSpec_IDP_Sek, "Header/Body des
+          KeySet des Fachdienstes"). Entweder signed_jwks_uri oder jwks.
+      jwks:
+        $ref: "#/definitions/rpJwks"
+      client_name:
+        type: string
+        description: >-
+          Anzeigename des AuthS. Wertebereich laut Spec
+          ^[à-üÀ-Üß\w\ \-\.\+\*\/]{1,128}$ (hier ohne die unter Unicode-Regex
+          unzulässigen Escapes notiert).
+        pattern: "^[à-üÀ-Üß\\w .+*/-]{1,128}$"
+      organization_name:
+        type: string
+        description: Name des Betreibers (OpenID Federation, Informational Metadata Extensions).
+        pattern: "^[à-üÀ-Üß\\w .+*/-]{1,128}$"
+      keywords:
+        type: array
+        description: >-
+          MUSS den von der gematik zugelassenen Produkttyp und die
+          Produkttyp-Version enthalten, z. B. "product_type:ZETA Guard" und
+          "product_type_version:2.0.0".
+        items:
+          type: string
+        allOf:
+          - contains:
+              type: string
+              pattern: "^product_type:.+$"
+          - contains:
+              type: string
+              pattern: "^product_type_version:.+$"
+      contacts:
+        type: array
+        description: MUSS eine E-Mail-Adresse für Supportanfragen enthalten.
+        items:
+          type: string
+        contains:
+          type: string
+          format: email
+      redirect_uris:
+        type: array
+        description: >-
+          Bei der Registrierung in der TI-Föderation hinterlegte redirect_uris
+          (A_27504-01). Für den ZETA Guard sind dies die oidc_redirect_uris aller
+          zulässigen Clients (A_25656), also die vorab bei der gematik
+          registrierten claimed-HTTPS-URIs (Universal Links / App Links) auf der
+          Domain des App-Herstellers mit letztem Pfad-Abschnitt "oidc" (siehe
+          dcr-request.yaml, redirect_uris). Der sektorale IDP prüft die
+          oidc_redirect_uri des PAR per exaktem String-Vergleich gegen diese Liste.
+          Die redirect_uris liegen daher in der Regel NICHT auf der Domain des
+          AuthS. Pfade von Admin- oder Account-Konsolen sind unzulässig.
+        minItems: 1
+        uniqueItems: true
+        items:
+          $ref: "#/definitions/httpsRedirectUri"
+      response_types:
+        type: array
+        items:
+          const: code
+        minItems: 1
+        maxItems: 1
+      client_registration_types:
+        type: array
+        items:
+          const: automatic
+        minItems: 1
+        maxItems: 1
+      grant_types:
+        type: array
+        items:
+          const: authorization_code
+        minItems: 1
+        maxItems: 1
+      require_pushed_authorization_requests:
+        type: boolean
+        const: true
+      token_endpoint_auth_method:
+        type: string
+        const: self_signed_tls_client_auth
+      default_acr_values:
+        type: array
+        description: >-
+          Optional. Der AuthS sendet acr_values im Pushed Authorization Request
+          und erfüllt A_23004-01 damit auch ohne dieses Feld. Wird es gesetzt,
+          dann nur mit gematik-ehealth-loa-high.
+        items:
+          const: gematik-ehealth-loa-high
+        minItems: 1
+        maxItems: 1
+      id_token_signed_response_alg:
+        type: string
+        const: ES256
+      id_token_encrypted_response_alg:
+        type: string
+        const: ECDH-ES
+      id_token_encrypted_response_enc:
+        type: string
+        const: A256GCM
+      scope:
+        type: string
+        description: >-
+          Durch Leerzeichen getrennte Liste der beim sektoralen IDP angefragten
+          Scopes, wie bei der Registrierung hinterlegt (A_27504-01). Enthält
+          mindestens "openid" und sonst nur die fachlich benötigten Scopes aus
+          gemSpec_IDP_Sek Tabelle "Scope und Claims" (A_22989-02, A_23036-02):
+          urn:telematik:geburtsdatum (birthdate),
+          urn:telematik:alter (urn:telematik:claims:alter),
+          urn:telematik:display_name (urn:telematik:claims:display_name),
+          urn:telematik:family_name (urn:telematik:claims:family_name),
+          urn:telematik:given_name (urn:telematik:claims:given_name),
+          urn:telematik:geschlecht (urn:telematik:claims:geschlecht),
+          urn:telematik:email (urn:telematik:claims:email) und
+          urn:telematik:versicherter (urn:telematik:claims:profession =
+          professionOID, urn:telematik:claims:id = unveränderlicher Teil der KVNR,
+          urn:telematik:claims:organization = IK-Nummer der Kasse).
+          Eine per urn:telematik:email erhaltene Adresse ist vom AuthS vor der
+          Verwendung zu verifizieren.
+        allOf:
+          - pattern: "^(.+ )?openid( .+)?$"
+          - pattern: "^(openid|urn:telematik:(geburtsdatum|alter|display_name|family_name|given_name|geschlecht|email|versicherter))( (openid|urn:telematik:(geburtsdatum|alter|display_name|family_name|given_name|geschlecht|email|versicherter)))*$"
+      ti_features_supported:
+        type: object
+        description: Unterstützte TI-Feature-Versionen (A_27505, Tabelle 6).
+        properties:
+          id_token_version_supported:
+            type: array
+            description: >-
+              Für den Übergangszeitraum MÜSSEN beide ID-Token-Versionen 1.0.0
+              und 2.0.0 unterstützt werden.
+            items:
+              type: string
+              enum:
+                - "1.0.0"
+                - "2.0.0"
+            uniqueItems: true
+            allOf:
+              - contains:
+                  const: "1.0.0"
+              - contains:
+                  const: "2.0.0"
+        required:
+          - id_token_version_supported
+    oneOf:
+      - required:
+          - jwks
+      - required:
+          - signed_jwks_uri
+    required:
+      - client_name
+      - organization_name
+      - keywords
+      - contacts
+      - redirect_uris
+      - response_types
+      - client_registration_types
+      - grant_types
+      - require_pushed_authorization_requests
+      - token_endpoint_auth_method
+      - id_token_signed_response_alg
+      - id_token_encrypted_response_alg
+      - id_token_encrypted_response_enc
+      - scope
+      - ti_features_supported
+
+  oauthAuthorizationServer:
+    type: object
+    description: >-
+      Metadatenblock oauth_authorization_server (RFC 8414 über OpenID Federation
+      1.1). Über ihn beziehen PEPs anderer ZETA Guards die Schlüssel, mit denen
+      sie ZETA Attestation Token (A_29915) dieses AuthS prüfen. Die Werte
+      entsprechen as-well-known.yaml; hier ist nur das für die Föderation
+      erforderliche Minimum festgelegt.
+    properties:
+      issuer:
+        type: string
+        format: uri
+        description: Issuer der vom AuthS ausgestellten Token (iss im Access Token).
+      jwks_uri:
+        type: string
+        format: uri
+        description: URL des JWKS mit PuK.AuthS.Sig.
+      signed_jwks_uri:
+        type: string
+        format: uri
+        description: URL eines mit dem Federation Entity Signing Key signierten JWKS mit PuK.AuthS.Sig.
+      jwks:
+        type: object
+        description: JWKS mit PuK.AuthS.Sig (use=sig).
+        properties:
+          keys:
+            type: array
+            minItems: 1
+            items:
+              type: object
+              properties:
+                use:
+                  const: sig
+              required:
+                - kty
+                - kid
+        required:
+          - keys
+    oneOf:
+      - required:
+          - jwks
+      - required:
+          - jwks_uri
+      - required:
+          - signed_jwks_uri
+    required:
+      - issuer

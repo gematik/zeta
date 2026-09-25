@@ -1,0 +1,45 @@
+# =============================================================================
+# BEISPIEL - NICHT NORMATIV, NICHT FUER DEN BETRIEB VERWENDEN
+# =============================================================================
+# Diese Datei demonstriert das Format nach src/schemas/zg-client-target.yaml.
+#
+# Die verbindliche Konfiguration wird NICHT ueber dieses Repository verteilt,
+# sondern als signiertes ZG Client Konfigurations-Image je Fachdienst-Typ aus
+# der ZETA Artifact Registry bezogen (gemSpec_ZETA Kapitel 5.6.5). Im Image
+# liegt je Zieldienst eine Datei unter /targets/.
+# =============================================================================
+
+api_version: zeta.gematik.de/v1
+kind: ZgClientTarget
+
+metadata:
+  environment: PU
+  status: example
+  fachdienst_typ: vsdm
+  generated_at: "2026-09-16T06:00:00Z"
+  note: >
+    Beispielhafter Zieldienst. Endpunkte sind Platzhalter.
+
+key: gematik.telemetry
+purpose: Weitergabe von Telemetriedaten des Fachdienstes an die gematik Telemetriedaten-Schnittstelle (OTLP)
+owner: gematik
+
+target:
+  base_urls:
+    - https://telemetry.example.gematik.invalid:4318/v1
+  stability: stable
+
+sts:
+  token_endpoint: https://sts.example.gematik.invalid/token
+  resource: https://telemetry.example.gematik.invalid/v1
+  scopes:
+    - telemetry.write
+  token_endpoint_auth_method: none
+  dpop: true
+
+subject_token:
+  audience: https://sts.example.gematik.invalid/token
+
+cache:
+  refresh_before_expiry_seconds: 60
+  max_ttl_seconds: 3600

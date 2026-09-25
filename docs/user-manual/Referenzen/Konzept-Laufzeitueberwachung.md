@@ -1,11 +1,64 @@
 # Konzept: Laufzeitüberwachung für TI 2.0 Dienste mit ZETA Guard
 
+- [Konzept: Laufzeitüberwachung für TI 2.0 Dienste mit ZETA Guard](#konzept-laufzeitüberwachung-für-ti-20-dienste-mit-zeta-guard)
+  - [1. Ziel und Abgrenzung](#1-ziel-und-abgrenzung)
+    - [1.1 Scope](#11-scope)
+    - [1.2 Verhältnis zu bestehenden Dokumenten](#12-verhältnis-zu-bestehenden-dokumenten)
+  - [2. Rollenmodell und Grundprinzip der Aufgabenteilung](#2-rollenmodell-und-grundprinzip-der-aufgabenteilung)
+    - [2.1 Trennlinie](#21-trennlinie)
+  - [3. Schichtenmodell](#3-schichtenmodell)
+  - [4. Maßnahmen im Detail](#4-maßnahmen-im-detail)
+    - [4.1 Pod Security Standards (PSS)](#41-pod-security-standards-pss)
+    - [4.2 Admission Control](#42-admission-control)
+    - [4.3 Kommunikationsmatrix und Network Policies (L3/L4)](#43-kommunikationsmatrix-und-network-policies-l3l4)
+      - [4.3.1 Normative Kommunikationsmatrix](#431-normative-kommunikationsmatrix)
+        - [A — Eingehend von außen (über Gateway / Ingress Controller)](#a--eingehend-von-außen-über-gateway--ingress-controller)
+        - [B — Innerhalb des Clusters (Ost-West)](#b--innerhalb-des-clusters-ost-west)
+        - [C — Ausgehend aus dem Cluster (Egress)](#c--ausgehend-aus-dem-cluster-egress)
+        - [D — Clientseitig, außerhalb des Betreiber-Scopes (informativ)](#d--clientseitig-außerhalb-des-betreiber-scopes-informativ)
+        - [E — Explizit unzulässige Beziehungen (Negativliste)](#e--explizit-unzulässige-beziehungen-negativliste)
+        - [Hinweise zur Ableitung aus der Abbildung](#hinweise-zur-ableitung-aus-der-abbildung)
+      - [4.3.2 Ableitung der NetworkPolicies](#432-ableitung-der-networkpolicies)
+        - [Baustein 1 — Default-Deny in beide Richtungen und DNS](#baustein-1--default-deny-in-beide-richtungen-und-dns)
+        - [Baustein 2 — PEP HTTP Proxy (Matrix A5, A6, A16, A7 · B17, B4, B-JWKS · N4)](#baustein-2--pep-http-proxy-matrix-a5-a6-a16-a7--b17-b4-b-jwks--n4)
+        - [Baustein 3 — Authorization Server (Matrix A7, A-Admin · B13, B15, B14, B27, B-TOFU-Abfrage, B-o.Nr., B-Cluster-Transport · C1, C11, C8)](#baustein-3--authorization-server-matrix-a7-a-admin--b13-b15-b14-b27-b-tofu-abfrage-b-onr-b-cluster-transport--c1-c11-c8)
+        - [Baustein 4 — Ziele ohne eigenen Ingress von außen (Matrix N2, N3)](#baustein-4--ziele-ohne-eigenen-ingress-von-außen-matrix-n2-n3)
+        - [Baustein 5 — Telemetriedaten Service (Matrix B18, B19, B20 · C21, C22 · N7, N10)](#baustein-5--telemetriedaten-service-matrix-b18-b19-b20--c21-c22--n7-n10)
+        - [Baustein 6 — Fachdienst-Namespace (Matrix N4, N6)](#baustein-6--fachdienst-namespace-matrix-n4-n6)
+        - [Abbildung der Matrix auf die Chart-Konfiguration](#abbildung-der-matrix-auf-die-chart-konfiguration)
+      - [4.3.3 Stand im ZETA Guard und verbleibende Lücken](#433-stand-im-zeta-guard-und-verbleibende-lücken)
+    - [4.4 Service Mesh (L7 und mTLS)](#44-service-mesh-l7-und-mtls)
+    - [4.5 Ingress und Egress / Gateway](#45-ingress-und-egress--gateway)
+    - [4.6 Pod-Überwachung auf Syscall-Ebene (Cilium Tetragon)](#46-pod-überwachung-auf-syscall-ebene-cilium-tetragon)
+    - [4.7 RBAC-Härtung](#47-rbac-härtung)
+  - [5. Ergänzende Maßnahmen aus dem Betrieb sicherer Dienste](#5-ergänzende-maßnahmen-aus-dem-betrieb-sicherer-dienste)
+    - [5.1 Kubernetes API-Server-Audit-Logging](#51-kubernetes-api-server-audit-logging)
+    - [5.2 Supply-Chain-Sicherheit über die Signatur hinaus](#52-supply-chain-sicherheit-über-die-signatur-hinaus)
+    - [5.3 Secrets-Management](#53-secrets-management)
+    - [5.4 Zertifikats-, Schlüssel- und Vertrauensanker-Monitoring](#54-zertifikats--schlüssel--und-vertrauensanker-monitoring)
+    - [5.5 Integrität und Aktualität der Policy-Bundles](#55-integrität-und-aktualität-der-policy-bundles)
+    - [5.6 Verfügbarkeit als Sicherheitssignal](#56-verfügbarkeit-als-sicherheitssignal)
+    - [5.7 Autorisierungs-Anomalien (fachliche Laufzeitüberwachung)](#57-autorisierungs-anomalien-fachliche-laufzeitüberwachung)
+    - [5.8 GitOps-Drift als Sicherheitssignal](#58-gitops-drift-als-sicherheitssignal)
+    - [5.9 Zeitsynchronisation und Log-Integrität](#59-zeitsynchronisation-und-log-integrität)
+    - [5.10 Backup, Wiederanlauf und Übung](#510-backup-wiederanlauf-und-übung)
+  - [6. Telemetrie- und Meldewege](#6-telemetrie--und-meldewege)
+  - [7. Detektions-Use-Cases](#7-detektions-use-cases)
+  - [8. Ausbaustufen](#8-ausbaustufen)
+    - [Stufe 1 — MUSS (Voraussetzung für den Produktivbetrieb)](#stufe-1--muss-voraussetzung-für-den-produktivbetrieb)
+    - [Stufe 2 — SOLL (innerhalb von 6 Monaten nach Inbetriebnahme)](#stufe-2--soll-innerhalb-von-6-monaten-nach-inbetriebnahme)
+    - [Stufe 3 — KANN (Ausbau)](#stufe-3--kann-ausbau)
+  - [9. Verantwortungsmatrix (Übersicht)](#9-verantwortungsmatrix-übersicht)
+  - [10. Offene Punkte und Empfehlungen an den ZETA Guard Hersteller](#10-offene-punkte-und-empfehlungen-an-den-zeta-guard-hersteller)
+  - [11. Nachweise für die Zulassung](#11-nachweise-für-die-zulassung)
+  - [Verwandte Dokumentation](#verwandte-dokumentation)
+
+
 ## 1. Ziel und Abgrenzung
 
-Dieses Konzept beschreibt, wie die **Integrität, Vertraulichkeit und Verfügbarkeit
-der ZETA Guard Microservices zur Laufzeit** in einer Kubernetes-Infrastruktur
+Dieses Konzept beschreibt, wie die Integrität, Vertraulichkeit und Verfügbarkeit der ZETA Guard Microservices zur Laufzeit in einer Kubernetes-Infrastruktur
 überwacht und durchgesetzt werden. Es ergänzt die Härtungsmaßnahmen des Deployments
-um **Erkennung (Detection)** und **Reaktion (Response)** und ordnet jede Maßnahme
+um Erkennung (Detection) und Reaktion (Response) und ordnet jede Maßnahme
 einer verantwortlichen Rolle zu.
 
 Laufzeitüberwachung wird hier in vier Wirkstufen verstanden:
@@ -16,9 +69,6 @@ Laufzeitüberwachung wird hier in vier Wirkstufen verstanden:
 | **Isolation** | Was darf mit wem sprechen? | NetworkPolicies, Service Mesh, RBAC |
 | **Detektion** | Was passiert gerade wirklich? | Tetragon/Falco, K8s-Audit, Telemetrie |
 | **Reaktion** | Was tun wir damit? | SIEM-Use-Cases, Alarmierung, Runbooks, Quarantäne |
-
-Eine Maßnahme ohne Detektion ist unvollständig, und eine Detektion ohne definierte
-Reaktion erzeugt lediglich Log-Volumen.
 
 ### 1.1 Scope
 
@@ -44,7 +94,7 @@ Registry Cache, Egress Gateway.
 **Außerhalb des ZETA Guard, aber im selben Cluster und damit im
 Überwachungsscope des Betreibers:**
 
-* **HSM Proxy** — wird vom **Hersteller des TI 2.0 Dienstes** bereitgestellt
+* HSM Proxy — wird vom Hersteller des TI 2.0 Dienstes bereitgestellt
 * Resource Server und Application Authorization Backend des Fachdienstes
 
 **Nicht im Scope:** ZETA Client / ZETA SDK (siehe
@@ -66,35 +116,32 @@ Dieses Konzept konsolidiert und erweitert:
 | Kürzel | Rolle | Liefergegenstand |
 | --- | --- | --- |
 | **ZGH** | **ZETA Guard Hersteller** (gematik) | Helm Chart, Container-Images, OPA-Policies, Terraform-Templates, Telemetrie-Semantik, Referenz-Policies, Runbooks, Nachweisdokumente |
-| **DH** | **TI 2.0 Dienst-Hersteller** | Resource Server, Application Authorization Backend, **HSM Proxy**, Integration in den ZETA Guard |
+| **DH** | **TI 2.0 Dienst-Hersteller** | Resource Server, Application Authorization Backend, HSM Proxy, Integration in den ZETA Guard |
 | **DA** | **TI 2.0 Dienst-Anbieter / Betreiber** | Kubernetes-Plattform, Betrieb, Konfiguration, SIEM/SOC, Incident Response, Zulassungsnachweise |
 
 ### 2.1 Trennlinie
 
-Die Aufgabenteilung folgt einem einzigen Prinzip:
+Die Aufgabenteilung folgt dem Prinzip:
 
-> **Der Hersteller liefert das Wissen darüber, was normal ist.
-> Der Betreiber liefert die Plattform, die Abweichungen erkennt und darauf reagiert.**
+> Der Hersteller liefert das Wissen darüber, was normal ist.
+> Der Betreiber liefert die Plattform, die Abweichungen erkennt und darauf reagiert.
 
 Konkret bedeutet das:
 
-* **Der ZGH kann und muss liefern**, was ohne Kenntnis des Anwendungsinnenlebens
-  nicht erstellbar ist: konforme Manifeste, die **Kommunikationsmatrix**, die
-  **Prozess- und Dateipfad-Baselines** je Container, die **Telemetrie-Semantik**
+* Der ZGH kann und muss liefern, was ohne Kenntnis des Anwendungsinnenlebens
+  nicht erstellbar ist: konforme Manifeste, die Kommunikationsmatrix, die
+  Prozess- und Dateipfad-Baselines je Container, die Telemetrie-Semantik
   (welches Event bedeutet was), signierte Artefakte und Referenz-Policies.
-* **Der DA kann und muss liefern**, was ohne Kenntnis der Betriebsumgebung nicht
+* Der DA kann und muss liefern, was ohne Kenntnis der Betriebsumgebung nicht
   erstellbar ist: Cluster-Härtung, Enforcement-Werkzeuge, IP-Adressen und
   Netzsegmente, SIEM-Anbindung, Alarmierungswege, Bereitschaft und Reaktion.
-* **Der DH liefert dasselbe wie der ZGH — für seine eigenen Komponenten**,
-  insbesondere für den **HSM Proxy** und den Resource Server. Andernfalls entsteht
+* Der DH liefert dasselbe wie der ZGH — für seine eigenen Komponenten,
+  insbesondere für den HSM Proxy und den Resource Server. Andernfalls entsteht
   im selben Cluster eine nicht überwachte Zone neben einem hochgradig überwachten
   ZETA Guard.
 
-Eine häufige Fehlannahme ist, Laufzeitüberwachung sei reine Betreiberaufgabe. Das
-trifft für die *Werkzeuge* zu, nicht für die *Regeln*: Nur der Hersteller weiß, dass
-im PEP-Container niemals eine Shell startet und dass `/etc/nginx` zur Laufzeit
-niemals beschrieben wird. Ohne diese Baselines betreibt der DA ein Werkzeug ohne
-Regelwerk und erzeugt entweder Blindheit oder Fehlalarme.
+Die Laufzeitüberwachung ist daher keine reine Anbieteraufgabe. Die Werkzeuge werden vom Anbieter bereitgestellt. Die Regeln werden jedoch vom Hersteller definiert, da nur der Hersteller weiß, dass
+im PEP-Container niemals eine Shell startet und dass `/etc/nginx` zur Laufzeit niemals beschrieben wird. Ohne diese Baselines betreibt der DA ein Werkzeug ohne Regelwerk und erzeugt entweder Blindheit oder Fehlalarme.
 
 ## 3. Schichtenmodell
 
@@ -127,10 +174,8 @@ flowchart TB
     L0 --> L1 --> L2 --> L3 --> L4 --> L5 --> L6 --> L7
 ```
 
-Die Schichten sind **kumulativ, nicht alternativ**. Insbesondere ersetzt ein
-Service Mesh keine NetworkPolicies (ein kompromittierter Sidecar-Bypass umgeht L4,
-nicht L3), und Tetragon ersetzt keine Pod Security Standards (Detektion nach dem
-Start ist teurer als Verhinderung des Starts).
+Die Schichten sind kumulativ, nicht alternativ. Insbesondere ersetzt ein
+Service Mesh keine NetworkPolicies (ein kompromittierter Sidecar-Bypass umgeht L4, nicht L3), und Tetragon ersetzt keine Pod Security Standards (Detektion nach dem Start ist teurer als Verhinderung des Starts).
 
 ## 4. Maßnahmen im Detail
 
@@ -164,17 +209,9 @@ Aktivierung per Namespace-Label ist im
 [KIND-Setup](../Anleitungen/Wie_Sie_den_Cluster_lokal_mit_KIND_aufsetzen.md)
 dokumentiert.
 
-**Präzisierung zu `readOnlyRootFilesystem`:** Dieses Feld ist nicht Bestandteil
-des PSS-Profils `restricted`, sondern eine darüber hinausgehende Härtung. Im ZETA
-Guard ist es für Authserver und dessen Init-Container auf `true` gesetzt, für
-Infinispan und den Provisioning Processor derzeit auf `false`. Es muss daher per
-**Admission Policy** (Abschnitt 4.2) erzwungen und für die verbleibenden Workloads
-gezielt nachgezogen werden — die pauschale Aussage „PSS erzwingt
-`readOnlyRootFilesystem`" ist technisch unzutreffend.
+**Präzisierung zu `readOnlyRootFilesystem`:** Dieses Feld ist nicht Bestandteil des PSS-Profils `restricted`, sondern eine darüber hinausgehende Härtung. Im ZETA Guard ist es für Authserver und dessen Init-Container auf `true` gesetzt, für Infinispan und den Provisioning Processor derzeit auf `false`. Es muss daher per Admission Policy (Abschnitt 4.2) erzwungen und für die verbleibenden Workloads gezielt nachgezogen werden — die pauschale Aussage „PSS erzwingt `readOnlyRootFilesystem`" ist technisch unzutreffend.
 
-**OpenShift:** Dort gilt statt PSS die `restricted-v2` Security Context Constraint.
-`runAsUser` darf nicht gesetzt werden, siehe
-[ZETA OpenShift-Kompatibilität](../Anleitungen/ZETA_OpenShift_Kompatibilität.md).
+**OpenShift:** Dort gilt statt PSS die `restricted-v2` Security Context Constraint. `runAsUser` darf nicht gesetzt werden, siehe [ZETA OpenShift-Kompatibilität](../Anleitungen/ZETA_OpenShift_Kompatibilität.md).
 
 | Rolle | Aufgabe |
 | --- | --- |
@@ -186,10 +223,7 @@ gezielt nachgezogen werden — die pauschale Aussage „PSS erzwingt
 
 **Ziel:** Nicht-konforme Ressourcen erreichen die Cluster-Datenbank gar nicht erst.
 
-Als Policy-Engine wird **Kyverno** oder **OPA Gatekeeper** eingesetzt. Kyverno wird
-empfohlen, weil es Image-Signaturverifikation (`verifyImages`) nativ beherrscht und
-keine zweite Policy-Sprache neben Rego einführt — Rego bleibt im ZETA Guard für die
-fachliche Autorisierung in der Policy Engine reserviert.
+Als Policy-Engine wird **Kyverno** oder **OPA Gatekeeper** eingesetzt. Kyverno wird empfohlen, weil es Image-Signaturverifikation (`verifyImages`) nativ beherrscht und keine zweite Policy-Sprache neben Rego einführt — Rego bleibt im ZETA Guard für die fachliche Autorisierung in der Policy Engine reserviert.
 
 **Mindest-Policy-Set:**
 
@@ -206,20 +240,10 @@ fachliche Autorisierung in der Policy Engine reserviert.
 | `require-pdb` | PodDisruptionBudget für HA-Komponenten | SOLL |
 | `restrict-nodeport-loadbalancer` | Keine Umgehung des Ingress via NodePort | SOLL |
 
-**Zur Image-Signaturprüfung:** Im ZETA Guard wird die cosign-Vertrauenskette der
-gematik bereits als Secret (`imageTrustCertchainSecretRef`) bereitgestellt und vom
-Provisioning Processor genutzt, um das **Provisioning-Daten-Image** beim Pod-Start
-zu verifizieren. Dieselbe Vertrauenskette ist der Anker für die
-Admission-Verifikation der **Komponenten-Images**. Wichtig ist der Hinweis in
-[Wie Sie eine eigene OCI Registry verwenden](../Anleitungen/Wie_Sie_eine_eigene_OCI_Registry_verwenden.md):
-beim Spiegeln in den Registry-Cache muss `cosign save`/`load` verwendet werden,
-sonst gehen die `.sig`-Artefakte verloren und die Admission-Policy blockiert das
-gesamte Deployment.
+**Zur Image-Signaturprüfung:** Im ZETA Guard wird die cosign-Vertrauenskette der gematik bereits als Secret (`imageTrustCertchainSecretRef`) bereitgestellt und vom Provisioning Processor genutzt, um das Provisioning-Daten-Image beim Pod-Start zu verifizieren. Dieselbe Vertrauenskette ist der Anker für die Admission-Verifikation der Komponenten-Images. Wichtig ist der Hinweis in [Wie Sie eine eigene OCI Registry verwenden](../Anleitungen/Wie_Sie_eine_eigene_OCI_Registry_verwenden.md): beim Spiegeln in den Registry-Cache muss `cosign save`/`load` verwendet werden, sonst gehen die `.sig`-Artefakte verloren und die Admission-Policy blockiert das gesamte Deployment.
 
 **Rollout-Reihenfolge (verbindlich):** Jede neue Policy durchläuft
-`Audit` → `Warn` → `Enforce`. Eine Policy direkt im Enforce-Modus einzuführen ist
-der häufigste Weg, einen produktiven Dienst durch eine Sicherheitsmaßnahme
-auszufallen zu lassen.
+`Audit` → `Warn` → `Enforce`. Eine Policy direkt im Enforce-Modus einzuführen ist der häufigste Weg, einen produktiven Dienst durch eine Sicherheitsmaßnahme ausfallen zu lassen.
 
 **Verfügbarkeitsrisiko:** Ein Validating Webhook mit `failurePolicy: Fail` macht die
 Policy-Engine zur Verfügbarkeitsabhängigkeit des gesamten Clusters. Die Engine
@@ -694,8 +718,7 @@ spec:
     # Abschnitt 4.3.1), artifactRegistry, providerArtifactRegistry: ipBlocks
 ```
 
-> **Der TOFU-E-Mail-Endpunkt ist ein Architekturvorschlag**, kein Bestandteil
-> der Spezifikation oder des Charts. Sobald er umgesetzt ist, wäre er die
+> **Der TOFU-E-Mail-Endpunkt** ist die
 > einzige Stelle, an der ein Fachdienst personenbezogene Registrierungsdaten aus
 > dem PDP abruft. Er MUSS deshalb auf einem eigenen Port liegen, mTLS mit
 > Client-Zertifikat erzwingen und darf ausschließlich vom Resource Server

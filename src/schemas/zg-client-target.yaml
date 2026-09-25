@@ -1,0 +1,239 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+schemaVersion: "1.0.0"
+title: ZG Client Target
+description: >
+  Schema für eine Datei im Verzeichnis /targets/ des ZG Client
+  Konfigurations-Images (gemSpec_ZETA Kapitel 5.6.5). Jede Datei beschreibt
+  genau einen externen Zieldienst, zu dem der ZG Client ausgehende
+  Dienst-zu-Dienst-Kommunikation mit Workload Identity Federation absichern
+  darf.
+
+  Das Konfigurations-Image wird von der gematik je Fachdienst-Typ signiert
+  über die ZETA Artifact Registry bereitgestellt und vom ZG Client über die
+  Local Artifact Registry Cache bezogen. Es enthält ausschließlich Vorgaben der
+  gematik. Betreiberspezifische Deployment-Parameter (Adresse des lokalen PDP
+  Authorization Servers, lokaler Listener, Zuordnung zu Fachkomponenten) sind
+  NICHT Teil dieses Formats; alle Objekte setzen `additionalProperties: false`,
+  sodass solche Felder strukturell zurückgewiesen werden.
+
+  Der ZG Client ordnet einen fachlichen Request anhand der Ziel-URL genau einem
+  Zieldienst zu, dessen `target.base_urls` die Ziel-URL abdeckt, und verwendet
+  für den Token Exchange ausschließlich die hier hinterlegten Werte.
+
+type: object
+additionalProperties: false
+required:
+  - api_version
+  - kind
+  - metadata
+  - key
+  - purpose
+  - owner
+  - target
+  - sts
+  - subject_token
+  - cache
+
+properties:
+  api_version:
+    type: string
+    const: "zeta.gematik.de/v1"
+  kind:
+    type: string
+    const: "ZgClientTarget"
+
+  metadata:
+    type: object
+    additionalProperties: false
+    required:
+      - environment
+      - status
+      - fachdienst_typ
+      - generated_at
+    properties:
+      environment:
+        type: string
+        description: "TI-Umgebung, für die dieser Eintrag gilt."
+        enum: [RU, TU, PU]
+      status:
+        type: string
+        description: >
+          `normative` kennzeichnet die von der gematik als OCI-Artefakt
+          ausgelieferte und signierte Konfiguration. `example` kennzeichnet
+          eine Formatdemonstration im Repository, die NICHT für den Betrieb
+          verwendet werden darf.
+        enum: [normative, example]
+      fachdienst_typ:
+        type: string
+        description: >
+          Bezeichner des Fachdienst-Typs, für dessen ZG Client
+          Konfigurations-Image dieser Eintrag bestimmt ist. Entspricht dem
+          Bezeichner, der auch für die OPA Bundles und den Repository-Pfad
+          `zeta-zg-client-config/<fachdienst-typ>` verwendet wird.
+        pattern: "^[a-z][a-z0-9-]*$"
+      generated_at:
+        type: string
+        format: date-time
+      note:
+        type: string
+
+  key:
+    type: string
+    description: >
+      Eindeutiger Bezeichner des Zieldienstes innerhalb des Fachdienst-Typs.
+      Wird in Telemetriedaten und Audit-Ereignissen des ZG Client zur
+      Referenzierung des Zieldienstes verwendet.
+    pattern: "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$"
+  purpose:
+    type: string
+    description: "Fachlicher Zweck der Verbindung, in einem Satz. Nicht normativ."
+  owner:
+    type: string
+    description: >
+      Wer den Zieldienst betreibt und damit für Änderungen an Endpunkten und
+      Scopes verantwortlich ist.
+    enum: [gematik, ti-provider, third-party]
+
+  target:
+    type: object
+    additionalProperties: false
+    required:
+      - base_urls
+    properties:
+      base_urls:
+        type: array
+        description: >
+          Basis-URLs, für die dieser Eintrag gilt. Ein fachlicher Request wird
+          diesem Zieldienst zugeordnet, wenn seine Ziel-URL mit einer der
+          Basis-URLs beginnt (Schema, Host, Port und Pfadpräfix). Nur `https`
+          ist zulässig; IP-Adressen sind nicht zulässig.
+        minItems: 1
+        uniqueItems: true
+        items:
+          type: string
+          format: uri
+          pattern: "^https://[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)+(:[0-9]{1,5})?(/[^?#]*)?$"
+          not:
+            description: "Kein IPv4-Literal (IPv6-Literale scheitern bereits am Muster oben)."
+            pattern: "^https://[0-9]{1,3}(\\.[0-9]{1,3}){3}([:/]|$)"
+      stability:
+        type: string
+        description: >
+          `volatile` kennzeichnet Zieldienste hinter CDN/Anycast, deren
+          Adressen sich ohne Ankündigung ändern. Hinweis für die
+          Egress-Kontrolle des Betreibers, keine Auswirkung auf den ZG Client.
+        enum: [stable, volatile]
+        default: stable
+
+  sts:
+    type: object
+    description: >
+      Secure Token Service des Zieldienstes, bei dem der ZG Client das Subject
+      Token per OAuth 2.0 Token Exchange [RFC8693] gegen ein Access Token
+      tauscht.
+    additionalProperties: false
+    required:
+      - token_endpoint
+      - scopes
+    oneOf:
+      - required: [resource]
+      - required: [audience]
+    properties:
+      token_endpoint:
+        type: string
+        format: uri
+        description: "URL des Token-Endpunkts des Secure Token Service (nur https)."
+        pattern: "^https://"
+      resource:
+        type: string
+        format: uri
+        description: >
+          Wert des Parameters `resource` [RFC8707] im Token Exchange
+          (Contract v2). Genau eines von `resource` und `audience` ist
+          anzugeben.
+      audience:
+        type: string
+        description: >
+          Wert des Parameters `audience` [RFC8693] im Token Exchange
+          (Contract v1, Legacy). Genau eines von `resource` und `audience` ist
+          anzugeben.
+        minLength: 1
+      scopes:
+        type: array
+        description: >
+          Scopes, die der ZG Client für diesen Zieldienst beantragen darf. Der
+          ZG Client beantragt je Token Exchange eine Teilmenge dieser Liste,
+          nie darüber hinaus.
+        minItems: 1
+        uniqueItems: true
+        items:
+          type: string
+          pattern: "^[\\x21\\x23-\\x5B\\x5D-\\x7E]+$"
+      token_endpoint_auth_method:
+        type: string
+        description: >
+          Client-Authentisierung am Token-Endpunkt des STS. `none` bedeutet,
+          dass sich der ZG Client ausschließlich über das Subject Token
+          ausweist.
+        enum: [none, private_key_jwt]
+        default: none
+      dpop:
+        type: boolean
+        description: >
+          Gibt an, ob der STS DPoP-gebundene Access Tokens ausstellt und der
+          ZG Client den Token Exchange und die Requests an den Zieldienst mit
+          DPoP-Proof [RFC9449] ausführen muss.
+        default: true
+
+  subject_token:
+    type: object
+    description: >
+      Parameter für das Subject Token, das der ZG Client beim lokalen PDP
+      Authorization Server für diesen Zieldienst anfordert.
+    additionalProperties: false
+    required:
+      - audience
+    properties:
+      audience:
+        type: string
+        description: >
+          Wert des `aud`-Claims, mit dem der lokale PDP Authorization Server
+          das Subject Token ausstellt. In der Regel die URL des Token-Endpunkts
+          des STS (`sts.token_endpoint`) oder ein vom Zieldienst vorgegebener
+          Bezeichner.
+        minLength: 1
+      scopes:
+        type: array
+        description: >
+          Optionale Scopes, die im Subject Token enthalten sein sollen, sofern
+          der STS des Zieldienstes dies erwartet.
+        uniqueItems: true
+        items:
+          type: string
+          pattern: "^[\\x21\\x23-\\x5B\\x5D-\\x7E]+$"
+
+  cache:
+    type: object
+    description: >
+      Parameter für die Zwischenspeicherung der vom STS bezogenen Access
+      Tokens im ZG Client.
+    additionalProperties: false
+    required:
+      - refresh_before_expiry_seconds
+      - max_ttl_seconds
+    properties:
+      refresh_before_expiry_seconds:
+        type: integer
+        description: >
+          Vorlaufzeit in Sekunden vor Ablauf (`exp`) des Access Token, ab der
+          der ZG Client die Erneuerung im Hintergrund anstößt.
+        minimum: 1
+        maximum: 3600
+      max_ttl_seconds:
+        type: integer
+        description: >
+          Obergrenze in Sekunden für die Zwischenspeicherung eines Access
+          Token, unabhängig von dessen `exp`. Muss größer sein als
+          `refresh_before_expiry_seconds`.
+        minimum: 2
+        maximum: 86400
