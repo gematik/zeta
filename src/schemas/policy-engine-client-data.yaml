@@ -219,7 +219,8 @@ properties:
             description: >
               Ergebnis der Google Play Integrity API – Basic Integrity. Quelle:
               posture-android.yaml → play_integrity_token (vom AuthS
-              ausgewertet).
+              ausgewertet; false, wenn requestHash nicht zu clientDataHash
+              passt).
           meets_device_integrity:
             type: boolean
             description: >
@@ -235,10 +236,13 @@ properties:
           key_attestation_verified:
             type: boolean
             description: >
-              True, wenn die Android Key Attestation Certificate Chain
-              erfolgreich gegen den Google-Anker verifiziert wurde. Quelle:
-              posture-android.yaml → key_attestation_certificate_chain (vom
-              AuthS ausgewertet).
+              True, wenn die Android Key Attestation Certificate Chain bei
+              der DCR erfolgreich gegen den Google-Anker verifiziert wurde
+              (dcr-request.yaml → android_key_attestation_certificate_chain,
+              Attestation Key als ak_jkt gepinnt) und die Laufzeit-Signatur
+              posture-android.yaml → signed_client_data_hash gegen diesen
+              gepinnten Attestation Key verifiziert wurde. Eine ungültige
+              Laufzeit-Signatur führt bereits am AuthS zur Ablehnung.
 
       apple:
         type: object

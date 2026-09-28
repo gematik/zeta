@@ -42,10 +42,9 @@
           "model": "Pixel 7",
           "board": "oriole"
         },
-        "key_attestation_certificate_chain": [
-          "-----BEGIN CERTIFICATE-----\nMIIC... (App Key Cert) ...\n-----END CERTIFICATE-----",
-          "-----BEGIN CERTIFICATE-----\nMIIC... (Hardware Key Cert) ...\n-----END CERTIFICATE-----"
-        ]
+        "nonce": "n-3f9a2c7e1b4d4e0f8a6c",
+        "signed_client_data_hash": "MEUCIQDx7Yk2c9FhQ0vJm3pL8sWnR4tA1bZ6eK5uHgV0oX2yTgIgC4dE8fJ1kN7mP3qS9rU2wX5zA6bD0eG4hI8jL1nO3pQ",
+        "play_integrity_token": "eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0...<verschlüsseltes Play Integrity Token, requestHash = Base64url(clientDataHash)>..."
       },
       "attestation_timestamp": 1678886410
     }

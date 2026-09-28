@@ -27,7 +27,7 @@ AuthS --> Client -- : Nonce
 alt Android Key / ID Attestation
   Client -> OS: Ermittle Posture\n(OS-Version, Security Patch Level,\nHersteller, Modell, Verified Boot,\nApp-Signaturinformationen)
   OS --> Client: Posture-Daten (Klartext)
-Client -> Client: clientDataHash =\nSHA-256(Nonce || Posture-Daten || PuK.Client.Sig)
+Client -> Client: clientDataHash =\nSHA-256(Nonce || JCS(Posture-Daten) || PuK.Client.Sig)
 
   Client -> OS: Signature.sign(\n  KeyStore.getKey(Alias_AK),\n  clientDataHash)
   OS -> TEE: Signiere clientDataHash\nmit PrK.AK.Sig
@@ -36,15 +36,17 @@ Client -> Client: clientDataHash =\nSHA-256(Nonce || Posture-Daten || PuK.Client
 
   note left of Client
     android_key_attestation_certificate_chain wurde beim DCR übermittelt; kein erneutes
-    Erzeugen eines Schlüsselpaars. AuthS verifiziert: attestationChallenge im
-    Blatt-Zertifikat == SHA-256(PuK.Client.Sig).
+    Erzeugen eines Schlüsselpaars. AuthS hat dort verifiziert: attestationChallenge im
+    Blatt-Zertifikat == SHA-256(PuK.Client.Sig) und PuK.AK.Sig als ak_jkt gepinnt.
+    Zur Laufzeit prüft der AuthS signed_client_data_hash gegen den gepinnten AK
+    und rechnet clientDataHash selbst nach (Details: posture-android.yaml).
   end note
 
   opt Play Integrity API (ergänzend)
-    Client -> OS: IntegrityTokenProvider.request(\nrequestHash = clientDataHash)
+    Client -> OS: IntegrityTokenProvider.request(\nrequestHash = Base64url(clientDataHash))
     OS --> Client: integrityToken\n(JWS: deviceIntegrity + appIntegrity + accountDetails)
   end
-  Client -> Client: Generiere client_statement\n(Evidence = signed_client_data_hash,\nandroid_key_attestation_certificate_chain,\n[integrityToken], Posture-Daten im Klartext)
+  Client -> Client: Generiere client_statement\n(posture = Posture-Daten im Klartext + nonce\n+ signed_client_data_hash + [play_integrity_token])
 else Software Attestation (Fallback)
   Client -> Client: Generiere client_statement\n(OS und PS Daten ungesichert)
 end

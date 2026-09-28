@@ -1,5 +1,5 @@
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.1.0"
+schemaVersion: "1.1.1"
 title: RegistrationRequest
 description: >-
   Payload Schema für den DCR POST /register Body.
@@ -12,6 +12,11 @@ description: >-
   jeweils bei der Feldbeschreibung dokumentiert); die Felder SOLLEN von
   neuen Client-Implementierungen gesetzt werden und werden in einer
   künftigen Major-Version verpflichtend.
+
+  Präzisierung 1.1.1 (keine neuen Felder): Byte-Repräsentation von
+  puk_client_sig in Hash-Eingaben (definitions/puk_client_sig_bytes) und
+  Format aller Signaturen über einen solchen Hash
+  (definitions/hash_signature) sind festgelegt; beides war zuvor offen.
 type: object
 
 oneOf:
@@ -69,6 +74,7 @@ oneOf:
         description: >-
           Signatur des SHA-256-Hashes von puk_client_sig, erstellt mit
           dem TPM Attestation Key (prk_ak_sig). Base64url-kodiert.
+          Signaturformat: definitions/hash_signature.
 
   # -----------------------------------------------------------------
   # 2. Apple Hardware Attestation (iOS, iPadOS & macOS)
@@ -122,7 +128,8 @@ oneOf:
         description: >-
           Selbstsignatur: Signatur des SHA-256-Hashes von PuK.Client.Sig,
           erstellt mit PrK.Client.Sig (Proof-of-Possession des Client
-          Instance Keys). Base64url-kodiert. Die Bindung
+          Instance Keys). Base64url-kodiert, Signaturformat:
+          definitions/hash_signature. Die Bindung
           AK ↔ PuK.Client.Sig weist bereits das apple_attestation_object
           nach (clientDataHash == SHA-256(PuK.Client.Sig)); eine
           AK-Signatur ist hier daher nicht erforderlich.
@@ -180,7 +187,8 @@ oneOf:
         description: >-
           Selbstsignatur: Signatur des SHA-256-Hashes von puk_client_sig,
           erstellt mit prk_client_sig (Proof-of-Possession des Client
-          Instance Keys). Base64url-kodiert. Die Bindung
+          Instance Keys). Base64url-kodiert, Signaturformat:
+          definitions/hash_signature. Die Bindung
           AK ↔ puk_client_sig weist bereits die attestationChallenge im
           Blatt-Zertifikat der android_key_attestation_certificate_chain
           nach (attestationChallenge == SHA-256(puk_client_sig)); eine
@@ -245,7 +253,8 @@ oneOf:
         description: >-
           Selbstsignatur: Signatur des SHA-256-Hashes von puk_client_sig,
           erstellt mit prk_client_sig (Proof-of-Possession des Client
-          Instance Keys). Base64url-kodiert. Einheitlich für alle
+          Instance Keys). Base64url-kodiert, Signaturformat:
+          definitions/hash_signature. Einheitlich für alle
           Plattformen.
       nonce: { $ref: "#/definitions/nonce" }
       attestation_pop:
@@ -271,9 +280,14 @@ oneOf:
           gegen cnf.jwk (puk_ak_sig) aus dem Token und prüft rpIdHash
           sowie die Monotonie des Counters.
 
-          android | tpm: Base64url-kodierte Signatur über den oben
-          bestimmten Hash, erstellt mit prk_ak_sig. Der AuthS verifiziert
-          gegen cnf.jwk (puk_ak_sig) aus dem Token.
+          android | tpm: Signatur über den oben bestimmten Hash, erstellt
+          mit prk_ak_sig, im Format definitions/hash_signature (Android:
+          SHA256withECDSA im Android Keystore; TPM: TPM2_Hash +
+          TPM2_Sign mit Validierungsticket, da der AK ein restricted
+          Signing Key ist). Der AuthS verifiziert gegen cnf.jwk
+          (puk_ak_sig) aus dem Token; eine rohe Signatur über den Hash
+          ohne die dort festgelegte SHA-256-Nachrichtenbildung wird
+          abgelehnt.
 
   # -----------------------------------------------------------------
   # 5. Legacy / Software Attestation
@@ -297,7 +311,8 @@ oneOf:
         type: string
         description: >-
           Selbstsignatur über SHA-256(puk_client_sig || nonce), erstellt mit
-          prk_client_sig. Base64url-kodiert. Weist den Besitz des
+          prk_client_sig. Base64url-kodiert, Signaturformat:
+          definitions/hash_signature. Weist den Besitz des
           Instanzschlüssels nach und verhindert, dass ein Dritter einen
           fremden öffentlichen Schlüssel registriert und damit dessen
           spätere Registrierung per 409 registrationConflict blockiert.
@@ -325,6 +340,43 @@ oneOf:
       product_version: { $ref: "#/definitions/product_version" }
 
 definitions:
+  puk_client_sig_bytes:
+    type: string
+    description: >-
+      Byte-Repräsentation von puk_client_sig (PuK.Client.Sig) in allen
+      Hash-Eingaben dieses Schemas und der Posture-Schemas
+      (SHA-256(puk_client_sig), SHA-256(puk_client_sig || nonce),
+      attestationChallenge, App-Attest-clientDataHash, clientDataHash in
+      posture-android.yaml): die UTF-8-Bytes der RFC-7638-Kanonisierung des
+      JWK aus jwks, d. h. {"crv":"P-256","kty":"EC","x":"…","y":"…"} mit
+      genau diesen Membern in lexikografischer Reihenfolge, ohne Leerzeichen.
+      Damit gilt SHA-256(puk_client_sig) = JWK-Thumbprint (jkt) des Client
+      Instance Keys; der AuthS kann den Wert aus dem registrierten Schlüssel
+      nachrechnen. Rein dokumentarische Definition, kein Request-Feld.
+  hash_signature:
+    type: string
+    description: >-
+      Einheitliches Format aller Signaturen "über einen Hash h" in diesem
+      Schema (signed_hash_puk_client_sig, attestation_pop für android | tpm)
+      sowie von signed_client_data_hash (posture-android.yaml):
+
+      - Nachricht ist h selbst (32 Byte); die Signatur wird mit SHA-256 über
+        diese Nachricht gebildet, also über SHA-256(h) – "hash-then-sign" wie
+        bei ES256 / RS256. Das entspricht SHA256withECDSA (Android Keystore,
+        JCA), SecKeyCreateSignature mit
+        ecdsaSignatureMessageX962SHA256 (Apple) sowie beim TPM TPM2_Hash(h,
+        TPM_ALG_SHA256) und TPM2_Sign mit dem erhaltenen Digest und
+        Validierungsticket. Eine Signatur direkt über h ohne erneutes Hashen
+        (NONEwithECDSA, TPM2_Sign über h) ist unzulässig.
+      - Algorithmus nach Schlüsseltyp: EC P-256 → ECDSA mit SHA-256;
+        RSA (nur TPM-AK) → RSASSA-PKCS1-v1_5 mit SHA-256.
+      - Kodierung: ECDSA-Signatur als DER (ASN.1 ECDSA-Sig-Value; beim TPM
+        aus r und s von TPMS_SIGNATURE_ECDSA zu bilden), RSA-Signatur als
+        Oktettstring; jeweils Base64url ohne Padding.
+      - TPM-Sonderfall: TPM2_Hash liefert kein gültiges Ticket, wenn h mit
+        TPM_GENERATED_VALUE (0xFF544347) beginnt (Wahrscheinlichkeit 2^-32).
+        Der Client bezieht dann eine neue nonce bzw. erzeugt, wo keine nonce
+        eingeht, einen neuen Client Instance Key.
   nonce:
     type: string
     description: >-
@@ -332,9 +384,9 @@ definitions:
       as-well-known.yaml). Die Nonce MUSS in den signierten Hash eingehen —
       attestation_pop bzw. signed_hash_puk_client_sig werden dann über
       SHA-256(puk_client_sig || nonce) gebildet: die Nonce wird als UTF-8-Bytes
-      des vom AuthS gelieferten Strings an dieselbe Byte-Repräsentation von
-      puk_client_sig angehängt, die auch die Legacy-Form SHA-256(puk_client_sig)
-      hasht. Eine mitgesendete, aber nicht mitsignierte Nonce hat keine
+      des vom AuthS gelieferten Strings an die Byte-Repräsentation von
+      puk_client_sig (definitions/puk_client_sig_bytes) angehängt, die auch die
+      Legacy-Form SHA-256(puk_client_sig) hasht. Eine mitgesendete, aber nicht mitsignierte Nonce hat keine
       Schutzwirkung.
 
       Relevant für attestation_type "zeta_attestation_token" (Fast-Path) und
