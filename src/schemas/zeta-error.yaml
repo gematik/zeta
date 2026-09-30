@@ -5,7 +5,7 @@
 # dahinterliegenden Resource Servers werden hingegen unverändert durchgereicht und
 # folgen NICHT diesem Schema (A_29853).
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.2.0"
+schemaVersion: "1.3.0"
 title: HTTP ZETA Error Response
 description: Schema for transmitting error information for HTTP ZETA error response.
 type: object
@@ -75,6 +75,12 @@ definitions:
           - access_denied
           - server_error
           - temporarily_unavailable
+
+          # --- Dynamic Client Registration (RFC 7591 §3.2.2) -----------------
+          # redirect_uri nicht in der Client-Registry des Provisioning Images
+          # für die product_id registriert. (A_xxxx1)
+          - invalid_redirect_uri
+          - invalid_client_metadata
 
           # --- Bearer Token / geschützte Ressource (RFC 6750 §3.1) ------------
           - invalid_token

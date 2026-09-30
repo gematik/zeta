@@ -77,18 +77,22 @@ Laufzeitüberwachung wird hier in vier Wirkstufen verstanden:
 
 * PEP — HTTP Proxy (nginx)
 * PDP — Authorization Server (Keycloak), Policy Engine (OPA), PDP Datenbank
-  (PostgreSQL), PDP Cache (Infinispan)
+  (PostgreSQL), PDP Cache (im Chart der eingebettete Keycloak-Cache mit
+  JGroups-Cluster-Transport; optional ein externes Infinispan über
+  `global.infinispanExternal`, das nicht Bestandteil des Charts ist)
 * Telemetriedaten Service / Telemetry-Gateway (OpenTelemetry Collector)
 * Notification Service (laut Spezifikation Kap. 3.2 eine **optionale** Komponente;
   im Chart erst ab Umsetzungsstufe 2 enthalten)
 * Provisioning Processor (Init-Container von Authserver, PEP-Proxy, OPA und
   OPA-Simulation)
-* Token-Renewer-CronJobs (`opa-token-renewer`, `gematik-oidc-token-renewer`) für
-  die Workload Identity Federation gegenüber gematik-Diensten
+* Token-Renewer-CronJobs (`opa-token-renewer-cronjob`, `ti-sim-token-renewer-cronjob`,
+  `ti-siem-token-renewer-cronjob`) für die Workload Identity Federation gegenüber
+  gematik-Diensten
 
 **Im Scope als Hilfskomponenten** (austauschbar, siehe
 [Prüfliste Optionale Komponenten](Pruefliste_Optionale_Komponenten.md)):
-Ingress Controller, Service Mesh, Management Service (Argo CD), Local Artifact
+Ingress Controller bzw. Gateway-API-Controller (das Helm-Chart liefert keinen
+Controller mit), Service Mesh, Management Service (Argo CD), Local Artifact
 Registry Cache, Egress Gateway.
 
 **Außerhalb des ZETA Guard, aber im selben Cluster und damit im
@@ -207,9 +211,11 @@ keine `hostPath`-Volumes.
 (siehe [Security Contexts](Referenz_des_Helm_Charts.md#security-contexts)). Die
 Aktivierung per Namespace-Label ist im
 [KIND-Setup](../Anleitungen/Wie_Sie_den_Cluster_lokal_mit_KIND_aufsetzen.md)
-dokumentiert.
+dokumentiert. Ab Chart-Version 1.3.3 wurde das Chart im KIND-Cluster mit Kyverno
+(PSS `restricted` im Enforce-Modus) ausgerollt, auch in Kombination mit Istio
+Ambient und Cilium, ohne Verstöße im ZETA-Guard-Namespace.
 
-**Präzisierung zu `readOnlyRootFilesystem`:** Dieses Feld ist nicht Bestandteil des PSS-Profils `restricted`, sondern eine darüber hinausgehende Härtung. Im ZETA Guard ist es für Authserver und dessen Init-Container auf `true` gesetzt, für Infinispan und den Provisioning Processor derzeit auf `false`. Es muss daher per Admission Policy (Abschnitt 4.2) erzwungen und für die verbleibenden Workloads gezielt nachgezogen werden — die pauschale Aussage „PSS erzwingt `readOnlyRootFilesystem`" ist technisch unzutreffend.
+**Präzisierung zu `readOnlyRootFilesystem`:** Dieses Feld ist nicht Bestandteil des PSS-Profils `restricted`, sondern eine darüber hinausgehende Härtung. Im ZETA Guard ist es für Authserver und dessen Init-Container, PEP, OPA/OPA-Simulation, Notification Service und die eingebettete Datenbank auf `true` gesetzt, für den Provisioning Processor und die CronJobs (`opa.cronjobSecurityContext`) derzeit auf `false`. Es muss daher per Admission Policy (Abschnitt 4.2) erzwungen und für die verbleibenden Workloads gezielt nachgezogen werden — die pauschale Aussage „PSS erzwingt `readOnlyRootFilesystem`" ist technisch unzutreffend.
 
 **OpenShift:** Dort gilt statt PSS die `restricted-v2` Security Context Constraint. `runAsUser` darf nicht gesetzt werden, siehe [ZETA OpenShift-Kompatibilität](../Anleitungen/ZETA_OpenShift_Kompatibilität.md).
 
@@ -314,23 +320,24 @@ des Gateways DARF NICHT möglich sein.
 | n. i. B. | PEP HTTP Proxy | Authorization Server | HTTP 8080 (HTTPS 8443) | Abruf von OpenID-Konfiguration und JWKS zur Token-Prüfung (`pep_issuer`, siehe [PEP-Konfiguration](Konfiguration_des_PEP_Http_Proxy.md)); Weiterleitung von `/auth/*` für (7) |
 | (4) | PEP HTTP Proxy | HSM Proxy | gRPC 50051 | Schlüsseloperationen: Pod-TLS-Schlüssel (PrK.PEP.TLS) und Beglaubigung des ASL-Schlüssels mit PrK.PEP.Sig |
 | o. Nr. | Authorization Server (inkl. Init-Container `keychain-generator`) | HSM Proxy | gRPC 50051 | Token-Signatur (`HSM_PROXY_TOKEN_KEY_ID`) und Pod-TLS-Schlüssel |
-| n. i. B. | PDP Cache (Infinispan) | HSM Proxy | gRPC 50051 | TLS-Schlüsselmaterial für Client-Endpunkt und JGroups-mTLS (`global.infinispanExternal.hsm`) |
+| n. i. B. | Externer PDP Cache (Infinispan, nur bei `global.infinispanExternal`) | HSM Proxy | gRPC 50051 | TLS-Schlüsselmaterial für Client-Endpunkt und JGroups-mTLS (`global.infinispanExternal.hsm`); Infinispan ist kein Workload des Charts |
 | (13) | Authorization Server | Policy Engine (OPA) und OPA-Simulation | HTTP 8181 | Policy-Auswertung bei Tokenausstellung (`POST /v1/data/policies/zeta/authz/decision`); OPA-Simulation für Shadow-Auswertung neuer Bundles |
 | (15) | Authorization Server | PDP Datenbank (PostgreSQL) | TCP 5432 | Persistenz von Realm-, Client- und Sitzungsdaten |
-| n. i. B. | PDP Datenbank (PostgreSQL-Instanzen), CloudNativePG-Operator (`cnpg-system`) | PDP Datenbank | TCP 5432, 8000 | Streaming-Replikation zwischen den PostgreSQL-Instanzen; Instance-Manager-API des Operators |
+| n. i. B. | PDP Datenbank (PostgreSQL-Instanzen), CloudNativePG-Operator (`cnpg-system`) | PDP Datenbank | TCP 5432, 8000 | Streaming-Replikation zwischen den PostgreSQL-Instanzen; Instance-Manager-API des Operators (nur `databaseMode: cloudnative`) |
+| n. i. B. | Update-Hook-Jobs des Charts (Datenbanksicherung `authserver-db-backup` und Checksummen-Reset der Schemamigration) | Eingebettete PDP Datenbank (`authserver-db`, nur `databaseMode: embedded`) | TCP 5432 | Sicherung vor einem Update und Reset der Migrations-Checksummen |
 | (14) | Authorization Server | Authorization Backend | HTTPS, Port dienstspezifisch | Abruf fachlicher Autorisierungsattribute |
 | (24) | Resource Server | Notification Service | HTTPS, mTLS mit technischem Nutzer (A_29980) | Channel-Abfrage und Übergabe von Notification-Events |
 | n. i. B. **(geplant)** | Resource Server | Authorization Server, dedizierter mTLS-Endpunkt (`GET /zeta/email`) | HTTPS mit Client-Zertifikat (mTLS) | Abfrage der bei der TOFU-Registrierung hinterlegten E-Mail-Adresse des Nutzers. **Architekturvorschlag**, weder in der Spezifikation noch im Chart enthalten; wird hier geführt, damit die Policies bei Einführung nicht nachgezogen werden müssen |
 | (18) | Resource Server | Telemetriedaten Service | OTLP/gRPC 4317 | Traces und Selbstauskunft des Fachdienstes (A_27494-02); weitere OTLP-Receiver nur, wenn im Collector konfiguriert |
 | (20) | Telemetriedaten Service | Monitoring (Anbieter) | OTLP | Betriebliche, bereinigte Metriken, Logs, Traces an das Anbieter-Backend (A_27260) |
-| n. i. B. | Monitoring (Anbieter, Prometheus) | Authorization Server 9000 (`/metrics`), PEP 9113 (`/metrics`), OPA 8181 (`/metrics`), Telemetriedaten Service 8888/8889 | HTTP | Pull-Scraping der Metrik-Endpunkte. **Nur zulässig, wenn der DA diesen Weg wählt**; Alternative ist Scraping durch den Prometheus-Receiver des Telemetriedaten Service mit Export über (20), dann entfällt diese Zeile |
+| n. i. B. | Telemetriedaten Service (Prometheus-Receiver) | Authorization Server 9000 (`/metrics`), PEP 9113 (`/metrics`), OPA und OPA-Simulation 8181 (`/metrics`) | HTTP | Pull-Scraping der Metrik-Endpunkte durch den Collector, Export über (20). Das ist der im Chart vorgesehene Weg. Direktes Scraping durch ein Prometheus des Anbieters ist im Chart nicht freigegeben und nur zulässig, wenn der DA dafür eine eigene Matrixzeile und Policy ergänzt |
 | (27) | SIEM / Monitoring (Anbieter) | Authorization Server, Admin-Ingress | HTTPS 443 → 8080 (8443) | Auslösen der Session-Termination über die Plug-in-Schnittstelle des Authorization Servers (A_29854 ff.); Endpunkt gegen das Chart prüfen |
 | (19) | SIEM (Anbieter) | Telemetriedaten Service | OTLP/gRPC, eigener Port, mTLS | Einspeisung ausgewählter, im Anbieter-SIEM erkannter Sicherheitsereignisse zur Weiterleitung an das TI SIEM (22) — siehe Hinweis 1 |
 | n. i. B. | Telemetriedaten Service | SIEM (Anbieter) | OTLP/gRPC 4317, mTLS | Ausleitung **betrieblicher, bereinigter** Telemetrie an das SIEM des Anbieters (A_27260). Sicherheitsrelevante Telemetrie nach A_28783, A_28793, A_28795 und A_28867 DARF NICHT an den Betreiber gehen (A_28960-01), siehe Abschnitt 6 |
-| n. i. B. | PEP, Authorization Server, OPA, OPA-Simulation, Notification Service | Telemetriedaten Service | OTLP/gRPC 4317; PEP zusätzlich **Syslog UDP 54526** (nginx Access- und Error-Logs) | Telemetrie der Kernkomponenten; das Gateway ist laut Abschnitt 6 der **einzige** Ausleitungspunkt |
-| n. i. B. | Authorization Server | PDP Cache (Infinispan) | TCP 11222 (Hot Rod / REST) | Verteilter Sitzungscache des Authorization Servers; Infinispan ist ein eigener Workload (`infinispan-external`) |
-| n. i. B. | PDP Cache (Infinispan) | PDP Cache (Infinispan) | TCP 7800 | JGroups-Cluster-Transport zwischen Infinispan-Replikaten |
-| n. i. B. | Authorization Server | Authorization Server | TCP 7800, 57800 | JGroups-Cluster-Transport zwischen Keycloak-Replikaten (Ports sind auf keinem Service deklariert) |
+| n. i. B. | PEP, Authorization Server, OPA, OPA-Simulation, Notification Service | Telemetriedaten Service | OTLP/gRPC 4317, OTLP/HTTP 4318; PEP zusätzlich **Syslog UDP 54526** (nginx Access- und Error-Logs); OPA Decision Logs TCP 49152, OPA-Simulation TCP 49153 | Telemetrie der Kernkomponenten; das Gateway ist laut Abschnitt 6 der **einzige** Ausleitungspunkt |
+| n. i. B. | Authorization Server | Externer PDP Cache (Infinispan, nur bei `global.infinispanExternal`) | TCP 11222 (Hot Rod / REST) | Verteilter Sitzungscache des Authorization Servers; Infinispan ist kein Workload des Charts und wird vom DA bereitgestellt |
+| n. i. B. | Externer PDP Cache (Infinispan) | Externer PDP Cache (Infinispan) | TCP 7800 | JGroups-Cluster-Transport zwischen Infinispan-Replikaten; nur bei externem Infinispan, Freigabe außerhalb des Charts |
+| n. i. B. | Authorization Server | Authorization Server | TCP 7800, 57800 | JGroups-Cluster-Transport des eingebetteten Keycloak-Caches zwischen den Replikaten (Ports sind auf keinem Service deklariert) |
 | n. i. B. (Spezifikation: Kante (28)) | Provisioning Processor (Init-Container von Authserver, PEP-Proxy, OPA, OPA-Simulation) | Local Artifact Registry Cache | HTTPS 443 | Abruf des signierten Provisioning-Images bei jedem Pod-Start; gemäß A_29743 zusätzlich zyklische Prüfung auf neue Versionen zur Laufzeit (Hot-Reload), sobald umgesetzt |
 | n. i. B. | Token-Renewer-CronJobs; PDP-Datenbank-Pods (CNPG Instance Manager) | Kubernetes API-Server | HTTPS 443 / 6443 | CronJobs schreiben die per Workload Identity Federation bezogenen Access Tokens als Secret; Instance Manager der CNPG-Pods |
 | n. i. B. | alle Pods | `kube-dns` / CoreDNS | UDP 53, TCP 53 | Namensauflösung |
@@ -352,7 +359,7 @@ Charts, siehe
 | (22) | Telemetriedaten Service | TI SIEM (gematik) | OTLP/gRPC 443 | Sicherheitsereignisse des ZETA Guard **und** die über (19) eingespeisten Ereignisse des Anbieter-SIEM | `siem` |
 | (25) | Notification Service | Push Gateway (gemF_PushNotification), von dort APNs / FCM | HTTPS 443, mTLS mit EV-Zertifikat (A_29982) | Push-Benachrichtigung; die Kante zum Clientsystem Notification Service in der Abbildung fasst Push Gateway und Plattform-Push-Infrastruktur zusammen | *(fehlt, siehe Abschnitt 4.3.3)* |
 | o. Nr. | HSM Proxy | HSM | herstellerspezifisch (PKCS#11 über TCP) | Schlüsseloperationen; Freigabe verantwortet der **DH** | — |
-| n. i. B. | Token-Renewer-CronJobs (`opa-token-renewer`, `gematik-oidc-token-renewer`) | GCP STS / IAM Credentials API (Workload Identity Federation) | HTTPS 443 | Tausch des Kubernetes-ServiceAccount-JWT gegen Access Tokens für Artifact Registry und Telemetriedaten-Empfänger | *(fehlt, siehe Abschnitt 4.3.3)* |
+| n. i. B. | Token-Renewer-CronJobs (`opa-token-renewer-cronjob`, `ti-sim-token-renewer-cronjob`, `ti-siem-token-renewer-cronjob`) | GCP STS / IAM Credentials API (Workload Identity Federation) | HTTPS 443 | Tausch des Kubernetes-ServiceAccount-JWT gegen Access Tokens für Artifact Registry und Telemetriedaten-Empfänger | *(fehlt, siehe Abschnitt 4.3.3)* |
 | n. i. B. | PEP HTTP Proxy | PoPP-Dienst | HTTPS 443 | Proof of Patient Presence, Abruf des PoPP-JWKS | `popp` |
 | n. i. B. | PEP HTTP Proxy | JWKS weiterer Authorization Server der Föderation | HTTPS 443 | Prüfung von Access Tokens fremder, im Entity Statement des Federation Master geführter Authorization Server (A_25668-01); nur bei entsprechender PEP-Konfiguration | *(fehlt, siehe Abschnitt 4.3.3)* |
 | n. i. B. | Authorization Server | OCSP-Responder **aller zugelassenen SMC-B-TSP** | HTTP 80, HTTPS 443 | Statusprüfung des SMC-B-Zertifikats bei der Validierung der SMC-B-Signatur | `ocspSmcbTsp` |
@@ -396,10 +403,10 @@ Wirksamkeitsnachweises. Jede Zeile MUSS im Negativtest nachweislich scheitern.
 | # | Unzulässige Beziehung | Begründung |
 | --- | --- | --- |
 | N1 | Beliebiger Pod oder externer Aufrufer → Authorization Server, außer PEP HTTP Proxy und Ingress Controller (7), Admin-Ingress (o. Nr.) und (27) | Umgehung von Rate Limiting, TLS-Terminierung, Gateway-Kontrollen und der `/auth/admin`-Sperre des PEP |
-| N2 | Beliebiger Pod → Policy Engine (OPA) oder OPA-Simulation, außer Authorization Server (13) und, falls in der Matrix freigegeben, Monitoring-Scraping auf `/metrics` | OPA ist nicht authentifiziert; direkter Zugriff erlaubt beliebige Policy-Auswertung und -Auskunft |
-| N3 | Beliebiger Pod → PDP Datenbank oder PDP Cache, außer Authorization Server (15, 11222), Replikation und Operator (CNPG) sowie Cluster-Transport der jeweiligen Replikate | Direkter Zugriff auf Sitzungs- und Realm-Daten |
+| N2 | Beliebiger Pod → Policy Engine (OPA) oder OPA-Simulation, außer Authorization Server (13) und Metrik-Scraping durch den Telemetriedaten Service auf 8181 (Gruppe B) | OPA ist nicht authentifiziert; direkter Zugriff erlaubt beliebige Policy-Auswertung und -Auskunft |
+| N3 | Beliebiger Pod → PDP Datenbank oder PDP Cache, außer Authorization Server (15, 11222), Replikation und Operator (CNPG), Update-Hooks der eingebetteten Datenbank sowie Cluster-Transport der jeweiligen Replikate | Direkter Zugriff auf Sitzungs- und Realm-Daten |
 | N4 | Beliebiger Pod → Resource Server, außer PEP HTTP Proxy (17) | **Umgehung des Policy Enforcement Point** — die sicherheitsrelevanteste Beziehung der gesamten Matrix |
-| N5 | Beliebiger Pod → HSM Proxy, außer PEP HTTP Proxy (4), Authorization Server inkl. `keychain-generator` (o. Nr.), PDP Cache (Infinispan) und in der VAU-Variante Notification Service (Spezifikation Kap. 5.12, Schritt (H)) | Unkontrollierte Nutzung von Schlüsselmaterial |
+| N5 | Beliebiger Pod → HSM Proxy, außer PEP HTTP Proxy (4), Authorization Server inkl. `keychain-generator` (o. Nr.), externer PDP Cache (Infinispan) und in der VAU-Variante Notification Service (Spezifikation Kap. 5.12, Schritt (H)) | Unkontrollierte Nutzung von Schlüsselmaterial |
 | N6 | Resource Server oder Authorization Backend → PEP, Authorization Server, OPA, PDP Datenbank | Es gibt keine Rückrichtung aus dem Fachdienst in den ZETA Guard außer (24), (18) und, sobald umgesetzt, dem dedizierten mTLS-Endpunkt für die TOFU-E-Mail-Abfrage. Insbesondere DÜRFEN die übrigen Endpunkte des Authorization Servers vom Resource Server NICHT erreichbar sein |
 | N7 | Kernkomponenten → SIEM, Monitoring oder Telemetriedaten-Empfänger unter Umgehung des Telemetriedaten Service (Push-Export) | Abschnitt 6: das Gateway ist der einzige Ausleitungspunkt für Telemetrie. Pull-Scraping der Metrik-Endpunkte durch das Anbieter-Monitoring ist davon getrennt zu entscheiden und nur zulässig, wenn es in Gruppe B freigegeben ist |
 | N8 | Egress aus dem ZETA-Guard-Namespace zu einem Ziel außerhalb der Kategorien der Gruppe C | Exfiltrationspfad; erzeugt Use-Case 3 aus Abschnitt 7 |
@@ -432,8 +439,8 @@ Zwei Punkte verdienen beim Lesen der Matrix besondere Beachtung:
    die Erkennung bleibt anbieterseitig und unabhängig vom Gateway, nur die
    Meldung an die gematik nutzt diesen Pfad.
 2. **In der Abbildung fehlende Beziehungen.** PEP → Authorization Server
-   (JWKS-Abruf und `/auth`-Weiterleitung), PDP Cache (Infinispan), der
-   JGroups-Cluster-Transport von Keycloak und Infinispan, Replikation und Operator
+   (JWKS-Abruf und `/auth`-Weiterleitung), PDP Cache, der
+   JGroups-Cluster-Transport von Keycloak (und ggf. externem Infinispan), Replikation und Operator
    der PDP Datenbank, DNS, der Telemetriepfad der Kernkomponenten inklusive
    Syslog/UDP des PEP, die OCSP-, PIP- und PoPP-Aufrufe, die Token-Renewer-CronJobs
    sowie der Provisioning Processor sind betrieblich notwendig, in der Übersicht
@@ -458,12 +465,21 @@ Die Beispiele verwenden den Namespace `zeta-guard` für die ZETA Guard Services 
 den Namespace `fachdienst` für Resource Server, Authorization Backend und HSM Proxy.
 Die Workload-Labels folgen dem Chart: `app.kubernetes.io/name: <workload>` für
 `pep-proxy`, `authserver`, `opa`, `opa-simulation`; der Telemetry-Gateway trägt
-`app.kubernetes.io/name: opentelemetry-collector`, Infinispan `app: infinispan`,
-die CloudNativePG-Instanzen `cnpg.io/cluster: <cluster>`. Der mitgelieferte
-F5 NGINX Ingress Controller ist ein Subchart im Release-Namespace mit
-`app.kubernetes.io/name: nginx-ingress`; die Beispiele nehmen an, dass er dort
-läuft. Namespace-Namen, Labels und Ports sind gegen das ausgerollte Chart zu
-verifizieren (`kubectl get pods --show-labels`).
+`app.kubernetes.io/name: opentelemetry-collector`, die eingebettete Datenbank
+`app.kubernetes.io/name: authserver-db`, die CloudNativePG-Instanzen
+`cnpg.io/cluster: <cluster>`; zusätzlich tragen alle Workloads
+`app.kubernetes.io/instance: <release>`. Die Token-Renewer-CronJobs tragen die
+Selektor-Labels der OPA-Pods und fallen damit unter deren Policies. Ein externes
+Infinispan (`global.infinispanExternal`) wird in der Egress-Policy des Authservers
+mit `app: infinispan` adressiert.
+
+Das Helm-Chart bringt **keinen Ingress Controller** mit. Es rendert entweder eine
+Standard-`Ingress`-Ressource für den vorhandenen Controller (Default-IngressClass
+oder `ingress.className`) oder, mit `gateway.enabled` und `gateway.parentRefs`, eine
+Gateway-API-`HTTPRoute` an einem vorhandenen Gateway. Die Beispiele sind daher
+controller-neutral und nehmen an, dass der Controller im Namespace
+`ingress-controller` läuft (Platzhalter). Namespace-Namen, Labels und Ports sind
+gegen das ausgerollte Chart zu verifizieren (`kubectl get pods --show-labels`).
 
 ##### Baustein 1 — Default-Deny in beide Richtungen und DNS
 
@@ -518,14 +534,22 @@ spec:
     # 8081 ist der Datenport (Service-Port 80), 8443 nur bei TLS-Terminierung im PEP.
     # 8080 (stub_status) und 9113 (Metrik-Exporter) bleiben dem Ingress verschlossen.
     - from:
-        - podSelector:
+        - namespaceSelector:
             matchLabels:
-              app.kubernetes.io/name: nginx-ingress
+              kubernetes.io/metadata.name: ingress-controller
       ports:
         - protocol: TCP
           port: 8081
         - protocol: TCP
           port: 8443
+    # Metrik-Scraping durch den Prometheus-Receiver des Telemetriedaten Service
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: opentelemetry-collector
+      ports:
+        - protocol: TCP
+          port: 9113
   egress:
     # (17) einziger erlaubter Pfad in den Fachdienst-Namespace
     - to:
@@ -601,14 +625,22 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: pep-proxy
-        - podSelector:
+        - namespaceSelector:
             matchLabels:
-              app.kubernetes.io/name: nginx-ingress
+              kubernetes.io/metadata.name: ingress-controller
       ports:
         - protocol: TCP
           port: 8080
         - protocol: TCP
           port: 8443
+    # Metrik-Scraping durch den Prometheus-Receiver des Telemetriedaten Service
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: opentelemetry-collector
+      ports:
+        - protocol: TCP
+          port: 9000
     # JGroups-Cluster-Transport zwischen den Authserver-Replikaten
     - from:
         - podSelector:
@@ -667,7 +699,8 @@ spec:
       ports:
         - protocol: TCP
           port: 5432
-    # PDP Cache (n. i. B.) - Infinispan ist ein eigener Workload
+    # PDP Cache (n. i. B.) - nur bei externem Infinispan (global.infinispanExternal);
+    # ohne diese Option nutzt Keycloak den eingebetteten Cache (JGroups, siehe unten)
     - to:
         - podSelector:
             matchLabels:
@@ -727,9 +760,10 @@ spec:
 > fachliches Ereignis zu protokollieren und in Abschnitt 7 als Use-Case zu
 > führen: ein Anstieg der Abfragerate ist ein Auskundschaftungssignal.
 >
-> **Infinispan-Pods** brauchen zusätzlich eine eigene Policy: Ingress 11222 vom
-> Authserver, Ingress und Egress 7800 untereinander, Egress 50051 zum HSM Proxy
-> bei aktivierter HSM-Anbindung.
+> **Externes Infinispan** (`global.infinispanExternal`) ist kein Workload des
+> Charts; das Chart liefert dafür keine Policy. Wer es einsetzt, braucht eine
+> eigene Policy: Ingress 11222 vom Authserver, Ingress und Egress 7800
+> untereinander, Egress 50051 zum HSM Proxy bei aktivierter HSM-Anbindung.
 
 ##### Baustein 4 — Ziele ohne eigenen Ingress von außen (Matrix N2, N3)
 
@@ -748,13 +782,16 @@ spec:
       app.kubernetes.io/name: opa      # analog fuer app.kubernetes.io/name: opa-simulation
   policyTypes: [Ingress]
   ingress:
-    # (13) - ausschliesslich der Authorization Server, sonst niemand.
-    # Metrik-Scraping auf /metrics nur ergaenzen, wenn die Matrix (Gruppe B)
-    # diesen Weg freigibt; Pfade kann erst das Service Mesh einschraenken.
+    # (13) Authorization Server sowie Metrik-Scraping (/metrics) durch den
+    # Prometheus-Receiver des Telemetriedaten Service (Matrix Gruppe B), sonst
+    # niemand. Pfade kann erst das Service Mesh einschraenken.
     - from:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: authserver
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 8181
@@ -822,6 +859,15 @@ spec:
 > gerät in einen nicht wiederherstellbaren Zustand. Dieselbe Sorgfalt gilt für
 > die Token-Renewer-CronJobs, die den API-Server erreichen müssen, um das
 > Access-Token-Secret zu schreiben (Matrix B, Negativliste N9).
+>
+> **Stand im Chart:** Die Ingress-Policy des Charts deckt nur die eingebettete
+> Datenbank (`databaseMode: embedded`, Label `app.kubernetes.io/name: authserver-db`)
+> ab: Port 5432 ausschließlich vom Authserver und von den Hook-Jobs für
+> Datenbanksicherung (`authserver-db-backup`) und Checksummen-Reset der
+> Schemamigration. Für einen CloudNativePG-Cluster liefert das Chart nur die
+> Egress-Regel des Authservers; die obige Policy bleibt dort Aufgabe des DA. Eine eigene Datenbank
+> (`databaseMode: external`) gibt der DA über `externalDb.networkPolicyPeers` für
+> den Egress des Authservers frei.
 
 ##### Baustein 5 — Telemetriedaten Service (Matrix B18, B19, B20 · C21, C22 · N7, N10)
 
@@ -842,12 +888,17 @@ spec:
       app.kubernetes.io/name: opentelemetry-collector
   policyTypes: [Ingress, Egress]
   ingress:
-    # Kernkomponenten (n. i. B.): OTLP/gRPC von allen, Syslog/UDP vom PEP
+    # Kernkomponenten (n. i. B.): OTLP/gRPC und OTLP/HTTP von allen Pods des
+    # Releases, Syslog/UDP vom PEP, Decision Logs von OPA und OPA-Simulation
     - from:
-        - podSelector: {}
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: zeta-guard   # Release-Name
       ports:
         - protocol: TCP
           port: 4317
+        - protocol: TCP
+          port: 4318
     - from:
         - podSelector:
             matchLabels:
@@ -855,6 +906,20 @@ spec:
       ports:
         - protocol: UDP
           port: 54526
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: opa
+      ports:
+        - protocol: TCP
+          port: 49152
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: opa-simulation
+      ports:
+        - protocol: TCP
+          port: 49153
     # (18) Resource Server des Fachdienstes
     - from:
         - namespaceSelector:
@@ -880,6 +945,31 @@ spec:
         - protocol: TCP
           port: 4319
   egress:
+    # Metrik-Scraping (Prometheus-Receiver): Authserver 9000, PEP 9113,
+    # OPA und OPA-Simulation 8181
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: authserver
+      ports:
+        - protocol: TCP
+          port: 9000
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: pep-proxy
+      ports:
+        - protocol: TCP
+          port: 9113
+    - to:
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values: [opa, opa-simulation]
+      ports:
+        - protocol: TCP
+          port: 8181
     # (20) Monitoring des Anbieters
     - to:
         - namespaceSelector:
@@ -955,25 +1045,52 @@ spec:
 
 | Matrixgruppe | Durchsetzung |
 | --- | --- |
-| A — Ingress von außen | Ingress-NetworkPolicies mit `podSelector` (und `namespaceSelector`, falls der Ingress Controller in einem eigenen Namespace läuft) auf den Ingress Controller, **nicht** per `ipBlock`; (7) zusätzlich über den PEP |
+| A — Ingress von außen | Ingress-NetworkPolicies mit `namespaceSelector` und/oder `podSelector` auf den Ingress- bzw. Gateway-Controller, **nicht** per `ipBlock`; im Chart über `networkPolicy.ingress.controllerPeers` (leer = beliebige Quelle, daher in Produktion zu setzen); (7) zusätzlich über den PEP |
 | B — Ost-West | Ingress- und Egress-Regeln mit Pod-Selektoren; keine IP-Konfiguration durch den DA erforderlich, außer für den API-Server-Endpunkt (CNPG, Token-Renewer) |
-| C — Egress | `networkPolicy.egress.<kategorie>.ipBlocks` des Charts; IP-Pflege durch den DA |
+| C — Egress | `networkPolicy.egress.<kategorie>.ipBlocks` des Charts; IP-Pflege durch den DA. Resource Server im Cluster über `networkPolicy.egress.providerInternal.podSelectors` (optional mit `namespace`), eigene Datenbank über `externalDb.networkPolicyPeers` |
 | D — clientseitig | nicht durch NetworkPolicies durchsetzbar |
 | E — Negativliste | ergibt sich aus Default-Deny; Prüfgegenstand des Wirksamkeitsnachweises |
 
 #### 4.3.3 Stand im ZETA Guard und verbleibende Lücken
 
-**Stand im ZETA Guard:** Das Helm Chart liefert **Egress**-NetworkPolicies mit
-kategorisierten IP-Blöcken (`telemetry`, `siem`, `artifactRegistry`, `pip`, `popp`,
-`ocsp*`, `providerInternal.*`), Default `enabled: false`. Siehe
-[Wie Sie Egress-NetworkPolicies konfigurieren](../Anleitungen/Wie_Sie_Egress_NetworkPolicies_konfigurieren.md).
+**Stand im ZETA Guard (ab Chart-Version 1.3.3):** Mit `networkPolicy.enabled`
+liefert das Helm-Chart:
+
+* **Egress**-NetworkPolicies je Komponente mit DNS-Regel, Ost-West-Freigaben per
+  Pod-Selektor und kategorisierten IP-Blöcken (`telemetry`, `siem`,
+  `artifactRegistry`, `pip`, `popp`, `ocsp*`, `providerInternal.*`). Resource
+  Server im Cluster werden über `networkPolicy.egress.providerInternal.podSelectors`
+  (optional mit `namespace`) freigegeben, eine eigene Datenbank über
+  `externalDb.networkPolicyPeers`. Siehe
+  [Wie Sie Egress-NetworkPolicies konfigurieren](../Anleitungen/Wie_Sie_Egress_NetworkPolicies_konfigurieren.md).
+* **Ingress**-NetworkPolicies mit Default-Deny (`networkPolicy.ingress.enabled`,
+  Default `true`, sobald `networkPolicy.enabled` gesetzt ist) für Authserver,
+  PEP-Proxy, OPA, OPA-Simulation, Telemetriedaten Service und die eingebettete
+  Datenbank. Freigegeben sind: Ingress-/Gateway-Controller → PEP 8081 und
+  Authserver 8080 (8443 bei TLS im Pod); PEP → Authserver; Authserver ↔ Authserver
+  7800/57800; Authserver und Collector → OPA/OPA-Simulation 8181; Collector →
+  Authserver 9000 und PEP 9113; alle Pods des Releases → Collector 4317/4318;
+  PEP → Collector 54526/UDP; OPA → Collector 49152; OPA-Simulation → Collector
+  49153; Authserver und Update-Hook-Jobs (Sicherung, Checksummen-Reset) →
+  eingebettete Datenbank 5432. Die Quellen der öffentlichen Endpunkte legt
+  `networkPolicy.ingress.controllerPeers` fest (leer = beliebige Quelle); CIDRs für
+  kubelet-Probes, falls das CNI sie filtert, `networkPolicy.ingress.probeSources`.
+* **Service-Mesh-Kompatibilität** über `networkPolicy.mesh: none | istio-ambient`.
+  Mit `istio-ambient` erlauben die Egress-Policies HBONE (TCP 15008) zu Pods im
+  Namespace, die Ingress-Policies 15008 von Pods im Namespace sowie
+  `169.254.7.127/32` für die per SNAT umgeschriebenen kubelet-Probes. Da ztunnel
+  die ursprünglichen Zielports tunnelt, beschränken die NetworkPolicies in diesem
+  Modus die Ports zwischen den Komponenten **nicht** mehr; diese Aufgabe
+  übernehmen dann die `AuthorizationPolicy`-Ressourcen (Abschnitt 4.4).
 
 **Lücken, die geschlossen werden müssen:**
 
-1. **Ingress-Richtung fehlt.** Ohne Default-Deny-Ingress kann jeder Pod im Cluster
-   den Authorization Server oder OPA direkt ansprechen und den PEP umgehen. Das ist
-   die sicherheitsrelevantere Richtung, weil sie den Policy Enforcement Point selbst
-   umgeht. Konkret sind heute N1 bis N6 der Negativliste nicht durchsetzbar.
+1. **Ingress-Richtung nicht vollständig.** Die Ingress-Policies des Charts setzen
+   N1 bis N3 für die Chart-Workloads durch. Nicht abgedeckt sind ein
+   CloudNativePG-Cluster (Baustein 4), der Notification Service, ein externes
+   Infinispan und der Fachdienst-Namespace (N4, N6, Baustein 6); dort bleibt die
+   Umsetzung beim DA bzw. DH. Solange `controllerPeers` leer ist, sind die
+   öffentlichen Endpunkte von jeder Quelle erreichbar.
 2. **Default `enabled: false`.** Eine Sicherheitsmaßnahme, die standardmäßig
    deaktiviert ist, wird in der Praxis vergessen. Zielzustand ist `enabled: true`
    mit einem klaren Fehlerbild bei fehlender Konfiguration.
@@ -994,14 +1111,23 @@ kategorisierten IP-Blöcken (`telemetry`, `siem`, `artifactRegistry`, `pip`, `po
    Default-Deny-Egress scheitern damit Föderation, Nutzerauthentisierung,
    TOFU-Registrierung, Benachrichtigungen und die Token-Erneuerung für Artifact
    Registry und Telemetrie-Empfänger. Diese Kategorien sind im Chart zu ergänzen.
-5. **Ports und Labels der Beispiele.** Die Bausteine oben sind gegen Chart 1.2.3
-   abgeleitet (PEP 8081/8443, Authserver 8080/8443, Syslog UDP 54526,
-   `app.kubernetes.io/name`-Labels). Sie sind bei jedem Chart-Release erneut zu
-   prüfen; der ZGH MUSS Port- und Label-Änderungen in den Release Notes ausweisen.
+   Mit Cilium als CNI wären FQDN-basierte Regeln (`toFQDNs`) eine Alternative zu
+   IP-Blöcken; das Chart bietet sie noch nicht an.
+5. **Ports und Labels der Beispiele.** Die Bausteine oben sind ab Chart-Version
+   1.3.3 abgeleitet (PEP 8081/8443, Authserver 8080/8443, Syslog UDP 54526,
+   OTLP 4317/4318, Decision Logs 49152/49153, `app.kubernetes.io/name`-Labels).
+   Sie sind bei jedem Chart-Release erneut zu prüfen; der ZGH MUSS Port- und
+   Label-Änderungen in den Release Notes ausweisen.
 
 **Wirksamkeitsnachweis:** Der DA MUSS für jede Zeile der Negativliste E einen
 Konnektivitätstest durchführen und protokollieren — Positivtests allein weisen
-nichts nach. Native NetworkPolicies sind L3/L4-Konstrukte auf IP-Adressen und Ports;
+nichts nach. Das Chart liefert dafür einen Baustein: Der `helm test`
+(`netpol-test`) startet einen Pod ohne Komponenten-Label und prüft, dass er
+`opa:8181`, `opa-simulation:8181`, `authserver:9000`, die eingebettete Datenbank
+(`authserver-db:5432`) und den Decision-Log-Port 49152 des Collectors **nicht**
+erreicht. Der Test-Pod nimmt nicht am Istio-Ambient-Mesh teil. Er ersetzt den
+Negativtest gegen die vollständige Liste E nicht, sondern belegt die Wirksamkeit
+der Ingress-Policies im konkreten Cluster und CNI. Native NetworkPolicies sind L3/L4-Konstrukte auf IP-Adressen und Ports;
 für L7-Kontrolle siehe Abschnitt 4.4. Voraussetzung ist ein CNI-Plugin mit
 NetworkPolicy-Unterstützung (Calico, Cilium) — bei einem CNI ohne diese Fähigkeit
 werden die Ressourcen **stillschweigend ignoriert**. Der DA MUSS die Wirksamkeit
@@ -1038,11 +1164,24 @@ eigene Quelle zu bilden. Die Zeilen der Gruppe B werden zu
 `AuthorizationPolicy`-Ressourcen mit `principals` auf dem ServiceAccount der Quelle;
 die Negativliste E bleibt unverändert der Prüfgegenstand. In der
 [Komponentenübersicht](Komponentenuebersicht.md) ist das Service Mesh derzeit mit
-`TODO` als Basistechnologie geführt. Ein aus Chart 1.2.3 abgeleiteter Entwurf der
-Referenz-`AuthorizationPolicy`-Ressourcen (Default-Deny, je Workload eine
-Allow-Policy, `PeerAuthentication` STRICT, `Sidecar` mit `REGISTRY_ONLY` und
-`ServiceEntry` je Egress-Kategorie) liegt vor, ist aber noch nicht Bestandteil
-des Charts (Abschnitt 10).
+`TODO` als Basistechnologie geführt. Das Helm-Chart liefert **keine
+Istio-Ressourcen**. Ein Entwurf der Referenz-`AuthorizationPolicy`-Ressourcen
+für den Sidecar-Modus (Default-Deny, je Workload eine Allow-Policy,
+`PeerAuthentication` STRICT, `Sidecar` mit `REGISTRY_ONLY` und `ServiceEntry` je
+Egress-Kategorie) liegt vor, ist aber nicht Bestandteil des Charts; bis dahin
+liegen die `AuthorizationPolicy`-Ressourcen in der Verantwortung des DA
+(Abschnitt 10).
+
+**Mesh-Unterstützung im Chart:** Ab Chart-Version 1.3.3 berücksichtigen die
+NetworkPolicies die Datenebene des Mesh über `networkPolicy.mesh`
+(`none` oder `istio-ambient`, siehe Abschnitt 4.3.3). Im KIND-Cluster wurden
+Istio im Ambient-Modus (istiod, istio-cni, ztunnel) mit aktivierten
+NetworkPolicies und Kyverno (PSS `restricted`) sowie Cilium als CNI mit
+kube-proxy-Ersatz und WireGuard-Verschlüsselung getestet. Im Ambient-Modus
+lassen die NetworkPolicies HBONE (TCP 15008) zwischen allen Pods des Namespace
+zu; die Port- und Aufruferbeschränkung zwischen den Komponenten MUSS dann über
+`AuthorizationPolicy`-Ressourcen erfolgen, sonst ist die Matrix der Gruppe B
+innerhalb des Namespace nicht durchgesetzt.
 
 **Sidecar- oder Ambient-Modus — Entscheidung des Betreibers.** Die
 [Kubernetes-Anleitung](../Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md)
@@ -1135,7 +1274,14 @@ dokumentiert.
 
 **Ingress Controller:** Externer eingehender Verkehr wird über einen Ingress
 Controller (NGINX oder Envoy-basiert) terminiert. Aufgaben: TLS-Terminierung,
-Rate Limiting, optional WAF. Es wird ausschließlich HTTPS mit **TLS 1.2 oder höher**
+Rate Limiting, optional WAF. Das Helm-Chart liefert keinen Controller mit,
+sondern rendert entweder eine Standard-`Ingress`-Ressource oder, mit
+`gateway.enabled` und `gateway.parentRefs`, eine Gateway-API-`HTTPRoute`. Im
+Gateway-Modus terminiert TLS am Gateway (Listener-Zertifikat des DA), und die
+Route setzt `X-Forwarded-Host` und `X-Forwarded-Port` selbst. Im Ingress-Modus
+MUSS der Controller `X-Forwarded-Host` setzen, weil PEP und Authorization Server
+daraus die öffentliche URL für die DPoP-Prüfung (`htu`) und die Audience ableiten;
+nicht jeder Controller tut das (z. B. Contour im Ingress-Modus). Es wird ausschließlich HTTPS mit **TLS 1.2 oder höher**
 akzeptiert, und die Ingress-Kommunikation wird für **IPv4 und IPv6** bereitgestellt.
 
 Das Rate-Limit MUSS entsprechend den erwarteten Nutzungsszenarien konfiguriert
@@ -1204,7 +1350,7 @@ die zugrunde liegende Baseline. Der ZGH MUSS je Komponente liefern:
 | Authorization Server (Keycloak) | `java`; Init-Container `keycloak-build` (`kc.sh build`), `keychain-generator`, Provisioning Processor | `/opt/keycloak/conf/**`, Truststore, HSM-Konfiguration |
 | Policy Engine (OPA), OPA-Simulation | `opa` | Bundle-Verzeichnis, Signaturschlüssel, Token-Secret-Mount |
 | PDP Datenbank (PostgreSQL, CNPG) | `postgres`, `manager` (CNPG Instance Manager) | `PGDATA`, Konfigurationsdateien |
-| PDP Cache (Infinispan) | `java` | Konfiguration, Keystore |
+| Externer PDP Cache (Infinispan, nur bei `global.infinispanExternal`; Baseline liefert, wer die Instanz bereitstellt) | `java` | Konfiguration, Keystore |
 | Telemetry-Gateway (OTelCol) | `otelcol*` | Collector-Konfiguration, mTLS-Material |
 | Notification Service | (herstellerspezifisch) | Konfiguration, Schlüsselmaterial |
 | Provisioning Processor | Init-Prozess, cosign-Verifikation | Trust-Certchain-Mount |
@@ -1236,13 +1382,19 @@ nicht für breite Dateipfad-Regeln.
 * Jeder ZETA Guard Microservice erhält einen **dedizierten ServiceAccount** mit
   minimalen Berechtigungen. Dies ist im Helm Chart bereits umgesetzt (siehe
   [ServiceAccount](Referenz_des_Helm_Charts.md#serviceaccount)); über
-  `create: false` kann ein bestehender ServiceAccount verwendet werden.
+  `create: false` kann ein bestehender ServiceAccount verwendet werden. Auch OPA
+  und OPA-Simulation laufen ab Chart-Version 1.3.3 unter einem eigenen
+  ServiceAccount (`opa.serviceAccountName`, Default `opa`) und nicht mehr unter
+  `default`; damit ist das Chart mit der Admission-Policy
+  `disallow-default-serviceaccount` verträglich.
 * Die Verwendung des `default`-ServiceAccounts in Pods wird per Admission Policy
   verboten (Abschnitt 4.2).
 * `automountServiceAccountToken: false` überall dort, wo kein API-Zugriff nötig ist
   — für die meisten ZETA Guard Komponenten ist das der Regelfall. Ein gemountetes,
   ungenutztes Token ist bei einer Container-Kompromittierung ein direkter
-  Eskalationspfad.
+  Eskalationspfad. Im Chart ist das für Authserver, PEP-Proxy, OPA,
+  OPA-Simulation, Notification Service und die eingebettete Datenbank umgesetzt;
+  API-Zugriff benötigen nur die Token-Renewer-CronJobs (Negativliste N9).
 * `ClusterRole`- und `ClusterRoleBinding`-Zuweisungen werden auf das absolute
   Minimum reduziert und **periodisch überprüft** (mindestens quartalsweise, sowie
   nach jedem Cluster-Upgrade).
@@ -1382,6 +1534,12 @@ sicherheitsrelevant:
 
 * **Signaturprüfung fehlgeschlagen** → sofortiger Alarm, das Bundle wird verworfen.
   Siehe [Wie Sie OPA in ZETA Guard konfigurieren](../Anleitungen/Wie_Sie_OPA_in_ZETA_Guard_konfigurieren.md).
+  Die Signaturprüfung ist im Chart standardmäßig aktiv
+  (`opa.bundle.verification.enabled: true`). Ist `opa.bundle.verification.keyId`
+  leer, prüft OPA mit dem Policy-Signer-Schlüssel aus den Provisioning-Daten
+  (`/var/trust-data/policy-signer.pub`, Schlüssel-ID `signer`). Wird die Prüfung
+  deaktiviert, startet OPA mit `--skip-verify` und lädt signierte Bundles
+  ungeprüft.
   Die Spezifikation verlangt dafür eine automatisierte Meldung an das TI SIEM:
   A_25606-02 bei Download- oder Signaturfehlern, A_25485-02 bei jeder
   erfolgreichen Aktualisierung von PIP-Daten und PAP-Policies.
@@ -1682,29 +1840,33 @@ Praxis regelmäßig übersehen und führt zu einer unüberwachten Zone neben ein
 ## 10. Offene Punkte und Empfehlungen an den ZETA Guard Hersteller
 
 Aus dem Abgleich dieses Konzepts mit dem aktuellen Stand des Repositories ergeben
-sich konkrete Liefergegenstände, die heute noch fehlen:
+sich konkrete Liefergegenstände. Punkte, die ab Chart-Version 1.3.3 umgesetzt sind,
+sind in der Spalte Priorität als **erledigt** gekennzeichnet und bleiben zur
+Nachvollziehbarkeit in der Liste:
 
 | # | Lücke | Empfehlung | Priorität |
 | --- | --- | --- | --- |
-| 1 | NetworkPolicies decken nur die **Egress**-Richtung ab | Default-Deny-Ingress und Ingress-Allowlist ins Chart aufnehmen | **hoch** |
-| 2 | `networkPolicy.enabled` ist standardmäßig `false` | Default auf `true`, mit sprechendem Fehler bei fehlenden IP-Blöcken | **hoch** |
-| 3 | Ein Entwurf der Referenz-`AuthorizationPolicy`-Ressourcen (aus Chart 1.2.3, Sidecar-Modus) liegt vor, ist aber nicht im Chart; die Kubernetes-Anleitung zeigt nur den Ambient-Modus; Service Mesh in der Komponentenübersicht als `TODO` | Entwurf in das Chart übernehmen, für den Ambient-Modus um Waypoint-Konfiguration ergänzen und mit Abschnitt 4.3.1 abgleichen. Die Wahl des Modus bleibt beim DA (VAU-Bewertung, Abschnitt 4.4); beide Varianten sind zu dokumentieren | **hoch** |
+| 1 | NetworkPolicies deckten nur die **Egress**-Richtung ab | Umgesetzt: Default-Deny-Ingress und Ingress-Allowlist je Komponente (`networkPolicy.ingress`, Abschnitt 4.3.3). Offen bleiben CloudNativePG-Cluster, Notification Service und externes Infinispan | **erledigt** |
+| 2 | `networkPolicy.enabled` ist weiterhin standardmäßig `false` | Default auf `true`, mit sprechendem Fehler bei fehlenden IP-Blöcken | **hoch** |
+| 3 | Das Chart liefert keine Istio-Ressourcen; ein Entwurf der Referenz-`AuthorizationPolicy`-Ressourcen (Sidecar-Modus) liegt außerhalb des Charts vor; die Kubernetes-Anleitung zeigt nur den Ambient-Modus; Service Mesh in der Komponentenübersicht als `TODO`. Im Ambient-Modus sind die `AuthorizationPolicy`-Ressourcen die einzige Portbeschränkung zwischen den Komponenten (Abschnitt 4.4) | Entwurf in das Chart übernehmen, für den Ambient-Modus um Waypoint-Konfiguration ergänzen und mit Abschnitt 4.3.1 abgleichen. Die Wahl des Modus bleibt beim DA (VAU-Bewertung, Abschnitt 4.4); beide Varianten sind zu dokumentieren | **hoch** |
 | 4 | Keine Prozess-/FIM-Baselines je Container | Baselines werkzeugneutral dokumentieren, `TracingPolicy`-Referenzen liefern | **hoch** |
-| 5 | Keine Referenz-Admission-Policies im Repository | Kyverno-Policy-Set als YAML mitliefern und gegen das Chart testen | **hoch** |
+| 5 | Keine Referenz-Admission-Policies im Repository; Kompatibilität mit Kyverno PSS `restricted` ist im KIND-Cluster nachgewiesen, `verifyImages` und das übrige Mindest-Policy-Set aus Abschnitt 4.2 fehlen | Kyverno-Policy-Set inkl. `verifyImages` als YAML mitliefern und gegen das Chart testen | **hoch** |
 | 6 | cosign-Verifikation nur für das Provisioning-Daten-Image | Signaturen für alle Komponenten-Images nachziehen (Meilenstein bereits vorgesehen) | **hoch** |
 | 7 | Kein SIEM-Use-Case-Katalog mit Feldsemantik | Katalog aus Abschnitt 7 als Herstellerartefakt bereitstellen | **mittel** |
-| 8 | `readOnlyRootFilesystem: false` bei Infinispan und Provisioning Processor | Auf `true` umstellen oder Ausnahme dokumentiert begründen | **mittel** |
-| 9 | `automountServiceAccountToken` nicht durchgängig deaktiviert | Prüfen und als Default deaktivieren, wo kein API-Zugriff nötig | **mittel** |
+| 8 | `readOnlyRootFilesystem: false` beim Provisioning Processor und bei den CronJobs (`opa.cronjobSecurityContext`) | Auf `true` umstellen oder Ausnahme dokumentiert begründen | **mittel** |
+| 9 | `automountServiceAccountToken` war nicht durchgängig deaktiviert; OPA und OPA-Simulation liefen unter dem `default`-ServiceAccount | Umgesetzt: eigener ServiceAccount `opa` (`opa.serviceAccountName`) und `automountServiceAccountToken: false` für Authserver, PEP-Proxy, OPA, OPA-Simulation, Notification Service und eingebettete Datenbank | **erledigt** |
 | 10 | Komponenten-Images werden per Tag und `imagePullPolicy: Always` referenziert | Digest-Pinning für Komponenten-Images in Produktivumgebungen empfehlen und dokumentieren. Das Provisioning-Daten-Image bleibt gemäß A_29743 auf `latest` (Hot-Reload) und ist ausdrücklich auszunehmen | **mittel** |
 | 11 | Keine Metrik für OPA-Bundle-Alter | Staleness-Metrik und Schwellwertempfehlung ergänzen | **mittel** |
 | 12 | Kein Runbook je Komponente für Sicherheitsvorfälle | Runbooks inkl. Pod-Isolationsverfahren statt Löschen liefern | **mittel** |
-| 13 | Egress-Kategorien fehlen für Federation Master (1), Sektoraler IDP (11), Mail Relay (8), Push Gateway (25), GCP STS/IAM der Token-Renewer-CronJobs und JWKS weiterer Authorization Server der Föderation | Kategorien im Chart ergänzen, sonst scheitern Föderation, Authentisierung, TOFU, Benachrichtigung und Token-Erneuerung bei Default-Deny-Egress | **hoch** |
+| 13 | Egress-Kategorien fehlen für Federation Master (1), Sektoraler IDP (11), Mail Relay (8), Push Gateway (25), GCP STS/IAM der Token-Renewer-CronJobs und JWKS weiterer Authorization Server der Föderation | Kategorien im Chart ergänzen, sonst scheitern Föderation, Authentisierung, TOFU, Benachrichtigung und Token-Erneuerung bei Default-Deny-Egress. Mit Cilium optional FQDN-basierte Regeln (`toFQDNs`) anbieten | **hoch** |
 | 14 | Die Architekturübersicht zeigt die als `n. i. B.` geführten Beziehungen nicht (PEP → Authorization Server, PDP Cache, Cluster-Transport, CNPG-Replikation und -Operator, DNS, Telemetriepfad der Kernkomponenten inkl. Syslog/UDP, OCSP/PIP/PoPP, Token-Renewer-CronJobs, Provisioning Processor, Telemetrieausleitung an das Anbieter-SIEM) und enthält die in der Spezifikation beschriebene Kante (28) nicht | Abbildung ergänzen, damit sie als Legende der Matrix vollständig ist | **mittel** |
 | 15 | Der mTLS-Endpunkt zur TOFU-E-Mail-Abfrage ist ein Architekturvorschlag ohne Verankerung in Spezifikation und Chart | Entscheidung herbeiführen; bei Umsetzung Konfigurationsschlüssel für Port, Client-CA und zulässige Aufrufer-Zertifikate sowie Referenz-NetworkPolicy ergänzen und Endpunkt auf eigenem Port führen | **mittel** |
 | 16 | Für den Annahme-Endpunkt des Telemetriedaten Service (Kante 19) existiert kein Chart-Schlüssel für Receiver-Port, Client-CA und Kennzeichnung eingespeister Ereignisse | Eigenen OTLP-Receiver mit mTLS-Client-Authentisierung und Quellkennzeichnung im Chart vorsehen; Referenz-NetworkPolicy mitliefern | **hoch** |
 | 17 | Die Trennung von Sicherheitstelemetrie (nur TI SIEM, A_28960-01) und betrieblicher Telemetrie (Anbieter, A_27260) ist in der Collector-Pipeline nicht als prüfbares Artefakt dokumentiert | Pipeline-Konfiguration je Exporter dokumentieren; je Use-Case aus Abschnitt 7 ausweisen, welche Metrik der Anbieter erhält | **hoch** |
-| 18 | Metrik-Scraping (Prometheus → Authserver 9000, PEP 9113, OPA 8181, Collector 8888/8889) ist nicht festgelegt; es umgeht bei direktem Pull den Telemetriedaten Service | Entscheiden: Scraping nur über den Prometheus-Receiver des Collectors oder explizite Matrixzeilen und Policies für direkten Pull | **mittel** |
+| 18 | Metrik-Scraping (Authserver 9000, PEP 9113, OPA/OPA-Simulation 8181) war nicht festgelegt | Entschieden: Scraping durch den Prometheus-Receiver des Collectors, Freigabe in den Ingress- und Egress-Policies des Charts (Matrix Gruppe B). Direkter Pull durch ein Anbieter-Prometheus nur mit eigener Matrixzeile und Policy | **erledigt** |
 | 19 | RBAC der Token-Renewer-CronJobs und der CNPG-Pods (API-Zugriff, Ausnahmen von N9) ist nicht als Mindestrechte-Dokumentation ausgewiesen | Rechte je ServiceAccount dokumentieren (nur `get`/`update` auf das jeweilige Token-Secret) | **mittel** |
+| 20 | Kein mitgelieferter Wirksamkeitsnachweis der NetworkPolicies | Umgesetzt: `helm test` (`netpol-test`) prüft, dass ein Pod ohne Komponenten-Label OPA, OPA-Simulation, Authserver-Metriken, eingebettete Datenbank und den Decision-Log-Port des Collectors nicht erreicht. Erweiterung auf die vollständige Negativliste E bleibt offen | **erledigt** |
+| 21 | NetworkPolicies waren mit Istio Ambient (HBONE, SNAT der kubelet-Probes) nicht verträglich | Umgesetzt: `networkPolicy.mesh: istio-ambient`; im KIND-Cluster mit Kyverno getestet, ebenso Cilium mit kube-proxy-Ersatz und WireGuard | **erledigt** |
 
 ## 11. Nachweise für die Zulassung
 

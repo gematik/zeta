@@ -3,7 +3,7 @@
 # Served at GET <iss>/.well-known/openid-federation
 # (Content-Type: application/entity-statement+jwt).
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.0.0"
+schemaVersion: "1.0.1"
 title: ZETA Guard Authorization Server Entity Statement
 description: >-
   Entity Configuration des ZETA Guard Authorization Servers (AuthS) in der
@@ -328,6 +328,9 @@ definitions:
           oidc_redirect_uri des PAR per exaktem String-Vergleich gegen diese Liste.
           Die redirect_uris liegen daher in der Regel NICHT auf der Domain des
           AuthS. Pfade von Admin- oder Account-Konsolen sind unzulässig.
+          Quelle der Liste ist die Client-Registry des Provisioning Images
+          (client-registry.yaml): alle redirect_uris mit letztem Pfad-Abschnitt
+          "oidc". Ändert sich die Registry, stellt der AuthS das Statement neu aus.
         minItems: 1
         uniqueItems: true
         items:

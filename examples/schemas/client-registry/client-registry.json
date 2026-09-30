@@ -1,0 +1,17 @@
+{
+  "$comment": "Client-Registry im Provisioning Image (/client-registry/client-registry.json). Eine App mit getrennten product_ids für Android und Apple.",
+  "products": {
+    "beispiel-epa-app-android": {
+      "redirect_uris": [
+        "https://app.beispiel-software.de/cb/epa/oidc",
+        "https://app.beispiel-software.de/cb/epa/app"
+      ]
+    },
+    "beispiel-epa-app-ios": {
+      "redirect_uris": [
+        "https://app.beispiel-software.de/cb/epa-ios/oidc",
+        "https://app.beispiel-software.de/cb/epa-ios/app"
+      ]
+    }
+  }
+}

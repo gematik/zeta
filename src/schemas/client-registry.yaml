@@ -1,0 +1,81 @@
+# Schema für die Client-Registry im ZETA Guard Provisioning Image
+#
+# Ablage im Provisioning Image: /client-registry/*.json (Dateiname dynamisch,
+# A_29738). Die gematik erzeugt die Datei aus den von den Herstellern gemeldeten
+# Client-Metadaten (A_29723-01). Der Authorization Server nutzt sie
+#   - beim DCR zur Prüfung der redirect_uris (A_xxxx1),
+#   - beim PAR zur erneuten Prüfung der registrierten redirect_uri (A_xxxx3),
+#   - für die redirect_uris im Entity Statement (A_25656-01).
+$schema: "http://json-schema.org/draft-07/schema#"
+schemaVersion: "1.0.0"
+title: ZETA Client Registry
+description: >-
+  Von der gematik bereitgestellte Zuordnung der registrierten redirect_uris zur
+  product_id. Das Provisioning Image ist umgebungsspezifisch (prod/test); die
+  Registry enthält nur die Einträge der jeweiligen Umgebung.
+
+  Eine product_id gilt für genau eine Plattform. Bietet ein Hersteller sein
+  Clientsystem für mehrere Plattformen an (z. B. Android und Apple), erhält er
+  je Plattform eine eigene product_id, weil sich die Produktversionen der
+  Plattformen unabhängig voneinander ändern.
+
+  Nicht in draft-07 ausdrückbare Regeln, die zusätzlich gelten:
+  (1) Eine redirect_uri ist über die gesamte Registry eindeutig, d. h. genau
+  einer product_id zugeordnet. Dadurch kann ein Client keine URI einer fremden
+  App registrieren.
+  (2) Je product_id gibt es genau eine URI mit letztem Pfad-Abschnitt "oidc"
+  (oidc_redirect_uri) und genau eine mit letztem Pfad-Abschnitt "app"
+  (app_redirect_uri).
+
+  Die Zulassung von Produktversionen je Fachdienst bleibt Sache der
+  Policy-Daten (OPA-Bundle, allowed_products) und wird beim Token Request
+  entschieden.
+type: object
+properties:
+  products:
+    type: object
+    description: >-
+      Registrierte Clientsysteme. Schlüssel ist die product_id, die der
+      Hersteller nach A_25337 erhalten hat (gleicher Wert wie product_id in
+      dcr-request.yaml und im client_statement).
+    propertyNames:
+      minLength: 1
+    additionalProperties:
+      $ref: "#/definitions/product"
+required:
+  - products
+
+definitions:
+  product:
+    type: object
+    properties:
+      redirect_uris:
+        type: array
+        description: >-
+          Vom Hersteller registrierte claimed-HTTPS-Redirection-URIs (Universal
+          Links / App Links) dieser product_id. Syntax wie redirect_uris in
+          dcr-request.yaml. Der AuthS vergleicht jede im DCR übergebene
+          redirect_uri per exaktem String-Vergleich mit dieser Liste. Die URIs mit
+          letztem Pfad-Abschnitt "oidc" nimmt der AuthS in das Entity Statement
+          auf (A_25656-01).
+        minItems: 2
+        uniqueItems: true
+        items:
+          $ref: "#/definitions/redirectUri"
+        allOf:
+          - contains:
+              type: string
+              pattern: '/oidc$'
+          - contains:
+              type: string
+              pattern: '/app$'
+    required:
+      - redirect_uris
+
+  redirectUri:
+    type: string
+    format: uri
+    description: >-
+      Claimed-HTTPS-Redirection-URI nach der Konvention "/cb/<app>/<flow>".
+      Ohne Query und Fragment, da der AuthS exakt vergleicht.
+    pattern: '^https://[^/?#]+/[^?#]*/(oidc|app)$'
