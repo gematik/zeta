@@ -1,0 +1,169 @@
+# Schema für die Antworten des AuthS auf die Dynamic Client Registration
+#
+# Fasst alle erfolgreichen Antworten der Client-Registrierung zusammen:
+#   - 201 Created  → definitions/ClientInformationResponse (dieses Schema)
+#   - 202 Accepted → dcr-response-202.yaml (führend, unverändert eingebunden)
+# Fehlerantworten (RFC 7591 Abschnitt 3.2.2, z. B. invalid_redirect_uri,
+# invalid_client_metadata) folgen zeta-error.yaml.
+$schema: "http://json-schema.org/draft-07/schema#"
+schemaVersion: "1.0.0"
+title: DCR Response
+description: >-
+  Antwort des AuthS auf POST /register, POST /register/verify sowie
+  GET /register/{client_id}.
+
+  Welche Antwort vorliegt, ergibt sich aus dem HTTP-Status: 201 Created
+  (Registrierung abgeschlossen bzw. Lesen der Registrierung) liefert eine
+  ClientInformationResponse; 202 Accepted (asynchrone Challenge, nur
+  stationäre TPM-Clients) liefert eine Antwort gemäß dcr-response-202.yaml.
+  Die beiden Zweige sind auch am Body eindeutig unterscheidbar: Nur die
+  ClientInformationResponse enthält client_id, nur die 202-Antwort
+  transaction_id.
+
+  Fehlerantworten (HTTP 4xx) folgen zeta-error.yaml.
+oneOf:
+  - $ref: "#/definitions/ClientInformationResponse"
+  - $ref: "./dcr-response-202.yaml"
+
+definitions:
+  ClientInformationResponse:
+    title: Client Information Response (201 Created)
+    type: object
+    description: >-
+      Client Information Response gemäß RFC 7591 Abschnitt 3.2.1, ergänzt um die
+      ZETA-spezifischen Pinning-Attribute. Wird zurückgegeben bei
+
+        - POST /register: Registrierung direkt abgeschlossen (mobile Clients,
+          Fast-Path, stationäre Apple- und Software-Clients),
+        - POST /register/verify: TPM-Challenge erfolgreich gelöst,
+        - GET /register/{client_id}: Lesen der eigenen Registrierung (RFC 7592).
+
+      Es wird KEIN Registration Access Token (registration_access_token,
+      registration_client_uri) ausgestellt (A_30101); Folgeoperationen auf die
+      Registrierung autorisiert der Client je Request per Client Assertion.
+
+      Pflicht ist ausschließlich client_id. Alle weiteren Felder sind optional:
+      Für Clients, die vor Einführung des Pinnings registriert wurden, fehlen die
+      Pinning-Attribute im Datensatz (binding_status: legacy_unpinned), und die
+      Verwaltungsfelder (email_verification, key_overlap, registered_at,
+      resource) sind nur bei GET /register/{client_id} sinnvoll belegt.
+    required: [client_id]
+    properties:
+      client_id:
+        type: string
+        description: >-
+          Vom AuthS vergebene Client-Kennung. Nicht geheim; dient als Selektor für
+          die Verwaltungsoperationen unter /register/{client_id}. Die Autorisierung
+          erfolgt stets per Client Assertion (F2).
+      client_id_issued_at:
+        type: integer
+        description: Zeitpunkt der Vergabe der client_id (Unix-Zeit in Sekunden, RFC 7591).
+      status:
+        description: >-
+          Informativer Registrierungsstatus. Der Client DARF seine Ablauflogik NICHT
+          auf dieses Feld stützen: Ob eine E-Mail-Bindung (TOFU) erforderlich ist,
+          ergibt sich für mobile Clients ausschließlich aus dem am Token-Endpunkt
+          gewährten scope (zeta:email-binding / zeta:email-verify); stationäre
+          Clients setzen nach der Registrierung stets mit dem Token Exchange fort.
+          Der AuthS KANN das Feld weglassen.
+
+          Bekannte Werte:
+            - pending_attestation: stationärer TPM-Client nach POST /register/verify
+              registriert; die Attestierung wird mit dem ersten Token Exchange
+              nachgewiesen.
+            - pending_verification: stationärer Apple- oder Software-Client
+              registriert; Bedeutung wie pending_attestation. (Derselbe Wert steht
+              in der 202-Antwort gemäß dcr-response-202.yaml für eine noch offene
+              Challenge; dort ist er Pflichtfeld.)
+            - pending_user_binding: mobiler Client registriert; die E-Mail-Bindung
+              (TOFU) erfolgt nach der OIDC-Nutzerauthentisierung.
+            - bound: mobiler Client registriert und an eine Identität mit
+              verifizierter E-Mail gebunden (z. B. Fast-Path mit
+              zeta_attestation_token).
+
+          Offenes Enum: weitere Werte sind zulässig und vom Client zu ignorieren.
+        # anyOf statt eines constrainenden `enum` (wie zeta-error.yaml#/definitions/errorCode):
+        # der erste Zweig dokumentiert die bekannten Werte, der zweite akzeptiert jeden String.
+        anyOf:
+          - enum: [pending_attestation, pending_verification, pending_user_binding, bound]
+          - type: string
+      client_name:
+        type: string
+        description: Echo des registrierten client_name (RFC 7591).
+      token_endpoint_auth_method:
+        type: string
+        description: Echo der registrierten Authentisierungsmethode, in ZETA "private_key_jwt".
+      grant_types:
+        type: array
+        items: { type: string }
+        description: Echo der registrierten grant_types (RFC 7591).
+      redirect_uris:
+        $ref: "./dcr-request.yaml#/definitions/redirect_uris"
+      jwks:
+        type: object
+        description: Registrierter öffentlicher Client-Instanzschlüssel (PuK.Client.Sig).
+        properties:
+          keys:
+            type: array
+            items: { $ref: "./dcr-request.yaml#/definitions/jwk" }
+        required: [keys]
+      attestation_type:
+        type: string
+        enum: [tpm, apple, android, software]
+        description: >-
+          Bei der Erstregistrierung nachgewiesenes Attestierungsverfahren; im
+          Fast-Path aus dem zeta_attestation_token übernommen (dort nie
+          "software"). Unveränderlich für die Lebensdauer der client_id. Fehlt nur
+          bei Datensätzen von vor Einführung des Pinnings
+          (binding_status: legacy_unpinned).
+      platform:
+        $ref: "./dcr-request.yaml#/definitions/platform"
+      product_id:
+        $ref: "./dcr-request.yaml#/definitions/product_id"
+      product_version:
+        $ref: "./dcr-request.yaml#/definitions/product_version"
+      ak_jkt:
+        type: string
+        description: >-
+          RFC-7638-Thumbprint des bei der Registrierung verifizierten Attestation
+          Keys (PuK.AK.Sig). Vertrauensanker für alle späteren Attestierungen:
+          Der AuthS prüft Posture-Nachweise am Token-Endpunkt gegen DIESEN
+          Schlüssel, nie gegen einen im Request gelieferten. Fehlt bei
+          attestation_type "software" und bei Legacy-Datensätzen.
+      binding_status:
+        type: string
+        enum: [pinned, legacy_unpinned]
+        default: legacy_unpinned
+        description: >-
+          Ob attestation_type (und ggf. ak_jkt) im Datensatz gepinnt sind.
+          "pinned" gilt für jede Registrierung nach dieser Spezifikationsversion,
+          auch wenn platform/product_id im Request fehlten. "legacy_unpinned"
+          kennzeichnet Clients von vor Einführung des Pinnings; sie wechseln nach
+          einer erneuten Registrierung (für Hardware-Clients über den Fast-Path)
+          zu "pinned". Der Wert wird an die Policy Engine übergeben
+          (policy-engine-client-data.yaml).
+      registered_at:
+        type: integer
+        description: >-
+          Zeitpunkt der Erstregistrierung (Unix-Zeit in Sekunden). Quelle für
+          registration_timestamp in policy-engine-client-data.yaml.
+      resource:
+        type: array
+        items: { type: string, format: uri }
+        description: Resource-Indikatoren (RFC 8707), für die der Client registriert ist.
+      email_verification:
+        type: object
+        description: >-
+          Stand der identitätsgebundenen E-Mail-Bindung (F1), die nach der
+          OIDC-Nutzerauthentisierung über /zeta/identity/bind-email erfolgt
+          (A_30085). Nur bei mobilen Clients; die Korrelation erfolgt über das
+          E-Mail-Binding-Token, nicht über eine transaction_id.
+        properties:
+          required: { type: boolean }
+          status: { type: string, enum: [pending, verified] }
+      key_overlap:
+        type: object
+        description: Nur nach einem Schlüssel-Rollover vorhanden.
+        properties:
+          old_jkt: { type: string }
+          grace_until: { type: integer }

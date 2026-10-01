@@ -3,9 +3,16 @@ schemaVersion: "1.0.0"
 title: DCR Accepted Response (202)
 type: object
 description: >-
-  Wird vom ZETA Guard zurückgegeben, wenn die initiale DCR-Anfrage 
-  kryptografisch valide war, aber eine asynchrone Herausforderung (Challenge) 
-  gelöst werden muss, bevor die endgültige client_id vergeben wird.
+  Wird vom ZETA Guard zurückgegeben, wenn eine Anfrage kryptografisch valide
+  war, aber eine asynchrone Herausforderung (Challenge) gelöst werden muss.
+  Bei POST /register betrifft das ausschließlich stationäre TPM-Clients
+  (challenge_type tpm_activation), die vor Vergabe der endgültigen client_id
+  die ActivateCredential-Challenge über POST /register/verify lösen. Mobile
+  Clients erhalten bei POST /register direkt 201 Created (Status
+  pending_user_binding); ihre E-Mail-Bindung (TOFU) erfolgt nach der
+  OIDC-Nutzerauthentisierung über /zeta/identity/bind-email ohne
+  transaction_id. Der Zweig email_otp wird nur noch für die Änderung der
+  E-Mail-Adresse (POST /zeta/identity/email) verwendet.
 # Die Variante wird über den `const`-Wert von `challenge_type` in den beiden
 # oneOf-Zweigen eindeutig bestimmt; die Validierung unter draft-07 ist damit
 # deterministisch. Das nachfolgende `discriminator`-Feld ist ein OpenAPI-3-Konstrukt
@@ -37,7 +44,7 @@ definitions:
         type: integer
         description: Zeit in Sekunden, bis die transaction_id abläuft (z.B. 600).
 
-  # --- TOFU / E-Mail OTP Fall ---
+  # --- E-Mail OTP Fall (nur E-Mail-Änderung, nicht POST /register) ---
   OtpChallengeResponse:
     type: object
     allOf:

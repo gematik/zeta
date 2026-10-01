@@ -192,7 +192,9 @@ paths:
         '201':
           description: |
             Client registered (mobile TOFU direct, fast path, or after a completed TPM
-            ActivateCredential challenge). Returns the final `client_id` — a non-secret
+            ActivateCredential challenge). Body: `dcr-response.yaml`
+            (`ClientInformationResponse`); the `status` field is informative only — clients
+            MUST NOT base their flow on it. Returns the final `client_id` — a non-secret
             selector; NO registration access token is issued (A_30101). Subsequent
             management operations are authorised by the per-request client assertion (F2).
           headers:
@@ -213,22 +215,27 @@ paths:
             application/json:
               schema: { $ref: '../schemas/dcr-response-202.yaml' }
         '400':
-          description: invalidAttestation | malformed registration request
+          description: >-
+            Invalid registration request (RFC 7591 section 3.2.2), e.g. `invalid_redirect_uri`,
+            `invalid_client_metadata` or an invalid attestation.
           content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Error' }
+            application/json:
+              schema: { $ref: '../schemas/zeta-error.yaml' }
         '401':
-          $ref: '#/components/responses/Unauthorized'
+          description: Invalid instance-key proof of possession or attestation
+          content:
+            application/json:
+              schema: { $ref: '../schemas/zeta-error.yaml' }
         '403':
           description: registrationForbidden — the client is not permitted to register at this guard
           content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Error' }
+            application/json:
+              schema: { $ref: '../schemas/zeta-error.yaml' }
         '409':
           description: registrationConflict — a client with the same identity/key already exists
           content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Error' }
+            application/json:
+              schema: { $ref: '../schemas/zeta-error.yaml' }
 
   /register/verify:
     post:
@@ -238,8 +245,8 @@ paths:
         Second step of the first-use registration for stationary TPM clients (A_29658,
         A_25432-01). Submits the answer to the TPM ActivateCredential challenge issued by the
         `202 Accepted` response of `POST /register` (`verify_type: tpm_activation`) together
-        with the `transaction_id`. On success the guard issues the final `client_id` (status
-        `pending_user_binding`). Mobile TOFU clients do NOT use this endpoint for email OTP
+        with the `transaction_id`. On success the guard issues the final `client_id` (informative
+        status `pending_attestation`, see `dcr-response.yaml`). Mobile TOFU clients do NOT use this endpoint for email OTP
         anymore — their F1 email verification runs after the OIDC user authentication.
       security:
         - {}   # Authenticated by the challenge answer + transaction_id.
@@ -251,8 +258,8 @@ paths:
       responses:
         '201':
           description: |
-            Verified and registered. Returns the final `client_id` (status
-            `pending_user_binding`); NO registration access token is issued (A_30101).
+            Verified and registered. Returns the final `client_id` (informative status
+            `pending_attestation`); NO registration access token is issued (A_30101).
           headers:
             Location:
               description: Management URI of the new client (`/register/{client_id}`).
@@ -263,15 +270,18 @@ paths:
         '400':
           description: invalidActivationSecret | challengeExpired | invalid challenge response
           content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Error' }
+            application/json:
+              schema: { $ref: '../schemas/zeta-error.yaml' }
         '401':
-          $ref: '#/components/responses/Unauthorized'
+          description: Challenge answer does not match
+          content:
+            application/json:
+              schema: { $ref: '../schemas/zeta-error.yaml' }
         '404':
           description: Unknown or expired transaction_id
           content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Error' }
+            application/json:
+              schema: { $ref: '../schemas/zeta-error.yaml' }
 
   /register/{client_id}:
     parameters:
@@ -587,9 +597,9 @@ paths:
       responses:
         '202':
           description: >-
-            New email accepted; email-OTP challenge issued to the NEW address. Same challenge
-            shape as the registration flow (`dcr-response-202.yaml`, `challenge_type:
-            email_otp`, `transaction_id`); completed via `POST /zeta/identity/email/verify`.
+            New email accepted; email-OTP challenge issued to the NEW address. Challenge shape
+            per `dcr-response-202.yaml` (`challenge_type: email_otp`, `transaction_id`);
+            completed via `POST /zeta/identity/email/verify`.
           content:
             application/json:
               schema: { $ref: '../schemas/dcr-response-202.yaml#/definitions/OtpChallengeResponse' }
@@ -933,106 +943,9 @@ components:
       example: "eyJhbGciOiJFUzI1NiIsImN0eSI6IkpXVCIsImtpZCI6Ii4uLm9sZC1qa3QifQ.<inner-jws>.<outer-sig>"
 
     ClientRegistration:
-      type: object
-      # `required` bleibt bewusst auf [client_id] beschraenkt. Die in dieser
-      # Fassung ergaenzten Pinning-Attribute sind optional: fuer Clients, die
-      # vor Einfuehrung des Pinnings registriert wurden, fehlen sie im
-      # Datensatz und der Guard verfaehrt wie bisher (siehe binding_status).
-      required: [client_id]
-      properties:
-        client_id:
-          type: string
-          description: >-
-            Non-secret selector for the per-client management operations
-            (`/register/{client_id}`). Authorisation is always the per-request client
-            assertion (F2) — no registration access token exists (A_30101).
-        client_id_issued_at: { type: integer }
-        jwks: { $ref: '#/components/schemas/Jwks' }
-        resource:
-          type: array
-          items: { type: string, format: uri }
-        email_verification:
-          type: object
-          description: >-
-            State of the identity-bound F1 email binding performed after the OIDC user
-            authentication (`/zeta/identity/bind-email`, A_30085). Correlation is via the
-            email-binding token — no transaction id.
-          properties:
-            required: { type: boolean }
-            status: { type: string, enum: [pending, verified] }
-        key_overlap:
-          type: object
-          description: Present after a rollover.
-          properties:
-            old_jkt: { type: string }
-            grace_until: { type: integer }
-        attestation_type:
-          type: string
-          enum: [tpm, apple, android, software]
-          description: >-
-            The attestation method proven at first registration. On the fast path it
-            is adopted from the `zeta_attestation_token` (never "software" there).
-            IMMUTABLE for the lifetime of the `client_id` — switching the attestation
-            method requires a new registration. Always present on records created under
-            this specification version (the value is intrinsic to the registration
-            request); absent only on records created before pinning was introduced
-            (`binding_status: legacy_unpinned`).
-        platform:
-          type: string
-          enum: [android, apple, windows, linux, other]
-          description: >-
-            Pinned platform of the client instance, taken from the DCR request or
-            derived from `attestation_type`. Immutable. Absent on legacy records.
-        product_id:
-          type: string
-          description: >-
-            Pinned gematik product identifier, registered by the manufacturer at gematik
-            together with the admitted versions and — for TPM attestation — the code-signing
-            key of the Primärsystem. Immutable. Verified against the attested app identity
-            (apple/android) or against the signer measured into PCR 23 by the ZETA Attestation
-            Service (tpm); the reference MUST be looked up by this pinned value. Absent when
-            the DCR request did not carry one — the value is then self-asserted per request
-            via the client statement and MUST NOT be relied on for authorisation.
-        product_version:
-          type: string
-          description: >-
-            Software version at registration time. NOT pinned (updates change it);
-            recorded for traceability only.
-        ak_jkt:
-          type: string
-          description: >-
-            RFC 7638 thumbprint of the attestation key (`PuK.AK.Sig`) verified during
-            registration. This is the trust anchor for every later attestation: the
-            guard verifies posture evidence at the token endpoint against THIS key and
-            never against a key supplied in the request. Absent for
-            `attestation_type: software` and on legacy records.
-        registered_at:
-          type: integer
-          description: >-
-            Unix timestamp of the initial registration. Source for
-            `registration_timestamp` in `policy-engine-client-data.yaml`.
-        binding_status:
-          type: string
-          enum: [pinned, legacy_unpinned]
-          default: legacy_unpinned
-          description: >-
-            Whether `attestation_type` (and `ak_jkt` where applicable) is pinned on
-            this record. `pinned` holds for every registration created under this
-            specification version — even when the optional `platform`/`product_id`
-            were omitted; those two are then simply absent and taken from the client
-            statement individually. `legacy_unpinned` marks a client registered
-            BEFORE pinning was introduced, for which the guard holds no attestation
-            type and therefore falls back to the previous behaviour of taking
-            `posture_type` from the client statement as well. The value is forwarded
-            to the Policy Engine so that policies can treat legacy clients
-            differently during the transition. It flips to `pinned` after a
-            re-registration — for hardware-attested clients via the fast path
-            (`attestation_type: zeta_attestation_token`), which re-uses the already
-            verified attestation key and needs NO new platform attestation: the
-            `attestation_pop` is a plain AK signature (android/tpm) or an App Attest
-            assertion (apple), neither of which is subject to the attestation rate
-            limits of the mobile platforms. A full re-attestation is deliberately not
-            required for the migration.
+      # Führend ist src/schemas/dcr-response.yaml (Client Information Response,
+      # RFC 7591 Abschnitt 3.2.1, inkl. Pinning-Attribute und informativem `status`).
+      $ref: '../schemas/dcr-response.yaml#/definitions/ClientInformationResponse'
 
     BindEmailRequest:
       type: object

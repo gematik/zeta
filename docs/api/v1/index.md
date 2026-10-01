@@ -116,11 +116,11 @@ Unabhängig von Plattform und Attestierungsverfahren durchläuft jeder ZETA-Clie
 
 3. **[ ] Keys generieren**: Der Client erzeugt seinen Client Instance Key (`PrK.Client.Sig` / `PuK.Client.Sig`) — je nach Plattform im TPM, in der Secure Enclave, im TEE / StrongBox oder als Software-Schlüssel.
 
-4. **[ ] Dynamic Client Registration (DCR)**: Der Client registriert sich am ZETA Guard (`POST /register`) und weist dabei die Bindung des Client Instance Key an die Plattform nach. Die Registrierung liefert die `client_id`. Der Nachweis hängt vom Attestierungsverfahren ab (TPM-Challenge, Apple Attestation Object, Android Key-Attestation-Kette oder nur JWK bei Software-Attestierung); mobile Clients bestätigen die Registrierung zusätzlich per TOFU-OTP über `POST /register/verify`.
+4. **[ ] Dynamic Client Registration (DCR)**: Der Client registriert sich am ZETA Guard (`POST /register`) und weist dabei die Bindung des Client Instance Key an die Plattform nach. Die Registrierung liefert die `client_id`. Der Nachweis hängt vom Attestierungsverfahren ab (TPM-Challenge, Apple Attestation Object, Android Key-Attestation-Kette oder nur JWK bei Software-Attestierung). Mobile Clients erhalten die `client_id` im Status `pending_user_binding`; die Bindung an den Nutzer (TOFU-E-Mail-Bindung) folgt erst in Phase 5 nach der OIDC-Nutzerauthentisierung.
 
 5. **[ ] Token beziehen**: Der Client bezieht am `token_endpoint` (`POST /token`) ein DPoP-gebundenes Access Token samt Refresh Token. Er authentisiert sich dabei mit einer Client Assertion (signiert mit `PrK.Client.Sig`) und einem DPoP-Proof. Der Nachweis der Nutzer- bzw. Institutionsidentität unterscheidet sich:
    - *Stationäre Clients*: Token Exchange mit einem durch die SM(C)-B signierten Subject Token; zuvor wird eine frische Nonce über `GET /nonce` abgerufen ([Kapitel 4](#4-stationäre-clients-windows-linux-macos)).
-   - *Mobile Clients*: OIDC Authorization Code Flow mit PAR und PKCE, bei dem der AuthS als Relying Party gegenüber dem sektoralen IDP auftritt ([Kapitel 5](#5-mobile-clients-android-ios-ipados)).
+   - *Mobile Clients*: OIDC Authorization Code Flow mit PAR und PKCE, bei dem der AuthS als Relying Party gegenüber dem sektoralen IDP auftritt ([Kapitel 5](#5-mobile-clients-android-ios-ipados)). Bei der ersten Anmeldung bestätigt der Nutzer dabei zusätzlich eine E-Mail-Adresse per OTP (TOFU), bevor volle Token ausgestellt werden.
    - *Backend-Dienste*: Client Credentials bzw. Token Exchange mit einem vom eigenen IDP ausgestellten JWT ([Kapitel 6](#6-dienst-zu-dienst-kommunikation-backend-to-backend)).
 
 6. **[ ] Resource Server anfragen**: Das DPoP-gebundene Access Token wird im `Authorization`-Header zusammen mit einem neuen DPoP-Proof mitgesendet und die geschützte API des Resource Servers aufgerufen — optional über den verschlüsselten ZETA/ASL-Kanal ([Kapitel 7](#7-zugriff-auf-den-resource-server)).
@@ -130,7 +130,8 @@ Unabhängig von Plattform und Attestierungsverfahren durchläuft jeder ZETA-Clie
 | Phase | Stationär (Kapitel 4) | Mobil (Kapitel 5) | Backend (Kapitel 6) |
 | ------- | ----------------------- | ------------------- | --------------------- |
 | Schlüsselspeicher | TPM, Secure Enclave oder Software | Secure Enclave, TEE / StrongBox oder Software | Workload-Identität |
-| DCR-Nachweis | TPM-Challenge, Apple Attestation Object oder JWK | Apple Attestation Object, Android Key Attestation oder JWK, jeweils + TOFU-OTP | entfällt |
+| DCR-Nachweis | TPM-Challenge, Apple Attestation Object oder JWK | Apple Attestation Object, Android Key Attestation oder JWK | entfällt |
+| Nutzerbindung (TOFU) | entfällt | E-Mail-Bindung per OTP nach der OIDC-Anmeldung | entfällt |
 | Identitätsnachweis am `/token` | SM(C)-B-signiertes Subject Token | OIDC Authorization Code (sektoraler IDP) | Signiertes JWT des eigenen IDP |
 | Zugriff auf den RS | DPoP-gebundenes Access Token | DPoP-gebundenes Access Token | DPoP-gebundenes Access Token |
 
@@ -500,7 +501,7 @@ Content-Type: application/json
 
 ```json
 {
-  "transaction_id": "a43b2c19-1234-4e56-b789-0123456789ab",
+  "transaction_id": "c2257dd9-835f-4f87-80c6-91b41851c4e2",
   "verify_type": "tpm_activation",
   "tpm_decrypted_secret": "v2OZW+H/tF7W4u5S/Z8E9HlUaX9aC1gL5vXo4p3YQfI="
 }
@@ -509,7 +510,7 @@ Content-Type: application/json
 ##### 4.1.4.4 Registration Verification Response
 
 **Antwort-Beispiel (201 Created):**
-*Response-Schema:* gemäß OIDC DCR Response
+*Response-Schema:* [dcr-response.yaml](../../../src/schemas/dcr-response.yaml) (`ClientInformationResponse`)
 
 ```http
 HTTP/1.1 201 Created
@@ -668,6 +669,7 @@ Content-Type: application/json
 ##### 4.2.2.2 Dynamic Client Registration Response
 
 **Antwort-Beispiel (201 Created):**
+*Response-Schema:* [dcr-response.yaml](../../../src/schemas/dcr-response.yaml) (`ClientInformationResponse`)
 
 ```http
 HTTP/1.1 201 Created
@@ -770,6 +772,7 @@ Content-Type: application/json
 ##### 4.3.2.2 Dynamic Client Registration Response
 
 **Antwort-Beispiel (201 Created):**
+*Response-Schema:* [dcr-response.yaml](../../../src/schemas/dcr-response.yaml) (`ClientInformationResponse`)
 
 ```http
 HTTP/1.1 201 Created
@@ -896,15 +899,16 @@ curl -X GET https://$RESOURCE_SERVER/api/resource \
 
 1. **[ ] Discovery**: FQDN des Resource Servers → PDP-Metadaten laden ([Kapitel 3](#3-discovery-und-konfiguration))
 2. **[ ] Keys generieren**: Client Instance Key (`PuK.Client.Sig`) im TEE / StrongBox (Android) bzw. in der Secure Enclave (iOS) erstellen.
-3. **[ ] DCR aufrufen**: Registrierung absenden (`POST /register`) → TOFU-OTP per E-Mail empfangen → `POST /register/verify` mit OTP-Code.
+3. **[ ] DCR aufrufen**: Registrierung absenden (`POST /register`) → `201 Created` mit `client_id` im Status `pending_user_binding` (Fast-Path mit `zeta_attestation_token`: `bound`).
 4. **[ ] Nutzer authentifizieren**: OIDC Authorization Code Flow mit PAR und PKCE (siehe [5.1.3](#513-authentifizierung--autorisierung-oidc-flow)).
-5. **[ ] RS anfragen**: DPoP-gebundenes Token im Header mitsenden und die Ziel-API aufrufen ([Kapitel 7](#7-zugriff-auf-den-resource-server)).
+5. **[ ] E-Mail binden (TOFU, nur bei `pending_user_binding`)**: E-Mail-Adresse über `POST /zeta/identity/bind-email` hinterlegen → OTP per E-Mail empfangen → `POST /zeta/identity/bind-email/verify` → volle Token per Token Exchange (siehe [5.1.3.3](#5133-teilflow-c-token-bezug-e-mail-bindung-und-ausstellung-der-zeta-token)).
+6. **[ ] RS anfragen**: DPoP-gebundenes Token im Header mitsenden und die Ziel-API aufrufen ([Kapitel 7](#7-zugriff-auf-den-resource-server)).
 
 ---
 
 ### 5.1 iOS und iPadOS Clients mit Apple App Attest Attestation
 
-iOS- und iPadOS-Clients nutzen die **Secure Enclave** und das **Apple App Attest Framework** zur hardwaregebundenen Schlüsselerzeugung und Attestierung. Die Registrierung wird durch ein interaktives **Trust-On-First-Use (TOFU)** OTP-Verfahren abgesichert.
+iOS- und iPadOS-Clients nutzen die **Secure Enclave** und das **Apple App Attest Framework** zur hardwaregebundenen Schlüsselerzeugung und Attestierung. Die Bindung an den Nutzer erfolgt per **Trust-On-First-Use (TOFU)**: Nach der ersten OIDC-Anmeldung bestätigt der Nutzer eine E-Mail-Adresse per OTP (siehe [5.1.3.3](#5133-teilflow-c-token-bezug-e-mail-bindung-und-ausstellung-der-zeta-token)).
 
 #### 5.1.1 Client Installation und Schlüsselgenerierung
 
@@ -912,22 +916,28 @@ Die Schlüsselgenerierung unter iOS/iPadOS ist identisch mit macOS (siehe [4.2.1
 
 ![Abbildung 14: Schlüsselgenerierung auf macOS/iOS/iPadOS](../../../images/zeta-flows/Abb-ZETA-Schlüsselgenerierung-macOS.svg)
 
-#### 5.1.2 Dynamic Client Registration (DCR) mit TOFU
+#### 5.1.2 Dynamic Client Registration (DCR)
 
-Mobile Clients binden den Registrierungsprozess an eine interaktive Benutzeridentifizierung mittels **Trust-On-First-Use (TOFU)**. Der Nutzer bestätigt seine Identität durch Eingabe eines per E-Mail zugestellten OTP-Codes.
+Die Registrierung etabliert den Client Instance Key und die Apple-Attestierung; sie erfordert **keine** Nutzerinteraktion. Die Bindung an den Nutzer per **Trust-On-First-Use (TOFU)** – Bestätigung einer E-Mail-Adresse per OTP – erfolgt erst **nach** der OIDC-Nutzerauthentisierung im Token-Bezug (siehe [5.1.3.3](#5133-teilflow-c-token-bezug-e-mail-bindung-und-ausstellung-der-zeta-token)). `POST /register/verify` wird von mobilen Clients nicht verwendet.
 
-- *(01) POST /register:* Der Client sendet die Registrierungsanfrage mit `attestation_type: "apple"`, dem `Apple_Attestation_Object`, `PuK.Client.Sig` (in `jwks`) sowie den beiden `redirect_uris` (`oidc_redirect_uri`, `app_redirect_uri`) und `grant_types` inkl. `authorization_code` (siehe Hinweis unten).
-- *(02) Validierung:* Der AuthS verifiziert das Apple Attestation Object gegen die Apple App Attest Root CA und extrahiert `Hash(PuK.Client.Sig)` aus dem Objekt zum Abgleich mit dem Payload.
-- *(03) OTP-Generierung:* Der AuthS generiert ein OTP und eine `transaction_id`, speichert den Request im temporären Cache und sendet den OTP-Bestätigungscode per E-Mail (Out-of-Band) an den Nutzer.
-- *(04) 202 Accepted:* Der AuthS antwortet mit `{transaction_id, message="OTP sent"}` — zu diesem Zeitpunkt existiert noch keine `client_id`.
-- *(05) OTP-Eingabe:* Der Nutzer gibt den OTP-Code in der App ein.
-- *(06) POST /register/verify:* Der Client sendet `{transaction_id, code}` zur Verifikation.
-- *(07) 201 Created:* Bei korrektem OTP wird die Registrierung abgeschlossen mit `{client_id, status="pending_attestation"}`. Zusätzlich stellt der AuthS einen `zeta_attestation_token` aus (signiert, an `PuK.AK.Sig` gebunden über `cnf`, enthält die registrierten `redirect_uris`; siehe [zeta-attestation-token.yaml](../../../src/schemas/zeta-attestation-token.yaml)). Dieser Token kann bei einer erneuten Registrierung im Fast-Path (`attestation_type="zeta_attestation_token"`) vorgelegt werden, sodass Hardware-Attestierung und `redirect_uris` nicht erneut übertragen werden müssen — der AuthS übernimmt die `redirect_uris` dann aus dem Token.
+**Erstregistrierung (kein `zeta_attestation_token` vorhanden):**
+
+- *(01) POST /register:* Der Client sendet die Registrierungsanfrage mit `attestation_type: "apple"`, dem `apple_attestation_object`, `PuK.Client.Sig` (in `jwks`) sowie den beiden `redirect_uris` (`oidc_redirect_uri`, `app_redirect_uri`) und `grant_types` inkl. `authorization_code` (siehe Hinweis unten).
+- *(02) Validierung:* Der AuthS verifiziert das Apple Attestation Object gegen die Apple App Attest Root CA und extrahiert `Hash(PuK.Client.Sig)` aus dem Objekt zum Abgleich mit dem Payload. Er prüft die `redirect_uris` gegen die bei der gematik registrierten URIs.
+- *(03) Pinning:* Der AuthS pinnt `attestation_type`, `platform`, `product_id` und `ak_jkt` (Thumbprint von `PuK.AK.Sig`) im Registrierungsdatensatz (`binding_status: pinned`, siehe [Bindung der `client_id`](#bindung-der-client_id-an-plattform-und-attestierungsverfahren)).
+- *(04) 201 Created:* Der AuthS speichert den Client im Status `pending_user_binding` und antwortet mit `{client_id, status: "pending_user_binding"}`. In diesem Status erhält der Client am `token_endpoint` zunächst nur ein reduziertes E-Mail-Binding-Token, bis die E-Mail-Bindung abgeschlossen ist.
+
+**Fast-Path (`zeta_attestation_token` vorhanden):**
+
+- *(05) POST /register:* Liegt ein gültiger `zeta_attestation_token` aus einer früheren Registrierung vor, sendet der Client `attestation_type: "zeta_attestation_token"`, den Token, `PuK.Client.Sig` und einen Besitznachweis (`attestation_pop`, empfohlen gebunden an eine frische `nonce` aus `GET /nonce`).
+- *(06) 201 Created:* Der AuthS prüft Signatur und Vertrauensstellung des Tokens, extrahiert `PuK.AK.Sig` und verifiziert den Besitznachweis. Die `redirect_uris` übernimmt er aus dem Token. Da der Token die bereits verifizierte E-Mail-Bindung trägt, entfällt die erneute TOFU-Bestätigung: Die Antwort lautet `{client_id, status: "bound"}`.
+
+Der `zeta_attestation_token` (signiert, an `PuK.AK.Sig` gebunden über `cnf`, enthält die registrierten `redirect_uris`; siehe [zeta-attestation-token.yaml](../../../src/schemas/zeta-attestation-token.yaml)) wird **nicht** bei `/register` ausgestellt, sondern erst mit den vollen Token nach abgeschlossener E-Mail-Bindung (siehe [5.1.3.3](#5133-teilflow-c-token-bezug-e-mail-bindung-und-ausstellung-der-zeta-token)).
 
 > **Hinweis – DCR-Metadaten für den OIDC-Flow:** Mobile Clients registrieren die Metadaten, die der Authorization Code Flow mit äußerem und innerem PAR ([5.1.3](#513-authentifizierung--autorisierung-oidc-flow)) benötigt:
 >
 > - `redirect_uris`: genau zwei vorab bei der gematik registrierte claimed-HTTPS-URIs – `oidc_redirect_uri` (`.../oidc`, innerer SekIDP-Flow) und `app_redirect_uri` (`.../app`, äußerer ZETA-Guard-Flow), siehe [5.4](#54-native-mobile-apps-universal-links--app-links-für-mehrere-clients). Der AuthS prüft beim äußeren PAR, dass `redirect_uri` und `oidc_redirect_uri` zu diesen registrierten URIs gehören.
-> - `grant_types`: `authorization_code` (äußerer Flow) und `refresh_token` sowie `urn:ietf:params:oauth:grant-type:token-exchange` (E-Mail-Bindung im Token-Bezug).
+> - `grant_types`: `authorization_code` (äußerer Flow) und `refresh_token` sowie `urn:ietf:params:oauth:grant-type:token-exchange` (Freischaltung der vollen Token nach der E-Mail-Bindung, siehe [5.1.3.3](#5133-teilflow-c-token-bezug-e-mail-bindung-und-ausstellung-der-zeta-token)).
 > - `token_endpoint_auth_method: private_key_jwt`: Die Client Assertion mit `PrK.Client.Sig` authentisiert den Client sowohl am `pushed_authorization_request_endpoint` (`POST /par`) als auch am `token_endpoint` (RFC 9126, Abschnitt 2).
 
 ![Abbildung 15: DCR für mobile Apple Clients mit Hardware Attestation](../../../images/zeta-flows/Abb-ZETA-DCR-für-mobile-Apple-HW-Att-Clients.svg)
@@ -973,51 +983,21 @@ Content-Type: application/json
 }
 ```
 
-##### 5.1.2.2 Dynamic Client Registration Response (202 Accepted — OTP Trigger)
+##### 5.1.2.2 Dynamic Client Registration Response (201 Created)
 
-```http
-HTTP/1.1 202 Accepted
-Content-Type: application/json
-```
-
-```json
-{
-  "transaction_id": "tx-ios-98765",
-  "message": "OTP sent",
-  "expires_in": 300
-}
-```
-
-##### 5.1.2.3 Registration Verification Request (TOFU)
-
-- **Pfad:** `/register/verify`
-
-```http
-POST /register/verify HTTP/1.1
-Host: auth.example.com
-Content-Type: application/json
-```
-
-```json
-{
-  "transaction_id": "tx-ios-98765",
-  "code": "483921"
-}
-```
-
-##### 5.1.2.4 Registration Verification Response
+*Response-Schema:* [dcr-response.yaml](../../../src/schemas/dcr-response.yaml) (`ClientInformationResponse`). Es wird kein Registration Access Token ausgestellt; Folgeoperationen auf die Registrierung autorisiert der Client per Client Assertion. Das Feld `status` ist rein informativ – ob eine E-Mail-Bindung nötig ist, ergibt sich aus dem am Token-Endpunkt gewährten `scope`.
 
 ```http
 HTTP/1.1 201 Created
 Content-Type: application/json
+Location: https://auth.example.com/register/zeta-client-ios-d4e5f6
 ```
 
 ```json
 {
   "client_id": "zeta-client-ios-d4e5f6",
-  "status": "pending_attestation",
-  "client_id_issued_at": 1748520000,
-  "zeta_attestation_token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9...<signiertes JWT, siehe zeta-attestation-token.yaml>...=="
+  "status": "pending_user_binding",
+  "client_id_issued_at": 1748520000
 }
 ```
 
@@ -1028,7 +1008,7 @@ Der Token-Bezug für mobile Benutzer erfolgt über den standardisierten **OpenID
 **Vorbedingungen:**
 
 - Die Service Discovery ist abgeschlossen; der Client kennt die Endpunkte des AuthS (siehe [Kapitel 3](#3-discovery-und-konfiguration)).
-- Der Client wurde per DCR registriert und besitzt `PrK.Client.Sig` / `PuK.Client.Sig` sowie zwei registrierte `redirect_uris` – `oidc_redirect_uri` (Pfad `.../oidc`, SekIDP-Flow) und `app_redirect_uri` (Pfad `.../app`, ZETA-Guard-Flow) (siehe [5.4](#54-native-mobile-apps-universal-links--app-links-für-mehrere-clients)).
+- Der Client wurde per DCR registriert (Status `pending_user_binding` oder `bound`) und besitzt `PrK.Client.Sig` / `PuK.Client.Sig` sowie zwei registrierte `redirect_uris` – `oidc_redirect_uri` (Pfad `.../oidc`, SekIDP-Flow) und `app_redirect_uri` (Pfad `.../app`, ZETA-Guard-Flow) (siehe [5.4](#54-native-mobile-apps-universal-links--app-links-für-mehrere-clients)).
 - Der AuthS ist als Relying Party beim Federation Master registriert.
 - App-Link / Universal-Link für ZETA Client und Authenticator-Modul sind im Betriebssystem registriert.
 
@@ -1077,9 +1057,9 @@ Die Authentisierung des Nutzers erfolgt über das Authenticator-Modul des sektor
 
 ![Abbildung 18: OIDC Nutzerauthentisierung am sektoralen IDP](../../../images/zeta-flows/Abb-ZETA-OIDC-Nutzerauthentisierung.svg)
 
-##### 5.1.3.3 Teilflow (C): Token-Bezug und Ausstellung der ZETA Token
+##### 5.1.3.3 Teilflow (C): Token-Bezug, E-Mail-Bindung und Ausstellung der ZETA Token
 
-Im inneren Flow löst der AuthS den IDP-Code ein und gewinnt die Identitäts-Claims. Im äußeren Flow trifft die Policy Engine die Zugriffsentscheidung und der AuthS stellt die DPoP-gebundenen ZETA Token aus.
+Im inneren Flow löst der AuthS den IDP-Code ein und gewinnt die Identitäts-Claims. Im äußeren Flow trifft die Policy Engine die Zugriffsentscheidung und der AuthS stellt die DPoP-gebundenen ZETA Token aus. Befindet sich der Client noch im Status `pending_user_binding`, schließt der Nutzer zuvor die TOFU-E-Mail-Bindung ab.
 
 **Innerer Flow – Token-Bezug beim sektoralen IDP:**
 
@@ -1092,14 +1072,28 @@ Im inneren Flow löst der AuthS den IDP-Code ein und gewinnt die Identitäts-Cla
 
 **Äußerer Flow – Policy-Entscheidung & ZETA Token:**
 
-- *(05) POST /v1/data/authz:* Der AuthS erstellt den Policy Engine Input (Identitäts-Claims, Posture, Kontext) und ruft die Policy Engine (OPA) auf.
-- *(06) Policy Decision:* Bei `allow` erzeugt der AuthS den `AUTHORIZATION_CODE (AS)` und leitet den Client per `302 Found` (`Location: <app_redirect_uri>?code=AUTH_CODE_AS&state=state_app`) zurück. Bei `deny` antwortet der AuthS mit `403 Forbidden` und einer Begründung.
-- *(07) POST /token (DPoP):* Der Client erzeugt ein DPoP-Schlüsselpaar (`PrK.DPoP.Sig` / `PuK.DPoP.Sig`) und einen DPoP Proof und ruft den `token_endpoint` des AuthS mit dem `dpop`-Header sowie `{grant_type=authorization_code, code=AUTH_CODE_AS, code_verifier=code_verifier_app, client_id, app_redirect_uri, client_assertion}` auf.
-- *(08) 200 OK:* Der AuthS verifiziert `code_verifier_app` (gegen `code_challenge_app` aus dem äußeren PAR), den DPoP Proof und die Client Assertion (Key Binding aus DCR) und stellt `{access_token (DPoP-gebunden), refresh_token, token_type=DPoP, expires_in}` aus.
+- *(05) 302 Found:* Der AuthS erzeugt den `AUTHORIZATION_CODE (AS)` und leitet den Client zurück (`Location: <app_redirect_uri>?code=AUTH_CODE_AS&state=state_app`). Der Client prüft `state_app`.
+- *(06) POST /token (DPoP):* Der Client erzeugt ein DPoP-Schlüsselpaar (`PrK.DPoP.Sig` / `PuK.DPoP.Sig`) und einen DPoP Proof und ruft den `token_endpoint` des AuthS mit dem `dpop`-Header sowie `{grant_type=authorization_code, code=AUTH_CODE_AS, code_verifier=code_verifier_app, client_id, app_redirect_uri, client_assertion}` auf.
+- *(07) Prüfung:* Der AuthS verifiziert `code_verifier_app` (gegen `code_challenge_app` aus dem äußeren PAR), den DPoP Proof und die Client Assertion (Key Binding aus DCR).
+- *(08) POST /v1/data/authz:* Der AuthS erstellt den Policy Engine Input (Identitäts-Claims, Posture, Kontext) und ruft die Policy Engine (OPA) auf. Bei `deny` antwortet der AuthS mit `403 Forbidden` und einer Begründung.
+- *(09) Bindungszustand:* Bei `allow` ermittelt der AuthS, ob die Identität (KVNR) an diesem ZETA Guard bereits mit einer verifizierten E-Mail-Adresse verknüpft und der Client gebunden ist. Im Status `bound` (Regelfall bei Folgeanmeldung) folgt direkt Schritt (14); im Status `pending_user_binding` folgt die E-Mail-Bindung.
+
+**E-Mail-Bindung (TOFU) – nur im Status `pending_user_binding`:**
+
+- *(10) Reduziertes Token:* Der AuthS stellt noch **keine** vollen Token aus, sondern ein kurzlebiges, DPoP-gebundenes E-Mail-Binding-Token (`expires_in` 300–900 s, **kein** Refresh Token). Der gewährte `scope` kodiert den nächsten Schritt:
+  - Identität neu (Erstnutzung): `scope="zeta:email-binding zeta:email-verify"`.
+  - Identität bekannt, E-Mail bereits gebunden: `scope="zeta:email-verify"`; der AuthS sendet das OTP sofort an die **gespeicherte** Adresse und liefert einen maskierten `email_hint` (z. B. `a***@d***.de`).
+- *(11) POST /zeta/identity/bind-email (nur Erstnutzung):* Der Nutzer gibt seine E-Mail-Adresse ein; der Client sendet `{email}` mit `Authorization: DPoP <E-Mail-Binding-Token>` und DPoP Proof. Der AuthS sendet ein OTP an diese Adresse (TOFU-Pin) und antwortet mit `202 Accepted {challenge_type: "email_otp"}`. Ist die Mail nicht angekommen, fordert der Client sie über `POST /zeta/identity/bind-email/resend` erneut an (Cooldown ≥ 60 s, `429` bei Überschreitung).
+- *(12) POST /zeta/identity/bind-email/verify:* Der Nutzer gibt den OTP-Code ein; der Client sendet `{verify_type: "email_otp", code}` mit dem E-Mail-Binding-Token – ohne `transaction_id`, die Korrelation erfolgt über das Token. Der AuthS prüft das OTP, verknüpft die E-Mail mit der Identität und setzt den Status auf `bound` (`200 OK {status: "bound"}`).
+- *(13) Token Exchange:* Der Client tauscht das E-Mail-Binding-Token per Token Exchange (RFC 8693) gegen volle Token: `POST /token` mit `{grant_type=urn:ietf:params:oauth:grant-type:token-exchange, subject_token=<E-Mail-Binding-Token>, subject_token_type=urn:ietf:params:oauth:token-type:access_token, client_assertion}` und demselben DPoP-Schlüssel. Der Token Exchange gelingt nur im Status `bound` (sonst `400 invalid_grant`); läuft das E-Mail-Binding-Token vorher ab, beginnt der Client erneut mit Teilflow (A).
+
+**Ausstellung der ZETA Token:**
+
+- *(14) 200 OK:* Der AuthS stellt `{access_token (DPoP-gebunden), refresh_token, token_type=DPoP, expires_in}` aus. Bei Hardware-Attestation (Apple, Android) enthält die Antwort zusätzlich den `zeta_attestation_token`, den der Client für eine spätere Registrierung im Fast-Path aufbewahrt (siehe [5.1.2](#512-dynamic-client-registration-dcr)).
 
 Der ZETA Client besitzt nun ein DPoP-gebundenes Access Token und kann auf den Resource Server zugreifen (siehe [Kapitel 7](#7-zugriff-auf-den-resource-server)). Die Session-Erneuerung erfolgt über den Refresh Token.
 
-![Abbildung 19: OIDC Token-Bezug und Ausstellung der ZETA Token](../../../images/zeta-flows/Abb-ZETA-OIDC-Token-Bezug.svg)
+![Abbildung 19: OIDC Token-Bezug, E-Mail-Bindung und Ausstellung der ZETA Token](../../../images/zeta-flows/Abb-ZETA-OIDC-Token-Bezug.svg)
 
 ---
 
@@ -1117,13 +1111,15 @@ Android-Clients nutzen den **Android Keystore** mit **TEE (Trusted Execution Env
 
 ![Abbildung 20: Schlüsselgenerierung auf Android](../../../images/zeta-flows/Abb-ZETA-Schlüsselgenerierung-Android.svg)
 
-#### 5.2.2 Dynamic Client Registration (DCR) mit TOFU
+#### 5.2.2 Dynamic Client Registration (DCR)
 
-Auch Android-Clients durchlaufen den TOFU-Prozess mit OTP-Verifikation.
+Der Ablauf entspricht dem der Apple-Clients (siehe [5.1.2](#512-dynamic-client-registration-dcr)): keine Nutzerinteraktion bei der Registrierung, TOFU-E-Mail-Bindung erst nach der OIDC-Nutzerauthentisierung (siehe [5.1.3.3](#5133-teilflow-c-token-bezug-e-mail-bindung-und-ausstellung-der-zeta-token)).
 
-- *(01) POST /register:* Der Client sendet `attestation_type: "android"`, `PuK.AK.Sig`, `android_key_attestation_certificate_chain`, `PuK.Client.Sig`, `signed_hash_puk_client_sig`, die beiden `redirect_uris`, `grant_types` inkl. `authorization_code` und optional `play_integrity_token` (siehe Hinweis in [5.1.2](#512-dynamic-client-registration-dcr-mit-tofu)).
+- *(01) POST /register:* Der Client sendet `attestation_type: "android"`, `android_key_attestation_certificate_chain` (deren Blatt-Zertifikat `PuK.AK.Sig` trägt), `PuK.Client.Sig` (in `jwks`), `signed_hash_puk_client_sig`, die beiden `redirect_uris`, `grant_types` inkl. `authorization_code` und optional `play_integrity_token` (siehe Hinweis in [5.1.2](#512-dynamic-client-registration-dcr)).
 - *(02) Validierung:* Der AuthS validiert die Zertifikatskette gegen die Google Hardware Attestation Root CA, prüft `signed_hash_puk_client_sig` und wertet optional die Play Integrity Verdicts aus.
-- *(03)–(07) TOFU OTP:* Identischer Ablauf wie bei Apple-Clients (OTP-Generierung, E-Mail-Versand, Nutzer-Eingabe, Verifikation). Mit der `201 Created` stellt der AuthS zudem einen `zeta_attestation_token` aus (signiert, an `PuK.AK.Sig` gebunden über `cnf`, enthält die registrierten `redirect_uris`; siehe [zeta-attestation-token.yaml](../../../src/schemas/zeta-attestation-token.yaml)), der im Fast-Path wiederverwendet werden kann — die `redirect_uris` müssen dann nicht erneut übertragen werden.
+- *(03) Pinning:* Der AuthS pinnt `attestation_type`, `platform`, `product_id` und `ak_jkt` im Registrierungsdatensatz (`binding_status: pinned`).
+- *(04) 201 Created:* Der AuthS speichert den Client im Status `pending_user_binding` und antwortet mit `{client_id, status: "pending_user_binding"}`.
+- *Fast-Path:* Mit einem gültigen `zeta_attestation_token` registriert sich der Client wie in [5.1.2](#512-dynamic-client-registration-dcr) beschrieben ohne erneute Hardware-Attestierung und ohne erneute E-Mail-Bindung (`status: "bound"`).
 
 ![Abbildung 21: DCR für mobile Android Clients mit Hardware Attestation](../../../images/zeta-flows/Abb-ZETA-DCR-für-mobile-Android-HW-Att-Clients.svg)
 
@@ -1174,55 +1170,27 @@ Content-Type: application/json
 }
 ```
 
-##### 5.2.2.2 Dynamic Client Registration Response (202 Accepted — OTP Trigger)
+##### 5.2.2.2 Dynamic Client Registration Response (201 Created)
 
-```http
-HTTP/1.1 202 Accepted
-Content-Type: application/json
-```
-
-```json
-{
-  "transaction_id": "tx-android-54321",
-  "message": "OTP sent",
-  "expires_in": 300
-}
-```
-
-##### 5.2.2.3 Registration Verification Request (TOFU)
-
-```http
-POST /register/verify HTTP/1.1
-Host: auth.example.com
-Content-Type: application/json
-```
-
-```json
-{
-  "transaction_id": "tx-android-54321",
-  "code": "729184"
-}
-```
-
-##### 5.2.2.4 Registration Verification Response
+*Response-Schema:* [dcr-response.yaml](../../../src/schemas/dcr-response.yaml) (`ClientInformationResponse`). Es wird kein Registration Access Token ausgestellt; Folgeoperationen auf die Registrierung autorisiert der Client per Client Assertion. Das Feld `status` ist rein informativ – ob eine E-Mail-Bindung nötig ist, ergibt sich aus dem am Token-Endpunkt gewährten `scope`.
 
 ```http
 HTTP/1.1 201 Created
 Content-Type: application/json
+Location: https://auth.example.com/register/zeta-client-android-g7h8i9
 ```
 
 ```json
 {
   "client_id": "zeta-client-android-g7h8i9",
-  "status": "pending_attestation",
-  "client_id_issued_at": 1748520000,
-  "zeta_attestation_token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9...<signiertes JWT, siehe zeta-attestation-token.yaml>...=="
+  "status": "pending_user_binding",
+  "client_id_issued_at": 1748520000
 }
 ```
 
 #### 5.2.3 Authentifizierung & Autorisierung (OIDC Flow)
 
-Der OIDC-Ablauf (Authorization Request mit PAR, Nutzerauthentisierung am sektoralen IDP, Token-Bezug und Ausstellung der ZETA Token) ist für alle mobilen Client-Varianten identisch und in [5.1.3](#513-authentifizierung--autorisierung-oidc-flow) vollständig beschrieben.
+Der OIDC-Ablauf (Authorization Request mit äußerem und innerem PAR, Nutzerauthentisierung am sektoralen IDP, Token-Bezug, E-Mail-Bindung und Ausstellung der ZETA Token) ist für alle mobilen Client-Varianten identisch und in [5.1.3](#513-authentifizierung--autorisierung-oidc-flow) vollständig beschrieben.
 
 ---
 
@@ -1236,12 +1204,14 @@ Die Schlüsselgenerierung erfolgt rein softwarebasiert, identisch zu stationäre
 
 ![Abbildung 22: Schlüsselgenerierung bei Software-basierter Attestation](../../../images/zeta-flows/Abb-ZETA-Schlüsselgenerierung-SW-Att.svg)
 
-#### 5.3.2 Dynamic Client Registration (DCR) mit TOFU
+#### 5.3.2 Dynamic Client Registration (DCR)
 
-Die Registrierung erfolgt wie bei der stationären Software-Attestation, ergänzt um den TOFU-OTP-Prozess.
+Die Registrierung erfolgt wie bei der stationären Software-Attestation, ergänzt um die für den OIDC-Flow benötigten `redirect_uris`. Wie bei den Hardware-Varianten erfolgt die TOFU-E-Mail-Bindung erst nach der OIDC-Nutzerauthentisierung (siehe [5.1.3.3](#5133-teilflow-c-token-bezug-e-mail-bindung-und-ausstellung-der-zeta-token)). Einen Fast-Path gibt es für Software-Attestation nicht, da kein `zeta_attestation_token` ausgestellt wird.
 
-- *(01) POST /register:* Der Client sendet `client_name`, `grant_types` (inkl. `authorization_code`), `jwks` (mit `PuK.Client.Sig`), `token_endpoint_auth_method` und die beiden `redirect_uris` — ohne Attestation-spezifische Felder (siehe Hinweis in [5.1.2](#512-dynamic-client-registration-dcr-mit-tofu)). Empfohlen werden zusätzlich `platform`, `product_id` sowie `nonce` (aus `GET /nonce`) und `signed_hash_puk_client_sig` über `SHA-256(PuK.Client.Sig || nonce)`; siehe den Hinweis in Kapitel [4.3.2](#432-dynamic-client-registration-dcr).
-- *(02)–(06) TOFU OTP:* Identischer Ablauf wie bei den Hardware-Attestation-Varianten (OTP-Generierung, E-Mail-Versand, Nutzer-Eingabe, Verifikation).
+- *(01) GET /nonce:* Der Client ruft eine frische Nonce ab (empfohlen).
+- *(02) POST /register:* Der Client sendet `client_name`, `grant_types` (inkl. `authorization_code`), `jwks` (mit `PuK.Client.Sig`), `token_endpoint_auth_method` und die beiden `redirect_uris` — ohne Attestation-spezifische Felder (siehe Hinweis in [5.1.2](#512-dynamic-client-registration-dcr)). Empfohlen werden zusätzlich `platform`, `product_id` sowie `nonce` und `signed_hash_puk_client_sig` über `SHA-256(PuK.Client.Sig || nonce)`; siehe den Hinweis in Kapitel [4.3.2](#432-dynamic-client-registration-dcr).
+- *(03) Prüfung und Pinning:* Der AuthS prüft `nonce` und `signed_hash_puk_client_sig` (sofern übermittelt) und pinnt `attestation_type: "software"` sowie – sofern übermittelt – `platform` und `product_id` (kein `ak_jkt`).
+- *(04) 201 Created:* Der AuthS speichert den Client im Status `pending_user_binding` und antwortet mit `{client_id, status: "pending_user_binding"}`.
 
 ![Abbildung 23: DCR für mobile Clients mit Software Attestation](../../../images/zeta-flows/Abb-ZETA-DCR-für-mobile-SW-Att-Clients.svg)
 
@@ -1284,54 +1254,27 @@ Content-Type: application/json
 }
 ```
 
-##### 5.3.2.2 Dynamic Client Registration Response (202 Accepted — OTP Trigger)
+##### 5.3.2.2 Dynamic Client Registration Response (201 Created)
 
-```http
-HTTP/1.1 202 Accepted
-Content-Type: application/json
-```
-
-```json
-{
-  "transaction_id": "tx-mobile-sw-11111",
-  "message": "OTP sent",
-  "expires_in": 300
-}
-```
-
-##### 5.3.2.3 Registration Verification Request (TOFU)
-
-```http
-POST /register/verify HTTP/1.1
-Host: auth.example.com
-Content-Type: application/json
-```
-
-```json
-{
-  "transaction_id": "tx-mobile-sw-11111",
-  "code": "591037"
-}
-```
-
-##### 5.3.2.4 Registration Verification Response
+*Response-Schema:* [dcr-response.yaml](../../../src/schemas/dcr-response.yaml) (`ClientInformationResponse`). Es wird kein Registration Access Token ausgestellt; Folgeoperationen auf die Registrierung autorisiert der Client per Client Assertion. Das Feld `status` ist rein informativ – ob eine E-Mail-Bindung nötig ist, ergibt sich aus dem am Token-Endpunkt gewährten `scope`.
 
 ```http
 HTTP/1.1 201 Created
 Content-Type: application/json
+Location: https://auth.example.com/register/zeta-client-mobile-sw-j0k1l2
 ```
 
 ```json
 {
   "client_id": "zeta-client-mobile-sw-j0k1l2",
-  "status": "pending_attestation",
+  "status": "pending_user_binding",
   "client_id_issued_at": 1748520000
 }
 ```
 
 #### 5.3.3 Authentifizierung & Autorisierung (OIDC Flow)
 
-Der OIDC-Ablauf (Authorization Request mit PAR, Nutzerauthentisierung am sektoralen IDP, Token-Bezug und Ausstellung der ZETA Token) ist für alle mobilen Client-Varianten identisch und in [5.1.3](#513-authentifizierung--autorisierung-oidc-flow) vollständig beschrieben.
+Der OIDC-Ablauf (Authorization Request mit äußerem und innerem PAR, Nutzerauthentisierung am sektoralen IDP, Token-Bezug, E-Mail-Bindung und Ausstellung der ZETA Token) ist für alle mobilen Client-Varianten identisch und in [5.1.3](#513-authentifizierung--autorisierung-oidc-flow) vollständig beschrieben.
 
 ---
 
@@ -1557,7 +1500,7 @@ Bitte beachten Sie das [CONTRIBUTING.md](../../../CONTRIBUTING.md) für Informat
 | **FQDN** | Fully Qualified Domain Name | Vollqualifizierter Domänenname des geschützten Resource Servers. |
 | **IPC** | Inter-Process Communication | Kommunikationskanal zwischen ZAS (privilegiert) und ZETA Client (User Space). |
 | **OPA** | Open Policy Agent | Policy Engine im PDP zur Auswertung von Autorisierungsregeln. |
-| **OTP** | One-Time Password | Einmal-Passwort für die TOFU-Verifizierung bei mobilen Clients. |
+| **OTP** | One-Time Password | Einmal-Passwort zur Bestätigung der E-Mail-Bindung (TOFU) bei mobilen Clients. |
 | **PCR** | Platform Configuration Register | TPM-Register, in die Integritätsmessungen geschrieben werden. |
 | **PDP** | Policy Decision Point | Zentrale Entscheidungskomponente im ZETA Guard (Authorization Server + Policy Engine). |
 | **PEP** | Policy Enforcement Point | HTTP Reverse Proxy, der Zugriffsentscheidungen des PDP durchsetzt. |
@@ -1567,7 +1510,7 @@ Bitte beachten Sie das [CONTRIBUTING.md](../../../CONTRIBUTING.md) für Informat
 | **SMC-B** | Security Module Card Typ B | Smartcard mit dem Institutionszertifikat des Leistungserbringers. |
 | **SRK** | Storage Root Key | Lokaler Vertrauensanker im TPM, unter dem weitere Schlüssel hierarchisch erzeugt werden. |
 | **TEE** | Trusted Execution Environment | Hardware-isolierte Ausführungsumgebung auf Android-Geräten. |
-| **TOFU** | Trust-On-First-Use | Vertrauensmodell, bei dem der Nutzer beim ersten Kontakt seine Identität per OTP bestätigt. |
+| **TOFU** | Trust-On-First-Use | Vertrauensmodell, bei dem bei der ersten Anmeldung einer Identität an einem ZETA Guard eine E-Mail-Adresse gebunden und per OTP bestätigt wird; Folgeanmeldungen stützen sich auf diese Bindung. |
 | **TPM** | Trusted Platform Module | Hardware-Sicherheitschip (Version 2.0) zur Schlüsselverwaltung und Integritätsmessung. |
 | **TSL** | Trust-service Status List | Liste vertrauenswürdiger CA-Zertifikate in der TI-Infrastruktur. |
 | **ZAS** | ZETA Attestation Service | Privilegierter Hintergrunddienst auf Windows/Linux, der das TPM anspricht und Messungen durchführt. |

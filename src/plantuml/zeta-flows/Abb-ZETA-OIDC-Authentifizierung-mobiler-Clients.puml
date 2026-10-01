@@ -54,7 +54,7 @@ ref over User, IDP
 end ref
 
 ref over Client, IDP
-  **(C)** Token-Bezug und Ausstellung der ZETA Token
+  **(C)** Token-Bezug, E-Mail-Bindung (TOFU) und Ausstellung der ZETA Token
   siehe **Abb-ZETA-OIDC-Token-Bezug**
 end ref
 
