@@ -1,5 +1,5 @@
 {
-  "$comment": "Client-Registry im Provisioning Image (/client-registry/client-registry.json). Eine App mit getrennten product_ids für Android und Apple.",
+  "$comment": "redirect-uris im Provisioning Image (/redirect-uris/redirect-uris.json). Eine App mit getrennten product_ids für Android und Apple.",
   "products": {
     "beispiel-epa-app-android": {
       "redirect_uris": [

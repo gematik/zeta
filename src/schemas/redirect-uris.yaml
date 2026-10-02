@@ -1,6 +1,6 @@
-# Schema für die Client-Registry im ZETA Guard Provisioning Image
+# Schema für die Redirect URIs im ZETA Guard Provisioning Image
 #
-# Ablage im Provisioning Image: /client-registry/*.json (Dateiname dynamisch,
+# Ablage im Provisioning Image: /redirect-uris/*.json (Dateiname dynamisch,
 # A_29738). Die gematik erzeugt die Datei aus den von den Herstellern gemeldeten
 # Client-Metadaten (A_29723-01). Der Authorization Server nutzt sie
 #   - beim DCR zur Prüfung der redirect_uris (A_xxxx1),
@@ -8,7 +8,7 @@
 #   - für die redirect_uris im Entity Statement (A_25656-01).
 $schema: "http://json-schema.org/draft-07/schema#"
 schemaVersion: "1.0.0"
-title: ZETA Client Registry
+title: ZETA Redirect URIs
 description: >-
   Von der gematik bereitgestellte Zuordnung der registrierten redirect_uris zur
   product_id. Das Provisioning Image ist umgebungsspezifisch (prod/test); die
