@@ -39,7 +39,7 @@ alt Secure Enclave
 
 == Expliziter Besitznachweis (Proof of Possession) ==
     note left of Client
-      Besitznachweis des Client Instance Keys. Das apple_attestation_object beweist die HW-Bindung;
+      Besitznachweis des Client Instance Keys. Das apple_attestation_object beweist die HW-Bindung des AK;
       diese Signatur beweist den physischen Besitz von PrK.Client.Sig.
     end note
     Client -> AppleOS: SecKeyCreateSignature(\n  PrK.Client.Sig, SHA-256(PuK.Client.Sig))

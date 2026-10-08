@@ -37,7 +37,7 @@
     == Expliziter Besitznachweis (Proof of Possession) ==
     note left of Client
       Besitznachweis des Client Instance Keys.
-      Die AK-Kette beweist die HW-Bindung;
+      Die AK-Kette beweist die HW-Bindung des AK;
       diese Signatur beweist Besitz von PrK.Client.Sig.
     end note
     Client -> AndroidOS: Signature.sign(KeyStore.getKey(Alias_Client_Sig),\nhash_puk_client_sig)

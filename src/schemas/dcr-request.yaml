@@ -1,5 +1,5 @@
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.1.2"
+schemaVersion: "1.1.3"
 title: RegistrationRequest
 description: >-
   Payload Schema für den DCR POST /register Body.
@@ -21,6 +21,10 @@ description: >-
   Präzisierung 1.1.2 (keine neuen Felder): Referenz für die Prüfung der
   redirect_uris ist die Client-Registry des Provisioning Images
   (client-registry.yaml); Fehlercode invalid_redirect_uri.
+
+  Präzisierung 1.1.3 (keine neuen Felder): Dokumentation der optionalen
+  Übernahme von Paketnamen und Signaturzertifikat-Digests aus der
+  attestationApplicationId des Android-Blatt-Zertifikats an die Policy Engine.
 type: object
 
 oneOf:
@@ -182,6 +186,16 @@ oneOf:
           mit dem Blatt-Zertifikat des attestierten Schlüssels (C.AK.Sig) bis zur
           Google Hardware Attestation Root CA. Jedes Zertifikat ist
           Base64-kodiert (DER-Format).
+
+          Der AuthS kann aus der attestationApplicationId
+          (OID 1.3.6.1.4.1.11129.2.1.17) des Blatt-Zertifikats (C.AK.Sig)
+          die Paketnamen (package_infos) und SHA-256-Digests der
+          Signaturzertifikate (signature_digests) extrahieren und im
+          Registrierungsdatensatz speichern, um sie der Policy Engine
+          (policy-engine-client-data.yaml → attestation_result.android)
+          bereitzustellen. Aus Gründen der Abwärtskompatibilität ist die
+          Übergabe an die Policy Engine optional (z. B. wenn ältere
+          Keymaster-Zertifikate keine attestationApplicationId enthalten).
         items:
           type: string
           description: Base64-kodiertes DER X.509-Zertifikat.
@@ -433,8 +447,9 @@ definitions:
       und in das Access Token übernommen (access-token.yaml).
 
       Belastbarkeit je attestation_type: Bei "apple" und "android" prüft der
-      AuthS die product_id gegen die attestierte App-Identität (rpIdHash bzw.
-      Package-Name aus der Key-Attestation-Chain). Bei "tpm" ergibt sich die
+      AuthS bzw. die Policy Engine die product_id gegen die attestierte
+      App-Identität (rpIdHash bzw. app_id bei Apple, Package-Name und
+      Signaturzertifikat-Digests aus der Key-Attestation-Chain bei Android). Bei "tpm" ergibt sich die
       Bindung über PCR 23: Der ZETA Attestation Service prüft die
       Hersteller-Signatur des Primärsystems und misst das Prüfergebnis samt
       Signer-Identität in PCR 23; der AuthS bzw. die Policy Engine vergleicht

@@ -37,6 +37,9 @@ description: >
   ausgewerteten Attestation-Claims (aus posture-*.yaml) zur Übergabe an die OPA
   Policy Engine. Alle Signaturprüfungen und Attestation-Validierungen sind
   bereits erfolgt.
+
+  Änderung 1.2.0 (abwärtskompatibel): Optionale Felder app_package_names und
+  app_signing_cert_digests unter attestation_result.android ergänzt.
 properties:
   client_id:
     type: string
@@ -243,6 +246,28 @@ properties:
               posture-android.yaml → signed_client_data_hash gegen diesen
               gepinnten Attestation Key verifiziert wurde. Eine ungültige
               Laufzeit-Signatur führt bereits am AuthS zur Ablehnung.
+          app_package_names:
+            type: array
+            items: { type: string }
+            description: >
+              Optional: Paketnamen aus attestationApplicationId.package_infos des
+              Blatt-Zertifikats (C.AK.Sig) der android_key_attestation_certificate_chain,
+              beim DCR im Registrierungsdatensatz gespeichert. Fehlt, wenn keine
+              Kette vorlag oder die Extension nicht ausgewertet wurde.
+              Die Policy Engine kann den Wert gegen die für product_id
+              hinterlegten Paketnamen prüfen.
+            example: ["de.gematik.zeta.testclient"]
+          app_signing_cert_digests:
+            type: array
+            items:
+              type: string
+              pattern: "^[0-9a-f]{64}$"
+            description: >
+              Optional: SHA-256-Digests der App-Signaturzertifikate aus
+              attestationApplicationId.signature_digests, hexadezimal in
+              Kleinbuchstaben ohne Trennzeichen. Herkunft und Prüfung wie
+              app_package_names.
+            example: ["3f1e8a0c5d2b47e6a9c18f0b2d7e4a6c51b9e03f8d2a7c6e14b0f9d8a3c5e2b7"]
 
       apple:
         type: object
