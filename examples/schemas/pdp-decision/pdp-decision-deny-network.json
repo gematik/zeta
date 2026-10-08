@@ -1,0 +1,29 @@
+{
+  "result": [
+    {
+      "expressions": [
+        {
+          "value": {
+            "allow": false,
+            "reasons": [
+              "botnet"
+            ],
+            "security": {
+              "access_via": {
+                "tor": false,
+                "vpn": false,
+                "botnet": true
+              },
+              "user_category": "provider"
+            }
+          },
+          "text": "data.policies.zeta.authz.decision",
+          "location": {
+            "row": 1,
+            "col": 1
+          }
+        }
+      ]
+    }
+  ]
+}

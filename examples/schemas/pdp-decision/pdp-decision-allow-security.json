@@ -1,0 +1,31 @@
+{
+  "result": [
+    {
+      "expressions": [
+        {
+          "value": {
+            "allow": true,
+            "reasons": [],
+            "ttl": {
+              "access_token": 300,
+              "refresh_token": 86400
+            },
+            "security": {
+              "access_via": {
+                "tor": false,
+                "vpn": false,
+                "botnet": false
+              },
+              "user_category": "provider"
+            }
+          },
+          "text": "data.policies.zeta.authz.decision",
+          "location": {
+            "row": 1,
+            "col": 1
+          }
+        }
+      ]
+    }
+  ]
+}

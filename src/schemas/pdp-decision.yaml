@@ -1,5 +1,5 @@
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.1.0"
+schemaVersion: "1.2.0"
 title: PDP Decision Response
 description: Schema for the PDP Decision as provided by the OPA Policy Engine
   REST API (/v1/data/...).
@@ -13,7 +13,8 @@ properties:
     type: object
     description: >
       The evaluated decision value. Contains 'allow' and either 'ttl' (on
-      success) or 'reasons' (on denial).
+      success) or 'reasons' (on denial). May contain 'security' (A_25484-03)
+      on both outcomes.
     additionalProperties: false
     properties:
       allow:
@@ -48,11 +49,62 @@ properties:
           - type: string
       reasons:
         description: >
-          Map of denial reasons. Keys are human-readable reason strings, values
-          are always true.
+          Denial reasons. Either a map (keys are human-readable reason strings,
+          values are always true — the form a Rego partial object rule
+          `reasons[msg] if { ... }` serialises to) or an array of strings (the
+          form a Rego partial set rule `reasons contains msg if { ... }`
+          serialises to). Network-based denials per A_25484-03 use the array
+          form with coded tokens (`tor`, `vpn`, `botnet`) that the consumer
+          compares by exact string equality, not by substring. May be present
+          and empty on allow.
+        oneOf:
+          - type: object
+            additionalProperties:
+              type: boolean
+          - type: array
+            items:
+              type: string
+      security:
+        description: >
+          Security KPI block per A_25484-03 (agreed with the gematik CDC).
+          Present on allow and deny alike, so KPIs are counted per decision.
+          The policy classifies the client IP against the CDC blocklists; the
+          Authorization Server only forwards what the policy emits. There is
+          deliberately no country field: GeoIP correlation happens centrally in
+          the TI-SIEM from the client IP in the decision log.
         type: object
-        additionalProperties:
-          type: boolean
+        additionalProperties: false
+        properties:
+          access_via:
+            description: >
+              Independent booleans — one request may match several categories.
+            type: object
+            additionalProperties: false
+            properties:
+              tor:
+                description: Client IP is a known TOR exit node.
+                type: boolean
+              vpn:
+                description: Client IP belongs to a known VPN provider.
+                type: boolean
+              botnet:
+                description: Client IP is on the central CDC blocklist.
+                type: boolean
+            required:
+              - tor
+              - vpn
+              - botnet
+          user_category:
+            description: >
+              Insured person vs. healthcare provider. Fixed to `provider` in
+              Stufe 1 (Leistungserbringer only); `insured` follows in Stufe 2.
+            type: string
+            enum:
+              - provider
+              - insured
+        required:
+          - access_via
+          - user_category
     required:
       - allow
 required:
