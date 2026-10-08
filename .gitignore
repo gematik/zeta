@@ -11,3 +11,4 @@ dist/
 *.pdf
 tmp/
 .claude
+GEMINI.md
