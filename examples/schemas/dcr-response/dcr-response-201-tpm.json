@@ -1,0 +1,11 @@
+{
+  "$comment": "DCR 201 Created – stationärer TPM-Client nach erfolgreichem POST /register/verify",
+  "client_id": "zeta-client-desktop-tpm-a1b2c3",
+  "client_id_issued_at": 1748520000,
+  "status": "pending_attestation",
+  "token_endpoint_auth_method": "private_key_jwt",
+  "attestation_type": "tpm",
+  "platform": "windows",
+  "ak_jkt": "0ZcOCORZNYy-DWpqq30jZyJGHTN0d2HglBV3uiguA4I",
+  "binding_status": "pinned"
+}

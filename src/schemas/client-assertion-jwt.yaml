@@ -64,15 +64,37 @@ properties:
         type: array
         items:
           type: string
-          description: Audience for the JWT. It MUST contain the Authorization Server's
-            token endpoint URL.
+          description: Audience for the JWT. It MUST identify the Authorization Server;
+            for OAuth requests the Authorization Server's token endpoint URL, for
+            client-management operations (A_30101) the issuer of the Authorization
+            Server.
         minItems: 1
       exp:
         type: integer
-        description: Expiration time of the JWT in seconds since epoch.
+        description: Expiration time of the JWT in seconds since epoch. For
+          client-management operations (A_30101) the lifetime MUST NOT exceed 60
+          seconds.
       jti:
         type: string
-        description: JWT ID, a unique identifier for the token.
+        description: JWT ID, a unique identifier for the token. For client-management
+          operations (A_30101) the Authorization Server rejects a re-used jti within
+          the lifetime of the assertion (replay protection).
+
+      htm:
+        type: string
+        description: >
+          HTTP method of the request in upper case, formed as defined in RFC 9449
+          section 4.2. Only present for client-management operations (A_30101), where it
+          binds the assertion to the request and prevents its re-use against another
+          management endpoint.
+        example: DELETE
+      htu:
+        type: string
+        format: uri
+        description: >
+          Target URI of the request without query and fragment, formed as defined in
+          RFC 9449 section 4.2. Only present for client-management operations (A_30101).
+        example: https://as.example.com/zeta/clients/abc123
 
       client_statement:
         description: A client statement object, as defined in client-statement.yaml.

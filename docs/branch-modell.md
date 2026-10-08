@@ -1,6 +1,6 @@
 # Branch Modell
 
-Im [ZETA GitHub Repository](https://github.com/gematik/zeta) werden Branches verwendet um den Status der Weiterentwicklung und das Review von Änderungen abzubilden.
+Im [zeta GitHub Repository](https://github.com/gematik/zeta) werden Branches verwendet um den Status der Weiterentwicklung und das Review von Änderungen abzubilden.
 
 Folgende Branches werden verwendet:
 

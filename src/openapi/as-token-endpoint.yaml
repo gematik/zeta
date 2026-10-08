@@ -9,7 +9,38 @@ paths:
   /token:
     post:
       summary: Request an access token
-      description: The client exchanges an authorization grant for an access token.
+      description: |
+        The client exchanges an authorization grant for an access token.
+
+        ZETA identity binding (A_30085, A_29905): if the
+        `authorization_code` grant is presented while the client registration is
+        `pending_user_binding`, the endpoint issues a DOWN-SCOPED access token instead of
+        the requested scope (returned explicitly per RFC 6749 section 5.1 to signal that
+        less than requested was granted), DPoP-bound, WITHOUT any resource scopes or
+        audiences, WITHOUT a refresh token and with a lifetime of at most 900 seconds
+        (SHOULD: 300–900 seconds). The granted scope depends on the email state of the
+        identity and encodes the client's next step:
+          * NO email bound to the identity (first use): scope
+            `zeta:email-binding zeta:email-verify` — the client registers the address via
+            `POST /zeta/identity/bind-email` and confirms via
+            `POST /zeta/identity/bind-email/verify`.
+          * Email bound but not yet OTP-confirmed for THIS registration
+            (Folgeregistrierung): the OTP is sent to the STORED address at token issuance
+            (only if no challenge is already open — repeated token requests do NOT
+            re-trigger emails) and the scope is `zeta:email-verify` only (optionally with
+            `email_hint`) — the client cannot submit a different address (least
+            privilege); it goes directly to `verify` (re-send via
+            `POST /zeta/identity/bind-email/resend`).
+          * Email bound and verified (`bound`): the requested scopes are granted
+            (regular path, no binding step).
+        After completing the binding the client exchanges the email-binding token for
+        full tokens with `grant_type=urn:ietf:params:oauth:grant-type:token-exchange`
+        (RFC 8693, `subject_token` = email-binding token), authenticated by its
+        `private_key_jwt` client assertion and the SAME DPoP key as the initial token
+        request. The exchange succeeds only once the registration is `bound`; otherwise
+        the endpoint answers `400 invalid_grant`. If the email-binding token expires
+        before the binding completes, the client restarts with a new OIDC authorization
+        request.
       requestBody:
         content:
           application/x-www-form-urlencoded:
@@ -21,7 +52,11 @@ paths:
                   description: >-
                     The grant type. ZETA Clients use
                     `urn:ietf:params:oauth:grant-type:token-exchange` (RFC 8693) to
-                    obtain DPoP-bound access tokens, or `refresh_token` for renewals.
+                    obtain DPoP-bound access tokens — including the redemption of the
+                    down-scoped email-binding token (scopes `zeta:email-binding` /
+                    `zeta:email-verify`) for full tokens after completing the identity
+                    email binding (F1) — or
+                    `refresh_token` for renewals.
                   enum:
                     - authorization_code
                     - password
@@ -66,7 +101,11 @@ paths:
                     bound to the actual request via the DPoP proof `htu` claim (RFC 9449).
                 subject_token:
                   type: string
-                  description: The subject token (RFC 8693). REQUIRED for the token-exchange grant.
+                  description: >-
+                    The subject token (RFC 8693). REQUIRED for the token-exchange grant.
+                    For the identity-binding completion this is the down-scoped
+                    email-binding access token (scopes `zeta:email-binding` /
+                    `zeta:email-verify`).
                 subject_token_type:
                   type: string
                   description: Type of the subject_token (RFC 8693). REQUIRED for the token-exchange grant.
@@ -103,12 +142,40 @@ paths:
                     description: The lifetime in seconds of the access token.
                   refresh_token:
                     type: string
-                    description: The refresh token, which can be used to get new access tokens using the same authorization grant as described in Section 6.
+                    description: >-
+                      The refresh token, which can be used to get new access tokens using
+                      the same authorization grant as described in Section 6. NOT returned
+                      with the down-scoped email-binding response (scopes
+                      `zeta:email-binding` / `zeta:email-verify`).
                   scope:
                     type: string
-                    description: The scope of the access token as described by Section 3.3.
+                    description: >-
+                      The scope of the access token as described by Section 3.3 — returned
+                      explicitly per section 5.1 to signal a downgrade. While the client
+                      registration is `pending_user_binding` the granted scope encodes the
+                      binding state: `zeta:email-binding zeta:email-verify` —
+                      no email bound yet (first use, client supplies the address via
+                      `POST /zeta/identity/bind-email`); `zeta:email-verify` only — the
+                      identity already has a bound email, the OTP was sent to the STORED
+                      address (A_29909/A_29910), the client goes directly to
+                      `POST /zeta/identity/bind-email/verify`. In both cases: no resource
+                      scopes/audiences, `expires_in` at most 900 s (SHOULD: 300–900 s), no
+                      refresh token (A_30085).
+                  email_hint:
+                    type: string
+                    description: >-
+                      Masked stored address (`token-response.yaml`). Only present when the
+                      granted scope is `zeta:email-verify` without `zeta:email-binding`
+                      (the OTP was already sent to the stored address). MUST be masked —
+                      the full address is never disclosed (A_30085).
         400:
-          description: Invalid request, such as missing parameters or invalid client credentials.
+          description: |
+            Invalid request, such as missing parameters or invalid client credentials
+            (RFC 6749 section 5.2). For the ZETA identity binding: a token-exchange request
+            with the email-binding token as `subject_token` fails with `invalid_grant`
+            while the registration is not yet `bound`, or when the email-binding token is
+            expired or unknown — the client MUST then restart with a new OIDC
+            authorization request.
           content:
             application/json:
               schema:
@@ -116,7 +183,7 @@ paths:
                 properties:
                   error:
                     type: string
-                    description: An error code.
+                    description: An error code (RFC 6749 section 5.2).
                   error_description:
                     type: string
                     description: A human-readable description of the error.

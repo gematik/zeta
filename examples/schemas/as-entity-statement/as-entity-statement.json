@@ -1,0 +1,99 @@
+{
+  "header": {
+    "alg": "ES256",
+    "kid": "01927a3c-5f10-7c2e-9b4a-3d8f1e6a2b70",
+    "typ": "entity-statement+jwt"
+  },
+  "payload": {
+    "iss": "https://zeta-guard.example.de",
+    "sub": "https://zeta-guard.example.de",
+    "iat": 1790265600,
+    "exp": 1790269200,
+    "jwks": {
+      "keys": [
+        {
+          "kty": "EC",
+          "crv": "P-256",
+          "x": "f83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU",
+          "y": "x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0",
+          "kid": "01927a3c-5f10-7c2e-9b4a-3d8f1e6a2b70",
+          "use": "sig",
+          "alg": "ES256"
+        }
+      ]
+    },
+    "authority_hints": [
+      "https://app-ref.federationmaster.de"
+    ],
+    "metadata": {
+      "openid_relying_party": {
+        "jwks": {
+          "keys": [
+            {
+              "kty": "EC",
+              "crv": "P-256",
+              "x": "_iGb7M-anFGLrWlpocIMZc_XyLL6IXpcM8F3W2yTAgo",
+              "y": "1P2WSk0ExyCbEFeDBkDVy1BWhFdycOIbBvclhVFeFzw",
+              "kid": "01927a3c-5f11-7a01-8c3d-4e5f6a7b8c9d",
+              "use": "sig",
+              "alg": "ES256",
+              "x5c": [
+                "MIIBlTCCATugAwIBAgIUcBvsg67zLpTrAV1Pn4nGTFkB81MwCgYIKoZIzj0EAwIwIDEeMBwGA1UEAwwVemV0YS1ndWFyZC5leGFtcGxlLmRlMB4XDTI2MDkyNDA3NTE0OFoXDTI3MDkyNDA3NTE0OFowIDEeMBwGA1UEAwwVemV0YS1ndWFyZC5leGFtcGxlLmRlMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE/iGb7M+anFGLrWlpocIMZc/XyLL6IXpcM8F3W2yTAgrU/ZZKTQTHIJsQV4MGQNXLUFaEV3Jw4hsG9yWFUV4XPKNTMFEwHQYDVR0OBBYEFIokcKJ3IqxwirowH5k0vkbbSieYMB8GA1UdIwQYMBaAFIokcKJ3IqxwirowH5k0vkbbSieYMA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDSAAwRQIgXPZbHdO+1Dks6pOOHJc7qp7TR4Nz/ggcy59DbapJUuwCIQDkBqor6IHMBEhByVL57rSZUqQ741HKeIwmT0O71yykPw=="
+              ]
+            },
+            {
+              "kty": "EC",
+              "crv": "P-256",
+              "x": "Zk3pQ7Yb2mN8vC1xR5tL0wE9uH4jD6sA2gF7kB3nV1c",
+              "y": "Tq8mW2eX5rY1uI9oP3aS7dF4gH6jK0lZ2xC8vB5nM1Q",
+              "kid": "01927a3c-5f12-7b44-9d2e-5f6a7b8c9d0e",
+              "use": "enc",
+              "alg": "ECDH-ES"
+            }
+          ]
+        },
+        "client_name": "ZETA Guard Beispielbetreiber",
+        "organization_name": "Beispielbetreiber GmbH",
+        "keywords": [
+          "product_type:ZETA Guard",
+          "product_type_version:2.0.0"
+        ],
+        "contacts": [
+          "support@zeta-guard.example.de"
+        ],
+        "redirect_uris": [
+          "https://apps.hersteller-a.example/cb/app-a/oidc",
+          "https://apps.hersteller-b.example/cb/app-b/oidc"
+        ],
+        "response_types": [
+          "code"
+        ],
+        "client_registration_types": [
+          "automatic"
+        ],
+        "grant_types": [
+          "authorization_code"
+        ],
+        "require_pushed_authorization_requests": true,
+        "token_endpoint_auth_method": "self_signed_tls_client_auth",
+        "default_acr_values": [
+          "gematik-ehealth-loa-high"
+        ],
+        "id_token_signed_response_alg": "ES256",
+        "id_token_encrypted_response_alg": "ECDH-ES",
+        "id_token_encrypted_response_enc": "A256GCM",
+        "scope": "openid urn:telematik:display_name urn:telematik:geburtsdatum urn:telematik:versicherter",
+        "ti_features_supported": {
+          "id_token_version_supported": [
+            "1.0.0",
+            "2.0.0"
+          ]
+        }
+      },
+      "oauth_authorization_server": {
+        "issuer": "https://zeta-guard.example.de",
+        "jwks_uri": "https://zeta-guard.example.de/certs"
+      }
+    }
+  }
+}

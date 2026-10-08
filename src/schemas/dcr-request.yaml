@@ -1,7 +1,26 @@
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.0.0"
+schemaVersion: "1.1.2"
 title: RegistrationRequest
-description: Payload Schema für den DCR POST /register Body
+description: >-
+  Payload Schema für den DCR POST /register Body.
+
+  Abwärtskompatibilität (1.0.0 → 1.1.0): Alle in 1.1.0 ergänzten Felder
+  (nonce, platform, product_id, product_version sowie
+  signed_hash_puk_client_sig im Software-Zweig) sind OPTIONAL — kein
+  required-Block wurde erweitert. Ein Request nach 1.0.0 bleibt gültig.
+  Fehlt eines der Felder, verfährt der AuthS wie bisher (Legacy-Verhalten,
+  jeweils bei der Feldbeschreibung dokumentiert); die Felder SOLLEN von
+  neuen Client-Implementierungen gesetzt werden und werden in einer
+  künftigen Major-Version verpflichtend.
+
+  Präzisierung 1.1.1 (keine neuen Felder): Byte-Repräsentation von
+  puk_client_sig in Hash-Eingaben (definitions/puk_client_sig_bytes) und
+  Format aller Signaturen über einen solchen Hash
+  (definitions/hash_signature) sind festgelegt; beides war zuvor offen.
+
+  Präzisierung 1.1.2 (keine neuen Felder): Referenz für die Prüfung der
+  redirect_uris ist die Client-Registry des Provisioning Images
+  (client-registry.yaml); Fehlercode invalid_redirect_uri.
 type: object
 
 oneOf:
@@ -36,6 +55,9 @@ oneOf:
             type: array
             items: { $ref: "#/definitions/jwk" }
         required: [keys]
+      platform:        { $ref: "#/definitions/platform" }
+      product_id:      { $ref: "#/definitions/product_id" }
+      product_version: { $ref: "#/definitions/product_version" }
       puk_ek_enc:
         type: string
         description: >-
@@ -56,6 +78,7 @@ oneOf:
         description: >-
           Signatur des SHA-256-Hashes von puk_client_sig, erstellt mit
           dem TPM Attestation Key (prk_ak_sig). Base64url-kodiert.
+          Signaturformat: definitions/hash_signature.
 
   # -----------------------------------------------------------------
   # 2. Apple Hardware Attestation (iOS, iPadOS & macOS)
@@ -71,7 +94,6 @@ oneOf:
       - jwks
       - apple_attestation_object
       - signed_hash_puk_client_sig
-      - user_email
     description: >-
       Für iOS, iPadOS und macOS identisch. Die Apple App Attest API
       (DeviceCheck-Framework) produziert auf allen Plattformen dasselbe
@@ -86,7 +108,6 @@ oneOf:
         type: array
         items: { type: string }
       redirect_uris: { $ref: "#/definitions/redirect_uris" }
-      user_email: { $ref: "#/definitions/user_email" }
       jwks:
         description: >-
           Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
@@ -96,6 +117,9 @@ oneOf:
             type: array
             items: { $ref: "#/definitions/jwk" }
         required: [keys]
+      platform:        { $ref: "#/definitions/platform" }
+      product_id:      { $ref: "#/definitions/product_id" }
+      product_version: { $ref: "#/definitions/product_version" }
       apple_attestation_object:
         type: string
         description: >-
@@ -108,7 +132,8 @@ oneOf:
         description: >-
           Selbstsignatur: Signatur des SHA-256-Hashes von PuK.Client.Sig,
           erstellt mit PrK.Client.Sig (Proof-of-Possession des Client
-          Instance Keys). Base64url-kodiert. Die Bindung
+          Instance Keys). Base64url-kodiert, Signaturformat:
+          definitions/hash_signature. Die Bindung
           AK ↔ PuK.Client.Sig weist bereits das apple_attestation_object
           nach (clientDataHash == SHA-256(PuK.Client.Sig)); eine
           AK-Signatur ist hier daher nicht erforderlich.
@@ -128,7 +153,6 @@ oneOf:
       - jwks
       - android_key_attestation_certificate_chain
       - signed_hash_puk_client_sig
-      - user_email
     properties:
       attestation_type:
         type: string
@@ -139,7 +163,6 @@ oneOf:
         type: array
         items: { type: string }
       redirect_uris: { $ref: "#/definitions/redirect_uris" }
-      user_email: { $ref: "#/definitions/user_email" }
       jwks:
         description: >-
           Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
@@ -149,6 +172,9 @@ oneOf:
             type: array
             items: { $ref: "#/definitions/jwk" }
         required: [keys]
+      platform:        { $ref: "#/definitions/platform" }
+      product_id:      { $ref: "#/definitions/product_id" }
+      product_version: { $ref: "#/definitions/product_version" }
       android_key_attestation_certificate_chain:
         type: array
         description: >-
@@ -165,7 +191,8 @@ oneOf:
         description: >-
           Selbstsignatur: Signatur des SHA-256-Hashes von puk_client_sig,
           erstellt mit prk_client_sig (Proof-of-Possession des Client
-          Instance Keys). Base64url-kodiert. Die Bindung
+          Instance Keys). Base64url-kodiert, Signaturformat:
+          definitions/hash_signature. Die Bindung
           AK ↔ puk_client_sig weist bereits die attestationChallenge im
           Blatt-Zertifikat der android_key_attestation_certificate_chain
           nach (attestationChallenge == SHA-256(puk_client_sig)); eine
@@ -215,6 +242,9 @@ oneOf:
             type: array
             items: { $ref: "#/definitions/jwk" }
         required: [keys]
+      platform:        { $ref: "#/definitions/platform" }
+      product_id:      { $ref: "#/definitions/product_id" }
+      product_version: { $ref: "#/definitions/product_version" }
       zeta_attestation_token:
         type: string
         description: >-
@@ -227,31 +257,50 @@ oneOf:
         description: >-
           Selbstsignatur: Signatur des SHA-256-Hashes von puk_client_sig,
           erstellt mit prk_client_sig (Proof-of-Possession des Client
-          Instance Keys). Base64url-kodiert. Einheitlich für alle
+          Instance Keys). Base64url-kodiert, Signaturformat:
+          definitions/hash_signature. Einheitlich für alle
           Plattformen.
+      nonce: { $ref: "#/definitions/nonce" }
       attestation_pop:
         type: string
         description: >-
           Frischer Besitznachweis des Attestation Keys (prk_ak_sig). Bindet
           den (ggf. neuen) Client Instance Key an den bereits attestierten
           Attestation Key. Das Format bestimmt der AuthS anhand des
-          attestation_type-Claims im zeta_attestation_token:
+          attestation_type-Claims im zeta_attestation_token.
+
+          Der signierte Hash ist SHA-256(puk_client_sig || nonce), sofern
+          das Feld nonce gesetzt ist, andernfalls SHA-256(puk_client_sig)
+          (Legacy-Form nach Schema 1.0.0). Der AuthS akzeptiert beide Formen
+          und wählt anhand der An-/Abwesenheit von nonce; ohne nonce ist der
+          Nachweis nicht challenge-gebunden und ein mitgeschnittener Request
+          bleibt wiedereinlösbar (Restrisiko A_29915), weshalb neue Clients
+          die nonce setzen SOLLEN.
 
           apple: Base64-kodiertes CBOR-Assertion-Objekt aus
           DCAppAttestService.generateAssertion(keyId:clientDataHash:) mit
-          clientDataHash = SHA-256(puk_client_sig). Der AuthS verifiziert
+          clientDataHash = dem oben bestimmten Hash. Der AuthS verifiziert
           die Signatur über SHA-256(authenticatorData || clientDataHash)
           gegen cnf.jwk (puk_ak_sig) aus dem Token und prüft rpIdHash
           sowie die Monotonie des Counters.
 
-          android | tpm: Base64url-kodierte Signatur über
-          SHA-256(puk_client_sig), erstellt mit prk_ak_sig. Der AuthS
-          verifiziert gegen cnf.jwk (puk_ak_sig) aus dem Token.
+          android | tpm: Signatur über den oben bestimmten Hash, erstellt
+          mit prk_ak_sig, im Format definitions/hash_signature (Android:
+          SHA256withECDSA im Android Keystore; TPM: TPM2_Hash +
+          TPM2_Sign mit Validierungsticket, da der AK ein restricted
+          Signing Key ist). Der AuthS verifiziert gegen cnf.jwk
+          (puk_ak_sig) aus dem Token; eine rohe Signatur über den Hash
+          ohne die dort festgelegte SHA-256-Nachrichtenbildung wird
+          abgelehnt.
 
   # -----------------------------------------------------------------
   # 5. Legacy / Software Attestation
   # -----------------------------------------------------------------
   - title: Legacy / Software Attestation
+    # required bleibt gegenüber Schema 1.0.0 unverändert. nonce und
+    # signed_hash_puk_client_sig sind optional, damit bestehende Clients
+    # weiter registrieren können; ohne sie ist die Registrierung NICHT an
+    # den Besitz von prk_client_sig gebunden (siehe Feldbeschreibung).
     required:
       - client_name
       - jwks
@@ -261,12 +310,26 @@ oneOf:
         type: string
         enum: [software]
       client_name: { type: string }
+      nonce: { $ref: "#/definitions/nonce" }
+      signed_hash_puk_client_sig:
+        type: string
+        description: >-
+          Selbstsignatur über SHA-256(puk_client_sig || nonce), erstellt mit
+          prk_client_sig. Base64url-kodiert, Signaturformat:
+          definitions/hash_signature. Weist den Besitz des
+          Instanzschlüssels nach und verhindert, dass ein Dritter einen
+          fremden öffentlichen Schlüssel registriert und damit dessen
+          spätere Registrierung per 409 registrationConflict blockiert.
+
+          Optional aus Kompatibilitätsgründen (in Schema 1.0.0 nicht
+          vorhanden): fehlt das Feld, registriert der AuthS wie bisher ohne
+          Besitznachweis. Neue Client-Implementierungen SOLLEN es zusammen
+          mit nonce setzen; der AuthS SOLL das Fehlen protokollieren.
       token_endpoint_auth_method: { type: string }
       grant_types:
         type: array
         items: { type: string }
       redirect_uris: { $ref: "#/definitions/redirect_uris" }
-      user_email: { $ref: "#/definitions/user_email" }
       jwks:
         description: >-
           Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
@@ -276,17 +339,133 @@ oneOf:
             type: array
             items: { $ref: "#/definitions/jwk" }
         required: [keys]
+      platform:        { $ref: "#/definitions/platform" }
+      product_id:      { $ref: "#/definitions/product_id" }
+      product_version: { $ref: "#/definitions/product_version" }
 
 definitions:
+  puk_client_sig_bytes:
+    type: string
+    description: >-
+      Byte-Repräsentation von puk_client_sig (PuK.Client.Sig) in allen
+      Hash-Eingaben dieses Schemas und der Posture-Schemas
+      (SHA-256(puk_client_sig), SHA-256(puk_client_sig || nonce),
+      attestationChallenge, App-Attest-clientDataHash, clientDataHash in
+      posture-android.yaml): die UTF-8-Bytes der RFC-7638-Kanonisierung des
+      JWK aus jwks, d. h. {"crv":"P-256","kty":"EC","x":"…","y":"…"} mit
+      genau diesen Membern in lexikografischer Reihenfolge, ohne Leerzeichen.
+      Damit gilt SHA-256(puk_client_sig) = JWK-Thumbprint (jkt) des Client
+      Instance Keys; der AuthS kann den Wert aus dem registrierten Schlüssel
+      nachrechnen. Rein dokumentarische Definition, kein Request-Feld.
+  hash_signature:
+    type: string
+    description: >-
+      Einheitliches Format aller Signaturen "über einen Hash h" in diesem
+      Schema (signed_hash_puk_client_sig, attestation_pop für android | tpm)
+      sowie von signed_client_data_hash (posture-android.yaml):
+
+      - Nachricht ist h selbst (32 Byte); die Signatur wird mit SHA-256 über
+        diese Nachricht gebildet, also über SHA-256(h) – "hash-then-sign" wie
+        bei ES256 / RS256. Das entspricht SHA256withECDSA (Android Keystore,
+        JCA), SecKeyCreateSignature mit
+        ecdsaSignatureMessageX962SHA256 (Apple) sowie beim TPM TPM2_Hash(h,
+        TPM_ALG_SHA256) und TPM2_Sign mit dem erhaltenen Digest und
+        Validierungsticket. Eine Signatur direkt über h ohne erneutes Hashen
+        (NONEwithECDSA, TPM2_Sign über h) ist unzulässig.
+      - Algorithmus nach Schlüsseltyp: EC P-256 → ECDSA mit SHA-256;
+        RSA (nur TPM-AK) → RSASSA-PKCS1-v1_5 mit SHA-256.
+      - Kodierung: ECDSA-Signatur als DER (ASN.1 ECDSA-Sig-Value; beim TPM
+        aus r und s von TPMS_SIGNATURE_ECDSA zu bilden), RSA-Signatur als
+        Oktettstring; jeweils Base64url ohne Padding.
+      - TPM-Sonderfall: TPM2_Hash liefert kein gültiges Ticket, wenn h mit
+        TPM_GENERATED_VALUE (0xFF544347) beginnt (Wahrscheinlichkeit 2^-32).
+        Der Client bezieht dann eine neue nonce bzw. erzeugt, wo keine nonce
+        eingeht, einen neuen Client Instance Key.
+  nonce:
+    type: string
+    description: >-
+      Frische, einmalig verwendbare Nonce vom nonce_endpoint (GET /nonce, siehe
+      as-well-known.yaml). Die Nonce MUSS in den signierten Hash eingehen —
+      attestation_pop bzw. signed_hash_puk_client_sig werden dann über
+      SHA-256(puk_client_sig || nonce) gebildet: die Nonce wird als UTF-8-Bytes
+      des vom AuthS gelieferten Strings an die Byte-Repräsentation von
+      puk_client_sig (definitions/puk_client_sig_bytes) angehängt, die auch die
+      Legacy-Form SHA-256(puk_client_sig) hasht. Eine mitgesendete, aber nicht mitsignierte Nonce hat keine
+      Schutzwirkung.
+
+      Relevant für attestation_type "zeta_attestation_token" (Fast-Path) und
+      "software". NICHT vorgesehen für "tpm" (der
+      MakeCredential/ActivateCredential-Handshake liefert bereits eine
+      serverseitig erzeugte Challenge) sowie für "apple" und "android" (die
+      Frische ergibt sich dort aus der Einmaligkeit des Instanzschlüssels im
+      clientDataHash bzw. in der attestationChallenge; ein Replay registriert
+      nur denselben Schlüssel erneut und nützt ohne dessen privaten Teil
+      nichts — eine Nonce müsste dort in die Erzeugung des Attestation Objects
+      eingehen und wäre nur mit Client-seitiger Änderung wirksam).
+
+      Optional aus Kompatibilitätsgründen; ohne nonce gilt die Legacy-Form des
+      jeweiligen Besitznachweises (siehe dort).
+
+  platform:
+    type: string
+    enum: [android, apple, windows, linux, other]
+    description: >-
+      Plattform der Client-Instanz. Der AuthS prüft den Wert auf Konsistenz mit
+      dem attestation_type (tpm → windows|linux, apple → apple,
+      android → android) und pinnt ihn im Registrierungsdatensatz; ein davon
+      abweichendes client_statement.platform wird am /token-Endpunkt abgelehnt.
+
+      Optional aus Kompatibilitätsgründen: fehlt das Feld, leitet der AuthS die
+      Plattform aus dem attestation_type ab. Bei "software" ist das nicht
+      möglich; dann bleibt NUR die Plattform ungepinnt und wird wie bisher aus
+      dem client_statement übernommen. Der attestation_type selbst wird
+      unabhängig davon IMMER gepinnt — er ergibt sich aus dem gewählten Zweig
+      dieses Schemas und ist dem AuthS daher bei jeder Registrierung bekannt
+      (siehe policy-engine-client-data.yaml, binding_status).
+
+  product_id:
+    type: string
+    description: >-
+      gematik-Produktbezeichner der Client-Software, vom Hersteller bei der
+      gematik registriert (zusammen mit den zugelassenen Produktversionen; bei
+      TPM-Attestierung zusätzlich mit dem Code-Signatur-Schlüssel, mit dem der
+      Hersteller das Primärsystem signiert). Wird bei der Registrierung gepinnt
+      und in das Access Token übernommen (access-token.yaml).
+
+      Belastbarkeit je attestation_type: Bei "apple" und "android" prüft der
+      AuthS die product_id gegen die attestierte App-Identität (rpIdHash bzw.
+      Package-Name aus der Key-Attestation-Chain). Bei "tpm" ergibt sich die
+      Bindung über PCR 23: Der ZETA Attestation Service prüft die
+      Hersteller-Signatur des Primärsystems und misst das Prüfergebnis samt
+      Signer-Identität in PCR 23; der AuthS bzw. die Policy Engine vergleicht
+      den gemessenen Signer mit dem für DIESE product_id registrierten
+      Schlüssel — die Referenz MUSS über die gepinnte product_id nachgeschlagen
+      werden, nicht nur gegen die Menge aller registrierten Schlüssel. Bei
+      "software" existiert kein attestierter Nachweis; die product_id ist dort
+      eine unveränderliche, aber unbelegte Selbstauskunft.
+
+      Optional aus Kompatibilitätsgründen: fehlt das Feld, bleibt die product_id
+      ungepinnt und wird wie bisher aus dem client_statement der Client
+      Assertion übernommen — sie ist dann selbst-behauptet und für
+      Autorisierungsentscheidungen nicht belastbar.
+
+  product_version:
+    type: string
+    description: >-
+      Version der Client-Software zum Registrierungszeitpunkt. Wird NICHT
+      gepinnt (Software-Updates ändern sie); dient der Nachvollziehbarkeit im
+      Registrierungsdatensatz. Die für Policy-Entscheidungen maßgebliche
+      Version stammt weiterhin aus dem client_statement.
+
   user_email:
     type: string
     format: email
     description: >-
-      E-Mail-Adresse des Nutzers für die Trust-On-First-Use (TOFU) Bindung
-      mobiler Clients (Android, Apple). Der AuthS sendet an diese Adresse
-      Out-of-Band eine E-Mail mit einem OTP-Bestätigungscode, den der Nutzer
-      anschließend über POST /register/verify bestätigt
-      (siehe Abb-ZETA-DCR-für-mobile-Clients.puml).
+      E-Mail-Adresse des Nutzers für die identitätsgebundene Trust-On-First-Use
+      (TOFU) Bindung mobiler Clients. Wird NACH der OIDC-Nutzerauthentisierung über
+      POST /zeta/identity/bind-email übermittelt (nur bei Erstnutzung einer Identität);
+      bei Folgeregistrierung sendet der AuthS das OTP an die gespeicherte Adresse.
+      Siehe Abb-ZETA-OIDC-Token-Bezug.puml.
   redirect_uris:
     type: array
     description: >-
@@ -296,11 +475,28 @@ definitions:
       sie (a) im AuthS für die DCR-Prüfung hinterlegt werden — beim DCR muss jede
       übergebene redirect_uri exakt (String-Vergleich) einer registrierten URI
       entsprechen — und (b) in das Entity Statement des AuthS aufgenommen werden,
-      gegen das der sektorale IDP die oidc_redirect_uri beim PAR prüft. Die URIs liegen
+      gegen das der sektorale IDP die oidc_redirect_uri beim inneren PAR prüft. Die URIs liegen
       auf einer vom App-Hersteller kontrollierten Domain (dem Universal-/App-Link-Host)
       und stehen damit schon zur Entwicklungszeit fest — unabhängig vom AuthS, dessen
       FQDN der Client erst nach Abruf von opr-well-known/as-well-known auflöst. Die
       redirect_uris zeigen also NICHT auf die AuthS-Domain.
+
+      Referenz für die Prüfung ist die Client-Registry des Provisioning Images
+      (client-registry.yaml): Der AuthS vergleicht gegen die redirect_uris des
+      Eintrags zur gepinnten product_id (eine product_id gilt für genau eine
+      Plattform); fehlt die product_id, gegen die redirect_uris aller Einträge.
+      Eine nicht registrierte URI lehnt er mit HTTP 400 und error
+      "invalid_redirect_uri" (RFC 7591 Abschnitt 3.2.2) ab.
+
+      Beim äußeren PAR (POST /par des ZETA Client an den
+      pushed_authorization_request_endpoint des AuthS, RFC 9126) prüft der AuthS
+      zusätzlich, dass redirect_uri (= app_redirect_uri) und oidc_redirect_uri exakt
+      (String-Vergleich) zu den bei der DCR für diese client_id registrierten
+      redirect_uris gehören und am letzten Pfad-Abschnitt ("/app" bzw. "/oidc") dem
+      jeweiligen Flow entsprechen. Andernfalls lehnt er den PAR mit HTTP 400 und
+      error "invalid_request" (RFC 9126 Abschnitt 2.3) ab; es wird keine
+      request_uri_app ausgestellt. Siehe
+      Abb-ZETA-OIDC-Authorization-Request-mit-äußerem-und-innerem-PAR.puml.
 
       Für native mobile Clients werden zwei claimed-HTTPS-URIs (Universal Links /
       App Links) je App registriert. Beide Auth Code Flows enden über denselben

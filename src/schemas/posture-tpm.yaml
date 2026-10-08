@@ -28,7 +28,13 @@ properties:
     description: Hardware Architecture
   tpm_attestation_key:
     type: string
-    description: The public key of the TPM-resident attestation key (PEM or base64 DER encoded).
+    description: >-
+      The public key of the TPM-resident attestation key (PEM or base64 DER
+      encoded). Reference and diagnostic value only — NOT a trust anchor: the
+      AuthS verifies tpm_quote against the attestation key pinned at
+      registration (ak_jkt in the client record) and rejects the assertion if
+      this value does not match it. For clients registered before pinning was
+      introduced the AuthS falls back to the previous behaviour.
   tpm_quote:
     type: string
     description: The TPM quote of the client instance

@@ -225,6 +225,11 @@ networkPolicy:
 | `pep-proxy`         | `ocspCabForum`, `ocspSmcbTsp`, `ocspTiPki`, `popp`, `artifactRegistry`, `providerArtifactRegistry`, `providerInternal.*` |
 | `telemetry-gateway` | `telemetry`, `siem`                                                                                                      |
 
+> **Hinweis zu `authserver` und `ocspSmcbTsp`:** Der Authorization Server prüft
+> bei der Validierung der SMC-B-Signatur den Status des Karten-Zertifikats per
+> OCSP. Da SMC-B von mehreren TSP ausgegeben werden, muss diese Kategorie die
+> Responder aller akzeptierten TSP enthalten — siehe Stabilitätshinweise oben.
+>
 > **Hinweis:** `authserver` und `pep-proxy` führen den `provisioning-processor` als
 > Init-Container aus, der bei jedem Pod-Start ein signiertes OCI-Image zieht. Wird
 > das Image in die Anbieter-interne Registry gespiegelt

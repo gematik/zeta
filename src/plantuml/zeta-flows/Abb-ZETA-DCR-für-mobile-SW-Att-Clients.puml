@@ -1,7 +1,13 @@
 @startuml "Abb-ZETA-DCR-für-mobile-SW-Att-Clients"
 !include ../puml-layout.txt
 
-actor User as "Nutzer"
+' ============================================================================
+' ANGEPASST v2.0.1: E-Mail-OTP ist NICHT mehr Teil von /register. Kein OTP-Versand,
+' kein /register/verify (email_otp), keine Nutzerinteraktion. Die identitaetsgebundene
+' E-Mail-Bindung erfolgt NACH dem OIDC-Flow ueber /zeta/identity/bind-email(/resend/verify)
+' (siehe Abb-ZETA-OIDC-Token-Bezug). /register etabliert nur Instanzschluessel +
+' Software-Attestierung; Status danach: pending_user_binding.
+' ============================================================================
 
 box "mobile Device" DEVICE_COLOR
   box "App" PRIMAERSYSTEM_COLOR
@@ -16,7 +22,9 @@ box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
 end box
 
 Client++
-Client -> AuthS++: POST /register\n{\n  "client_name": "myClient",\n  "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"],\n  "jwks": { "keys": [ PuK.Client.Sig ] },\n  "token_endpoint_auth_method": "private_key_jwt",\n  "redirect_uris": ["https://<App-FQDN>/cb/<app>/oidc", "https://<App-FQDN>/cb/<app>/app"]\n}
+Client -> AuthS: GET /nonce
+AuthS --> Client: 200 OK {nonce}
+Client -> AuthS++: POST /register\n{\n  "client_name": "myClient",\n  "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"],\n  "jwks": { "keys": [ PuK.Client.Sig ] },\n  "token_endpoint_auth_method": "private_key_jwt",\n  "redirect_uris": ["https://<App-FQDN>/cb/<app>/oidc", "https://<App-FQDN>/cb/<app>/app"],\n  "platform": "android",\n  "product_id": "<gematik-Produktbezeichner>",\n  "nonce": "<nonce>",\n  "signed_hash_puk_client_sig": "<PoP über SHA-256(PuK.Client.Sig || nonce)>"\n}
 note right of AuthS
   Es werden zwei redirect_uris je App registriert (RFC 8252, claimed-HTTPS
   Universal-/App-Links auf einer vom App-Hersteller kontrollierten Domain):
@@ -32,24 +40,15 @@ note right of AuthS
   redirect_uris registriert sind.
 end note
 
-    AuthS -> AuthS: Store Client Placeholder (state: pending_verification)
+    AuthS -> AuthS: Prüfe nonce (frisch, einmalig) und\nsigned_hash_puk_client_sig mit PuK.Client.Sig (PoP des Client Instance Keys)
+    AuthS -> AuthS: Pinne attestation_type="software" (immer) sowie platform und product_id\n(sofern übermittelt) im Registrierungsdatensatz — kein ak_jkt; binding_status: pinned
+    AuthS -> AuthS: Store Client (state: pending_user_binding)
+    AuthS --> Client--: 201 Created {client_id, status: pending_user_binding}
 
-    ' Trust On First Use (TOFU)
-    AuthS -> AuthS: Generiere OTP & transaction_id\nSpeichere Request im temporären Cache
-    AuthS -> User: E-Mail mit OTP-Bestätigungscode (Out-of-Band)
-    
-    ' Server antwortet mit 202, noch KEINE client_id!
-    AuthS --> Client--: 202 Accepted {transaction_id, message="OTP sent"}
-
-    ' Warte auf Nutzer-Eingabe
-    User -> Client: Gibt OTP-Bestätigungscode ein
-    
-    ' Verifikation mit der temporären ID
-    Client -> AuthS++: POST /register/verify\n{transaction_id, code}
-    AuthS -> AuthS: Verifiziere OTP-Code gegen Cache
-
-
-
-AuthS --> Client--: 201 Created {client_id}
+    note right of AuthS
+      Abwärtskompatibilität: nonce, signed_hash_puk_client_sig, platform und product_id sind
+      im Software-Zweig optional; eine Registrierung ohne sie bleibt gültig — attestation_type
+      wird trotzdem gepinnt, nur platform/product_id bleiben dann ungepinnt.
+    end note
 
 @enduml

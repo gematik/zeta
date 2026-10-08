@@ -52,12 +52,18 @@ user_profession_is_allowed if {
 }
 
 client_product_is_allowed if {
-	posture := input.client_assertion.posture
+	# Quelle ist der vom AuthS geführte Registrierungsdatensatz
+	# (policy-engine-input.yaml -> client_registration_data, Schema
+	# policy-engine-client-data.yaml), NICHT die vom Client selbst befüllte
+	# Posture der Client Assertion: product_id ist dort der bei der DCR
+	# gepinnte Wert (bzw. bei binding_status = legacy_unpinned der vom AuthS
+	# aus dem Client Statement übernommene). Nur so ist die Allowlist nicht
+	# durch eine frei behauptete product_id umgehbar.
+	client := input.client_registration_data
 
-	# KORRIGIERTER PFAD
-	allowed_versions := data.products.allowed_products[posture.product_id]
+	allowed_versions := data.products.allowed_products[client.product_id]
 	some i
-	posture.product_version == allowed_versions[i]
+	client.product_version == allowed_versions[i]
 }
 
 scopes_are_allowed if {

@@ -15,6 +15,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
+env:
+  # Muss zur lokal verwendeten PlantUML-Version passen (siehe Kommentar im
+  # Step "Install PlantUML and Graphviz").
+  PLANTUML_VERSION: 1.2025.3
+
 jobs:
   generate_images:
     runs-on: ubuntu-latest
@@ -85,12 +90,16 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y --no-install-recommends graphviz
 
-        wget --quiet https://github.com/plantuml/plantuml/releases/latest/download/plantuml.jar -O /tmp/plantuml.jar
+        # Feste PlantUML-Version statt "latest": Neue Releases ändern das
+        # Rendering (z.B. 1.2026.7: verschachtelte Boxen mit teoz fehlerhaft),
+        # dann weichen die Bilder der Action von der lokalen Generierung ab.
+        # Die Version entspricht der lokal genutzten (plantuml.jar in VS Code).
+        wget --quiet "https://github.com/plantuml/plantuml/releases/download/v${PLANTUML_VERSION}/plantuml.jar" -O /tmp/plantuml.jar
         if [ ! -s /tmp/plantuml.jar ]; then
-          echo "::error::Failed to download plantuml.jar"
+          echo "::error::Failed to download plantuml.jar v${PLANTUML_VERSION}"
           exit 1
         fi
-        echo "PlantUML JAR downloaded."
+        echo "PlantUML JAR v${PLANTUML_VERSION} downloaded: $(java -jar /tmp/plantuml.jar -version | sed -n 1p)"
 
     - name: Install draw.io
       if: steps.changes.outputs.drawio == 'true'

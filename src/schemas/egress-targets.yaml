@@ -1,0 +1,214 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+schemaVersion: "1.0.0"
+title: ZETA Guard Egress Targets
+description: >
+  Schema für die Liste der ausgehenden Kommunikationsziele des ZETA Guard.
+
+  Die Liste benennt Ziele ausschließlich über FQDN und Port. IP-Adressen und
+  CIDR-Blöcke sind bewusst NICHT Teil des Formats: sie sind umgebungs- und
+  zeitabhängig und werden erst beim Betreiber aufgelöst
+  (scripts/render-egress-values.sh). Da alle Objekte
+  `additionalProperties: false` setzen, weist die Validierung eine Liste mit
+  IP-Feldern strukturell zurück.
+
+  Die Schlüssel in `targets[].key` entsprechen exakt den Egress-Kategorien des
+  ZETA Guard Helm Charts (`zeta-guard.networkPolicy.egress.<key>`), damit die
+  Liste ohne manuelle Übertragung in Values überführt werden kann.
+
+type: object
+additionalProperties: false
+required:
+  - apiVersion
+  - kind
+  - metadata
+  - targets
+
+properties:
+  apiVersion:
+    type: string
+    const: "zeta.gematik.de/v1"
+  kind:
+    type: string
+    const: "EgressTargets"
+
+  metadata:
+    type: object
+    additionalProperties: false
+    required:
+      - environment
+      - status
+      - generatedAt
+    properties:
+      environment:
+        type: string
+        description: "TI-Umgebung, für die diese Liste gilt."
+        enum: [RU, TU, PU]
+      status:
+        type: string
+        description: >
+          `normative` kennzeichnet die von der gematik als OCI-Artefakt
+          ausgelieferte und signierte Liste. `example` kennzeichnet eine
+          Formatdemonstration im Repository, die NICHT für den Betrieb
+          verwendet werden darf.
+        enum: [normative, example]
+      generatedAt:
+        type: string
+        format: date-time
+      expiresAt:
+        type: string
+        format: date-time
+        description: >
+          Zeitpunkt, ab dem diese Liste als veraltet gilt und neu bezogen
+          werden MUSS. Erzwingt eine Aktualisierung, statt auf Aufmerksamkeit
+          zu vertrauen.
+      tslSequenceNumber:
+        type: integer
+        minimum: 1
+        description: >
+          Sequenznummer der TSL, aus der die TSP-abhängigen Einträge abgeleitet
+          wurden. Herkunftsnachweis und Trigger für die Neugenerierung.
+      note:
+        type: string
+
+  targets:
+    type: array
+    minItems: 1
+    items:
+      $ref: "#/definitions/target"
+
+definitions:
+  target:
+    type: object
+    additionalProperties: false
+    required:
+      - key
+      - purpose
+      - owner
+      - stability
+      - endpoints
+    properties:
+      key:
+        type: string
+        description: >
+          Egress-Kategorie des Helm Charts, ohne Präfix. Punktnotation für
+          verschachtelte Kategorien, z. B. `providerInternal.resourceServers`.
+        pattern: "^[a-z][a-zA-Z0-9]*(\\.[a-z][a-zA-Z0-9]*)*$"
+      purpose:
+        type: string
+        description: "Fachlicher Zweck, in einem Satz."
+      owner:
+        type: string
+        description: >
+          Wer den Endpunkt betreibt und damit für Änderungen verantwortlich
+          ist. `operator` bedeutet: die gematik kann diesen Eintrag nicht
+          liefern, er ist umgebungsspezifisch.
+        enum: [gematik, tsp, third-party, operator]
+      stability:
+        type: string
+        description: >
+          `volatile` kennzeichnet Ziele hinter CDN/Anycast, deren Adressen sich
+          ohne Ankündigung ändern. Für sie ist FQDN-basierter Egress
+          (Egress Gateway, CNI-FQDN-Policy) dringend zu empfehlen.
+        enum: [stable, volatile]
+      consumers:
+        type: array
+        description: "ZETA-Guard-Workloads, die dieses Ziel benötigen."
+        minItems: 1
+        items:
+          type: string
+          enum:
+            - authserver
+            - pep-proxy
+            - opa
+            - opa-simulation
+            - telemetry-gateway
+            - notification-service
+            - provisioning-processor
+      note:
+        type: string
+      endpoints:
+        type: array
+        minItems: 1
+        items:
+          $ref: "#/definitions/endpoint"
+
+  endpoint:
+    type: object
+    additionalProperties: false
+    required:
+      - fqdn
+      - port
+      - protocol
+      - source
+    properties:
+      fqdn:
+        type: string
+        format: hostname
+        description: "Vollqualifizierter Name. Keine IP-Adresse."
+        pattern: "^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)+$"
+        not:
+          description: "IP-Adressen sind im Format nicht zulaessig."
+          pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$"
+      port:
+        type: integer
+        minimum: 1
+        maximum: 65535
+        description: >
+          Zielport. Immer explizit, auch bei 80 und 443 — OCSP-Responder der
+          SMC-B-TSP verwenden abweichende Ports (z. B. 8080).
+      protocol:
+        type: string
+        enum:
+          - HTTP
+          - HTTPS
+          - OCSP/HTTP
+          - OCSP/HTTPS
+          - CRL/HTTP
+          - OTLP/gRPC
+          - OTLP/HTTP
+          - SMTP-STARTTLS
+          - SMTPS
+      path:
+        type: string
+        description: >
+          Nur informativ, für die Zuordnung und Erreichbarkeitsprüfung.
+          NetworkPolicies werten Pfade nicht aus.
+      source:
+        type: string
+        description: >
+          Herkunft des Eintrags und damit sein Vertrauensniveau.
+          `cert-aia`: aus der AIA-Extension eines echten Endnutzer-
+          Zertifikats ausgelesen (RFC 5280 4.2.2.1). Die TSL taugt dafuer
+          nicht: ihre ServiceSupplyPoints verweisen ins TI-Zentralnetz oder
+          sind Platzhalter, und die AIA der CA-Zertifikate benennt den
+          Root-CA-Responder, nicht den der ausgestellten Zertifikate.
+          `declared`: vom TSP benannt, weil aus der TSL nicht ableitbar.
+          `gematik-operated`: Endpunkt eines gematik-Dienstes.
+          `vendor-published`: vom Hersteller veröffentlicht (z. B. Registry).
+        enum: [cert-aia, declared, gematik-operated, vendor-published]
+      sourceRef:
+        type: string
+        description: >
+          Beleg fuer den Eintrag: Bezeichner des Referenz-Zertifikats, aus
+          dem die URL ausgelesen wurde, oder Fundstelle der Benennung durch
+          den TSP (Dokument und Datum). Macht `declared`-Eintraege
+          nachvollziehbar und im Zulassungsverfahren pruefbar.
+      tsp:
+        type: string
+        description: "Betreiber des Responders, für die getrennte Überwachung je TSP."
+      servesCa:
+        type: array
+        description: >
+          Subject-DN der CAs, für deren Zertifikate dieser Responder zuständig
+          ist. Grundlage der Aufräumregel: ein Endpunkt darf erst entfernt
+          werden, wenn unter keiner dieser CAs mehr gültige Karten im Umlauf sind.
+        items:
+          type: string
+      validUntil:
+        type: string
+        format: date
+        description: >
+          Frühester Zeitpunkt, ab dem der Eintrag entfernt werden DARF — nicht
+          der Zeitpunkt, ab dem er ungültig wird.
+      note:
+        type: string

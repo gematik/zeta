@@ -1,4 +1,4 @@
-@startuml ZG-Client-Dienst-zu-Dienst-Kommunikation
+@startuml "Abb-ZETA-Dienst-zu-Dienst-Kommunikation-mit-ZG-Client"
 !include ../puml-layout.txt
 
 participant "Zieldienst\n(Anbieter B)" as ZDB
@@ -7,16 +7,18 @@ participant "Secure Token Service\n(Anbieter B)" as STSB
 box "Anbieter" PROVIDER_COLOR
   box "ZETA Guard" ZETA_GUARD_COLOR
     participant "ZG Client" as ZGC <<zeta>>
-    participant "PDP\nPolicy Engine" as PE
     participant "PDP\nAuthorization Server\n(Anbieter A)" as ASA
   end box
   participant "Fachkomponente\n(z. B. Resource Server,\notel-collector)" as FK <<provider>>
 end box
 
-== Konfigurationsbezug ==
+participant "ZETA Artifact\nRegistry" as ZAR <<zeta>>
+
+== Konfigurationsbezug (Polling-Intervall) ==
 ZGC++
-ZGC -> PE++ : Konfiguration abrufen\n(zulässige Zieldienste, Scopes, Token-Endpunkte)
-PE --> ZGC-- : Konfiguration
+ZGC -> ZAR++ : ZG-Client-Konfiguration abrufen\n(signiertes OCI-Artefakt je Fachdienst-Typ)
+ZAR --> ZGC-- : Konfigurationsartefakt\n(zulässige Zieldienste, Scopes, Token-Endpunkte, Caching-Parameter)
+ZGC -> ZGC : Signatur prüfen,\nKonfiguration ohne Neustart aktivieren
 
 == Fachlicher Request ==
 FK++
