@@ -1,25 +1,67 @@
 openapi: 3.0.0
 info:
-  schemaVersion: "1.0.0"
+  schemaVersion: "1.1.0"
   title: OAuth 2.0 Authorization Server Metadata Endpunkt
-  version: 1.0.0
+  version: 1.1.0
 paths:
   /.well-known/oauth-authorization-server:
     get:
       summary: Well-Known-JSON-Objekt herunterladen
-      description: Dieser Endpunkt gibt ein JSON-Dokument zurück, das Metadaten über die Konfiguration des Autorisierungsservers enthält.
+      description: |
+        Dieser Endpunkt gibt ein JSON-Dokument zurück, das Metadaten über die Konfiguration des Autorisierungsservers enthält.
+
+        Der ZETA Guard liefert in der Antwort einen ETag-Header, der sich bei jeder inhaltlichen Änderung des Dokuments ändert,
+        sowie einen Cache-Control-Header mit max-age (höchstens 86400 Sekunden). Der ZETA Client sendet bei erneuten Abfragen
+        den zuletzt erhaltenen ETag im Header If-None-Match. Ist das Dokument unverändert, antwortet der ZETA Guard mit
+        304 Not Modified ohne Body und wiederholt die Header ETag und Cache-Control der zugehörigen 200-Antwort.
+      parameters:
+        - $ref: '#/components/parameters/IfNoneMatch'
       responses:
         '200':
           description: Erfolgreiche Antwort mit dem Well-Known-JSON-Objekt
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthorizationServerMetadata'
+        '304':
+          description: Not Modified. Das Dokument ist gegenüber dem im Header If-None-Match übermittelten ETag unverändert. Die Antwort enthält keinen Body.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
         '404':
           description: Not Found
         '500':
           description: Internal Server Error
 components:
+  parameters:
+    IfNoneMatch:
+      name: If-None-Match
+      in: header
+      required: false
+      description: Der vom ZETA Client zuletzt erhaltene ETag des Dokuments (RFC 9110, Abschnitt 13.1.2). Stimmt er mit dem aktuellen ETag überein, antwortet der ZETA Guard mit 304 Not Modified.
+      schema:
+        type: string
+        example: '"a1b2c3d4"'
+  headers:
+    ETag:
+      description: Entity Tag des Dokuments (RFC 9110, Abschnitt 8.8.3). Ändert sich bei jeder inhaltlichen Änderung des Dokuments.
+      required: true
+      schema:
+        type: string
+        example: '"a1b2c3d4"'
+    CacheControl:
+      description: Cache-Direktiven gemäß RFC 9111. Der Wert für max-age darf 86400 Sekunden nicht überschreiten.
+      required: false
+      schema:
+        type: string
+        example: 'max-age=3600'
   schemas:
     AuthorizationServerMetadata:
       $ref: '../schemas/as-well-known.yaml'

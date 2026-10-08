@@ -39,7 +39,7 @@ Liste leer, wird kein externer Egress für diese Kategorie erlaubt.
 | `egress.artifactRegistry`                  | ZETA Artifact Registry bei gematik (OPA-Bundles, Images) |
 | `egress.providerArtifactRegistry`          | Anbieter-interne Artifact Registry                       |
 | `egress.ocspCabForum`                      | OCSP/CRL für TLS-TSPs nach CAB Forum                     |
-| `egress.ocspSmcbTsp`                       | SMC-B TSP OCSP-Responder                                 |
+| `egress.ocspSmcbTsp`                       | OCSP-Responder aller SMC-B-TSP (Liste)                   |
 | `egress.ocspTiPki`                         | OCSP-Responder TSP Komponenten-PKI der TI                |
 | `egress.pip`                               | PIP — Quelle der OPA Policy Bundles                      |
 | `egress.popp`                              | PoPP-Dienst                                              |
@@ -60,8 +60,9 @@ zeta-guard:
         ipBlocks:
           - "34.90.0.0/16"       # europe-west3-docker.pkg.dev (Google Artifact Registry)
       ocspSmcbTsp:
-        ipBlocks:
+        ipBlocks:                # je zugelassenem SMC-B-TSP ein Eintrag
           - "104.247.81.99/32"   # ocsp.telematik.de
+          - "<ip-tsp-b>/32"      # OCSP-Responder weiterer SMC-B-TSP
       ocspTiPki:
         ipBlocks:
           - "104.247.81.99/32"   # ocsp.ti.telematik.de
@@ -81,6 +82,7 @@ zeta-guard:
   `openssl x509 -in <cert.pem> -text | grep -A2 "OCSP"` → `dig +short <ocsp-host>`
 
 > **Stabilitätshinweise:**
+>
 > - `artifactRegistry` (`europe-west3-docker.pkg.dev`) wird über Google CDN/Anycast
 >   ausgeliefert. Die per DNS aufgelöste IP kann sich ohne Ankündigung ändern. Für
 >   Produktivumgebungen empfehlen sich die veröffentlichten CIDR-Bereiche statt
@@ -90,6 +92,14 @@ zeta-guard:
 >   Adressen sich unabhängig voneinander ändern können. Die maßgebliche Adresse
 >   ist jeweils die in der AIA-Extension des tatsächlich eingesetzten Zertifikats
 >   eingebettete OCSP-URL.
+> - `ocspSmcbTsp` ist **keine einzelne Adresse**. SMC-B werden von mehreren TSP
+>   ausgegeben, und der Authorization Server prüft bei der Validierung der
+>   SMC-B-Signatur den Zertifikatsstatus über den Responder des jeweils
+>   ausgebenden TSP. Tragen Sie die Responder **aller** TSP ein, deren SMC-B Ihr
+>   Dienst akzeptiert. Fehlt einer, äußert sich das nicht als Netzwerkfehler,
+>   sondern als Autorisierungsablehnung ausschließlich für die Leistungserbringer
+>   dieses einen TSP — im Betrieb schwer zu diagnostizieren. Überwachen Sie die
+>   Erreichbarkeit jedes Responders einzeln, nicht aggregiert.
 
 ## Anbieter-interner Verkehr
 
@@ -139,6 +149,11 @@ zeta-guard:
 | `pep-proxy`         | `ocspCabForum`, `ocspSmcbTsp`, `ocspTiPki`, `popp`, `artifactRegistry`, `providerArtifactRegistry`, `providerInternal.*` |
 | `telemetry-gateway` | `telemetry`, `siem`                                                                                                      |
 
+> **Hinweis zu `authserver` und `ocspSmcbTsp`:** Der Authorization Server prüft
+> bei der Validierung der SMC-B-Signatur den Status des Karten-Zertifikats per
+> OCSP. Da SMC-B von mehreren TSP ausgegeben werden, muss diese Kategorie die
+> Responder aller akzeptierten TSP enthalten — siehe Stabilitätshinweise oben.
+>
 > **Hinweis:** `authserver` und `pep-proxy` führen den `provisioning-processor` als
 > Init-Container aus, der bei jedem Pod-Start ein signiertes OCI-Image zieht. Wird
 > das Image in die Anbieter-interne Registry gespiegelt

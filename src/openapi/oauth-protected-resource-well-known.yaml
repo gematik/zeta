@@ -1,29 +1,73 @@
 openapi: 3.0.0
 
 info:
-  schemaVersion: "1.0.0"
+  schemaVersion: "1.1.0"
   title: OAuth 2.0 Protected Resource Metadata Endpoint
-  version: 1.0.0
+  version: 1.1.0
 
 paths:
   /.well-known/oauth-protected-resource:
     get:
       summary: Retrieve the metadata of the protected resource
-      description: This endpoint returns a JSON document containing metadata about the configuration of the protected resource.
+      description: |
+        This endpoint returns a JSON document containing metadata about the configuration of the protected resource.
+
+        The ZETA Guard returns an ETag header that changes whenever the content of the document changes,
+        and a Cache-Control header with max-age (at most 86400 seconds). On subsequent requests the ZETA Client
+        sends the last received ETag in the If-None-Match header. If the document is unchanged, the ZETA Guard
+        responds with 304 Not Modified without a body and repeats the ETag and Cache-Control headers of the
+        corresponding 200 response.
+
+      parameters:
+        - $ref: "#/components/parameters/IfNoneMatch"
 
       responses:
         "200":
           description: Successful response with the metadata of the protected resource.
+          headers:
+            ETag:
+              $ref: "#/components/headers/ETag"
+            Cache-Control:
+              $ref: "#/components/headers/CacheControl"
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProtectedResourceMetadata"
+        "304":
+          description: Not Modified. The document is unchanged compared to the ETag sent in the If-None-Match header. The response has no body.
+          headers:
+            ETag:
+              $ref: "#/components/headers/ETag"
+            Cache-Control:
+              $ref: "#/components/headers/CacheControl"
         "404":
           description: Not Found.
         "500":
           description: Internal Server Error.
 
 components:
+  parameters:
+    IfNoneMatch:
+      name: If-None-Match
+      in: header
+      required: false
+      description: The ETag of the document last received by the ZETA Client (RFC 9110, section 13.1.2). If it matches the current ETag, the ZETA Guard responds with 304 Not Modified.
+      schema:
+        type: string
+        example: '"a1b2c3d4"'
+  headers:
+    ETag:
+      description: Entity tag of the document (RFC 9110, section 8.8.3). Changes whenever the content of the document changes.
+      required: true
+      schema:
+        type: string
+        example: '"a1b2c3d4"'
+    CacheControl:
+      description: Cache directives according to RFC 9111. The max-age value must not exceed 86400 seconds.
+      required: false
+      schema:
+        type: string
+        example: "max-age=3600"
   schemas:
     ProtectedResourceMetadata:
       $ref: "../schemas/opr-well-known.yaml"

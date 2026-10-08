@@ -1,4 +1,4 @@
-@startuml "Abb-ZETA-Client-Statement-mit-TPM-Attestation"
+@startuml "Abb-ZETA-Vorbereitung-Token-Exchange-SW-Att"
 
 !include ../puml-layout.txt
 
@@ -34,7 +34,7 @@ group Sign Subject Token with SM(C)-B
     SMB --> Konnektor -- : Signed Subject Token
     Konnektor --> Client -- : Signed Subject Token
 end
-Client -> Client: Erstelle client-statement (OS und PS Daten)
+Client -> Client: Erstelle client_statement (OS und PS Daten)
 Client -> Client: Erstelle Client Assertion (JWT, signiert mit PrK.Client.Sig)
 
 @enduml

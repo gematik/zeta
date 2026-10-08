@@ -1,0 +1,21 @@
+{
+  "$comment": "DCR 201 Created – mobiler Client (Apple), Erstregistrierung; E-Mail-Bindung (TOFU) folgt nach der OIDC-Nutzerauthentisierung",
+  "client_id": "zeta-client-ios-d4e5f6",
+  "client_id_issued_at": 1748520000,
+  "status": "pending_user_binding",
+  "client_name": "Praxis-App iOS v3.0",
+  "token_endpoint_auth_method": "private_key_jwt",
+  "grant_types": [
+    "authorization_code",
+    "urn:ietf:params:oauth:grant-type:token-exchange",
+    "refresh_token"
+  ],
+  "redirect_uris": [
+    "https://app.example-hersteller.de/cb/praxis-app-ios/oidc",
+    "https://app.example-hersteller.de/cb/praxis-app-ios/app"
+  ],
+  "attestation_type": "apple",
+  "platform": "apple",
+  "ak_jkt": "NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs",
+  "binding_status": "pinned"
+}

@@ -1,0 +1,9 @@
+{
+  "$comment": "DCR 202 Accepted – TPM ActivateCredential-Challenge (dcr-response-202.yaml)",
+  "transaction_id": "c2257dd9-835f-4f87-80c6-91b41851c4e2",
+  "status": "pending_verification",
+  "expires_in": 600,
+  "challenge_type": "tpm_activation",
+  "tpm_credential_blob": "MIIDEzCCAvugAwIBAgIGAXxPq...",
+  "tpm_encrypted_secret": "AwEE..."
+}

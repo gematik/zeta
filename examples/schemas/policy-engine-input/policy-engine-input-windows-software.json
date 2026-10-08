@@ -21,7 +21,8 @@
   },
   "user_info": {
     "identifier": "A112233445",
-    "professionOID": "1.2.276.0.76.4.50"
+    "professionOID": "1.2.276.0.76.4.50",
+    "commonName": "Arztpraxis Walter" 
   },
   "delegation_context": null,
   "authorization_request": {

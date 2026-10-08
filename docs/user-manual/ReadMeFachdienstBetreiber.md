@@ -80,6 +80,9 @@ Die beiden Domainen für Infinispan und die PDP Datenbank
 erfordern hierbei besondere Berücksichtigung, da sie Zustandsinformationen
 zwischen den Instanzen replizieren müssen, während die anderen
 Komponenten stateless, und damit unabhängig betreibbar/skalierbar sind.
+Beide Domainen sind dem PDP zugeordnet: Infinispan ist der verteilte Cache des
+Authorization Servers, die PDP Datenbank dessen persistente Ablage. Der PEP
+greift auf keine von beiden zu.
 
 Details dazu finden sich in der Dokumentation der [Deployment-Szenarien](Referenzen/Deploymentszenarien.md).
 

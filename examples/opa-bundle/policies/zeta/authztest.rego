@@ -59,11 +59,13 @@ base_input = {
     "user_info": {
         "professionOID": "1.2.276.0.76.4.50"
     },
-    "client_assertion": {
-        "posture": {
-            "product_id": "ZETA-Test-Client",
-            "product_version": "0.1.0"
-        }
+    "client_registration_data": {
+        "client_id": "cid-test-0001",
+        "product_id": "ZETA-Test-Client",
+        "product_version": "0.1.0",
+        "platform": "windows",
+        "posture_type": "software",
+        "binding_status": "pinned"
     },
     "authorization_request": {
         "scopes": ["openid"],
@@ -150,22 +152,34 @@ test_deny_missing_user_info if {
 # --- Product/Version Tests ---
 
 test_deny_invalid_product_id if {
-    input_bad_prod := json.patch(base_input, [{"op": "replace", "path": "/client_assertion/posture/product_id", "value": "Invalid-Product"}])
+    input_bad_prod := json.patch(base_input, [{"op": "replace", "path": "/client_registration_data/product_id", "value": "Invalid-Product"}])
     result := evaluate_decision(input_bad_prod)
     result.allow == false
     result.reasons["Client product or version is not allowed"]
 }
 
 test_deny_invalid_product_version if {
-    input_bad_ver := json.patch(base_input, [{"op": "replace", "path": "/client_assertion/posture/product_version", "value": "9.9.9"}])
+    input_bad_ver := json.patch(base_input, [{"op": "replace", "path": "/client_registration_data/product_version", "value": "9.9.9"}])
     result := evaluate_decision(input_bad_ver)
     result.allow == false
     result.reasons["Client product or version is not allowed"]
 }
 
-test_deny_missing_client_assertion if {
-    input_no_client_assertion := json.remove(base_input, ["client_assertion"])
-    result := evaluate_decision(input_no_client_assertion)
+test_deny_missing_client_registration_data if {
+    input_no_client_data := json.remove(base_input, ["client_registration_data"])
+    result := evaluate_decision(input_no_client_data)
+    result.allow == false
+    result.reasons["Client product or version is not allowed"]
+}
+
+# Eine product_id in der (client-befüllten) Posture der Client Assertion darf
+# die Prüfung NICHT beeinflussen — maßgeblich ist allein der Registrierungsdatensatz.
+test_deny_product_from_assertion_posture_ignored if {
+    input_spoofed := json.patch(base_input, [
+        {"op": "replace", "path": "/client_registration_data/product_id", "value": "Invalid-Product"},
+        {"op": "add", "path": "/client_assertion", "value": {"posture": {"product_id": "ZETA-Test-Client", "product_version": "0.1.0"}}}
+    ])
+    result := evaluate_decision(input_spoofed)
     result.allow == false
     result.reasons["Client product or version is not allowed"]
 }

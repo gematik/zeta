@@ -10,6 +10,11 @@
 # Generierung als auch im Push-Retry (nach Reset auf den Origin-Stand) genutzt.
 set -euo pipefail
 
+# Pfad zum PlantUML-JAR; im Workflow wird es nach /tmp/plantuml.jar geladen.
+# Lokal z.B.: PLANTUML_JAR=~/.local/bin/plantuml.jar .github/scripts/generate-images.sh ...
+PLANTUML_JAR="${PLANTUML_JAR:-/tmp/plantuml.jar}"
+export PLANTUML_JAR
+
 PUML_LIST="${1:-}"
 DRAWIO_LIST="${2:-}"
 
@@ -33,8 +38,8 @@ generate_puml() {
   echo "-> PlantUML: $file"
   # cd in einer Subshell, damit relative '!include'-Pfade aufgelöst werden;
   # die Ausgabepfade sind absolut.
-  (cd "$file_dir" && java -jar /tmp/plantuml.jar -p -tpng -scale 4 -graphvizdot /usr/bin/dot < "$file_name" > "$output_dir/$image_base.png")
-  (cd "$file_dir" && java -jar /tmp/plantuml.jar -p -tsvg -graphvizdot /usr/bin/dot < "$file_name" > "$output_dir/$image_base.svg")
+  (cd "$file_dir" && java -jar "$PLANTUML_JAR" -p -tpng -scale 4 -graphvizdot /usr/bin/dot < "$file_name" > "$output_dir/$image_base.png")
+  (cd "$file_dir" && java -jar "$PLANTUML_JAR" -p -tsvg -graphvizdot /usr/bin/dot < "$file_name" > "$output_dir/$image_base.svg")
 
   if [ ! -s "$output_dir/$image_base.png" ] || [ ! -s "$output_dir/$image_base.svg" ]; then
     echo "::error::Generation failed for $file - output files missing or empty."

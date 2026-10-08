@@ -1,0 +1,158 @@
+# Copyright 2026 Gematik GmbH
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+openapi: 3.1.0
+
+info:
+  title: ZETA Guard - Email API
+  version: 1.0.0
+  description: |
+    Server-to-server endpoint for retrieving the email address
+    of a user, restricted to resource servers that are allowlisted
+    at the AuthS for this endpoint.
+
+    The email address is never transported in access tokens,
+    ID tokens or the zeta-user-info header.
+
+    The Resource Server authenticates via mutual TLS. A ZETA
+    Guard instance serves exactly one Resource Server (no 1:n
+    architecture), so this authentication identifies that one
+    Resource Server rather than selecting among several.
+
+    The AuthS can be configured to accept, for this endpoint,
+    only connections presenting an explicitly allowlisted client
+    certificate or a certificate issued by a designated trusted
+    CA. Connections presenting any other certificate are rejected
+    at the transport level (401). This allows the endpoint to be
+    enabled only for the one Resource Server for which a business
+    use of the email is intended.
+
+    Consent management for processing the email address is the
+    sole responsibility of the client application; the ZETA
+    Guard does not check or store consent.
+
+servers:
+  - url: "{protocol}://{hostname}{basePath}"
+    variables:
+      protocol:
+        enum:
+          - https
+        default: https
+      hostname:
+        default: localhost:8443
+      basePath:
+        default: /zeta
+
+security:
+  - mtls: []
+
+paths:
+  /email:
+    get:
+      operationId: getEmail
+
+      tags:
+        - Email
+
+      summary: Retrieve user's email address
+
+      description: |
+        Returns the email address associated with the given identity.
+
+        The ZETA Guard returns the email address only if
+
+          1. the Resource Server is authenticated via mTLS and
+             allowlisted at the AuthS for this endpoint,
+          2. an email address is stored for the identity.
+
+        Missing email is reported as HTTP 404.
+
+      parameters:
+        - name: id
+          in: query
+          required: true
+          description: |
+            User identifier obtained from the zeta-user-info
+            header.
+          schema:
+            type: string
+            minLength: 1
+
+      responses:
+        "200":
+          description: Email address available.
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/email-response.yaml"
+              examples:
+                success:
+                  value:
+                    email: "vorname.nachname@example.org"
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+        "404":
+          description: |
+            No stored email address.
+
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+components:
+
+  securitySchemes:
+    mtls:
+      type: mutualTLS
+      description: |
+        Mutual TLS authentication of the Resource Server. The AuthS
+        is configurable to accept only an allowlisted client
+        certificate or a certificate from a designated trusted CA
+        for this endpoint.
+
+  responses:
+
+    Unauthorized:
+      description: Missing or invalid client certificate.
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/zeta-error.yaml"
+
+    Forbidden:
+      description: Resource Server is not authorized.
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/zeta-error.yaml"
+
+    RateLimited:
+      description: Too many requests.
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/zeta-error.yaml"
+
+    InternalServerError:
+      description: Unexpected server error.
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/zeta-error.yaml"

@@ -3,8 +3,11 @@ schemaVersion: "1.0.0"
 title: Registration Verify Request
 type: object
 description: >-
-  Payload für den POST /register/verify Request, um eine Registrierung
-  abzuschließen. Die Antwort auf die Challenge wird übermittelt.
+  Payload zur Beantwortung einer Challenge mit transaction_id. Bei
+  POST /register/verify schließt der Zweig tpm_activation die Registrierung
+  stationärer TPM-Clients ab. Der Zweig email_otp wird für
+  POST /zeta/identity/email/verify (Änderung der E-Mail-Adresse)
+  wiederverwendet; mobile Clients nutzen POST /register/verify nicht.
 # Die Variante wird über den `const`-Wert von `verify_type` in den beiden
 # oneOf-Zweigen eindeutig bestimmt; die Validierung unter draft-07 ist damit
 # deterministisch. Das nachfolgende `discriminator`-Feld ist ein OpenAPI-3-Konstrukt
@@ -27,7 +30,8 @@ definitions:
         format: uuid
         description: Die im 202 Accepted Request empfangene Transaktions-ID.
 
-  # --- TOFU / E-Mail OTP Fall ---
+  # --- E-Mail OTP Fall (nur E-Mail-Änderung über /zeta/identity/email/verify;
+  #     die TOFU-E-Mail-Bindung nutzt /zeta/identity/bind-email/verify ohne transaction_id) ---
   OtpVerifyRequest:
     type: object
     allOf:

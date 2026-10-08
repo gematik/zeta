@@ -6,9 +6,50 @@
 # - HARDWARE
 # etc
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.0.0"
+schemaVersion: "2.0.0"
 title: Android Posture
-description: The posture of the client instance. The structure depends on the platform.
+description: >-
+  The posture of the client instance. The structure depends on the platform.
+
+  Hardware-gestützter Laufzeitnachweis (A_29809, Abb-ZETA-Client-Statement-mit-Android-Attestation):
+  Der ZETA Client bildet
+
+    clientDataHash = SHA-256(nonce || posture_c14n || puk_client_sig)
+
+  mit
+  - nonce: UTF-8-Bytes des vom AuthS gelieferten Nonce-Strings (= Feld nonce),
+  - posture_c14n: UTF-8-Bytes der JCS-Kanonisierung (RFC 8785) dieses
+    Posture-Objekts OHNE die Felder signed_client_data_hash und
+    play_integrity_token (beide entstehen erst nach der Hashbildung); alle
+    übrigen gesendeten Felder – einschließlich nonce – gehen ein,
+  - puk_client_sig: PuK.Client.Sig in der Byte-Repräsentation nach
+    dcr-request.yaml, definitions/puk_client_sig_bytes (UTF-8 der
+    RFC-7638-Kanonisierung des JWK).
+
+  und signiert clientDataHash mit dem Attestation Key (PrK.AK.Sig) im TEE /
+  StrongBox (signed_client_data_hash). Die Verkettung ist eindeutig: der
+  AuthS bildet sie selbst aus der von ihm ausgestellten nonce, dem
+  empfangenen Posture-Objekt (das nonce nochmals enthält) und dem
+  registrierten Schlüssel; nur posture_c14n ist vom Client wählbar.
+
+  Der AuthS MUSS vor jeder Verwendung der Posture-Daten
+  1. nonce als von ihm ausgestellt, unverbraucht und nicht abgelaufen prüfen
+     und als verbraucht markieren,
+  2. clientDataHash selbst nachrechnen; puk_client_sig bildet er aus dem im
+     Registrierungsdatensatz hinterlegten Client Instance Key, gegen den er
+     auch die Signatur der Client Assertion prüft (nicht aus einem
+     selbst-behaupteten Wert),
+  3. signed_client_data_hash gegen den bei der DCR gepinnten Attestation Key
+     (ak_jkt im Registrierungsdatensatz) verifizieren,
+  4. ein mitgeliefertes play_integrity_token gemäß Feldbeschreibung prüfen.
+  Schlägt eine Prüfung fehl, lehnt der AuthS den Request ab; unsignierte
+  Posture-Daten werden für posture_type "android" nicht akzeptiert. Geräte
+  ohne TEE / StrongBox nutzen posture_type "software" (posture-software.yaml).
+
+  Änderungen 1.0.0 → 2.0.0 (nicht abwärtskompatibel): nonce und
+  signed_client_data_hash ergänzt und verpflichtend;
+  key_attestation_certificate_chain umbenannt in
+  android_key_attestation_certificate_chain und optional.
 type: object
 properties:
   platform_product_id:
@@ -91,18 +132,54 @@ properties:
           - 1
           - 2
           - 3
-  key_attestation_certificate_chain:
+  nonce:
+    type: string
+    description: >-
+      Die vom AuthS über GET /nonce bezogene Nonce, unverändert als String.
+      Geht als UTF-8-Bytes in clientDataHash ein (siehe Schemabeschreibung).
+      Einmalig verwendbar.
+  signed_client_data_hash:
+    type: string
+    format: base64url
+    description: >-
+      ECDSA-P-256-Signatur über clientDataHash (siehe Schemabeschreibung),
+      erstellt im TEE / StrongBox mit dem bei der DCR attestierten
+      Attestation Key (PrK.AK.Sig, KeyStore-Alias Alias_AK). Signaturverfahren
+      SHA256withECDSA mit clientDataHash (32 Byte) als Nachricht, d. h. der
+      AuthS verifiziert ES256 über die Nachricht clientDataHash. Kodierung:
+      DER (ASN.1 ECDSA-Sig-Value, wie von java.security.Signature geliefert),
+      Base64url ohne Padding. Format gemäß dcr-request.yaml,
+      definitions/hash_signature. Der AuthS verifiziert ausschließlich gegen den
+      gepinnten Attestation Key (ak_jkt). Entspricht funktional signature in
+      posture-apple.yaml.
+  android_key_attestation_certificate_chain:
     type: array
-    description: The certificate chain from the Android Key Attestation
+    description: >-
+      Optional und nur informativ: X.509-Zertifikatskette der Android Key
+      Attestation des Attestation Keys, wie bei der DCR übermittelt
+      (dcr-request.yaml, Variante Android Attestation), jedes Zertifikat
+      Base64-kodiert (DER). KEIN Vertrauensanker zur Laufzeit: Der AuthS
+      verifiziert signed_client_data_hash gegen den bei der DCR gepinnten
+      Attestation Key (ak_jkt) und lehnt den Request ab, wenn der öffentliche
+      Schlüssel des Blatt-Zertifikats nicht zu ak_jkt passt. Clients SOLLEN
+      das Feld weglassen.
     items:
       type: string
+      description: Base64-kodiertes DER X.509-Zertifikat.
   play_integrity_token:
     type: string
-    description: >
-      Das von der Google Play Integrity API ausgestellte und base64-enkodierte Token.
-      Wird vom AuthS validiert, um die meets_*_integrity Claims zu generieren.
+    description: >-
+      Optional: Das von der Google Play Integrity API ausgestellte Token
+      (IntegrityTokenProvider.request mit requestHash = Base64url(clientDataHash)
+      ohne Padding). Der AuthS entschlüsselt / prüft das Token und MUSS
+      verifizieren, dass requestDetails.requestHash dem selbst berechneten
+      clientDataHash entspricht, requestDetails.requestPackageName zur
+      gepinnten App-Identität passt und requestDetails.timestampMillis frisch
+      ist; andernfalls wird das Token verworfen (meets_*_integrity = false).
+      Aus einem gültigen Token erzeugt der AuthS die meets_*_integrity Claims.
 required:
   - product_id
   - product_version
   - build
-  - key_attestation_certificate_chain
+  - nonce
+  - signed_client_data_hash

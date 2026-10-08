@@ -2,6 +2,9 @@
   "issuer": "https://auth-server.example.de",
   "authorization_endpoint": "https://auth-server.example.de/auth",
   "token_endpoint": "https://auth-server.example.de/token",
+  "nonce_endpoint": "https://auth-server.example.de/nonce",
+  "registration_endpoint": "https://auth-server.example.de/register",
+  "redirection_endpoint": "https://auth-server.example.de/oidc/redirect",
   "jwks_uri": "https://auth-server.example.de/jwks",
   "scopes_supported": [
     "openid",

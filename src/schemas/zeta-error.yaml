@@ -5,7 +5,7 @@
 # dahinterliegenden Resource Servers werden hingegen unverändert durchgereicht und
 # folgen NICHT diesem Schema (A_29853).
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.1.0"
+schemaVersion: "1.3.0"
 title: HTTP ZETA Error Response
 description: Schema for transmitting error information for HTTP ZETA error response.
 type: object
@@ -60,6 +60,10 @@ definitions:
           # `resource`-Indicator (RFC 8707) benennt eine nicht unterstützte
           # Zielressource; Ablehnung am Token Endpoint. (A_29694, S. 84)
           - invalid_target
+          # Rate Limit des Endpunkts überschritten; 429 mit Header `Retry-After`
+          # (Sekunden bis zum nächsten zulässigen Versuch). Client SOLL Exponential
+          # Backoff anwenden. (A_26668, A_25339)
+          - rate_limit_exceeded
 
           # --- OAuth 2.0 Authorization Server / Token Endpoint (RFC 6749 §5.2) -
           - invalid_request
@@ -71,6 +75,12 @@ definitions:
           - access_denied
           - server_error
           - temporarily_unavailable
+
+          # --- Dynamic Client Registration (RFC 7591 §3.2.2) -----------------
+          # redirect_uri nicht in der Client-Registry des Provisioning Images
+          # für die product_id registriert. (A_xxxx1)
+          - invalid_redirect_uri
+          - invalid_client_metadata
 
           # --- Bearer Token / geschützte Ressource (RFC 6750 §3.1) ------------
           - invalid_token
