@@ -23,7 +23,7 @@ Zielgruppe: Tester und Entwickler
 
 ## Überblick
 
-Für einen schnellen End-to-End-Lauf stehen drei Wege bereit - wählen Sie die
+Für einen schnellen Ende-zu-Ende-Lauf stehen drei Wege bereit – wählen Sie die
 Variante, die zu Ihrer Umgebung passt.
 
 ## Wichtige Parameter
@@ -57,11 +57,11 @@ docker run --rm \
   sonst laufen die Szenarien nur gegen symbolische Namen wie `zetaClient`.
 - `CUCUMBER_TAGS` wählt die Scopes; der Standard ist `@smoke`.
 - Das Image bringt `/usr/local/bin/run-tests.sh` mit und führt headless
-  `mvn verify` aus, die Reports landen in den gemounteten Verzeichnissen.
+  `mvn verify` aus; die Reports landen in den gemounteten Verzeichnissen.
 
 ## Option 2: Fertiges Docker-Image direkt in der GitLab-Pipeline nutzen
 
-Das CI-Target `docker-image` baut und published das Image
+Das CI-Target `docker-image` baut und veröffentlicht das Image
 (`registry.gitlab.com/<gruppe>/testsuite:latest`).
 Ein Job, der nur die Smoke-Tests fährt, sieht z. B. so aus:
 
@@ -103,7 +103,7 @@ mvn verify \
 
 - In IntelliJ das Maven-Projekt importieren und eine Run-Configuration für
   `verify` (oder einzelne Feature-Dateien) mit denselben Properties anlegen.
-- Falls Sie die Tiger Workflow UI sehen möchten, passen Sie in `tiger.yaml`
+- Falls Sie die Tiger-Workflow-UI sehen möchten, passen Sie in `tiger.yaml`
   unter `lib:` z. B. an:
     - `activateWorkflowUi: true`
     - `startBrowser: true`
