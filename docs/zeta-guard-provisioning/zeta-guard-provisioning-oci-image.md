@@ -12,10 +12,10 @@ Der gesamte Prozess wird durch das Skript `zg-provisioning-image.sh` automatisie
 
 Bevor Sie beginnen, stellen Sie sicher, dass die folgenden Werkzeuge auf Ihrem System installiert und konfiguriert sind:
 
-1.  **Buildah:** Das primäre Werkzeug zum Bauen von OCI-Images.
-2.  **Google Cloud CLI (`gcloud`):** Muss installiert und für den Zugriff auf Ihr GCP-Projekt authentifiziert sein (`gcloud auth login`).
-3.  **Git:** Wird benötigt, um die Commit-Revision aus dem Datenverzeichnis zu ermitteln.
-4.  **Das Skript:** Die Datei `zg-provisioning-image.sh` muss vorhanden und ausführbar sein.
+1. **Buildah:** Das primäre Werkzeug zum Bauen von OCI-Images.
+2. **Google Cloud CLI (`gcloud`):** Muss installiert und für den Zugriff auf Ihr GCP-Projekt authentifiziert sein (`gcloud auth login`).
+3. **Git:** Wird benötigt, um die Commit-Revision aus dem Datenverzeichnis zu ermitteln.
+4. **Das Skript:** Die Datei `zg-provisioning-image.sh` muss vorhanden und ausführbar sein.
 
 ---
 
@@ -27,35 +27,35 @@ Das Skript `zg-provisioning-image.sh` führt die folgenden Schritte automatisier
 
 Zunächst bereitet das Skript die Umgebung vor und stellt eine sichere Verbindung zur Google Artifact Registry her.
 
-*   **Temporäres Verzeichnis:** Es wird ein temporäres "Staging"-Verzeichnis erstellt. Alle Operationen finden hier statt, um Ihr ursprüngliches Datenverzeichnis sauber zu halten. Dieses Verzeichnis wird am Ende automatisch gelöscht.
-*   **Sichere Authentifizierung:** Das Skript ruft ein kurzlebiges Zugriffstoken von der `gcloud`-CLI ab. Dieses Token wird sicher via `stdin` an den `buildah login`-Befehl übergeben. Dadurch werden keine Passwörter oder Tokens auf der Festplatte gespeichert.
+* **Temporäres Verzeichnis:** Es wird ein temporäres "Staging"-Verzeichnis erstellt. Alle Operationen finden hier statt, um Ihr ursprüngliches Datenverzeichnis sauber zu halten. Dieses Verzeichnis wird am Ende automatisch gelöscht.
+* **Sichere Authentifizierung:** Das Skript ruft ein kurzlebiges Zugriffstoken von der `gcloud`-CLI ab. Dieses Token wird sicher via `stdin` an den `buildah login`-Befehl übergeben. Dadurch werden keine Passwörter oder Tokens auf der Festplatte gespeichert.
 
 ### Schritt 2: Sammeln von Metadaten
 
 Um die Nachverfolgbarkeit und Integrität der Daten sicherzustellen, werden zwei wichtige Metadaten-Dateien automatisch generiert und dem Image hinzugefügt:
 
-1.  **Git-Revision (`.revision`):**
-    *   **Was:** Der vollständige SHA-Commit-Hash der `HEAD`-Position aus dem Datenverzeichnis wird ermittelt.
-    *   **Warum:** Dies ermöglicht es, jederzeit exakt nachzuvollziehen, welcher Stand des Git-Repositorys für den Bau dieses Images verwendet wurde. Die Revision wird in die Datei `.revision` geschrieben.
+1. **Git-Revision (`.revision`):**
+    * **Was:** Der vollständige SHA-Commit-Hash der `HEAD`-Position aus dem Datenverzeichnis wird ermittelt.
+    * **Warum:** Dies ermöglicht es, jederzeit exakt nachzuvollziehen, welcher Stand des Git-Repositorys für den Bau dieses Images verwendet wurde. Die Revision wird in die Datei `.revision` geschrieben.
 
-2.  **Datei-Manifest (`.manifest`):**
-    *   **Was:** Das Skript berechnet die SHA256-Prüfsumme für jede einzelne Datei, die dem Image hinzugefügt wird.
-    *   **Warum:** Diese Liste dient als "Inhaltsverzeichnis" und ermöglicht es dem konsumierenden Prozess (z.B. dem Kubernetes-CronJob), die Integrität der Dateien nach dem Auspacken zu überprüfen.
+2. **Datei-Manifest (`.manifest`):**
+    * **Was:** Das Skript berechnet die SHA256-Prüfsumme für jede einzelne Datei, die dem Image hinzugefügt wird.
+    * **Warum:** Diese Liste dient als "Inhaltsverzeichnis" und ermöglicht es dem konsumierenden Prozess (z.B. dem Kubernetes-CronJob), die Integrität der Dateien nach dem Auspacken zu überprüfen.
 
 ### Schritt 3: Der eigentliche Image-Bau
 
 Dies ist der Kern des Prozesses, bei dem `buildah` das OCI-Image konstruiert.
 
-*   **`buildah from scratch`:** Es wird ein absolut leerer Arbeitscontainer ohne jegliches Basisbetriebssystem erstellt. Das finale Image enthält nur die Bytes Ihrer Daten und eine minimale Konfigurations-JSON.
-*   **`buildah copy`:** Der gesamte Inhalt des Staging-Verzeichnisses (Ihre Daten plus die generierten `.revision`- und `.manifest`-Dateien) wird in das Wurzelverzeichnis des Containers kopiert.
-*   **`buildah config`:** Metadaten wie der Autor und die Git-Revision als `Label` werden in die Image-Konfiguration geschrieben.
-*   **`buildah commit`:** Der Zustand des Arbeitscontainers wird als neues, lokales OCI-Image finalisiert.
+* **`buildah from scratch`:** Es wird ein absolut leerer Arbeitscontainer ohne jegliches Basisbetriebssystem erstellt. Das finale Image enthält nur die Bytes Ihrer Daten und eine minimale Konfigurations-JSON.
+* **`buildah copy`:** Der gesamte Inhalt des Staging-Verzeichnisses (Ihre Daten plus die generierten `.revision`- und `.manifest`-Dateien) wird in das Wurzelverzeichnis des Containers kopiert.
+* **`buildah config`:** Metadaten wie der Autor und die Git-Revision als `Label` werden in die Image-Konfiguration geschrieben.
+* **`buildah commit`:** Der Zustand des Arbeitscontainers wird als neues, lokales OCI-Image finalisiert.
 
 ### Schritt 4: Veröffentlichung in der Registry
 
 Im letzten Schritt wird das lokal erstellte Image in die Google Artifact Registry hochgeladen.
 
-*   **`buildah push`:** Das Image wird sicher und effizient in das in der Befehlszeile angegebene Repository gepusht. Danach ist es für Kubernetes und andere Dienste verfügbar.
+* **`buildah push`:** Das Image wird sicher und effizient in das in der Befehlszeile angegebene Repository gepusht. Danach ist es für Kubernetes und andere Dienste verfügbar.
 
 ---
 
@@ -65,23 +65,39 @@ Im letzten Schritt wird das lokal erstellte Image in die Google Artifact Registr
 
 **a) Skript speichern und ausführbar machen:**
 Speichern Sie das bereitgestellte Skript unter dem Namen `zg-provisioning-image.sh` und geben Sie ihm Ausführungsrechte:
+
 ```bash
 chmod +x zg-provisioning-image.sh
 ```
 
 **b) Datenverzeichnis vorbereiten:**
-Stellen Sie sicher, dass Ihr Datenverzeichnis (idealerweise ein Git-Repository) alle benötigten Dateien enthält.
+Stellen Sie sicher, dass Ihr Datenverzeichnis alle benötigten Vertrauensanker und Konfigurationen enthält. Eine detaillierte Übersicht über alle Artefakte und deren offizielle Bezugsquellen finden Sie in [docs/zeta-guard-provisioning/provisioning-image-quellen.md](docs/zeta-guard-provisioning/provisioning-image-quellen.md).
 
-**Beispiel-Struktur:**
-```
+**Beispiel-Struktur (gemSpec_ZETA 5.6.5.1):**
+
+```bash
 .
 ├── zeta-guard-provisioning/   # Dies ist das Datenverzeichnis
-│   ├── TrustedTPM.cab
-│   ├── tsl.xml
-│   ├── roots.json
-│   ├── apple-root-ca.pem
-│   ├── opa-bundle-sig-key.pem
-│   └── .git/               # Ist ein Git-Repo
+│   ├── .manifest
+│   ├── .revision
+│   ├── android-roots/
+│   │   ├── roots.json
+│   │   └── status.json
+│   ├── apple-roots/
+│   │   └── apple-root.pem
+│   ├── federation-master/
+│   │   └── federation-master.yaml
+│   ├── policy-engine-bundle-keys/
+│   │   ├── ca/
+│   │   └── signers/
+│   ├── redirect-uris/
+│   │   └── redirect-uris.json
+│   ├── ti-roots/
+│   │   └── roots.json
+│   ├── trusted-tpm/
+│   │   └── TrustedTpm.cab
+│   └── tsl/
+│       └── ECC_PU_TSL_10322.xml
 │
 └── zg-provisioning-image.sh  # Hier liegt Ihr Skript
 ```
@@ -91,12 +107,13 @@ Stellen Sie sicher, dass Ihr Datenverzeichnis (idealerweise ein Git-Repository) 
 Rufen Sie das Skript mit den erforderlichen Parametern auf.
 
 **Syntax:**
+
 ```bash
 ./zg-provisioning-image.sh <imagename:tag> [daten_verzeichnis]
 ```
 
-*   **`<imagename:tag>` (Pflicht):** Der vollständige Pfad zu Ihrem Image in der Artifact Registry, beginnend nach `...pkg.dev/`.
-*   **`[daten_verzeichnis]` (Optional):** Der Pfad zu dem Verzeichnis mit den Daten. Wenn Sie diesen Parameter weglassen, wird das aktuelle Verzeichnis (`.`) verwendet.
+* **`<imagename:tag>` (Pflicht):** Der vollständige Pfad zu Ihrem Image in der Artifact Registry, beginnend nach `...pkg.dev/`.
+* **`[daten_verzeichnis]` (Optional):** Der Pfad zu dem Verzeichnis mit den Daten. Wenn Sie diesen Parameter weglassen, wird das aktuelle Verzeichnis (`.`) verwendet.
 
 **Konkretes Beispiel:**
 
@@ -108,7 +125,8 @@ Rufen Sie das Skript mit den erforderlichen Parametern auf.
 ### 3. Erwartete Ausgabe
 
 Eine erfolgreiche Ausführung des Skripts erzeugt eine Ausgabe, die jeden Schritt protokolliert und am Ende eine Erfolgsmeldung anzeigt:
-```
+
+```bash
 --- 1. Authentifizierung bei GCP ---
 Login Succeeded!
 --- 2. Metadaten vorbereiten ---
