@@ -110,6 +110,7 @@ properties:
           (A_28525-02) mit dem für die Route konfigurierten Mindestniveau
           verglichen. Wertebereich gemäß gematik-LoA (A_29820).
         enum:
+          - gematik-ehealth-loa-low
           - gematik-ehealth-loa-substantial
           - gematik-ehealth-loa-high
       iat:
