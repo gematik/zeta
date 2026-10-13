@@ -9,13 +9,19 @@ info:
     uses (`password` and the parameters `username`, `password`, `client_secret` are removed,
     `urn:ietf:params:oauth:grant-type:jwt-bearer` is added); the parameters `code_verifier`,
     `assertion` and the `DPoP` header are added; error responses reference `zeta-error.yaml`
-    and cover 401, 403, 429 and 503. Two points are stipulations of this file that
+    and cover 401, 403, 429, 500 and 503. Two points are stipulations of this file that
     gemSpec_ZETA 2.0.0 does not state: the selection of the token-exchange variant by
     `subject_token_type`, and the answer 503 `temporarily_unavailable` when the Policy
     Engine cannot be reached.
 
     Every request is authenticated with a `private_key_jwt` client assertion (RFC 7523) and
     carries a DPoP proof (RFC 9449); requests without them are rejected (A_25659).
+
+    Nonce: where a request carries a nonce (subject token, posture of the client
+    statement, DPoP proof), the Authorization Server checks and consumes it in one
+    atomic step before it evaluates the request further, so that at most one request
+    per nonce succeeds; all occurrences in the request must be equal. The rule is
+    stated once, for all platforms, in `dcr-request.yaml`, definitions/nonce.
 servers:
   - url: https://as.example.com
 paths:
@@ -249,6 +255,15 @@ paths:
               description: Seconds until the next attempt is permitted (RFC 9110).
               schema:
                 type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/zeta-error.yaml'
+        '500':
+          description: >-
+            The Policy Engine decision cannot be applied (`server_error`), e.g. it names a
+            scope that was not requested (`pdp-decision.yaml`, `result.scope`); no tokens
+            are issued.
           content:
             application/json:
               schema:

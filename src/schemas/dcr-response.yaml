@@ -158,19 +158,34 @@ definitions:
           Kleinbuchstaben. Ergänzt in Schema 1.1.0.
       client_key_binding:
         type: string
-        enum: [none, pop, tpm_certified]
+        enum: [none, pop_static, pop, tpm_certified]
         description: >-
           Wie der Besitz und die Hardware-Bindung des Client Instance Keys
           bei der Registrierung nachgewiesen wurden:
           "none" – kein Besitznachweis (Software-Registrierung ohne
           signed_hash_puk_client_sig; TPM-Registrierung ohne client_key_pop);
-          "pop" – Selbstsignatur mit PrK.Client.Sig geprüft
-          (signed_hash_puk_client_sig bzw. client_key_pop);
-          "tpm_certified" – zusätzlich tpm_certify_info geprüft, der Schlüssel
-          liegt im selben TPM wie der Attestation Key.
+          "pop_static" – Selbstsignatur mit PrK.Client.Sig über
+          SHA-256(puk_client_sig) OHNE Nonce geprüft (Zweige apple,
+          android, Fast-Path und Software, wenn der Request keine nonce
+          enthält). Die Signatur ist
+          statisch und von jedem wiederverwendbar, der einen
+          Registrierungs-Request gesehen hat; sie belegt nicht, dass der
+          Absender den Schlüssel besitzt;
+          "pop" – Selbstsignatur über SHA-256(puk_client_sig || nonce) mit
+          einer frischen Nonce des AuthS geprüft (signed_hash_puk_client_sig
+          mit nonce bzw. client_key_pop);
+          "tpm_certified" – wie "pop", zusätzlich tpm_certify_info geprüft:
+          der Schlüssel liegt im selben TPM wie der Attestation Key. Der Wert
+          gilt erst nach erfolgreichem POST /register/verify.
           Optional aus Kompatibilitätsgründen; fehlt das Feld, ist "none"
           anzunehmen. Ergänzt in Schema 1.1.0. Der Wert
           wird an die Policy Engine übergeben (policy-engine-client-data.yaml).
+          Nach einem Schlüssel-Rollover bestimmt
+          der AuthS den Wert für den NEUEN Schlüssel neu: Der Rollover weist
+          dessen Besitz mit einer Nonce nach (innere Signatur), also "pop";
+          "tpm_certified" bleibt nur, wenn der Rollover einen neuen
+          Certify-Nachweis für den neuen Schlüssel trägt – das heutige
+          Rollover-Format trägt keinen, der Wert fällt also auf "pop".
       binding_status:
         type: string
         enum: [pinned, legacy_unpinned]

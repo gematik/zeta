@@ -31,7 +31,9 @@ description: >-
   enthielt der TPM-Zweig als einziger weder einen Besitznachweis des Client
   Instance Keys noch einen Nachweis, dass dieser im TPM liegt. Die neuen
   Nachweise sind nur mit nonce zulässig (dependencies im TPM-Zweig); eine
-  Legacy-Form ohne Nonce gibt es für sie nicht. (b) grant_types ist in
+  Legacy-Form ohne Nonce gibt es für sie nicht. Zweige Apple und Android:
+  optionales Feld nonce; ist es gesetzt, geht es in signed_hash_puk_client_sig
+  ein. (b) grant_types ist in
   definitions/grant_types beschrieben und wird von allen Zweigen referenziert;
   die zulässigen Kombinationen stehen dort. (c) Struktur für Codegeneratoren,
   ohne Änderung der gültigen Instanzen: Die fünf Zweige sind benannte
@@ -101,7 +103,7 @@ definitions:
     # Laufzeit vom JSON-Schema-Validator geprüft.
     dependencies:
       client_key_pop: [nonce]
-      tpm_certify_info: [nonce, tpm_certify_signature, tpm_client_key_public]
+      tpm_certify_info: [nonce, client_key_pop, tpm_certify_signature, tpm_client_key_public]
       tpm_certify_signature: [tpm_certify_info]
       tpm_client_key_public: [tpm_certify_info]
     properties:
@@ -171,8 +173,9 @@ definitions:
           Optional aus Kompatibilitätsgründen (in Schema ≤ 1.1.3 nicht
           vorhanden): Ist das Feld vorhanden, prüft der AuthS Nonce und
           Signatur und lehnt bei Fehlschlag ab; fehlt es, registriert er wie
-          bisher und SOLL das Fehlen protokollieren. Neue
-          Client-Implementierungen SOLLEN es setzen. Ob der Nachweis vorlag,
+          bisher und MUSS das Fehlen protokollieren (wie A_30192 für den
+          Software-Zweig). Neue Client-Implementierungen SOLLEN es setzen. Ob
+          der Nachweis vorlag,
           führt der AuthS als client_key_binding im Registrierungsdatensatz
           (dcr-response.yaml) und übergibt es der Policy Engine; solange das
           Feld weggelassen werden darf, entsteht die Schutzwirkung erst
@@ -209,8 +212,8 @@ definitions:
           Der Client übergibt als qualifyingData die UTF-8-Bytes der nonce.
           Der AuthS prüft an der enthaltenen TPMS_ATTEST:
           (1) magic = TPM_GENERATED_VALUE und type = TPM_ST_ATTEST_CERTIFY;
-          (2) extraData = UTF-8-Bytes der nonce, die Nonce ist von ihm
-          ausgestellt, unverbraucht und nicht abgelaufen;
+          (2) extraData = UTF-8-Bytes der nonce des Requests (die der AuthS
+          nach definitions/nonce bereits geprüft und verbraucht hat);
           (3) attested.certify.name = Name des Schlüssels aus
           tpm_client_key_public, d. h. nameAlg || Hash(TPMT_PUBLIC), und
           tpm_client_key_public besteht die dort genannten Prüfungen (u. a.
@@ -230,8 +233,13 @@ definitions:
           Policy Engine (policy-engine-client-data.yaml).
           Nur bei erfolgreicher Prüfung gilt der Client Instance Key als
           hardware-gebunden; ohne das Feld ist die Hardware-Bindung von
-          PrK.Client.Sig eine Selbstauskunft des Clients. Nur zusammen mit
-          nonce, tpm_certify_signature und tpm_client_key_public zulässig
+          PrK.Client.Sig eine Selbstauskunft des Clients. Das Feld bleibt
+          auch nach dem Stichtag aus A_30193 optional: Nicht jede Umgebung
+          erzeugt den Client Instance Key im TPM; ob eine Registrierung ohne
+          diesen Nachweis genügt, entscheidet die Policy über
+          client_key_binding. Nur zusammen mit
+          nonce, client_key_pop, tpm_certify_signature und
+          tpm_client_key_public zulässig
           (dependencies im Zweig). Setzt voraus, dass der Client Instance Key im TPM
           erzeugt wurde.
       tpm_certify_signature:
@@ -293,6 +301,16 @@ definitions:
           AK ↔ PuK.Client.Sig weist bereits das apple_attestation_object
           nach (clientDataHash == SHA-256(PuK.Client.Sig)); eine
           AK-Signatur ist hier daher nicht erforderlich.
+
+          Der signierte Hash ist SHA-256(puk_client_sig || nonce), sofern das
+          Feld nonce gesetzt ist, andernfalls SHA-256(puk_client_sig)
+          (Legacy-Form). Der AuthS akzeptiert bis zum Stichtag (Vorschlag:
+          01.01.2028, wie die übrigen Legacy-Formen in A_30193) beide Formen
+          und wählt anhand der An-/Abwesenheit von nonce. Ohne nonce ist die
+          Signatur statisch und von jedem wiederverwendbar, der einen
+          Registrierungs-Request gesehen hat (client_key_binding =
+          pop_static); neue Clients SOLLEN die nonce setzen.
+      nonce: { $ref: "#/definitions/nonce" }
 
   # -----------------------------------------------------------------
   # 3. Android Hardware Attestation
@@ -357,6 +375,16 @@ definitions:
           Blatt-Zertifikat der android_key_attestation_certificate_chain
           nach (attestationChallenge == SHA-256(puk_client_sig)); eine
           AK-Signatur ist hier daher nicht erforderlich.
+
+          Der signierte Hash ist SHA-256(puk_client_sig || nonce), sofern das
+          Feld nonce gesetzt ist, andernfalls SHA-256(puk_client_sig)
+          (Legacy-Form). Der AuthS akzeptiert bis zum Stichtag (Vorschlag:
+          01.01.2028, wie die übrigen Legacy-Formen in A_30193) beide Formen
+          und wählt anhand der An-/Abwesenheit von nonce. Ohne nonce ist die
+          Signatur statisch und von jedem wiederverwendbar, der einen
+          Registrierungs-Request gesehen hat (client_key_binding =
+          pop_static); neue Clients SOLLEN die nonce setzen.
+      nonce: { $ref: "#/definitions/nonce" }
       play_integrity_token:
         type: string
         description: >-
@@ -482,7 +510,7 @@ definitions:
           Optional aus Kompatibilitätsgründen (in Schema 1.0.0 nicht
           vorhanden): fehlt das Feld, registriert der AuthS wie bisher ohne
           Besitznachweis. Neue Client-Implementierungen SOLLEN es zusammen
-          mit nonce setzen; der AuthS SOLL das Fehlen protokollieren.
+          mit nonce setzen; der AuthS MUSS das Fehlen protokollieren (A_30192).
       token_endpoint_auth_method: { type: string }
       grant_types: { $ref: "#/definitions/grant_types" }
       redirect_uris: { $ref: "#/definitions/redirect_uris" }
@@ -546,27 +574,40 @@ definitions:
       Neue Client-Implementierungen MÜSSEN eine der drei Formen senden.
 
       Verhalten des AuthS bei POST /register (abschließend):
-      - enthält das Feld jwt-bearer UND "authorization_code": Ablehnung mit
-        invalid_client_metadata (A_29894). Das ist die einzige Ablehnung
-        wegen grant_types.
-      - jeder andere Inhalt wird angenommen – auch ein fehlendes Feld, ein
-        leeres Array, "refresh_token" allein, "client_credentials"
-        (Bestands-Requests) und token-exchange zusammen mit jwt-bearer (so
-        nennt es der Ablauf "Software Attestation (Legacy OIDC DCR)" in
-        gemSpec_ZETA 5.3.2.2 Schritt (12)). Das gilt für jeden
-        attestation_type: bis Schema 1.1.3 war das Feld nicht eingeschränkt,
-        eine Ablehnung würde Bestands-Clients brechen.
+      - jwt-bearer UND "authorization_code": Ablehnung mit
+        invalid_client_metadata (A_29894).
+      - jwt-bearer UND token-exchange (Mischform): Ablehnung mit
+        invalid_client_metadata. Eine Registrierung ist entweder identitätslos
+        oder nicht; sonst könnte sie Token mit SM(C)-B-Identität und zugleich
+        ohne Nutzer-Identität beziehen. Achtung: Der Ablauf "Software
+        Attestation (Legacy OIDC DCR)" in gemSpec_ZETA 5.3.2.2 Schritt (12)
+        nennt diese Kombination; Clients, die ihm wörtlich folgen, müssen auf
+        Form (2) oder (3) umstellen.
+      - jeder andere Inhalt wird bis zum Stichtag angenommen (Legacy-Form):
+        ein fehlendes Feld, ein leeres Array, "refresh_token" allein und
+        Werte, die kein ZETA-Grant sind. Das gilt für jeden attestation_type:
+        bis Schema 1.1.3 war das Feld nicht eingeschränkt. Ab dem Stichtag
+        (Vorschlag: 01.01.2028, wie die übrigen Legacy-Formen in A_30193)
+        lehnt der AuthS alles ab, was keiner der drei Formen entspricht.
+      - Registrierung OHNE das Feld oder mit leerem Array: Sie darf bis zum
+        Stichtag token-exchange und "refresh_token" nutzen, nicht jwt-bearer
+        und nicht "authorization_code". Der Default "authorization_code" aus
+        RFC 7591 gilt NICHT.
+      - Bestehende Registrierungen mit der Mischform (angelegt, bevor sie
+        abgelehnt wurde): Der AuthS behandelt sie wie eine Registrierung ohne
+        das Feld – token-exchange und "refresh_token" bleiben zulässig,
+        jwt-bearer beantwortet er mit unauthorized_client.
       - Lebenszyklus: mit "authorization_code" pending_user_binding, sonst
         registered (A_30086).
-      Am Token-Endpunkt gilt unabhängig davon A_30364: Der AuthS lässt nur
-      registrierte Grant-Typen zu.
+      Am Token-Endpunkt gilt A_30364: Der AuthS lässt nur registrierte
+      Grant-Typen zu. "client_credentials" ist kein ZETA-Grant (früher in einem
+      Beispiel verwendet); der Token-Endpunkt beantwortet ihn mit
+      unsupported_grant_type.
 
-      Nicht geregelt in gemSpec_ZETA 2.0.0 (Spec-Lücke zu grant_types): welche
-      Grant-Typen eine Registrierung OHNE das Feld nutzen darf (der Default
-      "authorization_code" aus RFC 7591 gilt NICHT), und ob eine Registrierung
-      mit token-exchange UND jwt-bearer beide Grants nutzen darf. Das Feld ist
-      im Schema nicht verpflichtend und die Werte sind nicht per enum
-      eingeschränkt.
+      Die Ablehnung der Mischform, der Stichtag und die Regel für
+      Registrierungen ohne das Feld stehen noch nicht in gemSpec_ZETA 2.0.0.
+      Das Feld ist im Schema nicht verpflichtend und die Werte sind nicht per
+      enum eingeschränkt, damit Requests nach Schema <= 1.1.3 gültig bleiben.
     # Kein uniqueItems: bis 1.1.3 waren doppelte Einträge gültig; der AuthS
     # behandelt das Feld als Menge.
     items:
@@ -627,18 +668,29 @@ definitions:
       Legacy-Form SHA-256(puk_client_sig) hasht. Eine mitgesendete, aber nicht mitsignierte Nonce hat keine
       Schutzwirkung.
 
+      Verbrauch (gilt für jeden Request, der eine Nonce trägt – POST /register
+      ebenso wie Token-Requests mit Nonce in Subject Token, Posture und DPoP
+      Proof): Der AuthS prüft die Nonce (von ihm ausgestellt, nicht
+      abgelaufen, unverbraucht) und verbraucht sie in EINEM atomaren Schritt,
+      bevor er den Request weiter auswertet. Je Nonce ist damit höchstens ein
+      Request erfolgreich, auch bei parallelen Requests. Kommt die Nonce im
+      selben Request mehrfach vor (hier: client_key_pop und qualifyingData
+      von tpm_certify_info), müssen alle Werte gleich sein. Wird der Request
+      danach aus einem anderen Grund abgelehnt, bleibt die Nonce verbraucht;
+      der Client bezieht eine neue.
+
       Relevant für attestation_type "zeta_attestation_token" (Fast-Path),
       "software" und – seit 1.2.0 – "tpm": dort geht die Nonce in
       client_key_pop und als qualifyingData in tpm_certify_info ein. Für die
       AK-Signatur signed_hash_puk_client_sig des TPM-Zweigs wird sie nicht
       verwendet (der MakeCredential/ActivateCredential-Handshake liefert für
       den Attestation Key bereits eine serverseitig erzeugte Challenge).
-      NICHT vorgesehen für "apple" und "android" (die
-      Frische ergibt sich dort aus der Einmaligkeit des Instanzschlüssels im
-      clientDataHash bzw. in der attestationChallenge; ein Replay registriert
-      nur denselben Schlüssel erneut und nützt ohne dessen privaten Teil
-      nichts — eine Nonce müsste dort in die Erzeugung des Attestation Objects
-      eingehen und wäre nur mit Client-seitiger Änderung wirksam).
+      Seit 1.2.0 auch für "apple" und "android": Die Nonce geht dort in die
+      Selbstsignatur signed_hash_puk_client_sig ein und macht sie zu einem
+      frischen Besitznachweis. In das Attestation Object bzw. die
+      attestationChallenge geht sie NICHT ein – clientDataHash und
+      attestationChallenge bleiben SHA-256(puk_client_sig); die Frische der
+      Plattform-Attestierung ändert sich dadurch nicht.
 
       Optional aus Kompatibilitätsgründen; ohne nonce gilt die Legacy-Form des
       jeweiligen Besitznachweises (siehe dort). Ausnahme: client_key_pop und

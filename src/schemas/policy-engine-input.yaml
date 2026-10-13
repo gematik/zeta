@@ -1,13 +1,16 @@
 # Policy Engine Input Schema for ZETA Guard
 # This schema combines authorization_request data, client-statement.yaml and user-info.yaml.
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.1.0"
+schemaVersion: "1.2.0"
 title: Policy Engine Input Schema for ZETA Guard
 type: object
 description: >
   Schema for OPA policy decisions based on client registration data, client
   assertion, user info and authorization request. This schema is used as input
   for the OPA policy engine.
+  Change 1.1.0 -> 1.2.0: grant_type no longer lists client_credentials. No
+  ZETA flow uses that grant and the token endpoint does not support it, so the
+  Authorization Server never produced such an input.
 properties:
   version:
     description: >-
@@ -84,7 +87,6 @@ properties:
         enum:
           - authorization_code
           - urn:ietf:params:oauth:grant-type:token-exchange
-          - client_credentials
           - refresh_token
           - urn:ietf:params:oauth:grant-type:jwt-bearer
       amr:

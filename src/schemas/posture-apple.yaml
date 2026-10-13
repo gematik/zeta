@@ -39,9 +39,16 @@ description: >-
   Kompatibilitätsgründen nicht verpflichtend. Fehlt assertion (Client nach
   Schema 1.0.0), lehnt der AuthS den Request nicht ab, setzt aber
   attestation_result.apple.assertion_verified = false
-  (policy-engine-client-data.yaml); die Policy Engine entscheidet. Dasselbe
-  gilt, wenn eine der Prüfungen fehlschlägt, mit einer Ausnahme: eine
-  ungültige oder verbrauchte nonce führt zur Ablehnung.
+  (policy-engine-client-data.yaml); die Policy Engine entscheidet. Das ist
+  eine Legacy-Form: Ab dem Stichtag (Vorschlag: 01.01.2028, wie die übrigen
+  Legacy-Formen in A_30193) lehnt der AuthS ein Client Statement mit
+  posture_type "apple" ohne assertion mit invalid_client ab. Ist
+  assertion vorhanden und schlägt eine der Prüfungen fehl (nonce,
+  clientDataHash, Signatur, rpIdHash, Counter nicht gestiegen), lehnt der
+  AuthS den Request mit invalid_client ab – wie A_30349 für Android und wie
+  A_30192 für einen vorhandenen, aber ungültigen Besitznachweis. Ein nicht
+  gestiegener Counter ist das Signal für einen kopierten Schlüssel.
+  Nonce-Verbrauch: dcr-request.yaml, definitions/nonce.
   Die Felder fmt, attStmt und authData stammen aus der Initial-Attestierung,
   die bereits bei der DCR als apple_attestation_object übertragen wird; sie
   sind hier nur informativ und KEIN Vertrauensanker. client_data_json ist

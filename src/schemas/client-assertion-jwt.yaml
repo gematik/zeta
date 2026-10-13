@@ -111,9 +111,13 @@ properties:
           the Policy Engine. Optional for the refresh_token grant and for the
           redemption of the email-binding token; if absent there, the
           Authorization Server uses the client data verified when the session
-          was opened. Not used for PAR, revocation and client-management
-          requests. It is never sent with POST /register, which carries no
-          client assertion.
+          was opened, together with their original attestation_timestamp
+          (policy-engine-client-data.yaml), so that the policy can judge
+          their age. If it is missing in a request that opens a session, the
+          Authorization Server answers 400 invalid_request. Not used for PAR,
+          revocation and client-management requests; if sent there, the
+          Authorization Server ignores it. It is never sent with POST
+          /register, which carries no client assertion.
         $ref: "client-statement.yaml"
 
     required:

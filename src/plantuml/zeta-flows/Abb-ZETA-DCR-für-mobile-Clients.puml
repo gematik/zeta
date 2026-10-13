@@ -46,7 +46,15 @@ alt Kein ZETA Attestation Token
           TrustedEnvironment oder StrongBox. attestationChallenge im Blatt-Zertifikat beweist die TEE-interne Bindung AK ↔ PuK.Client.Sig.
         end note
     else Software Attestation (Legacy OIDC DCR)
-        Client -> AuthS: POST /register\n{client_name, "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token",\n"urn:ietf:params:oauth:grant-type:jwt-bearer"], jwks, token_endpoint_auth_method="private_key_jwt",\n  "redirect_uris": ["https://<App-FQDN>/cb/<app>/oidc", "https://<App-FQDN>/cb/<app>/app"]}
+        Client -> AuthS: POST /register\n{client_name, "grant_types": ["authorization_code", "urn:ietf:params:oauth:grant-type:token-exchange",\n"refresh_token"], jwks, token_endpoint_auth_method="private_key_jwt",\n  "redirect_uris": ["https://<App-FQDN>/cb/<app>/oidc", "https://<App-FQDN>/cb/<app>/app"]}
+        note right of AuthS
+          grant_types bestimmt den Lebenszyklus der Registrierung (A_30086). Mobile, identitätsgebundene Clients registrieren
+          authorization_code (OIDC mit sektoralem IDP, Status pending_user_binding), dazu token-exchange (Einlösung des
+          E-Mail-Binding-Tokens, A_30218) und refresh_token. jwt-bearer gehört NICHT in diesen Request: Der Grant kennzeichnet
+          identitätslose Registrierungen (A_29894) und wird zusammen mit authorization_code oder token-exchange mit
+          invalid_client_metadata abgelehnt. Eine Registrierung ist entweder identitätsgebunden oder identitätslos, nie beides.
+          Dasselbe gilt für die beiden Hardware-Attestation-Pfade.
+        end note
     end
 
     note right of Client

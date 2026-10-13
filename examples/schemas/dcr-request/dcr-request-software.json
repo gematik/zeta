@@ -4,7 +4,8 @@
   "client_name": "Primärsystem-Beispielclient",
   "token_endpoint_auth_method": "private_key_jwt",
   "grant_types": [
-    "client_credentials"
+    "urn:ietf:params:oauth:grant-type:token-exchange",
+    "refresh_token"
   ],
   "jwks": {
     "keys": [

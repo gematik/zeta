@@ -153,17 +153,6 @@ definitions:
                 additionalProperties: { type: string }
               quote_verified: 
                 type: boolean
-              client_key_certified:
-                type: boolean
-                description: >-
-                  True, wenn der Quell-Guard bei der Registrierung
-                  tpm_certify_info erfolgreich geprüft hat
-                  (client_key_binding = tpm_certified, dcr-response.yaml), der
-                  Client Instance Key also im selben TPM liegt wie der
-                  Attestation Key. Optional (ergänzt in 1.2.0); fehlt der
-                  Claim, ist false anzunehmen. Gilt für den Schlüssel der
-                  Quell-Registrierung, nicht für einen im Fast-Path neu
-                  registrierten Schlüssel.
               ek_root_fingerprint:
                 type: string
                 pattern: "^[0-9a-f]{64}$"
