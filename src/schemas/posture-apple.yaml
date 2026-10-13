@@ -6,9 +6,48 @@
 # die dekodierten Inhalte der Attestation- und Assertion-Objekte.
 # ===================================================================
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.0.0"
+schemaVersion: "1.1.0"
 title: Apple Posture
-description: The posture of the client instance. The structure depends on the platform.
+description: >-
+  The posture of the client instance. The structure depends on the platform.
+  Hardware-gestützter Laufzeitnachweis (A_29810,
+  Abb-ZETA-Client-Statement-mit-Apple-AppAttest): Der ZETA Client bildet
+    clientDataHash = SHA-256(nonce || posture_c14n || puk_client_sig)
+  mit
+  - nonce: UTF-8-Bytes des vom AuthS gelieferten Nonce-Strings (= Feld nonce),
+  - posture_c14n: UTF-8-Bytes der JCS-Kanonisierung (RFC 8785) dieses
+    Posture-Objekts OHNE die Felder assertion, signature und
+    assertionAuthenticatorData (sie entstehen erst nach der Hashbildung).
+    Alle übrigen gesendeten Felder gehen ein: nonce, die Basis-Felder sowie –
+    falls ein Client sie noch sendet – fmt, attStmt, authData und
+    client_data_json. Der AuthS kanonisiert genau das empfangene Objekt ohne
+    die drei ausgenommenen Felder,
+  - puk_client_sig: PuK.Client.Sig in der Byte-Repräsentation nach
+    dcr-request.yaml, definitions/puk_client_sig_bytes,
+  und übergibt clientDataHash an DCAppAttestService.generateAssertion. Das
+  Ergebnis sendet er unverändert im Feld assertion.
+  Der AuthS prüft nonce (ausgestellt, unverbraucht, nicht abgelaufen), rechnet
+  clientDataHash nach, verifiziert die Signatur der Assertion über
+  SHA-256(authenticatorData || clientDataHash) gegen den bei der DCR gepinnten
+  Attestation Key (ak_jkt), vergleicht rpIdHash mit der gepinnten App-Identität
+  und prüft, dass der Counter größer ist als der zuletzt gespeicherte Wert.
+  Änderungen 1.0.0 → 1.1.0 (abwärtskompatibel, kein required-Block erweitert):
+  nonce und assertion ergänzt. Ohne das Feld assertion liegen dem AuthS die
+  signierten authenticatorData-Bytes nicht vor (assertionAuthenticatorData
+  enthält die Flags nicht); die Signatur ist dann nicht nachprüfbar. Neue
+  Clients MÜSSEN nonce und assertion senden. Im Schema sind beide Felder aus
+  Kompatibilitätsgründen nicht verpflichtend. Fehlt assertion (Client nach
+  Schema 1.0.0), lehnt der AuthS den Request nicht ab, setzt aber
+  attestation_result.apple.assertion_verified = false
+  (policy-engine-client-data.yaml); die Policy Engine entscheidet. Dasselbe
+  gilt, wenn eine der Prüfungen fehlschlägt, mit einer Ausnahme: eine
+  ungültige oder verbrauchte nonce führt zur Ablehnung.
+  Die Felder fmt, attStmt und authData stammen aus der Initial-Attestierung,
+  die bereits bei der DCR als apple_attestation_object übertragen wird; sie
+  sind hier nur informativ und KEIN Vertrauensanker. client_data_json ist
+  ebenfalls nur informativ; neue Clients SOLLEN diese vier Felder weglassen.
+  Hinweis: format: base64 ist kein in draft-07 definiertes Format und wird
+  von Validatoren nicht geprüft; es dokumentiert die Kodierung.
 type: object
 properties:
   # -------------------------------------------------------------------
@@ -67,7 +106,10 @@ properties:
     properties:
       rpidHash:
         type: string
-        format: byte
+        # format: base64 wie die übrigen Felder dieses Schemas (vorher
+        # format: byte, das Generatoren als Byte-Array mit strengem
+        # Standard-Base64-Dekoder abbilden).
+        format: base64
         description: SHA256 hash of the Relying Party ID (App ID).
       flags:
         type: string
@@ -89,7 +131,27 @@ properties:
       - credentialId
 
   # -------------------------------------------------------------------
-  # Felder aus dekodiertem Assertion-Objekt (nur bei Subsequent-Assertion)
+  # Laufzeitnachweis (Assertion)
+  # -------------------------------------------------------------------
+  nonce:
+    type: string
+    description: >-
+      Die vom AuthS über GET /nonce bezogene Nonce, unverändert als String.
+      Geht als UTF-8-Bytes in clientDataHash ein (siehe Schemabeschreibung).
+      Einmalig verwendbar.
+  assertion:
+    type: string
+    format: base64
+    description: >-
+      Das von DCAppAttestService.generateAssertion(keyId:clientDataHash:)
+      gelieferte CBOR-Objekt (Map mit signature und authenticatorData),
+      unverändert und Base64-kodiert. Der AuthS entnimmt ihm die
+      authenticatorData-Bytes (rpIdHash, Flags, Counter) und die Signatur und
+      verifiziert ausschließlich gegen den gepinnten Attestation Key (ak_jkt).
+      Entspricht funktional signed_client_data_hash in posture-android.yaml.
+  # -------------------------------------------------------------------
+  # Felder aus dekodiertem Assertion-Objekt (informativ; maßgeblich ist das
+  # Feld assertion)
   # -------------------------------------------------------------------
   signature:
     type: string
@@ -101,7 +163,10 @@ properties:
     properties:
       rpidHash:
         type: string
-        format: byte
+        # format: base64 wie die übrigen Felder dieses Schemas (vorher
+        # format: byte, das Generatoren als Byte-Array mit strengem
+        # Standard-Base64-Dekoder abbilden).
+        format: base64
         description: SHA256 hash of the Relying Party ID (App ID).
       counter:
         type: integer
@@ -111,7 +176,9 @@ properties:
       - counter
   client_data_json:
     type: string
-    format: json
+    # contentMediaType statt format: json – "json" ist kein definiertes Format;
+    # Generatoren bilden daraus einen rohen JSON-Wert statt eines Strings.
+    contentMediaType: application/json
     description: A JSON string containing the request data to be signed, including a server-provided challenge.
 
 required:

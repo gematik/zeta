@@ -1,5 +1,5 @@
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.1.0"
+schemaVersion: "1.2.0"
 title: PDP Decision Response
 description: Schema for the PDP Decision as provided by the OPA Policy Engine
   REST API (/v1/data/...).
@@ -40,12 +40,43 @@ properties:
           `ver: 2`. Only present when `allow` is true and the request supplied a
           `resource` indicator (RFC 8707). Absent for legacy (contract v1)
           decisions, where `aud` is taken verbatim from the client-supplied
-          `audience` parameter.
-        oneOf:
-          - type: array
-            items:
-              type: string
-          - type: string
+          `audience` parameter. Value: a string or an array of strings (RFC 7519
+          section 4.1.3).
+        # Deliberately no `type` and no oneOf here: generators have no working
+        # mapping for "string or array of strings" (openapi-generator emits
+        # Java that does not compile and an empty Kotlin class). The value is
+        # therefore generated as an untyped JSON value; the rule below is
+        # enforced by the JSON Schema validator and accepts exactly the same
+        # instances as the former oneOf.
+        if:
+          type: array
+        then:
+          items:
+            type: string
+        else:
+          type: string
+      scope:
+        description: >
+          Optional (added in 1.2.0). The scopes the Policy Engine permits for
+          this request, as an array of scope values. If present, the
+          Authorization Server issues the access token with exactly these
+          scopes — a subset of the requested scopes — and returns the granted
+          scope in the token response if it differs from the request (RFC 6749
+          section 5.1). Additional scopes, authorization details or claims from
+          an Authorization Backend are only accepted within this set
+          (A_30245). If absent (decisions of policies written for 1.1.0), the
+          Authorization Server grants the requested scopes as before. Only
+          present when allow is true.
+          The Authorization Server MUST NOT issue a token if the decision
+          names a scope that was not requested or a reserved scope
+          (zeta:email-binding, zeta:email-verify, asl) that it did not itself
+          put into the request; it answers 500 server_error and reports a
+          policy error. An empty array means that no scope is granted: the
+          token is issued without scope.
+        type: array
+        items:
+          type: string
+        uniqueItems: true
       reasons:
         description: >
           Map of denial reasons. Keys are human-readable reason strings, values

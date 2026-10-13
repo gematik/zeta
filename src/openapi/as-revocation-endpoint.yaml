@@ -1,0 +1,103 @@
+openapi: 3.1.0
+info:
+  title: OAuth 2.0 Token Revocation Endpoint (RFC 7009)
+  version: 1.0.0
+  description: |
+    Revocation endpoint of the ZETA Guard Authorization Server (A_29996 – A_30000,
+    Abb-ZETA-Token-Revocation). The URL is published as `revocation_endpoint` in
+    `as-well-known.yaml`.
+servers:
+  - url: https://as.example.com
+paths:
+  /revoke:
+    post:
+      operationId: revokeToken
+      summary: Revoke a refresh token and terminate its session
+      description: |
+        A client revokes one of its own refresh tokens, e.g. on logout (A_30002). The
+        request is authenticated in the same way as a token request: `private_key_jwt`
+        client assertion (RFC 7523) and DPoP proof (RFC 9449) (A_29997). The DPoP proof
+        needs no nonce (Abb-ZETA-Token-Revocation, step (02)). A client can only revoke
+        its own tokens.
+
+        On success the Authorization Server invalidates the presented refresh token and
+        all refresh tokens of the same session, including rotated ones, terminates the
+        session and logs the event (A_29998, A_29857). Subsequent refresh requests are
+        rejected with `refresh_token_revoked`.
+
+        After successful client authentication the endpoint answers `200 OK` regardless of
+        whether the token is valid, already invalid, unknown or belongs to another client
+        (RFC 7009 section 2.2, A_29999). An access token has no server-side effect
+        (A_30000).
+      parameters:
+        - name: DPoP
+          in: header
+          required: true
+          description: >-
+            DPoP proof JWT (RFC 9449, `dpop-token.yaml`) with `htm` = `POST` and `htu` = the
+            URL of this endpoint.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                  description: The refresh token to be revoked.
+                token_type_hint:
+                  type: string
+                  description: >-
+                    Optional hint about the type of the token (RFC 7009 section 2.1),
+                    e.g. `refresh_token`. Not restricted by an enum: the Authorization
+                    Server ignores a hint it does not know or that does not fit, and
+                    MUST NOT reject the request because of it.
+                client_assertion_type:
+                  type: string
+                  enum:
+                    - urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+                client_assertion:
+                  type: string
+                  description: >-
+                    Private Key JWT of the client (`client-assertion-jwt.yaml`) without
+                    `client_statement`.
+                client_id:
+                  type: string
+                  description: Optional; if present it MUST equal `iss`/`sub` of the client assertion.
+              required:
+                - token
+                - client_assertion_type
+                - client_assertion
+      responses:
+        '200':
+          description: >-
+            The request was processed. The response has no body and does not reveal
+            whether the token existed.
+        '400':
+          description: >-
+            Malformed request (`invalid_request`), invalid DPoP proof
+            (`invalid_dpop_proof`) or — optionally, if an access token was presented —
+            `unsupported_token_type` (RFC 7009 section 2.2.1, A_30000).
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/zeta-error.yaml'
+        '401':
+          description: Client authentication failed (`invalid_client`, A_29997).
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/zeta-error.yaml'
+        '429':
+          description: Rate limit exceeded (`rate_limit_exceeded`, A_26668-02).
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/zeta-error.yaml'

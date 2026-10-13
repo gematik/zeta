@@ -30,7 +30,7 @@
 
 $schema: "http://json-schema.org/draft-07/schema#"
 type: object
-schemaVersion: "1.2.0"
+schemaVersion: "1.3.0"
 title: Policy Engine Client Data
 description: >
   Enthält die vom AuthS verifizierten Client-Registrierungsdaten sowie die
@@ -40,6 +40,9 @@ description: >
 
   Änderung 1.2.0 (abwärtskompatibel): Optionale Felder app_package_names und
   app_signing_cert_digests unter attestation_result.android ergänzt.
+  Änderung 1.3.0 (abwärtskompatibel): Optionales Feld ek_root_fingerprint
+  unter attestation_result.tpm ergänzt (A_30335); optionales Feld
+  client_key_binding ergänzt.
 properties:
   client_id:
     type: string
@@ -96,6 +99,25 @@ properties:
     description: >
       Unix-Timestamp der initialen Client-Registrierung am AuthS.
     example: 1678888000
+
+  client_key_binding:
+    type: string
+    enum: [ none, pop, tpm_certified ]
+    description: >
+      Wie der Besitz und die Hardware-Bindung des Client Instance Keys
+      bei der Registrierung nachgewiesen wurden:
+      "none" – kein Besitznachweis (Software-Registrierung ohne
+      signed_hash_puk_client_sig; TPM-Registrierung ohne client_key_pop);
+      "pop" – Selbstsignatur mit PrK.Client.Sig geprüft
+      (signed_hash_puk_client_sig bzw. client_key_pop);
+      "tpm_certified" – zusätzlich tpm_certify_info geprüft, der Schlüssel
+      liegt im selben TPM wie der Attestation Key.
+      Optional aus Kompatibilitätsgründen; fehlt das Feld, ist "none"
+      anzunehmen. Quelle:
+      Registrierungsdatensatz (dcr-response.yaml). Ergänzt in 1.3.0. Policies
+      können damit Registrierungen ohne Besitznachweis geringer bewerten oder
+      ablehnen.
+    example: "pop"
 
   binding_status:
     type: string
@@ -186,6 +208,19 @@ properties:
             type: boolean
             description: True, wenn die TPM-Quote-Signatur erfolgreich gegen den Attestation
               Key geprüft wurde.
+          ek_root_fingerprint:
+            type: string
+            pattern: "^[0-9a-f]{64}$"
+            description: >
+              Vertrauensanker der EK-Zertifikatskette, bei der Registrierung
+              gepinnt (A_30335): SHA-256 über die DER-Kodierung des
+              Ankerzertifikats aus /trusted-tpm/, 64 Hexadezimalzeichen in
+              Kleinbuchstaben. Quelle: Registrierungsdatensatz (bei
+              Fast-Path-Registrierung aus dem zeta_attestation_token
+              übernommen). Fehlt bei Datensätzen von vor Einführung des Feldes.
+              Die Policy Engine kann damit physische TPMs und vTPM-Wurzeln
+              unterscheiden.
+            example: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
 
       android:
         type: object

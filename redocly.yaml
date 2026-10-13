@@ -1,0 +1,72 @@
+# Konfiguration für Redocly CLI (redocly lint).
+# Aufruf im Repo-Wurzelverzeichnis: `redocly lint` prüft alle unter `apis` genannten Dateien.
+
+plugins:
+  - ./scripts/redocly-zeta-plugin.mjs   # erlaubt `schemaVersion` in src/schemas/*.yaml
+
+extends:
+  - recommended
+
+apis:
+  as-well-known:
+    root: src/openapi/as-well-known.yaml
+    rules:
+      # Client Assertion (Formularparameter) und DPoP lassen sich nicht als
+      # OpenAPI-Security-Scheme ausdrücken; sie sind in der Operation beschrieben.
+      security-defined: off
+  as-entity-statement:
+    root: src/openapi/as-entity-statement-endpoint.yaml
+    rules:
+      # Client Assertion (Formularparameter) und DPoP lassen sich nicht als
+      # OpenAPI-Security-Scheme ausdrücken; sie sind in der Operation beschrieben.
+      security-defined: off
+  as-par:
+    root: src/openapi/as-par-endpoint.yaml
+    rules:
+      # Client Assertion (Formularparameter) und DPoP lassen sich nicht als
+      # OpenAPI-Security-Scheme ausdrücken; sie sind in der Operation beschrieben.
+      security-defined: off
+  as-authorization:
+    root: src/openapi/as-authorization-endpoint.yaml
+    rules:
+      # Beide Operationen antworten im Erfolgsfall mit 302 (Redirect).
+      operation-2xx-response: off
+      security-defined: off
+  as-token:
+    root: src/openapi/as-token-endpoint.yaml
+    rules:
+      # Client Assertion (Formularparameter) und DPoP lassen sich nicht als
+      # OpenAPI-Security-Scheme ausdrücken; sie sind in der Operation beschrieben.
+      security-defined: off
+  as-revocation:
+    root: src/openapi/as-revocation-endpoint.yaml
+    rules:
+      # Client Assertion (Formularparameter) und DPoP lassen sich nicht als
+      # OpenAPI-Security-Scheme ausdrücken; sie sind in der Operation beschrieben.
+      security-defined: off
+  oauth-protected-resource:
+    root: src/openapi/oauth-protected-resource-well-known.yaml
+    rules:
+      # Client Assertion (Formularparameter) und DPoP lassen sich nicht als
+      # OpenAPI-Security-Scheme ausdrücken; sie sind in der Operation beschrieben.
+      security-defined: off
+  client-management:
+    root: src/openapi/zeta-guard-client-management.yaml
+  admin-oob:
+    root: src/openapi/zeta-guard-admin-oob.yaml
+  email:
+    root: src/openapi/zeta-guard-email-endpoint.yaml
+  notification-service-rs:
+    root: src/openapi/notification-service-rs-endpoint.yaml
+  authorization-backend-webhook:
+    root: src/openapi/authorization-backend-webhook.yaml
+
+rules:
+  # Die Dateien beschreiben Schnittstellen ohne festen Host; Beispiel-Server sind beabsichtigt.
+  no-server-example.com: off
+  no-empty-servers: off
+  # Lizenz steht in LICENSE.md des Repos, nicht je Datei.
+  info-license: off
+  # Hinweise, keine Fehler.
+  operation-operationId: warn
+  operation-4xx-response: warn

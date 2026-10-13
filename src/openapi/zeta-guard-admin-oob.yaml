@@ -71,6 +71,7 @@ paths:
 
   /identities:
     get:
+      operationId: findIdentity
       tags: [identities]
       summary: Resolve a KVNR / Telematik-ID to an identity reference and status
       description: |
@@ -99,6 +100,7 @@ paths:
     parameters:
       - $ref: '#/components/parameters/IdentityRef'
     get:
+      operationId: getIdentity
       tags: [identities]
       summary: Get identity status by reference
       description: |
@@ -122,6 +124,7 @@ paths:
     parameters:
       - $ref: '#/components/parameters/IdentityRef'
     post:
+      operationId: confirmReregistration
       tags: [identities]
       summary: Record the SECOND independent OOB confirmation to unblock re-registration
       description: |
@@ -165,6 +168,7 @@ paths:
 
   /deletions:
     get:
+      operationId: listDeletions
       tags: [deletions]
       summary: List OOB deletion requests
       description: |
@@ -193,6 +197,7 @@ paths:
                 type: array
                 items: { $ref: '#/components/schemas/Deletion' }
     post:
+      operationId: createDeletion
       tags: [deletions]
       summary: Initiate an OOB deletion request
       description: |
@@ -241,6 +246,7 @@ paths:
     parameters:
       - $ref: '#/components/parameters/DeletionId'
     get:
+      operationId: getDeletion
       tags: [deletions]
       summary: Get a deletion request (with audit detail)
       description: |
@@ -263,6 +269,7 @@ paths:
     parameters:
       - $ref: '#/components/parameters/DeletionId'
     post:
+      operationId: approveDeletion
       tags: [deletions]
       summary: Second-operator approval (dual control) — arms the veto window
       description: |
@@ -305,6 +312,7 @@ paths:
     parameters:
       - $ref: '#/components/parameters/DeletionId'
     post:
+      operationId: abortDeletion
       tags: [deletions]
       summary: Operator-side abort of a pending deletion
       description: |
@@ -340,6 +348,7 @@ paths:
 
   /audit/events:
     get:
+      operationId: listAuditEvents
       tags: [audit]
       summary: Query the OOB audit trail
       description: |

@@ -107,6 +107,7 @@ paths:
 
   /register:
     post:
+      operationId: registerClient
       tags: [registration]
       summary: Register a client (Dynamic Client Registration, first use / TOFU)
       description: |
@@ -239,6 +240,7 @@ paths:
 
   /register/verify:
     post:
+      operationId: verifyRegistration
       tags: [registration]
       summary: Complete a registration by answering its TPM ActivateCredential challenge
       description: |
@@ -287,6 +289,7 @@ paths:
     parameters:
       - $ref: '#/components/parameters/ClientId'
     get:
+      operationId: getClientRegistration
       tags: [registration]
       summary: Read this client's registration (RFC 7592-style)
       security:
@@ -300,6 +303,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
     put:
+      operationId: updateClientRegistration
       tags: [registration]
       summary: Update metadata, or roll over the instance key (PoP)
       description: |
@@ -380,6 +384,7 @@ paths:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Error' }
     delete:
+      operationId: deleteClientRegistration
       tags: [registration]
       summary: Deregister THIS client (self, client-plane only)
       description: |
@@ -397,6 +402,7 @@ paths:
 
   /zeta/rollover-nonce:
     head:
+      operationId: getRolloverNonce
       tags: [keys]
       summary: Obtain a single-use rollover Replay-Nonce
       description: |
@@ -417,6 +423,7 @@ paths:
 
   /zeta/identity/bind-email:
     post:
+      operationId: bindEmail
       tags: [email]
       summary: Bind the identity-scoped email (F1) — register a new address (first use)
       description: |
@@ -491,6 +498,7 @@ paths:
 
   /zeta/identity/bind-email/resend:
     post:
+      operationId: resendBindEmail
       tags: [email]
       summary: Re-send the binding confirmation email (OTP) for the open challenge
       description: |
@@ -526,6 +534,7 @@ paths:
 
   /zeta/identity/bind-email/verify:
     post:
+      operationId: verifyBindEmail
       tags: [email]
       summary: Verify the binding OTP (completes the F1 email binding)
       description: |
@@ -561,6 +570,7 @@ paths:
 
   /zeta/identity/email:
     post:
+      operationId: changeEmail
       tags: [email]
       summary: Change the identity-scoped email (affects all clients at this FD)
       description: |
@@ -608,6 +618,7 @@ paths:
 
   /zeta/identity/email/verify:
     post:
+      operationId: verifyEmailChange
       tags: [email]
       summary: Verify the new email address (completes the email change)
       description: |
@@ -646,6 +657,7 @@ paths:
 
   /zeta/clients:
     get:
+      operationId: listClients
       tags: [devices]
       summary: List the identity's enrolled clients at this FD
       description: |
@@ -678,6 +690,7 @@ paths:
         required: true
         schema: { type: string }
     delete:
+      operationId: deleteClient
       tags: [devices]
       summary: Delete another device / client of the same identity (client-plane only)
       description: |
@@ -723,6 +736,7 @@ paths:
 
   /zeta/deletions/{deletion_id}/veto:
     post:
+      operationId: vetoDeletion
       tags: [oob]
       summary: Cancel a pending OOB deletion using a surviving enrolled client
       description: |
@@ -1034,6 +1048,37 @@ components:
           type: array
           items: { type: string }
 
+    # Own component instead of an inline enum under Error.code: generators name an
+    # inline enum after its parent (ErrorCode), which collides with
+    # zeta-error.yaml#/definitions/errorCode in the same document.
+    ProblemCode:
+      type: string
+      description: >-
+        Machine-readable failure reason of a Problem Details response (`Error.code`).
+      enum:
+        - badNonce
+        - invalidBinding
+        - invalidSignature
+        - invalidNewKeyProof
+        - wrongAudience
+        - staleRequest
+        - invalidKeyChange
+        - popRequired
+        - emailMismatch
+        - tombstoned
+        - factorRequired
+        - stepUpRequired
+        - forbiddenTarget
+        - insufficientUserAuthentication
+        - invalidAttestation
+        - registrationForbidden
+        - registrationConflict
+        - invalidOtp
+        - challengeExpired
+        - insufficientScope
+        - noOpenChallenge
+        - otpSendLimited
+
     Error:
       type: object
       description: >-
@@ -1041,30 +1086,6 @@ components:
         machine-readable failure reason.
       required: [code]
       properties:
-        code:
-          type: string
-          enum:
-            - badNonce
-            - invalidBinding
-            - invalidSignature
-            - invalidNewKeyProof
-            - wrongAudience
-            - staleRequest
-            - invalidKeyChange
-            - popRequired
-            - emailMismatch
-            - tombstoned
-            - factorRequired
-            - stepUpRequired
-            - forbiddenTarget
-            - insufficientUserAuthentication
-            - invalidAttestation
-            - registrationForbidden
-            - registrationConflict
-            - invalidOtp
-            - challengeExpired
-            - insufficientScope
-            - noOpenChallenge
-            - otpSendLimited
+        code: { $ref: '#/components/schemas/ProblemCode' }
         title: { type: string }
         detail: { type: string }

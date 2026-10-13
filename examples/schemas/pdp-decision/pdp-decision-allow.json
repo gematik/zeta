@@ -1,22 +1,14 @@
 {
-  "result": [
-    {
-      "expressions": [
-        {
-          "value": {
-            "allow": true,
-            "ttl": {
-              "access_token": 300,
-              "refresh_token": 86400
-            }
-          },
-          "text": "data.policies.zeta.authz.decision",
-          "location": {
-            "row": 1,
-            "col": 1
-          }
-        }
-      ]
-    }
-  ]
+  "decision_id": "4ca636c1-55e4-417a-b1d8-4aceb67960d1",
+  "result": {
+    "allow": true,
+    "ttl": {
+      "access_token": 300,
+      "refresh_token": 86400
+    },
+    "aud": "vsdm_resource",
+    "scope": [
+      "vsdservice"
+    ]
+  }
 }

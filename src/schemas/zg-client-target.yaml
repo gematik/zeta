@@ -1,5 +1,5 @@
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.0.0"
+schemaVersion: "1.0.1"
 title: ZG Client Target
 description: >
   Schema für eine Datei im Verzeichnis /targets/ des ZG Client
@@ -135,9 +135,16 @@ properties:
     required:
       - token_endpoint
       - scopes
-    oneOf:
-      - required: [resource]
-      - required: [audience]
+    # Genau eines von resource und audience. if/then/else statt oneOf: ein
+    # oneOf aus reinen required-Regeln bilden Codegeneratoren als Union
+    # untypisierter Zweige ab.
+    if:
+      required: [resource]
+    then:
+      not:
+        required: [audience]
+    else:
+      required: [audience]
     properties:
       token_endpoint:
         type: string

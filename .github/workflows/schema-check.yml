@@ -1,0 +1,57 @@
+name: Schema & OpenAPI Check
+
+on:
+  pull_request:
+    paths:
+      - "src/schemas/**"
+      - "src/openapi/**"
+      - "examples/schemas/**"
+      - "examples/discovery-and-configuration/**"
+      - "redocly.yaml"
+      - "scripts/redocly-zeta-plugin.mjs"
+      - "scripts/check-schemas.sh"
+      - ".github/workflows/schema-check.yml"
+  push:
+    branches: [main, develop]
+    paths:
+      - "src/schemas/**"
+      - "src/openapi/**"
+      - "examples/schemas/**"
+      - "examples/discovery-and-configuration/**"
+      - "redocly.yaml"
+
+permissions:
+  contents: read
+
+env:
+  # Feste Versionen, damit neue Lint-Regeln der Werkzeuge den Job nicht
+  # unbemerkt brechen. Lokal mit denselben Versionen geprüft.
+  CHECK_JSONSCHEMA_VERSION: "0.38.2"
+  REDOCLY_CLI_VERSION: "2.62.1"
+
+jobs:
+  schema-check:
+    name: Metaschema, Examples & OpenAPI Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tools
+        run: |
+          pip install "check-jsonschema==${CHECK_JSONSCHEMA_VERSION}"
+          npm install -g "@redocly/cli@${REDOCLY_CLI_VERSION}"
+
+      - name: Check schemas, examples and OpenAPI files
+        run: ./scripts/check-schemas.sh

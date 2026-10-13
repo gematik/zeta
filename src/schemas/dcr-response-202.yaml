@@ -1,5 +1,5 @@
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.0.0"
+schemaVersion: "1.0.1"
 title: DCR Accepted Response (202)
 type: object
 description: >-
@@ -57,11 +57,16 @@ definitions:
             const: email_otp
           message_id:
             type: string
-            const: otp_verification
+            enum: [otp_verification, otp_email_change]
             description: >-
-              Eindeutiger Identifikator für den Typ der Nachricht. 
-              Erlaubt es dem Client, einen lokalisierten Text (z. B. für die OTP-Eingabe) 
-              aus den eigenen App-Ressourcen anzuzeigen.
+              Identifikator des Nachrichtentyps gemäß Nachrichtenkatalog
+              (gemSpec_ZETA, Tab_gemSpec_ZETA_Nachrichtenkatalog). Der Client
+              zeigt dazu einen lokalisierten Text aus den eigenen
+              App-Ressourcen an. otp_email_change (N8): Bestätigungscode an
+              die neue Adresse bei POST /zeta/identity/email – der Wert für
+              diesen Zweig. otp_verification (N7): Bestätigungscode der
+              E-Mail-Bindung; bleibt zulässig, weil Schema 1.0.0 nur diesen
+              Wert kannte (seit 1.0.1 ist otp_email_change ergänzt).
 
   # --- TPM MakeCredential Fall ---
   TpmChallengeResponse:

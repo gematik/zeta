@@ -2,11 +2,126 @@
 # The Client Statement is used in the Client Assertion JWT with the ZETA Guard AuthServer.
 # It contains information about the client instance.
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.1.0"
+schemaVersion: "1.2.0"
 title: Client Statement
-description: The client statement contains information about the client instance.
+description: >-
+  The client statement contains information about the client instance.
+
+  posture_type: The type of the supplied posture; it selects the variant of
+  this schema and thereby the schema of posture (android →
+  posture-android.yaml, apple → posture-apple.yaml, tpm → posture-tpm.yaml,
+  software → posture-software.yaml).
+  The type of the supplied posture. MUST match the attestation_type pinned
+  in the client record at registration; a deviating value is rejected by the
+  AuthS, so a software-attested registration cannot present itself as
+  hardware-attested at runtime. The attestation_type is pinned on every
+  registration under dcr-request.yaml >= 1.1.0; only for clients registered
+  before pinning was introduced does the AuthS fall back to the previous
+  behaviour and take the value from here (policy-engine-client-data.yaml,
+  binding_status).
+
+  Change 1.1.0 -> 1.2.0: the statement is a oneOf of four named variants,
+  discriminated by posture_type, instead of one object whose posture referred
+  to the untagged union posture.yaml (that file is removed). Code generators
+  thereby emit one typed class per variant with a typed posture. Validation is stricter in one point
+  and laxer in another: posture MUST now conform to the schema that belongs
+  to posture_type (before: to exactly one of the four schemas, whichever);
+  conversely it is no longer an error if a posture also happens to satisfy
+  one of the other three schemas. Fields and required lists are unchanged.
 type: object
-properties:
+oneOf:
+  - $ref: "#/definitions/client_statement_android"
+  - $ref: "#/definitions/client_statement_apple"
+  - $ref: "#/definitions/client_statement_tpm"
+  - $ref: "#/definitions/client_statement_software"
+# `discriminator` is an OpenAPI construct (not a draft-07 keyword); JSON Schema
+# validators ignore it. The variants are mutually exclusive through the const
+# value of posture_type, which is required in every variant.
+discriminator:
+  propertyName: posture_type
+  mapping:
+    android: "#/definitions/client_statement_android"
+    apple: "#/definitions/client_statement_apple"
+    tpm: "#/definitions/client_statement_tpm"
+    software: "#/definitions/client_statement_software"
+
+definitions:
+  client_statement_android:
+    title: Client Statement (Android)
+    type: object
+    properties:
+      sub: { $ref: "#/definitions/sub" }
+      platform: { $ref: "#/definitions/platform" }
+      posture_type:
+        type: string
+        const: android
+        description: Siehe Beschreibung des Schemas (posture_type).
+      posture: { $ref: "./posture-android.yaml" }
+      attestation_timestamp: { $ref: "#/definitions/attestation_timestamp" }
+    required:
+      - sub
+      - platform
+      - posture_type
+      - posture
+      - attestation_timestamp
+
+  client_statement_apple:
+    title: Client Statement (Apple)
+    type: object
+    properties:
+      sub: { $ref: "#/definitions/sub" }
+      platform: { $ref: "#/definitions/platform" }
+      posture_type:
+        type: string
+        const: apple
+        description: Siehe Beschreibung des Schemas (posture_type).
+      posture: { $ref: "./posture-apple.yaml" }
+      attestation_timestamp: { $ref: "#/definitions/attestation_timestamp" }
+    required:
+      - sub
+      - platform
+      - posture_type
+      - posture
+      - attestation_timestamp
+
+  client_statement_tpm:
+    title: Client Statement (TPM)
+    type: object
+    properties:
+      sub: { $ref: "#/definitions/sub" }
+      platform: { $ref: "#/definitions/platform" }
+      posture_type:
+        type: string
+        const: tpm
+        description: Siehe Beschreibung des Schemas (posture_type).
+      posture: { $ref: "./posture-tpm.yaml" }
+      attestation_timestamp: { $ref: "#/definitions/attestation_timestamp" }
+    required:
+      - sub
+      - platform
+      - posture_type
+      - posture
+      - attestation_timestamp
+
+  client_statement_software:
+    title: Client Statement (Software)
+    type: object
+    properties:
+      sub: { $ref: "#/definitions/sub" }
+      platform: { $ref: "#/definitions/platform" }
+      posture_type:
+        type: string
+        const: software
+        description: Siehe Beschreibung des Schemas (posture_type).
+      posture: { $ref: "./posture-software.yaml" }
+      attestation_timestamp: { $ref: "#/definitions/attestation_timestamp" }
+    required:
+      - sub
+      - platform
+      - posture_type
+      - posture
+      - attestation_timestamp
+
   sub:
     type: string
     description: The name of the client
@@ -24,32 +139,8 @@ properties:
       - windows
       - linux
       - other
-  posture_type:
-    type: string
-    description: >-
-      The type of the supplied posture. MUST match the attestation_type pinned
-      in the client record at registration; a deviating value is rejected by the
-      AuthS, so a software-attested registration cannot present itself as
-      hardware-attested at runtime. The attestation_type is pinned on every
-      registration under dcr-request.yaml >= 1.1.0; only for clients registered
-      before pinning was introduced does the AuthS fall back to the previous
-      behaviour and take the value from here (policy-engine-client-data.yaml,
-      binding_status).
-    enum:
-      - android
-      - apple
-      - software
-      - tpm
-  posture:
-    description: The posture of the client instance. The structure depends on the platform.
-    $ref: "./posture.yaml"
+
   attestation_timestamp:
     description: The attestation timestamp of the client instance
     type: integer
     format: unix-time
-required:
-  - sub
-  - platform
-  - posture_type
-  - posture
-  - attestation_timestamp

@@ -6,7 +6,7 @@
 # - HARDWARE
 # etc
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "2.0.0"
+schemaVersion: "2.0.1"
 title: Android Posture
 description: >-
   The posture of the client instance. The structure depends on the platform.
@@ -33,8 +33,11 @@ description: >-
   registrierten Schlüssel; nur posture_c14n ist vom Client wählbar.
 
   Der AuthS MUSS vor jeder Verwendung der Posture-Daten
-  1. nonce als von ihm ausgestellt, unverbraucht und nicht abgelaufen prüfen
-     und als verbraucht markieren,
+  1. nonce als von ihm ausgestellt, unverbraucht und nicht abgelaufen prüfen.
+     Dieselbe Nonce steht im selben Token-Request auch im DPoP Proof und – bei
+     Token Exchange – im Subject Token; der AuthS prüft alle Fundstellen auf
+     Gleichheit und markiert die Nonce erst nach Abschluss aller Prüfungen
+     dieses Requests genau einmal als verbraucht,
   2. clientDataHash selbst nachrechnen; puk_client_sig bildet er aus dem im
      Registrierungsdatensatz hinterlegten Client Instance Key, gegen den er
      auch die Signatur der Client Assertion prüft (nicht aus einem

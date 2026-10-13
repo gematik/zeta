@@ -3,7 +3,7 @@
 # Served at GET <iss>/.well-known/openid-federation
 # (Content-Type: application/entity-statement+jwt).
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.0.1"
+schemaVersion: "1.0.2"
 title: ZETA Guard Authorization Server Entity Statement
 description: >-
   Entity Configuration des ZETA Guard Authorization Servers (AuthS) in der
@@ -11,7 +11,18 @@ description: >-
   ist gegenüber den sektoralen IDPs Relying Party (Metadatenblock
   openid_relying_party) und veröffentlicht zusätzlich die Schlüssel, mit denen
   andere ZETA Guards seine ZETA Attestation Token prüfen
-  (Metadatenblock oauth_authorization_server, gemSpec_ZETA A_25668-01).
+  (Metadatenblock oauth_authorization_server, gemSpec_ZETA A_29915-01).
+  Korrektur 1.0.2 (nur Beschreibung): Verweis A_25668-01 → A_29915-01; die
+  Prüfung der ZETA Attestation Token erfolgt durch den Authorization Server
+  des Ziel-Guards, nicht durch dessen PEP.
+  Zusätzlich in 1.0.2 für Codegeneratoren umgestellt, ohne Änderung der
+  gültigen Instanzen: const-Werte tragen type: string; Regeln, die bisher als
+  allOf bzw. oneOf an Objekten, Arrays und Strings standen ("genau eines von",
+  "enthält sowohl … als auch …", zwei Muster), stehen als if/then/else bzw.
+  not/contains. Generatoren werten diese Schlüsselwörter nicht aus und bilden
+  daraus keine Union- oder Hilfstypen; ein JSON-Schema-Validator prüft sie
+  unverändert. Einzige inhaltliche Ergänzung: federation_entity nennt die drei
+  in der Beschreibung genannten Felder mit Typ.
 
   Nicht in draft-07 ausdrückbare Regeln, die zusätzlich gelten:
   (1) payload.iss und payload.sub sind identisch (OpenID Federation 1.1, Entity
@@ -87,11 +98,18 @@ properties:
             type: array
             minItems: 1
             items:
-              allOf:
-                - $ref: "#/definitions/ecP256Jwk"
-                - properties:
-                    use:
-                      const: sig
+              $ref: "#/definitions/ecP256Jwk"
+            # Alle Schlüssel haben use = sig: use ist in ecP256Jwk Pflicht und
+            # auf sig | enc beschränkt, also genügt "kein Element mit enc".
+            not:
+              contains:
+                type: object
+                properties:
+                  use:
+                    type: string
+                    const: enc
+                required:
+                  - use
         required:
           - keys
       authority_hints:
@@ -148,7 +166,17 @@ properties:
               Optional. Informationen zur Organisation des Betreibers gemäß
               OpenID Federation 1.1 (z. B. organization_name, contacts,
               homepage_uri). Der AuthS ist Leaf Entity und veröffentlicht
-              keine Federation-Endpunkte.
+              keine Federation-Endpunkte. Weitere Felder sind zulässig.
+            properties:
+              organization_name:
+                type: string
+              contacts:
+                type: array
+                items:
+                  type: string
+              homepage_uri:
+                type: string
+                format: uri
         required:
           - openid_relying_party
           - oauth_authorization_server
@@ -193,8 +221,10 @@ definitions:
       der den Erzeugungszeitpunkt widerspiegelt (A_28208).
     properties:
       kty:
+        type: string
         const: EC
       crv:
+        type: string
         const: P-256
       x:
         type: string
@@ -249,22 +279,29 @@ definitions:
         type: array
         items:
           $ref: "#/definitions/ecP256Jwk"
-        allOf:
-          - contains:
-              type: object
-              properties:
-                use:
-                  const: sig
-              required:
-                - use
-                - x5c
-          - contains:
-              type: object
-              properties:
-                use:
-                  const: enc
-              required:
-                - use
+        # (a) mindestens ein Schlüssel mit use = sig und x5c
+        contains:
+          type: object
+          properties:
+            use:
+              type: string
+              const: sig
+          required:
+            - use
+            - x5c
+        # (b) mindestens ein Schlüssel mit use = enc. Ein zweites contains ist
+        # je Schema nicht möglich; if trifft für jedes Array zu.
+        if:
+          type: array
+        then:
+          contains:
+            type: object
+            properties:
+              use:
+                type: string
+                const: enc
+            required:
+              - use
     required:
       - keys
 
@@ -301,13 +338,16 @@ definitions:
           "product_type_version:2.0.0".
         items:
           type: string
-        allOf:
-          - contains:
-              type: string
-              pattern: "^product_type:.+$"
-          - contains:
-              type: string
-              pattern: "^product_type_version:.+$"
+        contains:
+          type: string
+          pattern: "^product_type:.+$"
+        # Zweites contains über if/then (if trifft für jedes Array zu).
+        if:
+          type: array
+        then:
+          contains:
+            type: string
+            pattern: "^product_type_version:.+$"
       contacts:
         type: array
         description: MUSS eine E-Mail-Adresse für Supportanfragen enthalten.
@@ -338,18 +378,21 @@ definitions:
       response_types:
         type: array
         items:
+          type: string
           const: code
         minItems: 1
         maxItems: 1
       client_registration_types:
         type: array
         items:
+          type: string
           const: automatic
         minItems: 1
         maxItems: 1
       grant_types:
         type: array
         items:
+          type: string
           const: authorization_code
         minItems: 1
         maxItems: 1
@@ -366,6 +409,7 @@ definitions:
           und erfüllt A_23004-01 damit auch ohne dieses Feld. Wird es gesetzt,
           dann nur mit gematik-ehealth-loa-high.
         items:
+          type: string
           const: gematik-ehealth-loa-high
         minItems: 1
         maxItems: 1
@@ -397,9 +441,13 @@ definitions:
           urn:telematik:claims:organization = IK-Nummer der Kasse).
           Eine per urn:telematik:email erhaltene Adresse ist vom AuthS vor der
           Verwendung zu verifizieren.
-        allOf:
-          - pattern: "^(.+ )?openid( .+)?$"
-          - pattern: "^(openid|urn:telematik:(geburtsdatum|alter|display_name|family_name|given_name|geschlecht|email|versicherter))( (openid|urn:telematik:(geburtsdatum|alter|display_name|family_name|given_name|geschlecht|email|versicherter)))*$"
+        pattern: "^(openid|urn:telematik:(geburtsdatum|alter|display_name|family_name|given_name|geschlecht|email|versicherter))( (openid|urn:telematik:(geburtsdatum|alter|display_name|family_name|given_name|geschlecht|email|versicherter)))*$"
+        # Zweites Muster (enthält "openid") über if/then; if trifft für jeden
+        # String zu.
+        if:
+          type: string
+        then:
+          pattern: "^(.+ )?openid( .+)?$"
       ti_features_supported:
         type: object
         description: Unterstützte TI-Feature-Versionen (A_27505, Tabelle 6).
@@ -414,19 +462,32 @@ definitions:
               enum:
                 - "1.0.0"
                 - "2.0.0"
-            uniqueItems: true
-            allOf:
-              - contains:
-                  const: "1.0.0"
-              - contains:
-                  const: "2.0.0"
+            contains:
+              type: string
+              const: "1.0.0"
+            # uniqueItems steht im then-Zweig (if trifft für jedes Array zu):
+            # direkt am Array macht openapi-generator daraus ein Set von
+            # Enum-Werten, dessen Java-Code nicht kompiliert.
+            if:
+              type: array
+            then:
+              uniqueItems: true
+              contains:
+                type: string
+                const: "2.0.0"
         required:
           - id_token_version_supported
-    oneOf:
-      - required:
-          - jwks
-      - required:
+    # Genau eines von jwks und signed_jwks_uri.
+    if:
+      required:
+        - jwks
+    then:
+      not:
+        required:
           - signed_jwks_uri
+    else:
+      required:
+        - signed_jwks_uri
     required:
       - client_name
       - organization_name
@@ -448,8 +509,9 @@ definitions:
     type: object
     description: >-
       Metadatenblock oauth_authorization_server (RFC 8414 über OpenID Federation
-      1.1). Über ihn beziehen PEPs anderer ZETA Guards die Schlüssel, mit denen
-      sie ZETA Attestation Token (A_29915) dieses AuthS prüfen. Die Werte
+      1.1). Über ihn beziehen die Authorization Server anderer ZETA Guards die
+      Schlüssel, mit denen sie ZETA Attestation Token (A_29915-01) dieses AuthS
+      prüfen. Die Werte
       entsprechen as-well-known.yaml; hier ist nur das für die Föderation
       erforderliche Minimum festgelegt.
     properties:
@@ -476,18 +538,34 @@ definitions:
               type: object
               properties:
                 use:
+                  type: string
                   const: sig
               required:
                 - kty
                 - kid
         required:
           - keys
-    oneOf:
-      - required:
-          - jwks
-      - required:
+    # Genau eines von jwks, jwks_uri und signed_jwks_uri.
+    if:
+      required:
+        - jwks
+    then:
+      not:
+        anyOf:
+          - required:
+              - jwks_uri
+          - required:
+              - signed_jwks_uri
+    else:
+      if:
+        required:
           - jwks_uri
-      - required:
+      then:
+        not:
+          required:
+            - signed_jwks_uri
+      else:
+        required:
           - signed_jwks_uri
     required:
       - issuer

@@ -7,7 +7,7 @@
 #   - beim PAR zur erneuten Prüfung der registrierten redirect_uri (A_xxxx3),
 #   - für die redirect_uris im Entity Statement (A_25656-01).
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.0.0"
+schemaVersion: "1.0.1"
 title: ZETA Redirect URIs
 description: >-
   Von der gematik bereitgestellte Zuordnung der registrierten redirect_uris zur
@@ -62,13 +62,17 @@ definitions:
         uniqueItems: true
         items:
           $ref: "#/definitions/redirectUri"
-        allOf:
-          - contains:
-              type: string
-              pattern: '/oidc$'
-          - contains:
-              type: string
-              pattern: '/app$'
+        contains:
+          type: string
+          pattern: '/oidc$'
+        # Zweites contains über if/then (if trifft für jedes Array zu); als allOf
+        # am Array bilden Codegeneratoren daraus einen untypisierten Wert.
+        if:
+          type: array
+        then:
+          contains:
+            type: string
+            pattern: '/app$'
     required:
       - redirect_uris
 

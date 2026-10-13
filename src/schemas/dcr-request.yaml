@@ -1,5 +1,5 @@
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.1.3"
+schemaVersion: "1.2.0"
 title: RegistrationRequest
 description: >-
   Payload Schema für den DCR POST /register Body.
@@ -25,13 +25,67 @@ description: >-
   Präzisierung 1.1.3 (keine neuen Felder): Dokumentation der optionalen
   Übernahme von Paketnamen und Signaturzertifikat-Digests aus der
   attestationApplicationId des Android-Blatt-Zertifikats an die Policy Engine.
+  Ergänzung 1.2.0 (abwärtskompatibel, kein required-Block erweitert):
+  (a) TPM-Zweig: optionale Felder nonce, client_key_pop,
+  tpm_client_key_public, tpm_certify_info und tpm_certify_signature. Bis 1.1.3
+  enthielt der TPM-Zweig als einziger weder einen Besitznachweis des Client
+  Instance Keys noch einen Nachweis, dass dieser im TPM liegt. Die neuen
+  Nachweise sind nur mit nonce zulässig (dependencies im TPM-Zweig); eine
+  Legacy-Form ohne Nonce gibt es für sie nicht. (b) grant_types ist in
+  definitions/grant_types beschrieben und wird von allen Zweigen referenziert;
+  die zulässigen Kombinationen stehen dort. (c) Struktur für Codegeneratoren,
+  ohne Änderung der gültigen Instanzen: Die fünf Zweige sind benannte
+  Definitionen (definitions/registration_*), jwks ist einmal definiert
+  (definitions/client_jwks), Binärfelder tragen contentEncoding (base64 bzw.
+  base64url).
+
+  Auswahl des Zweigs: attestation_type lesen; fehlt das Feld, gilt "software"
+  (Requests nach Schema 1.0.0). tpm | apple | android | zeta_attestation_token
+  | software bestimmen den Zweig; jeder andere Wert ist ungültig. Das Schema
+  trägt dafür einen discriminator auf attestation_type (Hinweis für
+  Codegeneratoren, ohne Wirkung auf die Validierung). Ein Server, der
+  generierten Code verwendet, MUSS vor dem Binding attestation_type =
+  "software" ergänzen, wenn das Feld fehlt – sonst kann der generierte Code
+  einen Request nach Schema 1.0.0 nicht zuordnen. Generierte Typen prüfen
+  required, const und dependencies in der Regel nicht; der Request ist
+  zusätzlich mit einem JSON-Schema-Validator gegen dieses Schema zu prüfen.
 type: object
 
+
+# Die fünf Zweige stehen als benannte Definitionen unter definitions/
+# (registration_*), damit Codegeneratoren stabile Typnamen bilden. Die Zweige
+# schließen sich über den const-Wert von attestation_type aus.
 oneOf:
+  - $ref: "#/definitions/registration_tpm"
+  - $ref: "#/definitions/registration_apple"
+  - $ref: "#/definitions/registration_android"
+  - $ref: "#/definitions/registration_zeta_attestation_token"
+  - $ref: "#/definitions/registration_software"
+# `discriminator` ist ein OpenAPI-Konstrukt (kein draft-07-Keyword). JSON-Schema-
+# Validatoren ignorieren es; die Gültigkeit eines Requests ändert sich dadurch
+# nicht. Es ist ein Hinweis für Codegeneratoren: Ohne ihn führt
+# openapi-generator (Kotlin) die fünf Zweige zu EINER Klasse zusammen, in der
+# alle Pflichtfelder aller Zweige Pflicht sind.
+# attestation_type ist im Zweig registration_software optional (Requests nach
+# Schema 1.0.0). Generierter Code kann einen Request ohne das Feld nicht
+# zuordnen; ein Server setzt deshalb vor dem Binding attestation_type =
+# "software", wenn das Feld fehlt (siehe Beschreibung, Auswahl des Zweigs).
+discriminator:
+  propertyName: attestation_type
+  mapping:
+    tpm: "#/definitions/registration_tpm"
+    apple: "#/definitions/registration_apple"
+    android: "#/definitions/registration_android"
+    zeta_attestation_token: "#/definitions/registration_zeta_attestation_token"
+    software: "#/definitions/registration_software"
+
+definitions:
   # -----------------------------------------------------------------
   # 1. TPM Hardware Attestation (Windows / Linux)
   # -----------------------------------------------------------------
-  - title: TPM Attestation
+  registration_tpm:
+    title: TPM Attestation
+    type: object
     required:
       - attestation_type
       - client_name
@@ -40,49 +94,153 @@ oneOf:
       - c_ek_enc
       - puk_ak_sig
       - signed_hash_puk_client_sig
+    # Die in 1.2.0 ergänzten Nachweise sind nur mit nonce und nur vollständig
+    # zulässig. dependencies (draft-07) statt allOf mit if/then: kein
+    # Kompositions-Schlüsselwort im Zweig, das Codegeneratoren als Vererbung
+    # oder Hilfstyp deuten. Generatoren ignorieren die Regel; sie wird zur
+    # Laufzeit vom JSON-Schema-Validator geprüft.
+    dependencies:
+      client_key_pop: [nonce]
+      tpm_certify_info: [nonce, tpm_certify_signature, tpm_client_key_public]
+      tpm_certify_signature: [tpm_certify_info]
+      tpm_client_key_public: [tpm_certify_info]
     properties:
       attestation_type:
         type: string
         const: tpm
       client_name: { type: string }
       token_endpoint_auth_method: { type: string }
-      grant_types:
-        type: array
-        items: { type: string }
+      grant_types: { $ref: "#/definitions/grant_types" }
       redirect_uris: { $ref: "#/definitions/redirect_uris" }
-      jwks:
-        description: >-
-          Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
-        type: object
-        properties:
-          keys:
-            type: array
-            items: { $ref: "#/definitions/jwk" }
-        required: [keys]
+      jwks: { $ref: "#/definitions/client_jwks" }
       platform:        { $ref: "#/definitions/platform" }
       product_id:      { $ref: "#/definitions/product_id" }
       product_version: { $ref: "#/definitions/product_version" }
       puk_ek_enc:
         type: string
+        contentEncoding: base64
         description: >-
           Öffentlicher Endorsement Key (EK) des TPM als Base64-kodierte 
           TPM2B_PUBLIC Struktur. Wird zur MakeCredential-Operation verwendet.
       c_ek_enc:
         type: string
+        contentEncoding: base64
         description: >-
           Zertifikat des Endorsement Key (EK) des TPM im DER Format Base64-kodiert.
       puk_ak_sig:
         type: string
+        contentEncoding: base64
         description: >-
           Öffentlicher Attestation Key (AK) des TPM (Base64-kodierte TPM2B_PUBLIC-Bytes).
           Wird vom AuthS zur Verifikation der TPM-Quote und von
           signed_hash_puk_client_sig verwendet.
       signed_hash_puk_client_sig:
         type: string
+        contentEncoding: base64url
         description: >-
           Signatur des SHA-256-Hashes von puk_client_sig, erstellt mit
           dem TPM Attestation Key (prk_ak_sig). Base64url-kodiert.
           Signaturformat: definitions/hash_signature.
+          Achtung: Anders als in den Zweigen Apple, Android und Fast-Path ist
+          dies KEINE Selbstsignatur mit prk_client_sig, sondern eine
+          AK-Signatur (funktional ein attestation_pop). Den Besitz des Client
+          Instance Keys weist client_key_pop nach.
+      # Im TPM-Zweig Pflicht, sobald client_key_pop oder tpm_certify_info
+      # gesendet wird (dependencies). signed_hash_puk_client_sig (AK-Signatur)
+      # bleibt unverändert ohne Nonce.
+      nonce: { $ref: "#/definitions/nonce" }
+      client_key_pop:
+        type: string
+        contentEncoding: base64url
+        description: >-
+          Selbstsignatur: Signatur über SHA-256(puk_client_sig || nonce),
+          erstellt mit prk_client_sig (Proof-of-Possession des Client Instance
+          Keys). Hash-Eingabe nach definitions/puk_client_sig_bytes und
+          definitions/nonce. Base64url-kodiert, Signaturformat:
+          definitions/hash_signature. Entspricht signed_hash_puk_client_sig
+          der übrigen Zweige in der Form mit Nonce.
+          Verhindert, dass ein Inhaber eines gültigen Attestation Keys einen
+          fremden öffentlichen Schlüssel registriert und dessen spätere
+          Registrierung per 409 registrationConflict blockiert. Das gilt nur,
+          weil die Nonce eingeht: Eine Signatur über SHA-256(puk_client_sig)
+          allein wäre statisch und von jedem wiederverwendbar, der einen
+          Registrierungs-Request gesehen hat. Der MakeCredential-Handshake
+          ersetzt die Nonce hier nicht – er belegt die Frische des Attestation
+          Keys, nicht die des Client Instance Keys. Eine Form ohne nonce ist
+          deshalb unzulässig.
+          Optional aus Kompatibilitätsgründen (in Schema ≤ 1.1.3 nicht
+          vorhanden): Ist das Feld vorhanden, prüft der AuthS Nonce und
+          Signatur und lehnt bei Fehlschlag ab; fehlt es, registriert er wie
+          bisher und SOLL das Fehlen protokollieren. Neue
+          Client-Implementierungen SOLLEN es setzen. Ob der Nachweis vorlag,
+          führt der AuthS als client_key_binding im Registrierungsdatensatz
+          (dcr-response.yaml) und übergibt es der Policy Engine; solange das
+          Feld weggelassen werden darf, entsteht die Schutzwirkung erst
+          dadurch, dass die Policy client_key_binding auswertet.
+          Signatur mit dem Client Instance Key als gewöhnlichem (nicht
+          restricted) Signaturschlüssel: TPM2_Sign über SHA-256(h) ohne
+          Validierungsticket; der TPM-Sonderfall aus definitions/hash_signature
+          gilt hier nicht.
+      tpm_client_key_public:
+        type: string
+        contentEncoding: base64
+        description: >-
+          Optional. Öffentlicher Bereich des Client Instance Keys, wie ihn das
+          TPM führt (Base64-kodierte TPM2B_PUBLIC-Bytes, Kodierung wie
+          puk_ak_sig). Nötig für die Prüfung von tpm_certify_info: Der dort
+          zertifizierte Name ist nameAlg || Hash(TPMT_PUBLIC) und umfasst
+          Attribute, authPolicy und Parameter; aus dem JWK in jwks lässt er
+          sich nicht berechnen. Der AuthS prüft: type = TPM_ALG_ECC, curveID =
+          TPM_ECC_NIST_P256, unique (x, y) ist derselbe Punkt wie im JWK aus
+          jwks; nameAlg = TPM_ALG_SHA256 (ein Name mit SHA-1 wird abgelehnt);
+          objectAttributes enthält fixedTPM, fixedParent,
+          sensitiveDataOrigin und sign, nicht restricted und nicht decrypt.
+          Nur zusammen mit tpm_certify_info zulässig.
+      tpm_certify_info:
+        type: string
+        contentEncoding: base64
+        description: >-
+          Optional. Base64-kodierte TPM2B_ATTEST-Struktur (Kodierung wie
+          puk_ak_sig) aus TPM2_Certify über den Client Instance Key, signiert
+          mit dem Attestation Key. Belegt, dass PrK.Client.Sig ein Schlüssel im
+          selben TPM ist wie der Attestation Key. Auslegung von
+          Abb-ZETA-TPM-Attestation-Key, Schritte (04)–(05): Die Spec spricht
+          dort von einem "TPM2 Attest" und nennt das Kommando nicht.
+          Der Client übergibt als qualifyingData die UTF-8-Bytes der nonce.
+          Der AuthS prüft an der enthaltenen TPMS_ATTEST:
+          (1) magic = TPM_GENERATED_VALUE und type = TPM_ST_ATTEST_CERTIFY;
+          (2) extraData = UTF-8-Bytes der nonce, die Nonce ist von ihm
+          ausgestellt, unverbraucht und nicht abgelaufen;
+          (3) attested.certify.name = Name des Schlüssels aus
+          tpm_client_key_public, d. h. nameAlg || Hash(TPMT_PUBLIC), und
+          tpm_client_key_public besteht die dort genannten Prüfungen (u. a.
+          derselbe Punkt wie im JWK aus jwks);
+          (4) tpm_certify_signature ist eine gültige Signatur des in
+          puk_ak_sig übermittelten Attestation Keys über die TPMS_ATTEST-Bytes
+          (ohne das Längenpräfix der TPM2B_ATTEST).
+          Zulässig für tpm_certify_signature sind TPM_ALG_ECDSA und
+          TPM_ALG_RSASSA, jeweils mit hashAlg TPM_ALG_SHA256, passend zum
+          Schlüsseltyp des Attestation Keys.
+          Reihenfolge: Bei POST /register ist der Attestation Key noch nicht
+          als TPM-Schlüssel belegt. Das Ergebnis der Prüfung gilt erst, wenn
+          der MakeCredential-Handshake über POST /register/verify erfolgreich
+          war; scheitert er, verwirft der AuthS es mit der Registrierung.
+          Das Ergebnis führt der AuthS als client_key_binding im
+          Registrierungsdatensatz (dcr-response.yaml) und übergibt es der
+          Policy Engine (policy-engine-client-data.yaml).
+          Nur bei erfolgreicher Prüfung gilt der Client Instance Key als
+          hardware-gebunden; ohne das Feld ist die Hardware-Bindung von
+          PrK.Client.Sig eine Selbstauskunft des Clients. Nur zusammen mit
+          nonce, tpm_certify_signature und tpm_client_key_public zulässig
+          (dependencies im Zweig). Setzt voraus, dass der Client Instance Key im TPM
+          erzeugt wurde.
+      tpm_certify_signature:
+        type: string
+        contentEncoding: base64
+        description: >-
+          Optional. Base64-kodierte TPMT_SIGNATURE (Kodierung wie puk_ak_sig)
+          zu tpm_certify_info, erstellt mit dem Attestation Key. Nur zusammen
+          mit tpm_certify_info zulässig.
 
   # -----------------------------------------------------------------
   # 2. Apple Hardware Attestation (iOS, iPadOS & macOS)
@@ -91,7 +249,9 @@ oneOf:
   # iPadOS und macOS identisch: gleiches CBOR-Format, gleiche Felder
   # (attStmt mit x5c + receipt, authData) und gleiches Key-Binding.
   # -----------------------------------------------------------------
-  - title: Apple Attestation
+  registration_apple:
+    title: Apple Attestation
+    type: object
     required:
       - attestation_type
       - client_name
@@ -108,24 +268,15 @@ oneOf:
         const: apple
       client_name: { type: string }
       token_endpoint_auth_method: { type: string }
-      grant_types:
-        type: array
-        items: { type: string }
+      grant_types: { $ref: "#/definitions/grant_types" }
       redirect_uris: { $ref: "#/definitions/redirect_uris" }
-      jwks:
-        description: >-
-          Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
-        type: object
-        properties:
-          keys:
-            type: array
-            items: { $ref: "#/definitions/jwk" }
-        required: [keys]
+      jwks: { $ref: "#/definitions/client_jwks" }
       platform:        { $ref: "#/definitions/platform" }
       product_id:      { $ref: "#/definitions/product_id" }
       product_version: { $ref: "#/definitions/product_version" }
       apple_attestation_object:
         type: string
+        contentEncoding: base64
         description: >-
           CBOR-kodiertes Attestation-Objekt der Apple App Attest API
           (fmt: "apple-appattest"). Enthält attStmt (x5c-Zertifikatskette inkl.
@@ -133,6 +284,7 @@ oneOf:
           Base64-kodiert.
       signed_hash_puk_client_sig:
         type: string
+        contentEncoding: base64url
         description: >-
           Selbstsignatur: Signatur des SHA-256-Hashes von PuK.Client.Sig,
           erstellt mit PrK.Client.Sig (Proof-of-Possession des Client
@@ -150,7 +302,9 @@ oneOf:
   # Attestation Root CA. Optional kann ein Play Integrity Token zur
   # zusätzlichen App-Integritätsprüfung mitgeliefert werden.
   # -----------------------------------------------------------------
-  - title: Android Attestation
+  registration_android:
+    title: Android Attestation
+    type: object
     required:
       - attestation_type
       - client_name
@@ -163,19 +317,9 @@ oneOf:
         const: android
       client_name: { type: string }
       token_endpoint_auth_method: { type: string }
-      grant_types:
-        type: array
-        items: { type: string }
+      grant_types: { $ref: "#/definitions/grant_types" }
       redirect_uris: { $ref: "#/definitions/redirect_uris" }
-      jwks:
-        description: >-
-          Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
-        type: object
-        properties:
-          keys:
-            type: array
-            items: { $ref: "#/definitions/jwk" }
-        required: [keys]
+      jwks: { $ref: "#/definitions/client_jwks" }
       platform:        { $ref: "#/definitions/platform" }
       product_id:      { $ref: "#/definitions/product_id" }
       product_version: { $ref: "#/definitions/product_version" }
@@ -198,10 +342,12 @@ oneOf:
           Keymaster-Zertifikate keine attestationApplicationId enthalten).
         items:
           type: string
+          contentEncoding: base64
           description: Base64-kodiertes DER X.509-Zertifikat.
         minItems: 3
       signed_hash_puk_client_sig:
         type: string
+        contentEncoding: base64url
         description: >-
           Selbstsignatur: Signatur des SHA-256-Hashes von puk_client_sig,
           erstellt mit prk_client_sig (Proof-of-Possession des Client
@@ -229,7 +375,9 @@ oneOf:
   # (cnf.jwk) aus dem Token, um attestation_pop plattformspezifisch
   # zu verifizieren (apple: CBOR-Assertion; android/tpm: rohe Signatur).
   # -----------------------------------------------------------------
-  - title: ZETA Attestation Token
+  registration_zeta_attestation_token:
+    title: ZETA Attestation Token
+    type: object
     required:
       - attestation_type
       - client_name
@@ -243,19 +391,9 @@ oneOf:
         const: zeta_attestation_token
       client_name: { type: string }
       token_endpoint_auth_method: { type: string }
-      grant_types:
-        type: array
-        items: { type: string }
+      grant_types: { $ref: "#/definitions/grant_types" }
       redirect_uris: { $ref: "#/definitions/redirect_uris" }
-      jwks:
-        description: >-
-          Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
-        type: object
-        properties:
-          keys:
-            type: array
-            items: { $ref: "#/definitions/jwk" }
-        required: [keys]
+      jwks: { $ref: "#/definitions/client_jwks" }
       platform:        { $ref: "#/definitions/platform" }
       product_id:      { $ref: "#/definitions/product_id" }
       product_version: { $ref: "#/definitions/product_version" }
@@ -268,6 +406,7 @@ oneOf:
           Plattform-Claims. Siehe zeta-attestation-token.yaml.
       signed_hash_puk_client_sig:
         type: string
+        contentEncoding: base64url
         description: >-
           Selbstsignatur: Signatur des SHA-256-Hashes von puk_client_sig,
           erstellt mit prk_client_sig (Proof-of-Possession des Client
@@ -310,7 +449,9 @@ oneOf:
   # -----------------------------------------------------------------
   # 5. Legacy / Software Attestation
   # -----------------------------------------------------------------
-  - title: Legacy / Software Attestation
+  registration_software:
+    title: Legacy / Software Attestation
+    type: object
     # required bleibt gegenüber Schema 1.0.0 unverändert. nonce und
     # signed_hash_puk_client_sig sind optional, damit bestehende Clients
     # weiter registrieren können; ohne sie ist die Registrierung NICHT an
@@ -320,13 +461,16 @@ oneOf:
       - jwks
       - token_endpoint_auth_method
     properties:
+      # Optional (Abwärtskompatibilität zu 1.0.0): fehlt das Feld, gilt
+      # "software".
       attestation_type:
         type: string
-        enum: [software]
+        const: software
       client_name: { type: string }
       nonce: { $ref: "#/definitions/nonce" }
       signed_hash_puk_client_sig:
         type: string
+        contentEncoding: base64url
         description: >-
           Selbstsignatur über SHA-256(puk_client_sig || nonce), erstellt mit
           prk_client_sig. Base64url-kodiert, Signaturformat:
@@ -340,24 +484,97 @@ oneOf:
           Besitznachweis. Neue Client-Implementierungen SOLLEN es zusammen
           mit nonce setzen; der AuthS SOLL das Fehlen protokollieren.
       token_endpoint_auth_method: { type: string }
-      grant_types:
-        type: array
-        items: { type: string }
+      grant_types: { $ref: "#/definitions/grant_types" }
       redirect_uris: { $ref: "#/definitions/redirect_uris" }
-      jwks:
-        description: >-
-          Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
-        type: object
-        properties:
-          keys:
-            type: array
-            items: { $ref: "#/definitions/jwk" }
-        required: [keys]
+      jwks: { $ref: "#/definitions/client_jwks" }
       platform:        { $ref: "#/definitions/platform" }
       product_id:      { $ref: "#/definitions/product_id" }
       product_version: { $ref: "#/definitions/product_version" }
 
-definitions:
+  # -----------------------------------------------------------------
+  # Gemeinsame Felddefinitionen
+  # -----------------------------------------------------------------
+  # Name client_jwks, nicht jwks: zeta-guard-client-management.yaml führt
+  # bereits components/schemas/Jwks; beide ergäben denselben Typnamen.
+  client_jwks:
+    type: object
+    description: >-
+      Öffentlicher Client-Signaturschlüssel (ECDSA P-256).
+    properties:
+      keys:
+        type: array
+        items: { $ref: "#/definitions/jwk" }
+    required: [keys]
+  grant_types:
+    type: array
+    description: >-
+      OAuth 2.0 Grant-Typen, die der Client am Token-Endpunkt verwenden wird
+      (RFC 7591).
+
+      Aus gemSpec_ZETA 2.0.0:
+      - Der AuthS lehnt am Token-Endpunkt jeden Grant-Typ ab, der hier nicht
+        registriert wurde (unauthorized_client, A_30364).
+      - Der AuthS leitet aus dem Feld den Lebenszyklus der Registrierung ab;
+        die Plattform ist dafür nicht maßgeblich (A_30086).
+      - Enthält das Feld "authorization_code", ist es eine mobile,
+        identitätsgebundene Registrierung (Status pending_user_binding,
+        A_30086).
+      - Enthält es ausschließlich
+        "urn:ietf:params:oauth:grant-type:jwt-bearer", ist es eine
+        identitätslose Registrierung (Status registered, A_29894).
+      - "urn:ietf:params:oauth:grant-type:jwt-bearer" zusammen mit
+        "authorization_code" lehnt der AuthS mit invalid_client_metadata ab
+        (A_29894).
+
+      Präzisierung dieses Schemas. Sie steht so NICHT in gemSpec_ZETA 2.0.0
+      und weicht in (2) vom Wortlaut von A_29894 ("ausschließlich") ab; sie
+      setzt einen Änderungsvorschlag an die Spezifikation voraus. Grund: Die
+      Abläufe geben auch identitätslosen Clients ein Refresh Token aus, und
+      mobile Clients lösen das E-Mail-Binding-Token per Token Exchange ein
+      (A_30218). Vorgesehen sind drei Formen:
+      (1) mit "authorization_code": zusätzlich zulässig sind
+          "urn:ietf:params:oauth:grant-type:token-exchange" und
+          "refresh_token". Lebenszyklus pending_user_binding → bound.
+      (2) mit "urn:ietf:params:oauth:grant-type:jwt-bearer", ohne
+          "authorization_code": zusätzlich zulässig ist nur "refresh_token".
+          Identitätslos, Lebenszyklus registered → active.
+      (3) mit "urn:ietf:params:oauth:grant-type:token-exchange", ohne
+          "authorization_code" und ohne jwt-bearer: zusätzlich zulässig ist
+          "refresh_token". Registrierung für den Token Exchange mit SM(C)-B
+          Subject Token, Lebenszyklus registered → active – auf jeder
+          Plattform, auch mit attestation_type apple oder android.
+      Neue Client-Implementierungen MÜSSEN eine der drei Formen senden.
+
+      Verhalten des AuthS bei POST /register (abschließend):
+      - enthält das Feld jwt-bearer UND "authorization_code": Ablehnung mit
+        invalid_client_metadata (A_29894). Das ist die einzige Ablehnung
+        wegen grant_types.
+      - jeder andere Inhalt wird angenommen – auch ein fehlendes Feld, ein
+        leeres Array, "refresh_token" allein, "client_credentials"
+        (Bestands-Requests) und token-exchange zusammen mit jwt-bearer (so
+        nennt es der Ablauf "Software Attestation (Legacy OIDC DCR)" in
+        gemSpec_ZETA 5.3.2.2 Schritt (12)). Das gilt für jeden
+        attestation_type: bis Schema 1.1.3 war das Feld nicht eingeschränkt,
+        eine Ablehnung würde Bestands-Clients brechen.
+      - Lebenszyklus: mit "authorization_code" pending_user_binding, sonst
+        registered (A_30086).
+      Am Token-Endpunkt gilt unabhängig davon A_30364: Der AuthS lässt nur
+      registrierte Grant-Typen zu.
+
+      Nicht geregelt in gemSpec_ZETA 2.0.0 (Spec-Lücke zu grant_types): welche
+      Grant-Typen eine Registrierung OHNE das Feld nutzen darf (der Default
+      "authorization_code" aus RFC 7591 gilt NICHT), und ob eine Registrierung
+      mit token-exchange UND jwt-bearer beide Grants nutzen darf. Das Feld ist
+      im Schema nicht verpflichtend und die Werte sind nicht per enum
+      eingeschränkt.
+    # Kein uniqueItems: bis 1.1.3 waren doppelte Einträge gültig; der AuthS
+    # behandelt das Feld als Menge.
+    items:
+      type: string
+    examples:
+      - ["authorization_code", "urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"]
+      - ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"]
+      - ["urn:ietf:params:oauth:grant-type:jwt-bearer", "refresh_token"]
   puk_client_sig_bytes:
     type: string
     description: >-
@@ -391,7 +608,10 @@ definitions:
       - Kodierung: ECDSA-Signatur als DER (ASN.1 ECDSA-Sig-Value; beim TPM
         aus r und s von TPMS_SIGNATURE_ECDSA zu bilden), RSA-Signatur als
         Oktettstring; jeweils Base64url ohne Padding.
-      - TPM-Sonderfall: TPM2_Hash liefert kein gültiges Ticket, wenn h mit
+      - Der Weg über TPM2_Hash und Validierungsticket gilt nur für den
+        Attestation Key (restricted Signing Key). Für den Client Instance Key
+        im TPM (client_key_pop) genügt TPM2_Sign über den Digest SHA-256(h).
+      - TPM-Sonderfall (nur Attestation Key): TPM2_Hash liefert kein gültiges Ticket, wenn h mit
         TPM_GENERATED_VALUE (0xFF544347) beginnt (Wahrscheinlichkeit 2^-32).
         Der Client bezieht dann eine neue nonce bzw. erzeugt, wo keine nonce
         eingeht, einen neuen Client Instance Key.
@@ -407,10 +627,13 @@ definitions:
       Legacy-Form SHA-256(puk_client_sig) hasht. Eine mitgesendete, aber nicht mitsignierte Nonce hat keine
       Schutzwirkung.
 
-      Relevant für attestation_type "zeta_attestation_token" (Fast-Path) und
-      "software". NICHT vorgesehen für "tpm" (der
-      MakeCredential/ActivateCredential-Handshake liefert bereits eine
-      serverseitig erzeugte Challenge) sowie für "apple" und "android" (die
+      Relevant für attestation_type "zeta_attestation_token" (Fast-Path),
+      "software" und – seit 1.2.0 – "tpm": dort geht die Nonce in
+      client_key_pop und als qualifyingData in tpm_certify_info ein. Für die
+      AK-Signatur signed_hash_puk_client_sig des TPM-Zweigs wird sie nicht
+      verwendet (der MakeCredential/ActivateCredential-Handshake liefert für
+      den Attestation Key bereits eine serverseitig erzeugte Challenge).
+      NICHT vorgesehen für "apple" und "android" (die
       Frische ergibt sich dort aus der Einmaligkeit des Instanzschlüssels im
       clientDataHash bzw. in der attestationChallenge; ein Replay registriert
       nur denselben Schlüssel erneut und nützt ohne dessen privaten Teil
@@ -418,7 +641,9 @@ definitions:
       eingehen und wäre nur mit Client-seitiger Änderung wirksam).
 
       Optional aus Kompatibilitätsgründen; ohne nonce gilt die Legacy-Form des
-      jeweiligen Besitznachweises (siehe dort).
+      jeweiligen Besitznachweises (siehe dort). Ausnahme: client_key_pop und
+      tpm_certify_info im TPM-Zweig haben keine Legacy-Form und sind ohne
+      nonce unzulässig.
 
   platform:
     type: string

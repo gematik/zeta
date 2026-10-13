@@ -1,16 +1,59 @@
-openapi: 3.0.0
+openapi: 3.1.0
 info:
-  schemaVersion: "1.0.0"
   title: OAuth 2.0 Token Endpoint (RFC 6749 Section 3.2)
-  version: 1.0.0
+  version: 1.1.0
+  description: |
+    Token endpoint of the ZETA Guard Authorization Server.
+
+    Changes 1.0.0 -> 1.1.0: the `grant_type` list is reduced to the grants ZETA actually
+    uses (`password` and the parameters `username`, `password`, `client_secret` are removed,
+    `urn:ietf:params:oauth:grant-type:jwt-bearer` is added); the parameters `code_verifier`,
+    `assertion` and the `DPoP` header are added; error responses reference `zeta-error.yaml`
+    and cover 401, 403, 429 and 503. Two points are stipulations of this file that
+    gemSpec_ZETA 2.0.0 does not state: the selection of the token-exchange variant by
+    `subject_token_type`, and the answer 503 `temporarily_unavailable` when the Policy
+    Engine cannot be reached.
+
+    Every request is authenticated with a `private_key_jwt` client assertion (RFC 7523) and
+    carries a DPoP proof (RFC 9449); requests without them are rejected (A_25659).
 servers:
   - url: https://as.example.com
 paths:
   /token:
     post:
+      operationId: requestToken
       summary: Request an access token
       description: |
         The client exchanges an authorization grant for an access token.
+
+        Supported grants:
+          * `urn:ietf:params:oauth:grant-type:token-exchange` (RFC 8693). The meaning is
+            selected by `subject_token_type`:
+              - `urn:ietf:params:oauth:token-type:jwt` — SM(C)-B signed subject token
+                (`subject-token-smb.yaml`, A_25645-01);
+              - `urn:ietf:params:oauth:token-type:access_token` — redemption of the
+                down-scoped email-binding token for full tokens (A_30218).
+          * `authorization_code` — outer Authorization Code Flow of mobile clients with
+            PKCE (`code`, `redirect_uri` = app_redirect_uri, `code_verifier`), A_29672.
+          * `urn:ietf:params:oauth:grant-type:jwt-bearer` (RFC 7523 section 2.1) —
+            authentication without user identity (`assertion`), A_29733.
+          * `refresh_token` — renewal with refresh token rotation (A_25662-01).
+
+        Target of the token (contract versioning, A_29693): contract v2 clients send
+        `resource` (RFC 8707) and `scope`; the `aud` claim is taken from the Policy Engine
+        decision and the token carries `ver: 2`. Contract v1 (legacy) clients send
+        `audience`; the value is written verbatim into `aud` and the token carries
+        `ver: 1`. `resource` and `audience` are never combined. Requests that open a
+        session (token exchange with an SM(C)-B subject token, `authorization_code`,
+        `jwt-bearer`) carry exactly one of them. With `refresh_token` both are optional
+        (A_29843: a refresh MAY name another `resource` and `scope`); the redemption of
+        the email-binding token carries the target of the original request. A `resource`
+        that names an unsupported target is rejected with `invalid_target` (A_29694).
+
+        Which parameters a grant requires is stated per parameter below. The form schema
+        itself only requires the parameters common to all grants; it deliberately has no
+        `oneOf` per `grant_type`, because code generators map that to an untyped union.
+        The Authorization Server validates the grant-specific parameters itself.
 
         ZETA identity binding (A_30085, A_29905): if the
         `authorization_code` grant is presented while the client registration is
@@ -41,7 +84,19 @@ paths:
         the endpoint answers `400 invalid_grant`. If the email-binding token expires
         before the binding completes, the client restarts with a new OIDC authorization
         request.
+      parameters:
+        - name: DPoP
+          in: header
+          required: true
+          description: >-
+            DPoP proof JWT (RFC 9449, `dpop-token.yaml`) with `htm` = `POST` and `htu` = the
+            URL of this token endpoint. The issued tokens are bound to the key of this proof
+            (`cnf.jkt`). A refresh, and the redemption of the email-binding token, use the
+            same DPoP key as the request that opened the session.
+          schema:
+            type: string
       requestBody:
+        required: true
         content:
           application/x-www-form-urlencoded:
             schema:
@@ -49,144 +104,160 @@ paths:
               properties:
                 grant_type:
                   type: string
-                  description: >-
-                    The grant type. ZETA Clients use
-                    `urn:ietf:params:oauth:grant-type:token-exchange` (RFC 8693) to
-                    obtain DPoP-bound access tokens — including the redemption of the
-                    down-scoped email-binding token (scopes `zeta:email-binding` /
-                    `zeta:email-verify`) for full tokens after completing the identity
-                    email binding (F1) — or
-                    `refresh_token` for renewals.
+                  description: The grant type (see the operation description).
                   enum:
                     - authorization_code
-                    - password
-                    - client_credentials
                     - refresh_token
                     - urn:ietf:params:oauth:grant-type:token-exchange
+                    - urn:ietf:params:oauth:grant-type:jwt-bearer
+                client_assertion_type:
+                  type: string
+                  description: Format of the client assertion (RFC 7521/RFC 7523).
+                  enum:
+                    - urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+                client_assertion:
+                  type: string
+                  description: >-
+                    The Private Key JWT authenticating the client (`client-assertion-jwt.yaml`),
+                    signed with PrK.Client.Sig.
+                client_id:
+                  type: string
+                  description: >-
+                    The client identifier issued at registration. Optional; if present it MUST
+                    equal `iss`/`sub` of the client assertion.
                 code:
                   type: string
-                  description: The authorization code received in the previous step (for 'authorization_code' grant type only).
+                  description: The authorization code (AUTH_CODE_AS) — `authorization_code` grant only.
                 redirect_uri:
                   type: string
-                  description: The redirection URI is used in the authorization request (for 'authorization_code' grant type only).
-                username:
+                  format: uri
+                  description: >-
+                    The app_redirect_uri used in the pushed authorization request —
+                    `authorization_code` grant only.
+                code_verifier:
                   type: string
-                  description: The resource owner username (for 'password' grant type only).
-                password:
+                  description: >-
+                    PKCE code verifier (RFC 7636) matching the `code_challenge` of the pushed
+                    authorization request — REQUIRED for the `authorization_code` grant.
+                  minLength: 43
+                  maxLength: 128
+                assertion:
                   type: string
-                  description: The resource owner password (for 'password' grant type only).
+                  description: >-
+                    Self-signed JWT of the client instance (RFC 7523 section 2.1), signed with
+                    PrK.Client.Sig — REQUIRED for the `jwt-bearer` grant.
                 refresh_token:
                   type: string
-                  description: The refresh token, which is used to get new access tokens using the same authorization grant as described in Section 6 (for 'refresh_token' grant type only).
+                  description: The refresh token — `refresh_token` grant only.
+                subject_token:
+                  type: string
+                  description: >-
+                    The subject token (RFC 8693) — REQUIRED for the token-exchange grant: the
+                    SM(C)-B signed JWT or, for the identity-binding completion, the down-scoped
+                    email-binding access token.
+                subject_token_type:
+                  type: string
+                  description: >-
+                    Type of the subject_token (RFC 8693) — REQUIRED for the token-exchange grant.
+                    Selects the processing of the subject token.
+                  enum:
+                    - urn:ietf:params:oauth:token-type:jwt
+                    - urn:ietf:params:oauth:token-type:access_token
                 scope:
                   type: string
-                  description: The scope of the access request as described by Section 3.3.
+                  description: The scope of the access request as described by RFC 6749 Section 3.3.
                 audience:
                   type: string
                   description: >-
-                    LEGACY (contract v1). The logical, deployment-independent audience 
-                    identifier of the target service (RFC 8693), e.g. `n_resource` or 
-                    `cm_resource`. This value is written verbatim into the `aud` claim 
-                    of the issued access token. REQUIRED for the token-exchange grant 
-                    when no `resource` parameter is provided. Deprecated; new clients 
-                    SHOULD use `resource` instead.
+                    LEGACY (contract v1). The logical, deployment-independent audience
+                    identifier of the target service (RFC 8693), e.g. `n_resource` or
+                    `cm_resource`. This value is written verbatim into the `aud` claim
+                    of the issued access token (`ver: 1`). Sent by clients when the
+                    Authorization Server does not announce contract v2 in
+                    `api_versions_supported`. MUST NOT be combined with `resource`.
                 resource:
                   type: string
                   format: uri
                   description: >-
-                    Resource indicator (RFC 8707), contract v2. Absolute URL of the 
-                    target endpoint at the resource server. The ZETA Guard determines 
-                    the logical `aud` claim from this URL via the Policy Engine decision. 
-                    The resource URL itself is NOT written into the `aud` claim but is 
+                    Resource indicator (RFC 8707), contract v2. Absolute URL of the
+                    target endpoint at the resource server. The ZETA Guard determines
+                    the logical `aud` claim from this URL via the Policy Engine decision.
+                    The resource URL itself is NOT written into the `aud` claim but is
                     bound to the actual request via the DPoP proof `htu` claim (RFC 9449).
-                subject_token:
-                  type: string
-                  description: >-
-                    The subject token (RFC 8693). REQUIRED for the token-exchange grant.
-                    For the identity-binding completion this is the down-scoped
-                    email-binding access token (scopes `zeta:email-binding` /
-                    `zeta:email-verify`).
-                subject_token_type:
-                  type: string
-                  description: Type of the subject_token (RFC 8693). REQUIRED for the token-exchange grant.
-                client_assertion_type:
-                  type: string
-                  description: Format of the client assertion (RFC 7521/RFC 7523).
-                client_assertion:
-                  type: string
-                  description: The Private Key JWT authenticating the client (RFC 7521/RFC 7523).
-                client_id:
-                  type: string
-                  description: The client identifier is issued to the client during the registration process described by Section 2.2.
-                client_secret:
-                  type: string
-                  description: The client secret.
+                    MUST NOT be combined with `audience`.
               required:
                 - grant_type
+                - client_assertion_type
+                - client_assertion
       responses:
-        200:
-          description: Successful response with access token.
+        '200':
+          description: >-
+            Successful response (`token-response.yaml`, successResponse). With the down-scoped
+            email-binding response the granted `scope` is returned explicitly, no refresh
+            token is issued and `email_hint` MAY be present.
+          headers:
+            Cache-Control:
+              description: "`no-store` (RFC 6749 section 5.1)."
+              schema:
+                type: string
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  access_token:
-                    type: string
-                    description: The access token is issued by the authorization server.
-                  token_type:
-                    type: string
-                    description: The type of the token issued.
-                  expires_in:
-                    type: integer
-                    description: The lifetime in seconds of the access token.
-                  refresh_token:
-                    type: string
-                    description: >-
-                      The refresh token, which can be used to get new access tokens using
-                      the same authorization grant as described in Section 6. NOT returned
-                      with the down-scoped email-binding response (scopes
-                      `zeta:email-binding` / `zeta:email-verify`).
-                  scope:
-                    type: string
-                    description: >-
-                      The scope of the access token as described by Section 3.3 — returned
-                      explicitly per section 5.1 to signal a downgrade. While the client
-                      registration is `pending_user_binding` the granted scope encodes the
-                      binding state: `zeta:email-binding zeta:email-verify` —
-                      no email bound yet (first use, client supplies the address via
-                      `POST /zeta/identity/bind-email`); `zeta:email-verify` only — the
-                      identity already has a bound email, the OTP was sent to the STORED
-                      address (A_29909/A_29910), the client goes directly to
-                      `POST /zeta/identity/bind-email/verify`. In both cases: no resource
-                      scopes/audiences, `expires_in` at most 900 s (SHOULD: 300–900 s), no
-                      refresh token (A_30085).
-                  email_hint:
-                    type: string
-                    description: >-
-                      Masked stored address (`token-response.yaml`). Only present when the
-                      granted scope is `zeta:email-verify` without `zeta:email-binding`
-                      (the OTP was already sent to the stored address). MUST be masked —
-                      the full address is never disclosed (A_30085).
-        400:
+                $ref: '../schemas/token-response.yaml#/definitions/successResponse'
+        '400':
           description: |
-            Invalid request, such as missing parameters or invalid client credentials
-            (RFC 6749 section 5.2). For the ZETA identity binding: a token-exchange request
-            with the email-binding token as `subject_token` fails with `invalid_grant`
-            while the registration is not yet `bound`, or when the email-binding token is
-            expired or unknown — the client MUST then restart with a new OIDC
-            authorization request.
+            Malformed request or invalid, expired or re-used grant (RFC 6749 section 5.2):
+            `invalid_request`, `invalid_grant`, `invalid_scope`, `invalid_target`,
+            `unsupported_grant_type`, `unauthorized_client` (grant type not registered for
+            this client, A_30364), and DPoP errors `invalid_dpop_proof`, `use_dpop_nonce`
+            (A_25661-01). For the ZETA identity binding: a token-exchange request with the
+            email-binding token as `subject_token` fails with `invalid_grant` while the
+            registration is not yet `bound`, or when the email-binding token is expired or
+            unknown — the client MUST then restart with a new OIDC authorization request.
+            A re-used refresh token is answered with `invalid_grant`; the session is
+            terminated (A_25662-01).
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                    description: An error code (RFC 6749 section 5.2).
-                  error_description:
-                    type: string
-                    description: A human-readable description of the error.
-                  error_uri:
-                    type: string
-                    description: A URI pointing to a web page with more information about the error.
+                $ref: '../schemas/zeta-error.yaml'
+        '401':
+          description: >-
+            Client authentication failed (`invalid_client`) or a higher authentication level
+            is required (`insufficient_user_authentication`, RFC 9470) — A_25661-01.
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/zeta-error.yaml'
+        '403':
+          description: >-
+            The Policy Engine denied the request although the credentials are valid
+            (`access_denied`; the body then additionally carries `reasons`,
+            `token-response.yaml` denyResponse), or the session was terminated
+            (`session_terminated`, `refresh_token_revoked`).
+          content:
+            application/json:
+              schema:
+                # anyOf, not oneOf: denyResponse is zeta-error plus `reasons`, so a
+                # deny body matches both branches.
+                anyOf:
+                  - $ref: '../schemas/token-response.yaml#/definitions/denyResponse'
+                  - $ref: '../schemas/zeta-error.yaml'
+        '429':
+          description: Rate limit exceeded (`rate_limit_exceeded`, A_26668-02).
+          headers:
+            Retry-After:
+              description: Seconds until the next attempt is permitted (RFC 9110).
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/zeta-error.yaml'
+        '503':
+          description: >-
+            A component required for the decision is not available
+            (`temporarily_unavailable`); no tokens are issued.
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/zeta-error.yaml'

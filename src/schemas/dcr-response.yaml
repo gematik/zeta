@@ -6,7 +6,7 @@
 # Fehlerantworten (RFC 7591 Abschnitt 3.2.2, z. B. invalid_redirect_uri,
 # invalid_client_metadata) folgen zeta-error.yaml.
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.0.0"
+schemaVersion: "1.1.0"
 title: DCR Response
 description: >-
   Antwort des AuthS auf POST /register, POST /register/verify sowie
@@ -21,9 +21,26 @@ description: >-
   transaction_id.
 
   Fehlerantworten (HTTP 4xx) folgen zeta-error.yaml.
-oneOf:
-  - $ref: "#/definitions/ClientInformationResponse"
-  - $ref: "./dcr-response-202.yaml"
+
+  Für Codegeneratoren: Die Wurzel ist bewusst kein oneOf. Generierter Code
+  bindet je HTTP-Status direkt an definitions/ClientInformationResponse (201)
+  bzw. dcr-response-202.yaml (202). Die Wurzel dient nur der Validierung eines
+  Bodys ohne Kenntnis des Status.
+type: object
+# Validierungsregel "genau eine der beiden Antworten" als if/then/else statt
+# oneOf an der Wurzel. Ohne gemeinsames Unterscheidungsfeld (discriminator)
+# führt openapi-generator (Kotlin) ein oneOf zu einer Klasse zusammen, die
+# nicht kompiliert. Gleiche gültige Instanzen wie zuvor: Ohne transaction_id
+# kann nur die ClientInformationResponse zutreffen (die 202-Antwort verlangt
+# das Feld); mit transaction_id gilt unverändert "genau eine von beiden".
+if:
+  required: [transaction_id]
+then:
+  oneOf:
+    - $ref: "#/definitions/ClientInformationResponse"
+    - $ref: "./dcr-response-202.yaml"
+else:
+  $ref: "#/definitions/ClientInformationResponse"
 
 definitions:
   ClientInformationResponse:
@@ -82,11 +99,12 @@ definitions:
               zeta_attestation_token).
 
           Offenes Enum: weitere Werte sind zulässig und vom Client zu ignorieren.
-        # anyOf statt eines constrainenden `enum` (wie zeta-error.yaml#/definitions/errorCode):
-        # der erste Zweig dokumentiert die bekannten Werte, der zweite akzeptiert jeden String.
-        anyOf:
-          - enum: [pending_attestation, pending_verification, pending_user_binding, bound]
-          - type: string
+        # Offenes Enum: type: string ohne constrainendes enum; die bekannten Werte
+        # stehen dokumentarisch in x-extensible-enum. Gültig ist wie bisher jeder
+        # String (vorher anyOf aus enum und string, das Generatoren als Union
+        # mit untypisiertem Zweig abbilden).
+        type: string
+        x-extensible-enum: [pending_attestation, pending_verification, pending_user_binding, bound]
       client_name:
         type: string
         description: Echo des registrierten client_name (RFC 7591).
@@ -130,6 +148,29 @@ definitions:
           Der AuthS prüft Posture-Nachweise am Token-Endpunkt gegen DIESEN
           Schlüssel, nie gegen einen im Request gelieferten. Fehlt bei
           attestation_type "software" und bei Legacy-Datensätzen.
+      ek_root_fingerprint:
+        type: string
+        pattern: "^[0-9a-f]{64}$"
+        description: >-
+          Nur bei attestation_type "tpm": bei der Registrierung gepinnter
+          Vertrauensanker der EK-Zertifikatskette (A_30335), SHA-256 über die
+          DER-Kodierung des Ankerzertifikats, 64 Hexadezimalzeichen in
+          Kleinbuchstaben. Ergänzt in Schema 1.1.0.
+      client_key_binding:
+        type: string
+        enum: [none, pop, tpm_certified]
+        description: >-
+          Wie der Besitz und die Hardware-Bindung des Client Instance Keys
+          bei der Registrierung nachgewiesen wurden:
+          "none" – kein Besitznachweis (Software-Registrierung ohne
+          signed_hash_puk_client_sig; TPM-Registrierung ohne client_key_pop);
+          "pop" – Selbstsignatur mit PrK.Client.Sig geprüft
+          (signed_hash_puk_client_sig bzw. client_key_pop);
+          "tpm_certified" – zusätzlich tpm_certify_info geprüft, der Schlüssel
+          liegt im selben TPM wie der Attestation Key.
+          Optional aus Kompatibilitätsgründen; fehlt das Feld, ist "none"
+          anzunehmen. Ergänzt in Schema 1.1.0. Der Wert
+          wird an die Policy Engine übergeben (policy-engine-client-data.yaml).
       binding_status:
         type: string
         enum: [pinned, legacy_unpinned]

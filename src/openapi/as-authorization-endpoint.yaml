@@ -1,70 +1,143 @@
-openapi: 3.0.0
+openapi: 3.1.0
 info:
-  schemaVersion: "1.0.0"
-  title: OAuth 2.0 Authorization Endpoint (RFC 6749 Section 3.1)
-  version: 1.0.0
+  title: OAuth 2.0 Authorization Endpoint (RFC 6749 Section 3.1) and Redirection Endpoint
+  version: 1.1.0
+  description: |
+    Authorization endpoint and redirection endpoint of the ZETA Guard Authorization
+    Server for the Authorization Code Flow of mobile ZETA Clients (A_29660, A_29672).
+
+    Changes 1.0.0 -> 1.1.0: the authorization endpoint accepts only `client_id` and
+    `request_uri` — pushed authorization requests are mandatory
+    (`require_pushed_authorization_requests: true` in `as-well-known.yaml`), so
+    `response_type`, `redirect_uri`, `scope` and `state` are no longer query parameters
+    and the implicit grant (`response_type=token`) is removed. The redirection endpoint
+    (`redirection_endpoint` in `as-well-known.yaml`), which was not described so far, is
+    added.
 servers:
   - url: https://as.example.com
 paths:
   /authorize:
     get:
-      summary: Initiate an authorization request
-      description: The client directs the user-agent to this endpoint to request authorization from the resource owner.
+      operationId: startAuthorization
+      summary: Start the authorization with a pushed authorization request
+      description: |
+        The ZETA Client calls this endpoint with the `request_uri` obtained from the PAR
+        endpoint. The Authorization Server, acting as Relying Party, pushes its own
+        authorization request to the sectoral IDP selected in the PAR (`idp_iss`) and
+        redirects the client to the authorization endpoint of that IDP.
+        The `request_uri` is single-use and bound to the `client_id`.
       parameters:
-        - name: response_type
-          in: query
-          description: "**Must be set to \"code\" for requesting an authorization code as described by Section 4.1.1, \"token\" for requesting an access token (implicit grant) as described by Section 4.2.1, or a registered extension value as described by Section 8.4.**"
-          required: true
-          schema:
-            type: string
-            enum: [code, token]
         - name: client_id
           in: query
-          description: The client identifier is issued to the client during the registration process described by Section 2.2.
           required: true
+          description: The client identifier issued at registration.
           schema:
             type: string
-        - name: redirect_uri
+        - name: request_uri
           in: query
-          description: As described in Section 3.1.2.
           required: true
-          schema:
-            type: string
-            format: uri
-        - name: scope
-          in: query
-          description: The scope of the access request as described by Section 3.3.
-          schema:
-            type: string
-        - name: state
-          in: query
-          description: The client uses an opaque value to maintain state between the request and callback. The authorization server includes this value when redirecting the user-agent back to the client. The parameter SHOULD be used for preventing cross-site request forgery as described in Section 10.12
+          description: The `request_uri` returned by the PAR endpoint (request_uri_app).
           schema:
             type: string
       responses:
-        302:
-          description: Redirection to the client redirection endpoint with authorization code or error.
+        '302':
+          description: >-
+            Redirect to the authorization endpoint of the sectoral IDP with the `client_id`
+            of the Authorization Server and the `request_uri` issued by the IDP.
           headers:
             Location:
               schema:
                 type: string
                 format: uri
-        400:
-          description: Invalid request, such as a missing parameter.
+        '400':
+          description: >-
+            Invalid request (`invalid_request`): missing parameter, unknown, expired or
+            already used `request_uri`, or `request_uri` not issued to this `client_id`.
+            No redirect takes place.
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                    description: An error code.
-                  error_description:
-                    type: string
-                    description: A human-readable description of the error.
-                  error_uri:
-                    type: string
-                    description: A URI pointing to a web page with more information about the error.
-                  state:
-                    type: string
-                    description: The state parameter from the authorization request, if any.
+                $ref: '../schemas/zeta-error.yaml'
+        '429':
+          description: Rate limit exceeded (`rate_limit_exceeded`, A_26668-02).
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/zeta-error.yaml'
+        '502':
+          description: >-
+            The sectoral IDP could not be reached or rejected the inner pushed authorization
+            request (`temporarily_unavailable` / `server_error`).
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/zeta-error.yaml'
+  /oidc/redirect:
+    get:
+      operationId: handleIdpRedirect
+      summary: Redirection endpoint of the Authorization Server (Relying Party)
+      description: |
+        The path is an example; the URL is published as `redirection_endpoint` in
+        `as-well-known.yaml`. The ZETA Client forwards the parameters it received on its
+        `oidc_redirect_uri` (App Link / Universal Link) from the sectoral IDP. The
+        Authorization Server assigns the request to the open authorization via `state`
+        (state_as, single-use), redeems `code` at the token endpoint of the IDP, validates
+        the ID token and redirects to the `app_redirect_uri` of the client with its own
+        authorization code (AUTH_CODE_AS) and the client's original `state` (state_app).
+      parameters:
+        - name: state
+          in: query
+          required: true
+          description: state_as issued by the Authorization Server in the inner PAR.
+          schema:
+            type: string
+        - name: code
+          in: query
+          required: false
+          description: Authorization code of the sectoral IDP (AUTH_CODE_IDP). Present on success.
+          schema:
+            type: string
+        - name: error
+          in: query
+          required: false
+          description: Error code of the sectoral IDP (RFC 6749 section 4.1.2.1). Present on failure.
+          schema:
+            type: string
+        - name: error_description
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '302':
+          description: >-
+            Redirect to the `app_redirect_uri` of the client with `code` (AUTH_CODE_AS) and
+            `state` (state_app), or — if the user authentication failed — with `error` and
+            `state` (RFC 6749 section 4.1.2.1).
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+        '400':
+          description: >-
+            Unknown, expired or already used `state`, or neither `code` nor `error` present
+            (`invalid_request`). No redirect takes place.
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/zeta-error.yaml'
+        '429':
+          description: Rate limit exceeded (`rate_limit_exceeded`, A_26668-02).
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/zeta-error.yaml'

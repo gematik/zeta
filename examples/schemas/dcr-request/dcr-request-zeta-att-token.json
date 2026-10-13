@@ -4,6 +4,7 @@
   "client_name": "ZETA Client App",
   "token_endpoint_auth_method": "private_key_jwt",
   "grant_types": [
+    "authorization_code",
     "urn:ietf:params:oauth:grant-type:token-exchange",
     "refresh_token"
   ],

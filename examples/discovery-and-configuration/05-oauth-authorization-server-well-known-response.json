@@ -2,6 +2,8 @@
   "issuer": "https://auth-server.example.de",
   "authorization_endpoint": "https://auth-server.example.de/auth",
   "token_endpoint": "https://auth-server.example.de/token",
+  "pushed_authorization_request_endpoint": "https://auth-server.example.de/par",
+  "require_pushed_authorization_requests": true,
   "nonce_endpoint": "https://auth-server.example.de/nonce",
   "registration_endpoint": "https://auth-server.example.de/register",
   "redirection_endpoint": "https://auth-server.example.de/oidc/redirect",
@@ -16,7 +18,9 @@
   ],
   "grant_types_supported": [
     "authorization_code",
-    "urn:ietf:params:oauth:grant-type:token-exchange"
+    "urn:ietf:params:oauth:grant-type:token-exchange",
+    "urn:ietf:params:oauth:grant-type:jwt-bearer",
+    "refresh_token"
   ],
   "token_endpoint_auth_methods_supported": [
     "private_key_jwt"
@@ -33,5 +37,20 @@
   ],
   "code_challenge_methods_supported": [
     "S256"
+  ],
+  "dpop_signing_alg_values_supported": [
+    "ES256"
+  ],
+  "api_versions_supported": [
+    {
+      "major_version": 1,
+      "version": "1.0.0",
+      "status": "deprecated"
+    },
+    {
+      "major_version": 2,
+      "version": "2.0.0",
+      "status": "stable"
+    }
   ]
 }

@@ -1,0 +1,66 @@
+openapi: 3.1.0
+info:
+  title: OpenID Federation Entity Configuration Endpunkt des Authorization Servers
+  version: 1.0.0
+  description: |
+    Der ZETA Guard Authorization Server ist Relying Party der TI-Föderation (A_25655) und
+    veröffentlicht seine Entity Configuration (selbst signiertes Entity Statement) unter
+    dem von OpenID Federation festgelegten Pfad. Inhalt und Regeln:
+    `as-entity-statement.yaml`.
+
+    Der Authorization Server erzeugt das Statement selbst und ohne manuellen Eingriff:
+      * `iss` = `sub` = Entity Identifier des Authorization Servers,
+      * `exp - iat` höchstens 86400 Sekunden; das Statement wird vor Ablauf und bei jeder
+        inhaltlichen Änderung neu ausgestellt,
+      * `metadata.openid_relying_party.redirect_uris` = alle redirect_uris mit letztem
+        Pfad-Abschnitt `oidc` aus den Redirect-URI-Daten des Provisioning Images; ändert
+        sich das Provisioning Image, wird das Statement neu ausgestellt (A_25656-01),
+      * `metadata.openid_relying_party.jwks` enthält das mTLS-Client-Zertifikat für
+        `self_signed_tls_client_auth` und den Schlüssel zur Entschlüsselung des ID-Token,
+      * `metadata.oauth_authorization_server` verweist auf die Schlüssel, mit denen andere
+        ZETA Guards ZETA Attestation Token dieses Authorization Servers prüfen (A_29915-01),
+      * `jwks` enthält die Federation Entity Signing Keys; ein neuer Schlüssel wird
+        mindestens 24 Stunden vor seiner ersten Verwendung veröffentlicht.
+servers:
+  - url: https://as.example.com
+paths:
+  /.well-known/openid-federation:
+    get:
+      operationId: getEntityConfiguration
+      summary: Entity Configuration des Authorization Servers abrufen
+      description: |
+        Liefert die Entity Configuration als signiertes JWT (JWS Compact Serialization).
+        Header und Payload des JWT entsprechen `as-entity-statement.yaml`. Der Endpunkt ist
+        nicht authentisiert; er wird von sektoralen IDPs, vom Federation Master und von
+        anderen ZETA Guards abgerufen.
+      responses:
+        '200':
+          description: Entity Configuration
+          headers:
+            Cache-Control:
+              description: >-
+                Cache-Direktiven gemäß RFC 9111. max-age darf die Restlaufzeit des
+                Statements (`exp`) nicht überschreiten.
+              schema:
+                type: string
+                example: 'max-age=3600'
+          content:
+            application/entity-statement+jwt:
+              schema:
+                type: string
+                description: >-
+                  JWS Compact Serialization. Decodiert (Header + Payload) gemäß
+                  `../schemas/as-entity-statement.yaml`.
+                pattern: '^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$'
+        '429':
+          description: Rate Limit überschritten (`rate_limit_exceeded`, A_26668-02).
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/zeta-error.yaml'
+        '500':
+          description: Internal Server Error

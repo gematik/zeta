@@ -1,8 +1,16 @@
 # Schema for the Authorization Server .well-known JSON object
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.1.0"
+schemaVersion: "1.2.0"
 title: Authorization Server .well-known JSON Object
-description: Schema for the .well-known JSON object used by Authorization Servers.
+description: >-
+  Schema for the .well-known JSON object used by Authorization Servers.
+  Changes 1.1.0 -> 1.2.0 (backward compatible, no required field added):
+  dpop_signing_alg_values_supported (RFC 9449) is added as optional field;
+  response_types_supported no longer enumerates implicit and hybrid response
+  types as known values (any string is accepted; ZETA uses only "code", and
+  neither the implicit nor a hybrid flow). api_versions_supported MUST be published (A_29691) but is not
+  in `required`, because documents valid under 1.1.0 would otherwise become
+  invalid.
 type: object
 properties:
   issuer:
@@ -20,7 +28,10 @@ properties:
   pushed_authorization_request_endpoint:
     type: string
     format: uri
-    description: "The URL of the pushed authorization request endpoint."
+    description: >-
+      The URL of the pushed authorization request endpoint (RFC 9126). MUST be
+      present if grant_types_supported contains "authorization_code" (mobile
+      clients); see openapi/as-par-endpoint.yaml.
   require_pushed_authorization_requests:
     type: boolean
     description: >-
@@ -63,14 +74,9 @@ properties:
     description: "The response types supported by the authorization server."
     items:
       type: string
-      enum:
-        - code
-        - token
-        - id_token
-        - token id_token
-        - code id_token
-        - code token id_token
-        - code token
+    # Not restricted by enum or contains: ZETA flows use only "code", but
+    # documents of existing Authorization Servers list further values, and an
+    # Authorization Server that offers only token exchange lists none.
   response_modes_supported:
     type: array
     description: "The response modes supported by the authorization server."
@@ -128,6 +134,12 @@ properties:
     items:
       type: string
 
+  dpop_signing_alg_values_supported:
+    type: array
+    description: >-
+      The JWS algorithms supported for DPoP proof JWTs (RFC 9449 section 5.1).
+    items:
+      type: string
   # --- Token-Issuance Contract Versioning ---
   api_versions_supported:
     type: array
