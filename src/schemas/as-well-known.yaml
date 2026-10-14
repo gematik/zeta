@@ -104,7 +104,7 @@ properties:
       The URL of the token revocation endpoint (RFC 7009). In ZETA this endpoint
       is primarily intended for revoking refresh tokens, turning the otherwise
       client-side-only logout into a real server-side termination of the grant
-      (aligned with the `refresh_token_revoked` error). Because access tokens are
+      (subsequent refresh requests fail with `invalid_grant`). Because access tokens are
       short-lived, DPoP-bound (RFC 9449) and validated statelessly by the resource
       server, revoking an access token here has limited effect and is not the
       purpose of this endpoint. Revocation requests MUST be client-authenticated

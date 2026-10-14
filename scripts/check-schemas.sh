@@ -22,10 +22,7 @@
 # Exit-Code: 0 = in Ordnung, 1 = Fehler, 2 = Werkzeug fehlt.
 set -u
 
-KNOWN_INVALID=(
-  "examples/schemas/policy-engine-input/statement-windows-missing-audience.json"
-  "examples/schemas/authorization-details/authorization-details.json"
-)
+KNOWN_INVALID=()
 
 QUIET=0
 [ "${1:-}" = "-q" ] && QUIET=1

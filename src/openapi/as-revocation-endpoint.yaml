@@ -23,12 +23,15 @@ paths:
         On success the Authorization Server invalidates the presented refresh token and
         all refresh tokens of the same session, including rotated ones, terminates the
         session and logs the event (A_29998, A_29857). Subsequent refresh requests are
-        rejected with `refresh_token_revoked`.
+        rejected with `400 invalid_grant`.
 
         After successful client authentication the endpoint answers `200 OK` regardless of
         whether the token is valid, already invalid, unknown or belongs to another client
-        (RFC 7009 section 2.2, A_29999). An access token has no server-side effect
-        (A_30000).
+        (RFC 7009 section 2.2, A_29999). A token of another client has no effect (deliberate
+        deviation from RFC 7009 section 2.1). An access token is answered with `200 OK`
+        without server-side effect, independent of `token_type_hint`; `unsupported_token_type`
+        is never returned (A_30000). The client deletes its tokens and DPoP keys locally
+        whatever the response (A_30002).
       parameters:
         - name: DPoP
           in: header
@@ -78,9 +81,8 @@ paths:
             whether the token existed.
         '400':
           description: >-
-            Malformed request (`invalid_request`), invalid DPoP proof
-            (`invalid_dpop_proof`) or — optionally, if an access token was presented —
-            `unsupported_token_type` (RFC 7009 section 2.2.1, A_30000).
+            Malformed request (`invalid_request`) or invalid DPoP proof
+            (`invalid_dpop_proof`, A_29997).
           content:
             application/json:
               schema:

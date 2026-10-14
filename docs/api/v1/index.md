@@ -731,7 +731,7 @@ Die Registrierung bei Software-basierter Attestation erfordert kein Challenge-Re
 - *(01) POST /register:* Der Client sendet `client_name`, `grant_types`, `jwks` (mit `PuK.Client.Sig`), `token_endpoint_auth_method` sowie — empfohlen — `platform`, `product_id`, `nonce` und `signed_hash_puk_client_sig` (Selbstsignatur über `SHA-256(PuK.Client.Sig || nonce)`).
 - *(02) Registrierung:* Der AuthS prüft den Besitznachweis, sofern vorhanden, und speichert den Client mit Status `pending_verification`; er antwortet mit `201 Created {client_id}`.
 
-> **Hinweis:** `nonce` und `signed_hash_puk_client_sig` sind im Software-Zweig aus Kompatibilitätsgründen optional — eine Registrierung ohne sie bleibt gültig. Ohne Besitznachweis ist die Registrierung allerdings nicht an den Besitz von `PrK.Client.Sig` gebunden; ein Dritter kann dann einen fremden öffentlichen Schlüssel registrieren und dessen spätere Registrierung per `409 registrationConflict` blockieren. Neue Client-Implementierungen sollten beide Felder setzen.
+> **Hinweis:** `nonce` und `signed_hash_puk_client_sig` sind im Software-Zweig aus Kompatibilitätsgründen optional — eine Registrierung ohne sie bleibt gültig. Ohne Besitznachweis ist die Registrierung allerdings nicht an den Besitz von `PrK.Client.Sig` gebunden; ein Dritter kann dann einen fremden öffentlichen Schlüssel registrieren und dessen spätere Registrierung per `409 registration_conflict` blockieren. Neue Client-Implementierungen sollten beide Felder setzen.
 
 ![Abbildung 12: DCR für stationäre Software-Attestation Clients](../../../images/zeta-flows/Abb-ZETA-DCR-für-stationäre-SW-Att-Clients.svg)
 

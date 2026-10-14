@@ -30,7 +30,7 @@ note right of AuthS
   wird trotzdem gepinnt, nur platform/product_id bleiben dann ungepinnt.
   Ohne Besitznachweis ist die Registrierung jedoch nicht an den Besitz
   von PrK.Client.Sig gebunden — ein Dritter kann einen fremden öffentlichen Schlüssel
-  registrieren und dessen spätere Registrierung per 409 registrationConflict blockieren.
+  registrieren und dessen spätere Registrierung per 409 registration_conflict blockieren.
 end note
 
 @enduml

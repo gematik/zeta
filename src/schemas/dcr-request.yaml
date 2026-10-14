@@ -163,7 +163,7 @@ definitions:
           der übrigen Zweige in der Form mit Nonce.
           Verhindert, dass ein Inhaber eines gültigen Attestation Keys einen
           fremden öffentlichen Schlüssel registriert und dessen spätere
-          Registrierung per 409 registrationConflict blockiert. Das gilt nur,
+          Registrierung per 409 registration_conflict blockiert. Das gilt nur,
           weil die Nonce eingeht: Eine Signatur über SHA-256(puk_client_sig)
           allein wäre statisch und von jedem wiederverwendbar, der einen
           Registrierungs-Request gesehen hat. Der MakeCredential-Handshake
@@ -505,7 +505,7 @@ definitions:
           definitions/hash_signature. Weist den Besitz des
           Instanzschlüssels nach und verhindert, dass ein Dritter einen
           fremden öffentlichen Schlüssel registriert und damit dessen
-          spätere Registrierung per 409 registrationConflict blockiert.
+          spätere Registrierung per 409 registration_conflict blockiert.
 
           Optional aus Kompatibilitätsgründen (in Schema 1.0.0 nicht
           vorhanden): fehlt das Feld, registriert der AuthS wie bisher ohne

@@ -52,9 +52,10 @@ end alt
 
 note over AuthS, Client
   Fehlercodes gemäß [RFC6749]#section-5.2 (Refresh Grant §6):
-  400 = technischer Grant-/Request-Fehler (invalid_grant, invalid_dpop_proof/use_dpop_nonce [RFC9449]),
+  400 = technischer Grant-/Request-Fehler (invalid_dpop_proof [RFC9449]; invalid_grant für jedes nicht\n  nutzbare Refresh Token: abgelaufen, wiederverwendet, widerrufen, Session terminiert),
   401 = Client-Authentifizierung fehlgeschlagen (invalid_client),
-  403 = Policy-Ablehnung bei gültigen Credentials (access_denied) bzw. session_terminated / refresh_token_revoked.
+  403 = Policy-Ablehnung bei gültigen Credentials (access_denied).
+  Zuordnung je Fehlerfall: Tabelle ZT_PDP_Fehlerfaelle.
   Response-Body gemäß [zeta-error.yaml].
 end note
 

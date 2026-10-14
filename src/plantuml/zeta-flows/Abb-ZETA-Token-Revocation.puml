@@ -40,22 +40,25 @@ alt Client-Authentifizierung erfolgreich
       (RFC 7009 §2.2): Antwort 200 OK unabhängig davon,
       ob das Token gültig, bereits ungültig oder unbekannt war
       (keine Preisgabe der Token-Existenz).
-      Folge-Refresh-Requests werden gemäß mit
-      refresh_token_revoked abgelehnt.
+      Folge-Refresh-Requests werden mit
+      400 invalid_grant abgelehnt (A_29998).
     end note
     AuthS --> Client: 200 OK
   else Access Token übergeben (außerhalb Geltungsbereich)
     note right of AuthS
       Access Token sind kurzlebig, DPoP-gebunden und werden zustandslos
       geprüft; ihr Widerruf ist nicht Zweck dieses Endpunkts.
+      Antwort unabhängig von token_type_hint (A_30000).
     end note
-    AuthS --> Client: 400 Bad Request {"error": "unsupported_token_type"}
+    AuthS --> Client: 200 OK (ohne Wirkung)
   end
-  Client -> Client: Lösche lokale Access-/Refresh Token\nund DPoP-Schlüssel
-  Client --> User: Abmeldung abgeschlossen
-else Client-Authentifizierung fehlerhaft
-  AuthS --> Client--: 401 Unauthorized {"error": "invalid_client"}
+else DPoP Proof fehlerhaft
+  AuthS --> Client: 400 Bad Request {"error": "invalid_dpop_proof"}
+else Client Assertion fehlerhaft
+  AuthS --> Client: 401 Unauthorized {"error": "invalid_client"}
 end alt
+Client -> Client: Lösche lokale Access-/Refresh Token\nund DPoP-Schlüssel (unabhängig von der Antwort, A_30002)
+Client --> User: Abmeldung abgeschlossen
 
 deactivate Client
 

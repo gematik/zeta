@@ -212,16 +212,23 @@ paths:
                 $ref: '../schemas/token-response.yaml#/definitions/successResponse'
         '400':
           description: |
-            Malformed request or invalid, expired or re-used grant (RFC 6749 section 5.2):
-            `invalid_request`, `invalid_grant`, `invalid_scope`, `invalid_target`,
-            `unsupported_grant_type`, `unauthorized_client` (grant type not registered for
-            this client, A_30364), and DPoP errors `invalid_dpop_proof`, `use_dpop_nonce`
-            (A_25661-01). For the ZETA identity binding: a token-exchange request with the
+            Malformed request or invalid, expired, re-used or revoked grant (RFC 6749
+            section 5.2): `invalid_request`, `invalid_grant`, `invalid_scope` (formal check
+            by the Authorization Server before the policy query only; a scope reduction by the
+            Policy Engine is not an error), `invalid_target`, `unsupported_grant_type`,
+            `unauthorized_client` (grant type not registered for this client, A_30364), and
+            DPoP errors including nonce errors `invalid_dpop_proof` (A_25661-01). ZETA does not
+            use `use_dpop_nonce`: nonces come from `GET /nonce` only; refresh requests need
+            no nonce. The exact mapping per error case is table ZT_PDP_Fehlerfaelle
+            (gemSpec_ZETA 5.4.6.1). For the ZETA identity binding: a token-exchange request with the
             email-binding token as `subject_token` fails with `invalid_grant` while the
             registration is not yet `bound`, or when the email-binding token is expired or
             unknown — the client MUST then restart with a new OIDC authorization request.
-            A re-used refresh token is answered with `invalid_grant`; the session is
-            terminated (A_25662-01).
+            Every refresh token that can no longer be used — unknown, expired, re-used,
+            revoked via `/revoke` or belonging to a terminated session — is answered with
+            `invalid_grant` and an identical body; on re-use the session is additionally
+            terminated (A_25662-01, A_29856, A_29998). The client then discards its tokens
+            and authenticates again (A_29849).
           content:
             application/json:
               schema:
@@ -238,8 +245,9 @@ paths:
           description: >-
             The Policy Engine denied the request although the credentials are valid
             (`access_denied`; the body then additionally carries `reasons`,
-            `token-response.yaml` denyResponse), or the session was terminated
-            (`session_terminated`, `refresh_token_revoked`).
+            `token-response.yaml` denyResponse), or the Authorization Backend denied access
+            (`access_denied`, A_30243). 403 is used for no other case; a terminated session or
+            revoked refresh token is `400 invalid_grant`.
           content:
             application/json:
               schema:

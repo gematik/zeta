@@ -1,8 +1,12 @@
 openapi: 3.1.0
 info:
   title: ZETA Guard — Client Registration and Management API
-  version: 0.1.0-draft
+  version: 0.2.0-draft
   description: |
+    0.2.0-draft: all error responses use `zeta-error.yaml` (`application/json`, field `error`,
+    snake_case codes, A_26662) instead of RFC 9457 Problem Details with camelCase `code`
+    (gemSpec_ZETA V11). Breaking for clients that parse `application/problem+json`.
+
     Client Registration and Management API of a single ZETA Guard (one guard = one realm =
     one Fachdienst; no central registry). Covers Dynamic Client Registration (A_29658) and the
     factor-bound TOFU lifecycle built on it.
@@ -228,12 +232,12 @@ paths:
             application/json:
               schema: { $ref: '../schemas/zeta-error.yaml' }
         '403':
-          description: registrationForbidden — the client is not permitted to register at this guard
+          description: registration_forbidden — the client is not permitted to register at this guard
           content:
             application/json:
               schema: { $ref: '../schemas/zeta-error.yaml' }
         '409':
-          description: registrationConflict — a client with the same identity/key already exists
+          description: registration_conflict — a client with the same identity/key already exists
           content:
             application/json:
               schema: { $ref: '../schemas/zeta-error.yaml' }
@@ -270,7 +274,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ClientRegistration' }
         '400':
-          description: invalidActivationSecret | challengeExpired | invalid challenge response
+          description: invalid_activation_secret | challenge_expired | invalid_request (invalid challenge response)
           content:
             application/json:
               schema: { $ref: '../schemas/zeta-error.yaml' }
@@ -340,8 +344,10 @@ paths:
             against the pinned `ak_jkt`. Without it the new instance key is authorised solely
             by possession of the previous key and is no longer anchored in the TPM / Secure
             Enclave / Keystore — the client keeps its hardware `attestation_type` while its
-            active key is only software-authorised. A guard that requires the re-anchoring
-            rejects an envelope without `attestation_pop` as `attestationPopRequired`; for
+            active key is only software-authorised. A present but unverifiable `attestation_pop`
+            is rejected with `400 invalid_attestation_pop`; the previous key stays active
+            (A_30189). A guard that requires the re-anchoring rejects an envelope without
+            `attestation_pop` with `400 attestation_pop_required`; for
             backwards compatibility with clients implementing A_29921/A_29922 only, accepting
             the envelope without it remains permitted, and the guard then SHOULD record the
             client as no longer hardware-anchored.
@@ -365,24 +371,27 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ClientRegistration' }
         '400':
-          description: badNonce | invalidBinding | wrongAudience | staleRequest | invalidKeyChange
+          description: >-
+            bad_nonce | invalid_binding | wrong_audience | stale_request | invalid_key_change |
+            invalid_attestation_pop (A_30189) | attestation_pop_required (A_30189, only after the
+            compatibility profile is switched off)
           content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Error' }
+            application/json:
+              schema: { $ref: '../schemas/zeta-error.yaml' }
           headers:
             Replay-Nonce:
               schema: { type: string }
-              description: Returned on badNonce so the client can retry.
+              description: Returned on bad_nonce so the client can retry.
         '401':
-          description: invalidSignature | invalidNewKeyProof | popRequired | attestationPopRequired
+          description: invalid_signature | invalid_new_key_proof | pop_required
           content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Error' }
+            application/json:
+              schema: { $ref: '../schemas/zeta-error.yaml' }
         '409':
           description: tombstoned
           content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Error' }
+            application/json:
+              schema: { $ref: '../schemas/zeta-error.yaml' }
     delete:
       operationId: deleteClientRegistration
       tags: [registration]
@@ -477,24 +486,24 @@ paths:
         '400':
           description: invalid address
           content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Error' }
+            application/json:
+              schema: { $ref: '../schemas/zeta-error.yaml' }
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           description: >-
-            insufficientScope — the token does not carry `zeta:email-binding` (known
+            insufficient_scope — the token does not carry `zeta:email-binding` (known
             identity: the OTP was already sent to the stored address, A_29910)
           content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Error' }
+            application/json:
+              schema: { $ref: '../schemas/zeta-error.yaml' }
         '429':
           description: >-
-            otpSendLimited — cooldown not yet elapsed or the maximum number of sends per
+            otp_send_limited — cooldown not yet elapsed or the maximum number of sends per
             email-binding token reached (shared budget with `…/resend`, A_30085)
           content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Error' }
+            application/json:
+              schema: { $ref: '../schemas/zeta-error.yaml' }
 
   /zeta/identity/bind-email/resend:
     post:
@@ -520,17 +529,17 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
-          description: noOpenChallenge — no open binding challenge for this client
+          description: no_open_challenge — no open binding challenge for this client
           content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Error' }
+            application/json:
+              schema: { $ref: '../schemas/zeta-error.yaml' }
         '429':
           description: >-
-            otpSendLimited — cooldown not yet elapsed or the maximum number of sends per
+            otp_send_limited — cooldown not yet elapsed or the maximum number of sends per
             email-binding token reached (shared budget with `POST /zeta/identity/bind-email`)
           content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Error' }
+            application/json:
+              schema: { $ref: '../schemas/zeta-error.yaml' }
 
   /zeta/identity/bind-email/verify:
     post:
@@ -561,10 +570,10 @@ paths:
             F1 bound; registration status is now `bound` — full tokens available via token
             exchange (RFC 8693).
         '400':
-          description: invalidOtp | challengeExpired
+          description: invalid_otp | challenge_expired
           content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Error' }
+            application/json:
+              schema: { $ref: '../schemas/zeta-error.yaml' }
         '401':
           $ref: '#/components/responses/Unauthorized'
 
@@ -643,17 +652,17 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/EmailStatus' }
         '400':
-          description: invalidOtp | challengeExpired
+          description: invalid_otp | challenge_expired
           content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Error' }
+            application/json:
+              schema: { $ref: '../schemas/zeta-error.yaml' }
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
           description: Unknown or expired transaction_id
           content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Error' }
+            application/json:
+              schema: { $ref: '../schemas/zeta-error.yaml' }
 
   /zeta/clients:
     get:
@@ -697,7 +706,7 @@ paths:
         Allowed for any enrolled client of the identity. The guard MUST verify that
         `target_client_id` belongs to the SAME identity as the calling client (established by
         its client assertion, F2) and reject a
-        non-matching target with `403` (`forbiddenTarget`, A_29939) — possession of the
+        non-matching target with `403` (`forbidden_target`, A_29939) — possession of the
         object reference alone is never authorisation (BOLA / OWASP API1). Removes the target's
         client record and notifies the pinned email F1 (A_29935). Never touches the
         identity-scoped factor F1 (A_29934). Deleting the LAST remaining sibling requires
@@ -729,10 +738,10 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          description: forbiddenTarget — target client not owned by the caller's identity (A_29939)
+          description: forbidden_target — target client not owned by the caller's identity (A_29939)
           content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Error' }
+            application/json:
+              schema: { $ref: '../schemas/zeta-error.yaml' }
 
   /zeta/deletions/{deletion_id}/veto:
     post:
@@ -849,21 +858,21 @@ components:
     BadRequest:
       description: Malformed or invalid request
       content:
-        application/problem+json:
-          schema: { $ref: '#/components/schemas/Error' }
+        application/json:
+          schema: { $ref: '../schemas/zeta-error.yaml' }
     Unauthorized:
       description: Missing or invalid credentials/factor
       content:
-        application/problem+json:
-          schema: { $ref: '#/components/schemas/Error' }
+        application/json:
+          schema: { $ref: '../schemas/zeta-error.yaml' }
     StepUpRequired:
       description: |
         Additional authentication required. Either the user authentication is missing or below
-        the required assurance/freshness (`insufficientUserAuthentication`) — per RFC 9470 the
+        the required assurance/freshness (`insufficient_user_authentication`) — per RFC 9470 the
         client runs the guard's regular Authorization Code Flow (PAR → `GET /authorize` →
         `POST /token`) with the `acr_values` named in `WWW-Authenticate`, obtains a fresh
         DPoP-bound access token and retries once — or a required surviving factor was not
-        presented (`factorRequired`).
+        presented (`factor_required`).
       headers:
         WWW-Authenticate:
           description: >-
@@ -871,8 +880,8 @@ components:
             `Bearer error="insufficient_user_authentication", acr_values="<required>", max_age=<seconds>`.
           schema: { type: string }
       content:
-        application/problem+json:
-          schema: { $ref: '#/components/schemas/Error' }
+        application/json:
+          schema: { $ref: '../schemas/zeta-error.yaml' }
 
   schemas:
 
@@ -1047,45 +1056,3 @@ components:
         notified_channels:
           type: array
           items: { type: string }
-
-    # Own component instead of an inline enum under Error.code: generators name an
-    # inline enum after its parent (ErrorCode), which collides with
-    # zeta-error.yaml#/definitions/errorCode in the same document.
-    ProblemCode:
-      type: string
-      description: >-
-        Machine-readable failure reason of a Problem Details response (`Error.code`).
-      enum:
-        - badNonce
-        - invalidBinding
-        - invalidSignature
-        - invalidNewKeyProof
-        - wrongAudience
-        - staleRequest
-        - invalidKeyChange
-        - popRequired
-        - emailMismatch
-        - tombstoned
-        - factorRequired
-        - stepUpRequired
-        - forbiddenTarget
-        - insufficientUserAuthentication
-        - invalidAttestation
-        - registrationForbidden
-        - registrationConflict
-        - invalidOtp
-        - challengeExpired
-        - insufficientScope
-        - noOpenChallenge
-        - otpSendLimited
-
-    Error:
-      type: object
-      description: >-
-        Problem Details object per RFC 9457 (`application/problem+json`); `code` carries the
-        machine-readable failure reason.
-      required: [code]
-      properties:
-        code: { $ref: '#/components/schemas/ProblemCode' }
-        title: { type: string }
-        detail: { type: string }

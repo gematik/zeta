@@ -192,7 +192,7 @@ paths:
         On success the Authorization Server revokes all refresh tokens of the session,
         including rotated ones; already issued access tokens remain valid until they
         expire (A_29847, A_29855). Subsequent refresh requests of this session are
-        rejected with `session_terminated` (A_29856).
+        rejected with `400 invalid_grant` (A_29856).
 
         The operation is **idempotent**: repeated calls with the same `session_id`
         return `200` with `accepted: true` and do not raise an error (A_29858).

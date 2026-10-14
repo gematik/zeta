@@ -1,11 +1,17 @@
 # Schema for HTTP ZETA Error Response
 #
 # Wird von allen ZETA Guard Endpunkten (Authorization Server / PDP, PEP HTTP Proxy,
-# Client-Registrierung) für Fehlerantworten verwendet. Fachliche Fehler des
+# Client-Registrierung und Client Management) für Fehlerantworten verwendet
+# (A_26662, Content-Type application/json).
+#
+# 1.4.0: Fehlercodes vereinheitlicht (gemSpec_ZETA V11, Tabelle ZT_PDP_Fehlerfaelle):
+# session_terminated/refresh_token_revoked deprecated (jetzt 400 invalid_grant),
+# use_dpop_nonce in ZETA nicht verwendet, Codes des Client Management in snake_case
+# aufgenommen (ersetzen den camelCase-ProblemCode aus application/problem+json). Fachliche Fehler des
 # dahinterliegenden Resource Servers werden hingegen unverändert durchgereicht und
 # folgen NICHT diesem Schema (A_29853).
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.3.0"
+schemaVersion: "1.4.0"
 title: HTTP ZETA Error Response
 description: Schema for transmitting error information for HTTP ZETA error response.
 type: object
@@ -31,11 +37,11 @@ definitions:
     type: string
     description: >-
       Standardisierter, maschinenlesbarer Fehlercode einer ZETA-Guard-Fehlerantwort.
-      Der Client MUSS insbesondere auf die ZETA-spezifischen Codes reagieren
-      (z. B. erneute Authentifizierung bei `session_terminated`/`refresh_token_revoked`,
-      Step-Up bei `insufficient_user_authentication`). Die übrigen aufgeführten Codes
-      sind die von den jeweiligen Endpunkten gemäß den referenzierten RFCs
-      ausgestellten Standard-Codes.
+      Die Reaktion des Clients richtet sich nach der Kombination aus HTTP-Status
+      und Code gemäß Tabelle ZT_PDP_Fehlerfaelle (gemSpec_ZETA 5.4.6.1), z. B.
+      erneute Authentifizierung bei `invalid_grant` am Token-Endpunkt beim Refresh,
+      Step-Up bei `insufficient_user_authentication`. `error_description` wird vom
+      Client nicht ausgewertet. Alle Codes sind snake_case.
 
       Offenes Enum: Die folgende Liste dokumentiert die bekannten Codes (für
       Codegen und Doku), ist aber NICHT abschließend — jeder weitere String ist
@@ -48,11 +54,12 @@ definitions:
       - description: Bekannte, standardisierte Fehlercodes.
         enum:
           # --- ZETA-spezifische Codes (gemSpec_ZETA) --------------------------
-          # Session serverseitig terminiert; 403 beim Token-Refresh. Client MUSS neu
-          # authentifizieren und DARF keinen weiteren Refresh im selben
-          # Session-Kontext senden. (A_29849, S. 89/91)
+          # DEPRECATED (1.4.0): Der Authorization Server sendet diese Codes nicht
+          # mehr; terminierte Session und widerrufenes Refresh Token werden mit
+          # 400 invalid_grant beantwortet (A_29856, A_29998). Ein Client, der sie
+          # von einem älteren Server erhält, MUSS sie wie 400 invalid_grant am
+          # Token-Endpunkt behandeln (A_NEU_V11-02).
           - session_terminated
-          # Zugehöriges Refresh Token wurde entzogen; 403 beim Token-Refresh. (S. 91)
           - refresh_token_revoked
           # Step-Up-Authentifizierung erforderlich; 401/403 mit Header
           # `zeta-error-origin: pep`. Der PEP MUSS diesen Wert setzen. (A_29860, S. 113/93)
@@ -64,6 +71,55 @@ definitions:
           # (Sekunden bis zum nächsten zulässigen Versuch). Client SOLL Exponential
           # Backoff anwenden. (A_26668, A_25339)
           - rate_limit_exceeded
+          # Rollover: vorhandenes attestation_pop nicht verifizierbar (Signatur,
+          # Schlüssel ≠ gepinnter ak_jkt, Daten); 400. (A_30189)
+          - invalid_attestation_pop
+          # Rollover ohne attestation_pop bei attestation_type ≠ software, erst
+          # nach Abschaltung des Kompatibilitätsprofils; 400. (A_30189, künftig)
+          - attestation_pop_required
+
+          # --- Client Management (zeta-guard-client-management.yaml) ----------
+          # Replay-Nonce des Rollovers fehlt/verbraucht; 400 mit neuem Header
+          # Replay-Nonce, Client wiederholt einmal. (A_29923)
+          - bad_nonce
+          # Rollover-Envelope nicht an HTTP-Methode/Ziel-URI gebunden (htm/htu); 400. (A_29923)
+          - invalid_binding
+          # Rollover-Envelope nicht an die Guard-Audience gebunden; 400. (A_29923)
+          - wrong_audience
+          # Rollover-Envelope zu alt (iat); 400.
+          - stale_request
+          # Unzulässiger Schlüsselwechsel im Rollover-Envelope; 400.
+          - invalid_key_change
+          # Äußere Signatur (alter Instanzschlüssel) ungültig; 401. (A_29922)
+          - invalid_signature
+          # Innere Signatur (neuer Instanzschlüssel) ungültig; 401. (A_29922)
+          - invalid_new_key_proof
+          # Besitznachweis des bisherigen Instanzschlüssels fehlt; 401. (A_29921)
+          - pop_required
+          # Identität gelöscht (Tombstone); 409.
+          - tombstoned
+          # Registrierung: Attestierung ungültig; 400.
+          - invalid_attestation
+          # Registrierung an diesem Guard nicht erlaubt; 403.
+          - registration_forbidden
+          # Client mit gleicher Identität/gleichem Schlüssel existiert; 409.
+          - registration_conflict
+          # TPM ActivateCredential: Aktivierungsgeheimnis falsch; 400.
+          - invalid_activation_secret
+          # Challenge (TPM, E-Mail-OTP) abgelaufen; 400.
+          - challenge_expired
+          # E-Mail-OTP falsch; 400.
+          - invalid_otp
+          # Keine offene Binding-Challenge für diesen Client; 404.
+          - no_open_challenge
+          # OTP-Versandbudget bzw. Cooldown erreicht; 429. (A_30085)
+          - otp_send_limited
+          # E-Mail weicht von der gebundenen Adresse ab (bisher nur im Enum geführt).
+          - email_mismatch
+          # Überlebender Faktor (F1/F2) nicht vorgelegt; 401. (A_29911, A_29936)
+          - factor_required
+          # Zielclient gehört nicht zur Identität des Aufrufers; 403. (A_29939)
+          - forbidden_target
 
           # --- OAuth 2.0 Authorization Server / Token Endpoint (RFC 6749 §5.2) -
           - invalid_request
@@ -88,6 +144,9 @@ definitions:
 
           # --- DPoP (RFC 9449 §7) ---------------------------------------------
           - invalid_dpop_proof
+          # In ZETA nicht verwendet: Nonces kommen ausschließlich aus GET /nonce,
+          # es gibt keinen DPoP-Nonce-Header (A_NEU_V11-01). Nur zur
+          # Interoperabilität mit generischen RFC-9449-Clients gelistet.
           - use_dpop_nonce
       - description: >-
           Weiterer, hier nicht enumerierter Fehlercode (Forward-Compatibility).
