@@ -235,8 +235,12 @@ paths:
                 $ref: '../schemas/zeta-error.yaml'
         '401':
           description: >-
-            Client authentication failed (`invalid_client`) or a higher authentication level
-            is required (`insufficient_user_authentication`, RFC 9470) — A_25661-01.
+            Client authentication failed (`invalid_client`) — A_25661-01. The token endpoint
+            never signals step-up (`insufficient_user_authentication`): step-up need is signalled
+            only by the protected endpoints per RFC 9470 (PEP, A_28525-02; client management,
+            A_29911), whose `WWW-Authenticate` header supplies the `acr_values`. An insufficient
+            authentication level at the token endpoint is evaluated by the Policy Engine via
+            `acr` (scope reduction or `403 access_denied`).
           content:
             application/json:
               schema:

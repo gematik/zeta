@@ -61,8 +61,9 @@ definitions:
           # Token-Endpunkt behandeln (A_NEU_V11-02).
           - session_terminated
           - refresh_token_revoked
-          # Step-Up-Authentifizierung erforderlich; 401/403 mit Header
-          # `zeta-error-origin: pep`. Der PEP MUSS diesen Wert setzen. (A_29860, S. 113/93)
+          # Step-Up-Authentifizierung erforderlich; 401 mit WWW-Authenticate (RFC 9470),
+          # nur von geschützten Endpunkten: PEP mit `zeta-error-origin: pep` (A_29860)
+          # und Client Management (A_29911). Der Token-Endpunkt sendet diesen Code nie.
           - insufficient_user_authentication
           # `resource`-Indicator (RFC 8707) benennt eine nicht unterstützte
           # Zielressource; Ablehnung am Token Endpoint. (A_29694, S. 84)

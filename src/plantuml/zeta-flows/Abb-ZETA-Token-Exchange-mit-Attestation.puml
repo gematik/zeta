@@ -68,7 +68,7 @@ end
 note over AuthS, Client
   Fehlercodes gemäß [RFC6749]#section-5.2 (Token Exchange [RFC8693]):
   400 = technischer Grant-/Request-Fehler (invalid_grant, invalid_request, invalid_dpop_proof [RFC9449], invalid_target),
-  401 = Client-Authentifizierung fehlgeschlagen (invalid_client) bzw. Step-up (insufficient_user_authentication [RFC9470]),
+  401 = Client-Authentifizierung fehlgeschlagen (invalid_client); kein Step-up-Signal am Token-Endpunkt,
   403 = Policy-Ablehnung bei gültigen Credentials (access_denied).
   Response-Body gemäß [zeta-error.yaml].
 end note
