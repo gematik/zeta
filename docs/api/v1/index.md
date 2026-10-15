@@ -551,7 +551,7 @@ Der Token Exchange ist der zentrale Schritt zur Erlangung eines DPoP-gebundenen 
 - *(05) Policy Engine:* Bei erfolgreicher Validierung wird der Policy Engine Input erstellt und an die OPA Policy Engine übermittelt (`POST /v1/data/authz`).
 - *(06) Token-Erstellung:* Bei positiver Policy Decision erstellt der AuthS Access Token, Refresh Token und (bei Hardware Attestation) das `zeta_attestation_token`.
 
-![Abbildung 7: Token Exchange mit Attestation](../../../images/zeta-flows/Abb-ZETA-Token-Exchange-Subject-Token.svg)
+![Abbildung 7: Token Exchange mit Attestation](../../../images/zeta-flows/Abb-ZETA-Token-Exchange-mit-Attestation.svg)
 
 ##### 4.1.6.1 Token Exchange Request
 
