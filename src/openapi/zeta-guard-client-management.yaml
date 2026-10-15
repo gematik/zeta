@@ -252,7 +252,7 @@ paths:
         A_25432-01). Submits the answer to the TPM ActivateCredential challenge issued by the
         `202 Accepted` response of `POST /register` (`verify_type: tpm_activation`) together
         with the `transaction_id`. On success the guard issues the final `client_id` (informative
-        status `pending_attestation`, see `dcr-response.yaml`). Mobile TOFU clients do NOT use this endpoint for email OTP
+        status `registered` per A_30086, see `dcr-response.yaml`). Mobile TOFU clients do NOT use this endpoint for email OTP
         anymore — their F1 email verification runs after the OIDC user authentication.
       security:
         - {}   # Authenticated by the challenge answer + transaction_id.
@@ -265,7 +265,7 @@ paths:
         '201':
           description: |
             Verified and registered. Returns the final `client_id` (informative status
-            `pending_attestation`); NO registration access token is issued (A_30101).
+            `registered` per A_30086); NO registration access token is issued (A_30101).
           headers:
             Location:
               description: Management URI of the new client (`/register/{client_id}`).

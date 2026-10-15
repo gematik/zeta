@@ -4,8 +4,7 @@
 
 ' title Token Exchange with Attestation
 
-participant Konnektor as "Konnektor or\nTI-Gateway" LEI_COMPONENT_COLOR
-participant SMB as "SM(C)-B" LEI_COMPONENT_COLOR
+participant Konnektor as "Konnektor or\nTI-Gateway\n(SM(C)-B)" LEI_COMPONENT_COLOR
 box "Device" DEVICE_COLOR
   box "Primärsystem" PRIMAERSYSTEM_COLOR
     participant Client as "ZETA Client" <<zeta>>
@@ -26,8 +25,8 @@ note right: Session-based Key Pair for DPoP binding.
 Client -> Client: Generiere subject_token (mit Nonce, client_key.jkt, dpop_key.jkt)
 
 group Sign Subject Token with SM(C)-B
-    Client -> Konnektor ++
-    Konnektor --> Client -- : 
+    Client -> Konnektor ++ : Signiere subject_token mit SM(C)-B
+    Konnektor --> Client -- : signiertes subject_token
 end
 
 Client -> Client : Create DPoP Proof (with Nonce from AuthS)

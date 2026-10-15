@@ -1,5 +1,5 @@
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.2.1"
+schemaVersion: "1.2.2"
 title: RegistrationRequest
 description: >-
   Payload Schema für den DCR POST /register Body.
@@ -48,6 +48,10 @@ description: >-
   Referenzimplementierung erfüllt das), weil der AuthS nur von ihm
   ausgestellte Nonces akzeptiert. Ein AuthS, der nach A_28144 mit Padding
   (24 Zeichen) ausgibt, muss vor Einführung von 1.2.1 umgestellt werden.
+
+  Präzisierung 1.2.2 (nur Beschreibung, gültige Instanzen unverändert):
+  attestation_pop im Fast-Path nennt den Stichtag 01.01.2028 aus A_30193 für
+  die Legacy-Form ohne nonce.
 
   Auswahl des Zweigs: attestation_type lesen; fehlt das Feld, gilt "software"
   (Requests nach Schema 1.0.0). tpm | apple | android | zeta_attestation_token
@@ -459,11 +463,12 @@ definitions:
 
           Der signierte Hash ist SHA-256(puk_client_sig || nonce), sofern
           das Feld nonce gesetzt ist, andernfalls SHA-256(puk_client_sig)
-          (Legacy-Form nach Schema 1.0.0). Der AuthS akzeptiert beide Formen
-          und wählt anhand der An-/Abwesenheit von nonce; ohne nonce ist der
-          Nachweis nicht challenge-gebunden und ein mitgeschnittener Request
-          bleibt wiedereinlösbar (Restrisiko A_29915), weshalb neue Clients
-          die nonce setzen SOLLEN.
+          (Legacy-Form nach Schema 1.0.0). Der AuthS akzeptiert bis zum
+          Stichtag 01.01.2028 (A_30193) beide Formen und wählt anhand der
+          An-/Abwesenheit von nonce; ab dem Stichtag lehnt er Requests ohne
+          nonce ab. Ohne nonce ist der Nachweis nicht challenge-gebunden und
+          ein mitgeschnittener Request bleibt wiedereinlösbar (Restrisiko
+          A_29915), weshalb neue Clients die nonce setzen SOLLEN.
 
           apple: Base64-kodiertes CBOR-Assertion-Objekt aus
           DCAppAttestService.generateAssertion(keyId:clientDataHash:) mit

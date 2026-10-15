@@ -39,7 +39,8 @@ alt Kein ZETA Guard Attestation Token
         note right of AuthS: AuthS verifiziert Apple App Attest Root CA und prüft,\ndass PuK.AK.Sig mit x5c[0] des Objekts übereinstimmt.
 
     else Software Attestation (Legacy OIDC DCR)
-        Client -> AuthS: POST /register\n{\n  "client_name": "myClient",\n  "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"],\n  "jwks": { "keys": [ PuK.Client.Sig ] },\n  "token_endpoint_auth_method": "private_key_jwt"\n}
+        Client -> AuthS: POST /register\n{\n  "client_name": "myClient",\n  "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"],\n  "jwks": { "keys": [ PuK.Client.Sig ] },\n  "token_endpoint_auth_method": "private_key_jwt"\n  [, "platform", "product_id", "nonce", "signed_hash_puk_client_sig"]\n}
+        note right of AuthS: nonce vom nonce_endpoint (GET /nonce, nicht dargestellt);\nsigned_hash_puk_client_sig = Sign(PrK.Client.Sig, SHA-256(PuK.Client.Sig || nonce))
     end
 
 else ZETA Attestation Token vorhanden (Fast-Path)
@@ -50,7 +51,7 @@ else ZETA Attestation Token vorhanden (Fast-Path)
     ZAS --> Client: attestation_pop
     Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token",\nzeta_attestation_token, PuK.Client.Sig, nonce,\nsigned_Hash_PuK.Client.Sig, attestation_pop}
     AuthS -> AuthS: Prüfe Token-Signatur (JWKS des Ausstellers) & Vertrauensstellung\n(Aussteller im Entity Statement des Federation Master, aud = zeta-guard)
-    AuthS -> AuthS: Prüfe nonce (eigener nonce_endpoint, unverbraucht, nicht abgelaufen)
+    AuthS -> AuthS: Prüfe und verbrauche nonce (eigener nonce_endpoint, unverbraucht, nicht abgelaufen)
     AuthS -> AuthS: Prüfe signed_Hash_PuK.Client.Sig mit PuK.Client.Sig\n(Selbstsignatur, PoP des Client Instance Keys)
     AuthS -> AuthS: Extrahiere attestation_type und PuK.AK.Sig (cnf.jwk) aus dem Token
     AuthS -> AuthS: Verifiziere attestation_pop mit PuK.AK.Sig über SHA-256(PuK.Client.Sig || nonce)\n(Bindung des neuen Client Instance Keys an den attestierten AK)
@@ -59,7 +60,8 @@ else ZETA Attestation Token vorhanden (Fast-Path)
       App-Attest-Assertion mit clientDataHash = SHA-256(PuK.Client.Sig || nonce),
       erzeugt vom Client selbst (keine ZAS-Beteiligung); bei "tpm" eine
       TPM-Signatur mit PrK.AK.Sig, die der ZAS erstellt.
-      Ohne nonce prüft der AuthS abwärtskompatibel über SHA-256(PuK.Client.Sig).
+      Ohne nonce prüft der AuthS abwärtskompatibel über SHA-256(PuK.Client.Sig),
+      nur bis zum Stichtag 01.01.2028 (A_30193).
     end note
 end
 

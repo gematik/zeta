@@ -45,17 +45,17 @@ else Validation fehlerhaft
     AuthS --> Client: 401 Unauthorized {"error": "invalid_client"}
   else DPoP-Proof ungültig
     AuthS --> Client: 400 Bad Request {"error": "invalid_dpop_proof"}
-  else Refresh Token ungültig/abgelaufen/wiederverwendet
+  else Refresh Token ungültig/abgelaufen/wiederverwendet, SM(C)-B gesperrt
     AuthS --> Client--: 400 Bad Request {"error": "invalid_grant"}
   end
 end alt
 
 note over AuthS, Client
   Fehlercodes gemäß [RFC6749]#section-5.2 (Refresh Grant §6):
-  400 = technischer Grant-/Request-Fehler (invalid_dpop_proof [RFC9449]; invalid_grant für jedes nicht\n  nutzbare Refresh Token: abgelaufen, wiederverwendet, widerrufen, Session terminiert),
+  400 = technischer Grant-/Request-Fehler (invalid_dpop_proof [RFC9449]; invalid_grant für jedes nicht\n  nutzbare Refresh Token: abgelaufen, wiederverwendet, widerrufen, Session terminiert, SM(C)-B gesperrt),
   401 = Client-Authentifizierung fehlgeschlagen (invalid_client),
   403 = Policy-Ablehnung bei gültigen Credentials (access_denied).
-  Zuordnung je Fehlerfall: Tabelle ZT_PDP_Fehlerfaelle.
+  Zuordnung je Fehlerfall: Tab-ZETA-PDP-Fehlerfaelle-Token-Endpunkt.
   Response-Body gemäß [zeta-error.yaml].
 end note
 

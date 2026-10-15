@@ -57,7 +57,7 @@ client_id
 client_name
 public_key_jwks
 ...
-state: pending_attestation
+state: registered (A_30086)
 end note
 PDPDB --> AuthS --: Client Placeholder Created
 AuthS -->> Client --: 201 Created

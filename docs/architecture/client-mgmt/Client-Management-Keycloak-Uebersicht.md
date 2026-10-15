@@ -5,6 +5,8 @@
 **Referenzstand Keycloak:** 26.x (`keycloak-zeta` 1.2.3; DPoP, Standard Token Exchange und Admin Permissions V2 sind seit 26.4 bzw. 26.2 *supported*)
 **Charakter:** informativ; die zugehörigen Anforderungen stehen in `Kapitel-5.5-Client-Management-Keycloak-Neufassung.md`
 
+> **Abweichung vom Schema (Stand 2026-10-15):** Die hier genannten Status `pending_verification`/`pending_attestation` beschreiben den implementierten Stand von `keycloak-zeta` 1.2.3. `dcr-response.yaml` ab 1.2.0 führt den Registrierungsstatus nach A_30086 (`pending_user_binding`, `bound`, `registered`, `active`) und kennzeichnet die beiden Werte als veraltet. Zuordnung siehe `Kapitel-5.5-Client-Management-Keycloak-Neufassung.md`, Abschnitt „Zustände“.
+
 ---
 
 ## 1 Ausgangslage und Ziel

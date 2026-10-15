@@ -430,7 +430,7 @@ Die Dynamic Client Registration ermöglicht die Registrierung neuer Clients beim
 - *(01) POST /register:* Der ZETA Client sendet die Registrierungsanfrage gemäß Schema [dcr-request.yaml](../../../src/schemas/dcr-request.yaml) an den PDP AuthS. Der Body enthält `attestation_type: "tpm"`, `PuK.Client.Sig`, `PuK.AK.Sig`, `PuK.EK.Enc`, `C.EK.Enc` und `signed_hash_puk_client_sig`, dazu – empfohlen – `nonce` und `client_key_pop` sowie, wenn der Client Instance Key im TPM liegt, `tpm_client_key_public`, `tpm_certify_info` und `tpm_certify_signature` (alle aus [4.1.3](#413-vorbereitung-der-client-registrierung-key-certification)).
 - *(02)–(03) MakeCredential:* Der AuthS prüft und verbraucht die Nonce, prüft `client_key_pop` mit `PuK.Client.Sig` und `tpm_certify_info` (`extraData` = Nonce, `certify.name` passend zu `tpm_client_key_public`, Signatur mit `PuK.AK.Sig`); dieses Ergebnis gilt erst nach erfolgreichem `/register/verify`. Er validiert die EK-Zertifikatskette gegen die Hersteller-CA. Zur Verifikation des Schlüsselbesitzes generiert er ein verschlüsseltes `CredentialBlob` per `TPM2_MakeCredential` (verschlüsselt mit `PuK.EK.Enc`, gebunden an `PuK.AK.Sig`) und antwortet mit `202 Accepted {challenge_type, tpm_credential_blob, tpm_encrypted_secret}`.
 - *(04)–(08) ActivateCredential:* Der ZETA Client leitet das `CredentialBlob` an den ZAS weiter. Der ZAS führt im TPM `TPM2_ActivateCredential` aus — dieser Befehl gelingt nur, wenn EK und AK im selben TPM vorhanden sind. Das entschlüsselte Secret wird an den Client zurückgegeben.
-- *(09)–(10) POST /register/verify:* Der Client sendet das Secret an den AuthS. Der AuthS verifiziert das Secret (AK und EK im selben TPM), setzt `client_key_binding` (`tpm_certified`, `pop` oder `none`) und schließt die Registrierung ab: `201 Created {client_id}` mit Status `pending_attestation`.
+- *(09)–(10) POST /register/verify:* Der Client sendet das Secret an den AuthS. Der AuthS verifiziert das Secret (AK und EK im selben TPM), setzt `client_key_binding` (`tpm_certified`, `pop` oder `none`) und schließt die Registrierung ab: `201 Created {client_id}` mit Status `registered` (A_30086).
 
 ![Abbildung 5: DCR für Windows oder Linux Clients mit TPM Attestation](../../../images/zeta-flows/Abb-ZETA-DCR-für-stationäre-Win-Linux-Clients-TPM-Att.svg)
 
@@ -533,7 +533,7 @@ Content-Type: application/json
 ```json
 {
   "client_id": "zeta-client-desktop-tpm-a1b2c3",
-  "status": "pending_attestation",
+  "status": "registered",
   "client_id_issued_at": 1748520000,
   "token_endpoint_auth_method": "private_key_jwt"
 }
@@ -639,7 +639,7 @@ Die Registrierung für macOS Clients nutzt das `Apple Attestation Object`, um di
 - *(01) POST /register:* Der Client sendet die Registrierungsanfrage mit `attestation_type: "apple"`, `PuK.AK.Sig`, dem `Apple_Attestation_Object` (CBOR-kodiert), `PuK.Client.Sig` und `signed_Hash_PuK.Client.Sig`.
 - *(02) Validierung:* Der AuthS verifiziert das Apple Attestation Object gegen die Apple App Attest Root CA und prüft, dass `PuK.AK.Sig` mit dem Blatt-Zertifikat (`x5c[0]`) des Objekts übereinstimmt.
 - *(03) Alternativ — ZETA Attestation Token:* Liegt bereits ein gültiges `zeta_attestation_token` aus einer früheren Attestierung vor, kann dieses anstelle des Apple Attestation Objects vorgelegt werden (Fast-Path).
-- *(04) Registrierung:* Der AuthS speichert den Client mit Status `pending_verification` und antwortet mit `201 Created {client_id}`.
+- *(04) Registrierung:* Der AuthS speichert den Client mit Status `registered` (A_30086) und antwortet mit `201 Created {client_id}`.
 
 ![Abbildung 9: DCR für stationäre Apple Clients](../../../images/zeta-flows/Abb-ZETA-DCR-für-stationäre-Apple-Clients.svg)
 
@@ -692,7 +692,7 @@ Content-Type: application/json
 ```json
 {
   "client_id": "zeta-client-macos-a1b2c3",
-  "status": "pending_verification",
+  "status": "registered",
   "client_id_issued_at": 1748520000
 }
 ```
@@ -742,7 +742,7 @@ Die Registrierung bei Software-basierter Attestation erfordert kein Challenge-Re
 - **Verwendete Endpunkt-Pfade:** `POST /register`
 - *(00) Nonce abholen (empfohlen):* Der Client ruft `GET /nonce` am AuthS auf. Die Nonce wird für den Besitznachweis im nächsten Schritt benötigt.
 - *(01) POST /register:* Der Client sendet `client_name`, `grant_types`, `jwks` (mit `PuK.Client.Sig`), `token_endpoint_auth_method` sowie — empfohlen — `platform`, `product_id`, `nonce` und `signed_hash_puk_client_sig` (Selbstsignatur über `SHA-256(PuK.Client.Sig || nonce)`).
-- *(02) Registrierung:* Der AuthS prüft den Besitznachweis, sofern vorhanden, und speichert den Client mit Status `pending_verification`; er antwortet mit `201 Created {client_id}`.
+- *(02) Registrierung:* Der AuthS prüft den Besitznachweis, sofern vorhanden, und speichert den Client mit Status `registered` (A_30086); er antwortet mit `201 Created {client_id}`.
 
 > **Hinweis:** `nonce` und `signed_hash_puk_client_sig` sind im Software-Zweig aus Kompatibilitätsgründen optional — eine Registrierung ohne sie bleibt gültig. Ohne Besitznachweis ist die Registrierung allerdings nicht an den Besitz von `PrK.Client.Sig` gebunden; ein Dritter kann dann einen fremden öffentlichen Schlüssel registrieren und dessen spätere Registrierung per `409 registration_conflict` blockieren. Neue Client-Implementierungen sollten beide Felder setzen.
 
@@ -795,7 +795,7 @@ Content-Type: application/json
 ```json
 {
   "client_id": "zeta-client-sw-fallback-x9y8z7",
-  "status": "pending_verification",
+  "status": "registered",
   "client_id_issued_at": 1748520000
 }
 ```
@@ -942,7 +942,7 @@ Die Registrierung etabliert den Client Instance Key und die Apple-Attestierung; 
 
 **Fast-Path (`zeta_attestation_token` vorhanden):**
 
-- *(05) POST /register:* Liegt ein gültiger `zeta_attestation_token` aus einer früheren Registrierung vor, sendet der Client `attestation_type: "zeta_attestation_token"`, den Token, `PuK.Client.Sig` und einen Besitznachweis (`attestation_pop`, empfohlen gebunden an eine frische `nonce` aus `GET /nonce`).
+- *(05) POST /register:* Liegt ein gültiger `zeta_attestation_token` aus einer früheren Registrierung vor, sendet der Client `attestation_type: "zeta_attestation_token"`, den Token, `PuK.Client.Sig` und einen Besitznachweis (`attestation_pop`, empfohlen gebunden an eine frische `nonce` aus `GET /nonce`; ohne `nonce` nur bis zum Stichtag 01.01.2028, A_30193).
 - *(06) 201 Created:* Der AuthS prüft Signatur und Vertrauensstellung des Tokens, extrahiert `PuK.AK.Sig` und verifiziert den Besitznachweis. Die `redirect_uris` übernimmt er aus dem Token. Da der Token die bereits verifizierte E-Mail-Bindung trägt, entfällt die erneute TOFU-Bestätigung: Die Antwort lautet `{client_id, status: "bound"}`.
 
 Der `zeta_attestation_token` (signiert, an `PuK.AK.Sig` gebunden über `cnf`, enthält die registrierten `redirect_uris`; siehe [zeta-attestation-token.yaml](../../../src/schemas/zeta-attestation-token.yaml)) wird **nicht** bei `/register` ausgestellt, sondern erst mit den vollen Token nach abgeschlossener E-Mail-Bindung (siehe [5.1.3.3](#5133-teilflow-c-token-bezug-e-mail-bindung-und-ausstellung-der-zeta-token)).

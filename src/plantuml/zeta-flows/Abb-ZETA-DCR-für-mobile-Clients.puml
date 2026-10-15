@@ -66,8 +66,8 @@ alt Kein ZETA Attestation Token
     end note
 
     AuthS -> AuthS: Pinne attestation_type, platform, product_id und ak_jkt (Thumbprint PuK.AK.Sig)\nim Registrierungsdatensatz (binding_status: pinned)
-    AuthS -> AuthS: Store Client (state: pending_user_binding)
-    AuthS --> Client--: 201 Created {client_id, status: pending_user_binding}
+    AuthS -> AuthS: Store Client (state: pending_user_binding bei authorization_code,\nregistered bei identitätsloser Registrierung, A_30086)
+    AuthS --> Client--: 201 Created {client_id[, status]}\n(status informativ, Werte gemäß dcr-response.yaml)
 
 
 else ZETA Attestation Token vorhanden (Fast-Path)
@@ -95,6 +95,7 @@ else ZETA Attestation Token vorhanden (Fast-Path)
       mitgeschnittener Fast-Path-Request bliebe an beliebigen Guards wiedereinlösbar (Cross-Guard-Onboarding).
       Abwärtskompatibel: fehlt nonce im Request, prüft der AuthS wie bisher gegen SHA-256(PuK.Client.Sig);
       der Schutz beruht dann allein auf der Pflicht-Benachrichtigung der gebundenen E-Mail (F1).
+      Die Legacy-Form ohne nonce wird ab dem Stichtag 01.01.2028 nicht mehr akzeptiert (A_30193).
     end note
 
     AuthS -> AuthS: Pinne attestation_type, platform, product_id und ak_jkt (Thumbprint PuK.AK.Sig)\nim Registrierungsdatensatz (binding_status: pinned)

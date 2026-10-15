@@ -6,7 +6,7 @@
 # Fehlerantworten (RFC 7591 Abschnitt 3.2.2, z. B. invalid_redirect_uri,
 # invalid_client_metadata) folgen zeta-error.yaml.
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.1.0"
+schemaVersion: "1.2.0"
 title: DCR Response
 description: >-
   Antwort des AuthS auf POST /register, POST /register/verify sowie
@@ -84,19 +84,30 @@ definitions:
           Clients setzen nach der Registrierung stets mit dem Token Exchange fort.
           Der AuthS KANN das Feld weglassen.
 
-          Bekannte Werte:
-            - pending_attestation: stationärer TPM-Client nach POST /register/verify
-              registriert; die Attestierung wird mit dem ersten Token Exchange
-              nachgewiesen.
-            - pending_verification: stationärer Apple- oder Software-Client
-              registriert; Bedeutung wie pending_attestation. (Derselbe Wert steht
-              in der 202-Antwort gemäß dcr-response-202.yaml für eine noch offene
-              Challenge; dort ist er Pflichtfeld.)
-            - pending_user_binding: mobiler Client registriert; die E-Mail-Bindung
-              (TOFU) erfolgt nach der OIDC-Nutzerauthentisierung.
-            - bound: mobiler Client registriert und an eine Identität mit
-              verifizierter E-Mail gebunden (z. B. Fast-Path mit
-              zeta_attestation_token).
+          Werte gemäß Registrierungs-Statusmodell A_30086 (seit Schema 1.2.0). Den
+          Lebenszyklus bestimmt der AuthS bei POST /register aus grant_types, nicht
+          aus der Plattform:
+            - pending_user_binding: mobile, identitätsgebundene Registrierung
+              (grant_types mit authorization_code) nach POST /register;
+              TI-Identität und E-Mail (F1) noch nicht gebunden.
+            - bound: identitätsgebundene Registrierung mit TI-Identität und
+              verifizierter E-Mail (F1), z. B. Fast-Path mit zeta_attestation_token.
+            - registered: stationäre (SMC-B) oder identitätslose Registrierung nach
+              POST /register bzw. bei TPM nach erfolgreichem POST /register/verify.
+            - active: stationäre oder identitätslose Registrierung nach dem ersten
+              erfolgreichen Token Exchange mit Policy-Entscheidung allow (nur bei
+              GET /register/{client_id} zu erwarten).
+          Der Status tombstone (A_30086) wird nicht zurückgegeben, da die
+          Registrierung dann entfernt ist.
+
+          Veraltete Werte (bis Schema 1.1.0, Implementierungen vor A_30086). Der
+          AuthS SOLL sie nicht mehr ausgeben. Der Client behandelt sie wie jeden
+          anderen Wert: status ist informativ und steuert keine Ablauflogik.
+            - pending_attestation: entspricht registered (stationärer TPM-Client).
+            - pending_verification: entspricht registered (stationärer Apple- oder
+              Software-Client). Unberührt davon bleibt pending_verification
+              Pflichtwert der 202-Antwort gemäß dcr-response-202.yaml (offene
+              Challenge, kein Registrierungsstatus).
 
           Offenes Enum: weitere Werte sind zulässig und vom Client zu ignorieren.
         # Offenes Enum: type: string ohne constrainendes enum; die bekannten Werte
@@ -104,7 +115,7 @@ definitions:
         # String (vorher anyOf aus enum und string, das Generatoren als Union
         # mit untypisiertem Zweig abbilden).
         type: string
-        x-extensible-enum: [pending_attestation, pending_verification, pending_user_binding, bound]
+        x-extensible-enum: [pending_user_binding, bound, registered, active, pending_attestation, pending_verification]
       client_name:
         type: string
         description: Echo des registrierten client_name (RFC 7591).

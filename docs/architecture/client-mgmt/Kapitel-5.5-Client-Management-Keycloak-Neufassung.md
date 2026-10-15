@@ -42,6 +42,8 @@ Jede Anforderung behandelt genau einen Prüfgegenstand; eine MUSS- und eine DARF
 
 ### Zustände (implementiertes Statusmodell)
 
+> **Abweichung vom Schema (Stand 2026-10-15):** `dcr-response.yaml` ab 1.2.0 führt den Registrierungsstatus nach A_30086 (`pending_user_binding`, `bound`, `registered`, `active`). `pending_attestation` und `pending_verification` (als Registrierungsstatus) sind dort veraltet, der AuthS SOLL sie nicht mehr ausgeben. Das folgende Statusmodell beschreibt den implementierten Stand von `keycloak-zeta` 1.2.3 und ist insoweit eine Abweichung der Implementierung. Zuordnung: `pending_attestation` (mobil) → `pending_user_binding`, `pending_attestation`/`pending_verification` (stationär, 201) → `registered`, aktiv → `bound` bzw. `active`.
+
 | Status | Bedeutung |
 | --- | --- |
 | `pending_verification` | Registrierung angelegt, ein Verifikationsschritt steht aus (TPM-Activation bzw. E-Mail-OTP). Mobile Clients haben in diesem Status noch keine `client_id`, sondern eine `transaction_id`. |
