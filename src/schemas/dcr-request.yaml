@@ -206,10 +206,9 @@ definitions:
           Optional. Base64-kodierte TPM2B_ATTEST-Struktur (Kodierung wie
           puk_ak_sig) aus TPM2_Certify über den Client Instance Key, signiert
           mit dem Attestation Key. Belegt, dass PrK.Client.Sig ein Schlüssel im
-          selben TPM ist wie der Attestation Key. Auslegung von
-          Abb-ZETA-TPM-Attestation-Key, Schritte (04)–(05): Die Spec spricht
-          dort von einem "TPM2 Attest" und nennt das Kommando nicht.
-          Der Client übergibt als qualifyingData die UTF-8-Bytes der nonce.
+          selben TPM ist wie der Attestation Key. Erzeugung gemäß
+          Abb-ZETA-TPM-Attestation-Key, Schritte (06)–(07): Der ZAS übergibt
+          an TPM2_Certify als qualifyingData die UTF-8-Bytes der nonce.
           Der AuthS prüft an der enthaltenen TPMS_ATTEST:
           (1) magic = TPM_GENERATED_VALUE und type = TPM_ST_ATTEST_CERTIFY;
           (2) extraData = UTF-8-Bytes der nonce des Requests (die der AuthS
