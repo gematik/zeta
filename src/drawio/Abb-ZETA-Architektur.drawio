@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram name="Seite-1" id="rmcg_aQgjtSpjyozXI4n">
-        <mxGraphModel dx="870" dy="616" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+        <mxGraphModel dx="1058" dy="893" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -453,7 +453,7 @@
                 </mxCell>
                 <mxCell id="49" connectable="0" parent="37" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="(2)" vertex="1">
                     <mxGeometry relative="1" x="-0.0397" as="geometry">
-                        <mxPoint x="-173" as="offset"/>
+                        <mxPoint x="-130" as="offset"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="39" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#eeeeee;strokeColor=#36393d;" value="Federation Master" vertex="1">
