@@ -5,20 +5,20 @@
 
 Dies ist das Hauptrepository des [Zero Trust Access (ZETA)](https://gemspec.gematik.de/docs/gemSpec/gemSpec_ZETA/latest/)-Projektes. Es enthält Komponentendokumentation, Schnittstellenberschreibungen, Produkthandbuch sowie Links zu Quellcode-Repositories der ZETA-Komponenten.
 
-Die veröffentlichte Version fokussiert sich auf den stationären Zugang zur TI für Leistungserbringerinstitutionen (LEI).
-Beim aktuellen Stand handelt sich um einen finalen Stand für die Stufe 1, bei dem die sicherheitstechnische Prüfung noch nicht abgeschlossen ist. Der aktuelle Stand ist aus diesem Grund noch nicht für den produktiven Einsatz geeignet, und sollte bis zum Abschluss der Prüfung noch in lokalen Umgebungen für Test- und Integrationszwecke eingesetzt werden.
-
 Wir freuen uns über Feedback und Contributions! Bitte beachtet dabei unsere [Contributing Guidelines](./CONTRIBUTING.md) und [Branch-Modell](./docs/branch-modell.md).
 
 * [Implementierungsleitfaden für Primärsysteme](https://gemspec.gematik.de/docs/gemILF/gemILF_ZETA_API/latest/)
 * [ZETA Produkthandbuch](./docs/user-manual/README.md)
 * ZETA Guard GitHub-Repositories
   * [Helm Charts](https://github.com/gematik/zeta-guard-helm)
-  * [Terraform Ressources](https://github.com/gematik/zeta-guard-terraform)
   * [Policy Decision Point (PDP)](https://github.com/gematik/zeta-guard-keycloak)
   * [Policy Enforcement Point (PEP)](https://github.com/gematik/zeta-guard-ngx-pep)
+  * [Provisioning Processor](https://github.com/gematik/zeta-guard-provisioning-processor)
+  * [Java HSM Proxy Provider](https://github.com/gematik/zeta-guard-java-hsm-proxy-provider)  
+  * [Terraform Ressources](https://github.com/gematik/zeta-guard-terraform)
 * [ZETA Client SDK](https://github.com/gematik/zeta-sdk)
 * Testunterstützung
+  * [ZETA CLI](https://github.com/gematik/zeta-cli)
   * [ZETA Testfachdienst](https://github.com/gematik/zeta-testfachdienst)
   * [ZETA Tiger Testsuite](https://github.com/gematik/zeta-tiger-testsuite)
 
