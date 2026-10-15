@@ -18,8 +18,9 @@ end box
 
 alt Kein ZETA Guard Attestation Token vorhanden
     Client++
-    Client -> AuthS++: POST /register\n{attestation_type="tpm", PuK.EK.Enc, C.EK.Enc,\nPuK.AK.Sig, PuK.Client.Sig, signed_Hash_PuK.Client.Sig}
-    AuthS -> AuthS: Validiere C.EK.Enc-Chain & signed_Hash_PuK.Client.Sig
+    note right of Client: nonce, client_key_pop, tpm_* aus\nAbb-ZETA-TPM-Attestation-Key;\nempfohlen (A_NEU-TPM-NONCE), tpm_* nur\nmit Client Instance Key im TPM
+    Client -> AuthS++: POST /register\n{attestation_type="tpm", PuK.EK.Enc, C.EK.Enc,\nPuK.AK.Sig, PuK.Client.Sig, signed_Hash_PuK.Client.Sig\n[, nonce, client_key_pop [, tpm_client_key_public, tpm_certify_info, tpm_certify_signature]]}
+    AuthS -> AuthS: Validiere C.EK.Enc-Chain & signed_Hash_PuK.Client.Sig;\nprüfe und verbrauche nonce; prüfe client_key_pop mit PuK.Client.Sig;\nprüfe tpm_certify_info (extraData = nonce, certify.name = tpm_client_key_public,\nSignatur mit PuK.AK.Sig) – Ergebnis vorläufig bis /register/verify
     AuthS -> AuthS: CredentialBlob = MakeCredential(...);\n(TPM 2.0 Commands, Section 12.5)
     AuthS --> Client: 202 Accepted {challenge_type, tpm_credential_blob, tpm_encrypted_secret}
 
@@ -29,7 +30,7 @@ alt Kein ZETA Guard Attestation Token vorhanden
     ZAS --> Client--: Secret
 
     Client -> AuthS: POST /register/verify {Secret}
-    AuthS -> AuthS: Secret korrekt? → PuK.Client.Sig hardware-gebunden ✓
+    AuthS -> AuthS: Secret korrekt? → PuK.AK.Sig im selben TPM wie PuK.EK.Enc ✓;\nclient_key_binding = tpm_certified (mit tpm_certify_info) | pop | none
 
 else ZETA Attestation Token vorhanden
     Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token",\nzeta_attestation_token, PuK.Client.Sig,\nsigned_Hash_PuK.Client.Sig}

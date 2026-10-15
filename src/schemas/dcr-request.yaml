@@ -1,5 +1,5 @@
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.2.0"
+schemaVersion: "1.2.1"
 title: RegistrationRequest
 description: >-
   Payload Schema für den DCR POST /register Body.
@@ -40,6 +40,14 @@ description: >-
   Definitionen (definitions/registration_*), jwks ist einmal definiert
   (definitions/client_jwks), Binärfelder tragen contentEncoding (base64 bzw.
   base64url).
+
+  Präzisierung 1.2.1 (keine neuen Felder): Format der nonce nach A_28144-01
+  (128 Bit, base64url ohne Padding, 22 Zeichen) als pattern in
+  definitions/nonce. Kein bisher erfolgreicher Request wird verworfen, sofern
+  der AuthS die Nonce bereits ohne Padding ausgibt (A_28144-01; die
+  Referenzimplementierung erfüllt das), weil der AuthS nur von ihm
+  ausgestellte Nonces akzeptiert. Ein AuthS, der nach A_28144 mit Padding
+  (24 Zeichen) ausgibt, muss vor Einführung von 1.2.1 umgestellt werden.
 
   Auswahl des Zweigs: attestation_type lesen; fehlt das Feld, gilt "software"
   (Requests nach Schema 1.0.0). tpm | apple | android | zeta_attestation_token
@@ -657,9 +665,18 @@ definitions:
         eingeht, einen neuen Client Instance Key.
   nonce:
     type: string
+    pattern: "^[A-Za-z0-9_-]{22}$"
     description: >-
       Frische, einmalig verwendbare Nonce vom nonce_endpoint (GET /nonce, siehe
-      as-well-known.yaml). Die Nonce MUSS in den signierten Hash eingehen —
+      as-well-known.yaml). Format nach A_28144-01: 128 Bit Zufall aus einem
+      kryptographisch sicheren Zufallszahlengenerator, base64url ohne Padding
+      (22 Zeichen). Der Client verwendet den String unverändert, ohne
+      Dekodierung; in Hash-Eingaben und als qualifyingData (TPM2_Certify,
+      TPM2_Quote) gehen seine UTF-8-Bytes ein. Die Länge ist durch das TPM
+      begrenzt: qualifyingData ist ein TPM2B_DATA mit höchstens 34 Byte bei
+      TPMs mit SHA-256; die 22 Byte der Nonce passen.
+
+      Die Nonce MUSS in den signierten Hash eingehen —
       attestation_pop bzw. signed_hash_puk_client_sig werden dann über
       SHA-256(puk_client_sig || nonce) gebildet: die Nonce wird als UTF-8-Bytes
       des vom AuthS gelieferten Strings an die Byte-Repräsentation von

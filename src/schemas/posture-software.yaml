@@ -39,7 +39,8 @@ properties:
     description: >-
       The nonce from AuthS. Checked and consumed by the Authorization Server
       in one atomic step, once per request; rule in dcr-request.yaml,
-      definitions/nonce.
+      definitions/nonce. Format per A_28144-01: base64url without padding,
+      22 characters (definitions/nonce).
 required:
   - product_id
   - product_version

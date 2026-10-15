@@ -145,7 +145,7 @@ properties:
     description: >-
       Die vom AuthS über GET /nonce bezogene Nonce, unverändert als String.
       Geht als UTF-8-Bytes in clientDataHash ein (siehe Schemabeschreibung).
-      Einmalig verwendbar.
+      Einmalig verwendbar. Format nach A_28144-01 (base64url ohne Padding, 22 Zeichen; siehe dcr-request.yaml, definitions/nonce).
   assertion:
     type: string
     format: base64

@@ -51,7 +51,10 @@ properties:
         description: The JWT ID.
       nonce:
         type: string
-        description: A **unique value** from the AS to prevent replay attacks.
+        description: >-
+          A **unique value** from the AS (GET /nonce) to prevent replay attacks.
+          Format per A_28144-01: base64url without padding, 22 characters
+          (dcr-request.yaml, definitions/nonce).
       iss:
         type: string
         description: The issuer of the JWT (client_id).

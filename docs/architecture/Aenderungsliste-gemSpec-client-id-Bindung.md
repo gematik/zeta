@@ -264,7 +264,7 @@ trug App-Links aus dem mobilen Fall):
   "product_id": "gematik-desktop-suite-win-v3",
   "product_version": "3.5.0",
   "zeta_attestation_token": "ey...",
-  "nonce": "n-0S6_WzA2Mj",
+  "nonce": "h1X5-uT5hKkvyLr0DpCHcA",
   "signed_hash_puk_client_sig": "MEQ...",
   "attestation_pop": "MEU..."
 }

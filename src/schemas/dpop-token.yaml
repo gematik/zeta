@@ -66,7 +66,10 @@ properties:
         description: The base64url-encoded SHA-256 hash of the associated access token. Required when the DPoP proof is used in conjunction with an access token.
       nonce:
         type: string
-        description: A recent nonce provided by the server to prevent replay attacks.
+        description: >-
+          A recent nonce provided by the server (GET /nonce) to prevent replay
+          attacks. Format per A_28144-01: base64url without padding, 22
+          characters (dcr-request.yaml, definitions/nonce).
     required:
       - jti
       - htm

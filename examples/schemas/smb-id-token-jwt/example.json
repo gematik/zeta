@@ -8,7 +8,7 @@
     },
     "payload": {
         "jti": "unique-smcb-token-id-abc123",
-        "nonce": "bfb76c3e-8b4a-4f91-9d2a-3c7e5f8a1b20",
+        "nonce": "h1X5-uT5hKkvyLr0DpCHcA",
         "iss": "cid-win-tpm-abcde",
         "sub": "3-SMC-B-Testkarte-883110000129068",
         "aud": [

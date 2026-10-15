@@ -406,11 +406,19 @@ Bei jedem Systemboot und jedem Start des Primärsystems führt der ZAS eine erne
 
 #### 4.1.3 Vorbereitung der Client-Registrierung (Key Certification)
 
-Vor der Registrierung beim ZETA Guard Authorization Server (AuthS) erbringt der Client im Zusammenspiel mit dem ZAS den Nachweis, dass sein Signaturschlüssel (`PuK.Client.Sig`) auf demselben physischen TPM-Chip existiert wie der Attestation Key (`AK`). Zusätzlich werden alle benötigten Daten für die Attestierung des Clients beim AuthS vorbereitet. Die Schritte im Detail:
+Vor der Registrierung beim ZETA Guard Authorization Server (AuthS) erzeugt der Client im Zusammenspiel mit dem ZAS alle Nachweise für den Registrierungs-Request. Liegt der Client Instance Key im TPM, weist er zusätzlich nach, dass `PrK.Client.Sig` im selben TPM liegt wie der Attestation Key (AK). `tpm_certify_info` und `client_key_pop` sind an eine Nonce des AuthS gebunden; die Frische des AK belegt der MakeCredential-Handshake in [4.1.4](#414-dynamic-client-registration-dcr). Die Schritte im Detail:
 
-- *(01)–(03) Client-Key laden:* Der ZETA Client übergibt das Schlüssel-Handle und den SHA-256-Hash von `PuK.Client.Sig` an den ZAS. Der ZAS lädt den Client-Schlüssel in das TPM.
-- *(04)–(05) TPM2_Certify:* Das TPM führt eine `TPM2_Certify`-Operation durch: Es signiert mit `PrK.AK.Sig` kryptografisch, dass sich `PuK.Client.Sig` im selben TPM-Sicherheitschip befindet. Ergebnis sind `tpm2b_attest` (Zertifizierungsdaten) und `tpmt_signature` (Signatur).
-- *(06)–(14) EK und AK auslesen:* Der ZAS liest den öffentlichen Endorsement Key (`PuK.EK.Enc`), den öffentlichen AK (`PuK.AK.Sig`) und das herstellerseitige EK-Zertifikat (`C.EK.Enc`) aus dem TPM und übergibt alle Daten an den ZETA Client.
+- *(01)–(02) Nonce abholen:* Der Client ruft `GET /nonce` am AuthS auf (128 Bit, base64url ohne Padding, 22 Zeichen). Der folgende `POST /register` muss innerhalb der Gültigkeit der Nonce erfolgen. Die Nonce wird unverändert als UTF-8-Bytes des Strings verwendet.
+- *(03) Übergabe an den ZAS:* Der Client übergibt `hash_puk_client_sig` = SHA-256(`PuK.Client.Sig`), die Nonce und – falls der Client Instance Key im TPM liegt – dessen Key-Blob (Windows: `PCP_KEY_BLOB`, Linux: `TPM2B_PUBLIC`/`TPM2B_PRIVATE`).
+- *(04)–(09) Nur wenn der Client Instance Key im TPM liegt (`opt`):*
+  - *(04)–(05)* Der ZAS lädt den Client-Schlüssel in das TPM.
+  - *(06)–(07) TPM2_Certify:* Das TPM bestätigt mit `PrK.AK.Sig`, dass `PrK.Client.Sig` im selben TPM liegt. `qualifyingData` sind die UTF-8-Bytes der Nonce (22 Byte; TPM2B_DATA erlaubt höchstens 34 Byte bei SHA-256-TPMs). Ergebnis: `tpm2b_attest` (→ `tpm_certify_info`) und `tpmt_signature` (→ `tpm_certify_signature`).
+  - *(08)–(09)* Der ZAS liest den öffentlichen Bereich des Client-Schlüssels aus (→ `tpm_client_key_public`); der AuthS rechnet damit `certify.name` nach.
+- *(10)–(11) AK auslesen:* Der ZAS liest `PuK.AK.Sig` über das AK-Handle aus der Schlüsselgenerierung ([4.1.1](#411-client-installation-und-schlüsselgenerierung)).
+- *(12)–(15) `signed_hash_puk_client_sig`:* Der AK ist ein restricted Signing Key. Der ZAS bildet den Digest über `TPM2_Hash` (mit Validierungsticket) und signiert ihn mit `TPM2_Sign`. Die Nonce geht hier nicht ein.
+- *(16)* Der ZAS übergibt die Ergebnisse an den Client.
+- *(17) `client_key_pop`:* Der Client signiert mit `PrK.Client.Sig` über den Krypto-Provider der Plattform (Windows: PCP/NCrypt; Linux: z. B. tpm2-tss) SHA-256(`PuK.Client.Sig` || nonce) (hash-then-sign, kein Validierungsticket).
+- *(18)–(23) EK auslesen:* Der ZAS liest den öffentlichen Endorsement Key (`PuK.EK.Enc`) und das herstellerseitige EK-Zertifikat (`C.EK.Enc`) aus und übergibt sie an den Client.
 
 ![Abbildung 4: Vorbereitung per TPM Attestation Key](../../../images/zeta-flows/Abb-ZETA-TPM-Attestation-Key.svg)
 
@@ -419,10 +427,10 @@ Vor der Registrierung beim ZETA Guard Authorization Server (AuthS) erbringt der 
 Die Dynamic Client Registration ermöglicht die Registrierung neuer Clients beim ZETA Guard AuthS. Die Registrierung verknüpft den Client Instance Key mit dem TPM Attestation Key (AK) und dem Endorsement Key (EK). Mit dem Client Instance Key wird die Client assertion signiert, mit der sich der Client am /token Endpoint des ZETA Guard authentifiziert.
 
 - **Verwendete Endpunkt-Pfade (Windows/Linux):** `POST /register` und `POST /register/verify`
-- *(01) POST /register:* Der ZETA Client sendet die Registrierungsanfrage gemäß Schema [dcr-request.yaml](../../../src/schemas/dcr-request.yaml) an den PDP AuthS. Der Body enthält `attestation_type: "tpm"`, `PuK.Client.Sig`, `PuK.AK.Sig`, `PuK.EK.Enc`, `C.EK.Enc` und `signed_hash_puk_client_sig`.
-- *(02)–(03) MakeCredential:* Der AuthS validiert die EK-Zertifikatskette gegen die Hersteller-CA. Zur Verifikation des Schlüsselbesitzes generiert er ein verschlüsseltes `CredentialBlob` per `TPM2_MakeCredential` (verschlüsselt mit `PuK.EK.Enc`, gebunden an `PuK.AK.Sig`) und antwortet mit `202 Accepted {challenge_type, tpm_credential_blob, tpm_encrypted_secret}`.
+- *(01) POST /register:* Der ZETA Client sendet die Registrierungsanfrage gemäß Schema [dcr-request.yaml](../../../src/schemas/dcr-request.yaml) an den PDP AuthS. Der Body enthält `attestation_type: "tpm"`, `PuK.Client.Sig`, `PuK.AK.Sig`, `PuK.EK.Enc`, `C.EK.Enc` und `signed_hash_puk_client_sig`, dazu – empfohlen – `nonce` und `client_key_pop` sowie, wenn der Client Instance Key im TPM liegt, `tpm_client_key_public`, `tpm_certify_info` und `tpm_certify_signature` (alle aus [4.1.3](#413-vorbereitung-der-client-registrierung-key-certification)).
+- *(02)–(03) MakeCredential:* Der AuthS prüft und verbraucht die Nonce, prüft `client_key_pop` mit `PuK.Client.Sig` und `tpm_certify_info` (`extraData` = Nonce, `certify.name` passend zu `tpm_client_key_public`, Signatur mit `PuK.AK.Sig`); dieses Ergebnis gilt erst nach erfolgreichem `/register/verify`. Er validiert die EK-Zertifikatskette gegen die Hersteller-CA. Zur Verifikation des Schlüsselbesitzes generiert er ein verschlüsseltes `CredentialBlob` per `TPM2_MakeCredential` (verschlüsselt mit `PuK.EK.Enc`, gebunden an `PuK.AK.Sig`) und antwortet mit `202 Accepted {challenge_type, tpm_credential_blob, tpm_encrypted_secret}`.
 - *(04)–(08) ActivateCredential:* Der ZETA Client leitet das `CredentialBlob` an den ZAS weiter. Der ZAS führt im TPM `TPM2_ActivateCredential` aus — dieser Befehl gelingt nur, wenn EK und AK im selben TPM vorhanden sind. Das entschlüsselte Secret wird an den Client zurückgegeben.
-- *(09)–(10) POST /register/verify:* Der Client sendet das Secret an den AuthS. Der AuthS verifiziert das Secret und schließt die Registrierung ab: `201 Created {client_id}` mit Status `pending_attestation`.
+- *(09)–(10) POST /register/verify:* Der Client sendet das Secret an den AuthS. Der AuthS verifiziert das Secret (AK und EK im selben TPM), setzt `client_key_binding` (`tpm_certified`, `pop` oder `none`) und schließt die Registrierung ab: `201 Created {client_id}` mit Status `pending_attestation`.
 
 ![Abbildung 5: DCR für Windows oder Linux Clients mit TPM Attestation](../../../images/zeta-flows/Abb-ZETA-DCR-für-stationäre-Win-Linux-Clients-TPM-Att.svg)
 
@@ -463,7 +471,12 @@ Content-Type: application/json
   "puk_ek_enc": "AEIA...<hier Base64 kodierte TPM2B_PUBLIC Struktur des EK>...AABB",
   "c_ek_enc": "MIICzjCCAjagAwIBAgIGAXxP...<hier Base64 kodierte DER X.509 Zertifikat>...z3k=",
   "puk_ak_sig": "AE4A...<hier Base64 kodierte TPM2B_PUBLIC Struktur des AK>...ZZXX",
-  "signed_hash_puk_client_sig": "MEQCIFz...<hier Base64url kodierte ECDSA Signatur>...A5Y_"
+  "signed_hash_puk_client_sig": "MEQCIFz...<hier Base64url kodierte ECDSA Signatur>...A5Y_",
+  "nonce": "h1X5-uT5hKkvyLr0DpCHcA",
+  "client_key_pop": "MEUCIQD...<Base64url ECDSA-Signatur mit PrK.Client.Sig>...",
+  "tpm_client_key_public": "AFgAIwALAAQEcgAAABAAEAADABAAI...<TPM2B_PUBLIC des Client Instance Keys>...",
+  "tpm_certify_info": "AJb/VENHgBcAIgAL...<TPM2B_ATTEST aus TPM2_Certify, extraData = nonce>...",
+  "tpm_certify_signature": "ABgACwBG...<TPMT_SIGNATURE des AK>..."
 }
 ```
 
