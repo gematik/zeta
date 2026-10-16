@@ -11,3 +11,6 @@ dist/
 *.pdf
 tmp/
 .claude
+AGENTS.md
+GEMINI.md
+copilot-instructions.md

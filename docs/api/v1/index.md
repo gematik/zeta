@@ -1396,6 +1396,28 @@ Der PEP HTTP Proxy validiert Token und Signaturen und hängt die entschlüsselte
 }
 ```
 
+### 7.3 Cookie-Behandlung durch den ZETA Client
+
+Der ZETA Guard setzt Cookies insbesondere für Session Affinity ein, damit Requests einer Session dieselbe Instanz erreichen. Cookies von ZETA Guard oder Fachdienst verwaltet der ZETA Client stellvertretend für den Fach-Client. Cookies verlassen den ZETA Client nicht in Richtung Fach-Client, und der Fach-Client kann keine Cookies einschleusen.
+
+**Responses:**
+
+- Der Client wertet jeden `Set-Cookie`-Header aus, legt das Cookie in seinem Cookie-Speicher ab und entfernt den Header aus der Response, bevor er sie an den Fach-Client weiterleitet.
+
+**Requests:**
+
+- Der Client sendet bei jedem Request die Cookies im `Cookie`-Header mit, die nach [RFC 6265](https://www.rfc-editor.org/rfc/rfc6265) zu Ziel-Origin und Pfad passen.
+- Er wertet dabei die Attribute `Domain`, `Path`, `Secure`, `HttpOnly`, `Expires` und `Max-Age` nach RFC 6265 aus und verwirft abgelaufene Cookies.
+- Einen `Cookie`-Header, den der Fach-Client mitsendet, entfernt er aus dem Request. Cookies aus Angaben des Fach-Clients übernimmt er nicht.
+
+**Cookie-Speicher:**
+
+- Der Speicher fasst je Origin mindestens 50 Cookies mit jeweils mindestens 4096 Byte.
+- Er ist je Nutzer-Session (Claim `sid`) und je Origin getrennt. Bedient ein ZETA Client mehrere Fach-Clients, sollte der Speicher zusätzlich je Fach-Client getrennt sein.
+- Der Client schützt den Speicher wie Access Token, Refresh Token und DPoP-Schlüssel vor unbefugtem Zugriff und löscht ihn, wenn die Session beendet oder serverseitig terminiert wird.
+
+**Kein Session-Zustand aus Cookies:** Der Client leitet aus Cookies keinen Authentifizierungs-, Autorisierungs- oder Session-Zustand ab. Sein Session-Zustand beruht ausschließlich auf Access Token, Refresh Token und DPoP-Schlüssel.
+
 ---
 
 ## 8. Fehlerbehandlung und Statuscodes (Zentrales Nachschlagewerk)
