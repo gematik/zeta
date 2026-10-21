@@ -10,25 +10,101 @@ box "Device" DEVICE_COLOR
   end box
 end box
 
-ZAS++    
-ZAS --> ZAS: Installation (Root/Admin rights)
 Client++
-Client --> Client: Installation (User Space)
-group Vertrauensbeziehung zwischen ZAS und Client wird aufgebaut
-    ZAS -> Client
-    Client --> ZAS
+
+alt TPM und ZAS vorhanden
+
+  ZAS++
+  ZAS --> ZAS: Installation (Root/Admin rights)
+  Client --> Client: Installation (User Space)
+  group Vertrauensbeziehung zwischen ZAS und Client wird aufgebaut
+      ZAS -> Client
+      Client --> ZAS
+  end
+
+  == Client Instance Key Pair (PrK.Client.Sig; PuK.Client.Sig) im TPM – Windows ==
+  note left of Client
+    Generierung des primären Schlüssels für Client Assertions
+    (Tab-ZETA-Client-Keys): ECDSA P-256, Attribut sign, nicht exportierbar.
+    Windows: Der Client nutzt das TPM direkt über den Krypto-Provider.
+    Der Key-Blob (PCP_KEY_BLOB) ist nur im TPM verwendbar.
+    Vorbehalt: ungeprüft, ob TBS Standardbenutzern TPM2_PCR_Reset(23)
+    verwehrt; Voraussetzung für die TPM Attestation unter Windows.
+    Linux: siehe (14)–(17).
+  end note
+  opt Windows
+    Client -> TPM++: Generiere PrK.Client.Sig, PuK.Client.Sig\nvia Krypto-Provider (PCP/NCrypt)
+    TPM --> Client--: PuK.Client.Sig, Handle_PrK.Client.Sig (PCP_KEY_BLOB)
+  end
+
+  == Hardware-Attestierung (Attestation Key) ==
+  note left of Client
+    Messung des Primärsystems und Erzeugung des Attestation Keys durch den ZAS.
+    Linux: Vor jeder Messung und jedem TPM2_Quote prüft der ZAS, dass außer root
+    bzw. dem ZAS-Dienstkonto niemand TPM-Kommandos absetzen kann
+    (/dev/tpm0, /dev/tpmrm0, z. B. tpm2-abrmd); sonst Software Attestierung (A_30480).
+  end note
+  ZAS --> ZAS: Messung des PS & Vergleich mit Hersteller-Wert
+  ZAS -> TPM++: TPM2_CreatePrimary() → Storage Root Key (SRK)
+  ZAS -> TPM: TPM2_Create(SRK, restricted=sign, fixedTPM=true)
+  TPM --> ZAS: PuK.AK.Sig, PrK.AK.Sig (blob)
+  ZAS -> TPM: TPM2_Load(SRK, PrK.AK.Sig, PuK.AK.Sig)
+  TPM --> ZAS: Handle_PrK.AK.Sig
+  ZAS -> TPM: TPM2_PCR_Extend(23, Messwerte)
+  note right
+    PCR_23 könnte belegt sein; muss vorher geprüft werden.
+    Kein PCR frei: weiter mit Software Attestierung;
+    PrK.Client.Sig bleibt im TPM (A_30481).
+  end note
+
+  == Client Instance Key Pair (PrK.Client.Sig; PuK.Client.Sig) im TPM – Linux ==
+  note left of Client
+    Linux: kein direkter TPM-Zugriff des Clients, weil PCR 23
+    aus Locality 0 rücksetzbar ist (TPM2_PCR_Reset).
+    Auf Anforderung des über (03)–(04) authentisierten Clients führt
+    der ZAS nur TPM2_Create, TPM2_Load, TPM2_ReadPublic und TPM2_Sign
+    für PrK.Client.Sig aus und lehnt alle anderen Anforderungen ab
+    (TPM2_Certify der Key Certification, Abb. 7, bleibt unberührt).
+    Der Key-Blob bleibt beim ZAS, gespeichert je Benutzerkonto
+    (UID per SO_PEERCRED); der ZAS lädt nur den Schlüssel des
+    anfragenden Kontos.
+  end note
+  opt Linux
+    Client -> ZAS: Erzeuge Client Instance Key (IPC)
+    ZAS -> TPM: TPM2_Create(SRK, ECC P-256, sign,\nrestricted=false, fixedTPM=true, fixedParent=true)
+    TPM --> ZAS: PuK.Client.Sig, PrK.Client.Sig (blob)
+    ZAS --> Client: PuK.Client.Sig\n(Key-Blob TPM2B_PUBLIC/TPM2B_PRIVATE bleibt beim ZAS)
+  end
+  TPM--
+  ZAS--
+
+else Fallback: kein TPM oder kein ZAS
+
+  Client --> Client: Installation (User Space)
+
+  == Client Instance Key Pair (PrK.Client.Sig; PuK.Client.Sig) ==
+  note left of Client
+    Ohne ZAS keine TPM Attestation; es gilt die Software Attestierung.
+    Der Client Instance Key wird trotzdem im TPM erzeugt,
+    sofern das Gerät eines bereitstellt (A_30481). Ein TPM, auf das
+    der Client keinen Zugriff hat (Linux: /dev/tpmrm0), gilt als
+    nicht bereitgestellt.
+  end note
+  alt TPM für den Client zugreifbar
+    Client -> TPM++: Generiere PrK.Client.Sig, PuK.Client.Sig\nvia Krypto-Provider (Windows: PCP/NCrypt; Linux: tpm2-tss)
+    TPM --> Client--: PuK.Client.Sig, Handle_PrK.Client.Sig (Key-Blob)
+  else kein TPM bzw. kein Zugriff
+    Client -> Client: Generiere PrK.Client.Sig,\nPuK.Client.Sig (ECDSA P-256)
+    note left of Client
+      Ausnahme nach Tab-ZETA-Client-Keys: Software-Verschlüsselung
+      mit einem vom Anmeldepasswort abgeleiteten Schlüssel
+      (z. B. Windows DPAPI); kein Klartext-Persistieren (A_30482).
+    end note
+    Client -> Client: Speichere PrK.Client.Sig verschlüsselt
+  end
+
 end
 
-Client -> TPM++: Generiere PrK.Client.Sig, PuK.Client.Sig\nvia OS-Provider (z.B. MS CNG)
-TPM --> Client: PuK.Client.Sig, Handle_PrK.Client.Sig
-ZAS --> ZAS: Messung des PS & Vergleich mit Hersteller-Wert
-ZAS -> TPM: TPM2_CreatePrimary() → Storage Root Key (SRK)
-ZAS -> TPM: TPM2_Create(SRK, restricted=sign, fixedTPM=true)
-TPM --> ZAS: PuK.AK.Sig, PrK.AK.Sig (blob)
-ZAS -> TPM: TPM2_Load(SRK, PrK.AK.Sig, PuK.AK.Sig)
-TPM --> ZAS: Handle_PrK.AK.Sig
-ZAS -> TPM: TPM2_PCR_Extend(23, Messwerte)
-note right: PCR_23 Könnte belegt sein; muss vorher geprüft werden 
-TPM--
+Client--
 
 @enduml

@@ -48,5 +48,6 @@ ZAS --> Client : Evidence {tpm_quote, tpm_event_log}
 
 Client -> Client: Generiere client_statement\n(OS und PS Daten, Evidence)
 Client -> Client: Erstelle Client Assertion (JWT, signiert mit PrK.Client.Sig)
+note right: Signatur mit PrK.Client.Sig:\nWindows über PCP/NCrypt,\nLinux über den ZAS (TPM2_Sign).
 
 @enduml

@@ -386,11 +386,19 @@ Die TPM Attestation ermöglicht es dem Client, seine hardwaregebundene Identitä
 - *(01) Privilegierte ZAS-Installation:* Der ZAS wird mit administrativen Rechten (Root/Admin) installiert. Nur so kann er Messungen in TPM PCR-Register schreiben.
 - *(02) Unprivilegierte Client-Installation:* Der ZETA Client wird im Benutzerkontext des Primärsystems installiert.
 - *(03)–(04) IPC-Vertrauensbeziehung:* Zwischen ZAS (privilegiert) und ZETA Client (User Space) wird eine gegenseitig authentifizierte IPC-Verbindung aufgebaut, z. B. gesichert durch Prozess- und Code-Signatur-Prüfungen beider Seiten.
-- *(05)–(06) Client Instance Key:* Das langlebige Signatur-Schlüsselpaar (`PrK.Client.Sig` / `PuK.Client.Sig`) wird über den OS- oder TPM-Provider erzeugt. Der öffentliche Schlüssel und das Handle werden dem Client übergeben.
+- *(05)–(06) Client Instance Key (Windows):* Das langlebige Signatur-Schlüsselpaar (`PrK.Client.Sig` / `PuK.Client.Sig`, ECDSA P-256, nicht exportierbar) wird über den Krypto-Provider PCP/NCrypt direkt im TPM erzeugt. Der öffentliche Schlüssel und das Handle bzw. der Key-Blob (`PCP_KEY_BLOB`) werden dem Client übergeben. Unter Linux siehe (14)–(17).
+  *Vorbehalt (offen):* Die TPM Attestation unter Windows setzt voraus, dass der TPM Base Service (TBS) Standardbenutzern `TPM2_PCR_Reset` auf PCR 23 verwehrt. Die Liste der für Benutzerkonten erlaubten TPM-2.0-Kommandos ist seit Windows 10 1809 fest im TPM-Treiber hinterlegt und nicht dokumentiert; das ist noch nicht geprüft.
 - *(07) Systemmessung:* Der ZAS misst die unveränderlichen Teile des Primärsystems.
 - *(08) Storage Root Key (SRK):* Im TPM wird ein SRK als lokaler Vertrauensanker erzeugt.
-- *(09)–(12) Attestation Key (AK):* Ein hardwaregebundener Attestierungsschlüssel (`PrK.AK.Sig` / `PuK.AK.Sig`) wird im TPM erzeugt und geladen. Das AK-Handle wird an den ZETA Client übergeben.
-- *(13) PCR-Erweiterung:* Die Messwerte der unveränderlichen Systemkomponenten werden in ein freies TPM PCR (z.B. PCR 23) geschrieben und bilden die initiale Baseline. Wenn kein freies PCR auf dem Gerät existiert, dann kann die TPM Attestation nicht durchgeführt werden. In diesem Fall muss die [Software basierte Attestation](#43-stationäre-clients-mit-rein-software-basierter-attestation) durchgeführt werden.
+- *(09)–(12) Attestation Key (AK):* Ein hardwaregebundener Attestierungsschlüssel (`PrK.AK.Sig` / `PuK.AK.Sig`) wird im TPM erzeugt und geladen. Das AK-Handle verbleibt beim ZAS.
+- *(13) PCR-Erweiterung:* Die Messwerte der unveränderlichen Systemkomponenten werden in ein freies TPM PCR (z.B. PCR 23) geschrieben und bilden die initiale Baseline. Wenn kein freies PCR auf dem Gerät existiert, dann kann die TPM Attestation nicht durchgeführt werden. In diesem Fall muss die [Software basierte Attestation](#43-stationäre-clients-mit-rein-software-basierter-attestation) durchgeführt werden. `PrK.Client.Sig` bleibt im TPM (gemSpec_ZETA 2.0.1 A_30481).
+- *(14)–(17) Client Instance Key (Linux):* Unter Linux hat der Client keinen direkten Zugriff auf das TPM, weil PCR 23 aus Locality 0 rücksetzbar ist (`TPM2_PCR_Reset`) und ein Prozess im Benutzerkontext sonst die Messung des ZAS fälschen könnte. Der Client fordert den Schlüssel über die IPC aus (03)–(04) beim ZAS an. Der ZAS erzeugt ihn mit `TPM2_Create` unter dem SRK (ECC P-256, sign, nicht restricted, `fixedTPM`, `fixedParent`) und gibt `PuK.Client.Sig` zurück. Den Key-Blob (`TPM2B_PUBLIC`/`TPM2B_PRIVATE`) behält der ZAS, gespeichert je Benutzerkonto (UID der IPC-Gegenseite, z. B. per `SO_PEERCRED`); er lädt nur den Schlüssel des anfragenden Kontos. Auf Anforderung des Clients führt der ZAS für den Client Instance Key nur `TPM2_Create`, `TPM2_Load`, `TPM2_ReadPublic` und `TPM2_Sign` aus und lehnt alle anderen Anforderungen ab; `TPM2_Certify` im Rahmen der Key Certification ([4.1.3](#413-vorbereitung-der-client-registrierung-key-certification)) bleibt davon unberührt. Signaturen mit `PrK.Client.Sig` (`client_key_pop`, Client Assertion) erzeugt unter Linux der ZAS. Voraussetzung: Außer root bzw. dem ZAS-Dienstkonto kann niemand TPM-Kommandos absetzen (`/dev/tpm0`, `/dev/tpmrm0`, z. B. `tpm2-abrmd`). Der ZAS prüft das vor jeder Messung und jedem `TPM2_Quote`; ist es nicht erfüllt, führt er keine TPM Attestation durch, und es gilt die Software basierte Attestation (A_30480).
+
+Fallback ohne TPM oder ohne ZAS (es gilt die Software basierte Attestation):
+
+- *(18) Installation:* Der ZETA Client wird im User Space installiert.
+- *(19)–(20) Client Instance Key im TPM:* Ist ein TPM für den Client zugreifbar, erzeugt der Client das Schlüsselpaar auch ohne ZAS über den Krypto-Provider im TPM (A_30481; Windows: PCP/NCrypt, Linux: tpm2-tss). Ein TPM ohne Zugriffsrecht für den Client (Linux: `/dev/tpmrm0`) gilt als nicht bereitgestellt.
+- *(21)–(22) Client Instance Key in Software:* Nur ohne zugreifbares TPM erzeugt der Client das Schlüsselpaar in Software und speichert `PrK.Client.Sig` mit einem vom Anmeldepasswort abgeleiteten Schlüssel verschlüsselt, nie im Klartext (Tab-ZETA-Client-Keys, A_30482).
 
 ![Abbildung 2: Schlüsselgenerierung auf Windows und Linux mit TPM Attestation](../../../images/zeta-flows/Abb-ZETA-Schlüsselgenerierung-Windows-und-Linux-TPM-Att.svg)
 
@@ -409,7 +417,7 @@ Bei jedem Systemboot und jedem Start des Primärsystems führt der ZAS eine erne
 Vor der Registrierung beim ZETA Guard Authorization Server (AuthS) erzeugt der Client im Zusammenspiel mit dem ZAS alle Nachweise für den Registrierungs-Request. Liegt der Client Instance Key im TPM, weist er zusätzlich nach, dass `PrK.Client.Sig` im selben TPM liegt wie der Attestation Key (AK). `tpm_certify_info` und `client_key_pop` sind an eine Nonce des AuthS gebunden; die Frische des AK belegt der MakeCredential-Handshake in [4.1.4](#414-dynamic-client-registration-dcr). Die Schritte im Detail:
 
 - *(01)–(02) Nonce abholen:* Der Client ruft `GET /nonce` am AuthS auf (128 Bit, base64url ohne Padding, 22 Zeichen). Der folgende `POST /register` muss innerhalb der Gültigkeit der Nonce erfolgen. Die Nonce wird unverändert als UTF-8-Bytes des Strings verwendet.
-- *(03) Übergabe an den ZAS:* Der Client übergibt `hash_puk_client_sig` = SHA-256(`PuK.Client.Sig`), die Nonce und – falls der Client Instance Key im TPM liegt – dessen Key-Blob (Windows: `PCP_KEY_BLOB`, Linux: `TPM2B_PUBLIC`/`TPM2B_PRIVATE`).
+- *(03) Übergabe an den ZAS:* Der Client übergibt `hash_puk_client_sig` = SHA-256(`PuK.Client.Sig`), die Nonce und – falls der Client Instance Key im TPM liegt – unter Windows dessen Key-Blob (`PCP_KEY_BLOB`). Unter Linux liegt der Key-Blob beim ZAS (je Benutzerkonto, siehe [4.1.1](#411-client-installation-und-schlüsselgenerierung) (14)–(17)); der Client übergibt keinen Blob.
 - *(04)–(09) Nur wenn der Client Instance Key im TPM liegt (`opt`):*
   - *(04)–(05)* Der ZAS lädt den Client-Schlüssel in das TPM.
   - *(06)–(07) TPM2_Certify:* Das TPM bestätigt mit `PrK.AK.Sig`, dass `PrK.Client.Sig` im selben TPM liegt. `qualifyingData` sind die UTF-8-Bytes der Nonce (22 Byte; TPM2B_DATA erlaubt höchstens 34 Byte bei SHA-256-TPMs). Ergebnis: `tpm2b_attest` (→ `tpm_certify_info`) und `tpmt_signature` (→ `tpm_certify_signature`).
@@ -417,7 +425,7 @@ Vor der Registrierung beim ZETA Guard Authorization Server (AuthS) erzeugt der C
 - *(10)–(11) AK auslesen:* Der ZAS liest `PuK.AK.Sig` über das AK-Handle aus der Schlüsselgenerierung ([4.1.1](#411-client-installation-und-schlüsselgenerierung)).
 - *(12)–(15) `signed_hash_puk_client_sig`:* Der AK ist ein restricted Signing Key. Der ZAS bildet den Digest über `TPM2_Hash` (mit Validierungsticket) und signiert ihn mit `TPM2_Sign`. Die Nonce geht hier nicht ein.
 - *(16)* Der ZAS übergibt die Ergebnisse an den Client.
-- *(17) `client_key_pop`:* Der Client signiert mit `PrK.Client.Sig` über den Krypto-Provider der Plattform (Windows: PCP/NCrypt; Linux: z. B. tpm2-tss) SHA-256(`PuK.Client.Sig` || nonce) (hash-then-sign, kein Validierungsticket).
+- *(17) `client_key_pop`:* Der Client signiert mit `PrK.Client.Sig` SHA-256(`PuK.Client.Sig` || nonce) (hash-then-sign, kein Validierungsticket); Windows über den Krypto-Provider PCP/NCrypt, Linux über den ZAS (`TPM2_Sign`, siehe [4.1.1](#411-client-installation-und-schlüsselgenerierung) (14)–(17)).
 - *(18)–(23) EK auslesen:* Der ZAS liest den öffentlichen Endorsement Key (`PuK.EK.Enc`) und das herstellerseitige EK-Zertifikat (`C.EK.Enc`) aus und übergibt sie an den Client.
 
 ![Abbildung 4: Vorbereitung per TPM Attestation Key](../../../images/zeta-flows/Abb-ZETA-TPM-Attestation-Key.svg)
@@ -549,7 +557,7 @@ Nach erfolgreicher Registrierung bereitet der Client die Authentifizierung am To
 - *(04)–(07) SMC-B Signatur:* Das Subject Token wird über den Konnektor/TI-Gateway an die SM(C)-B weitergeleitet und dort signiert.
 - *(08)–(12) TPM Evidence:* Der Client fordert über den ZAS die Attestation Evidence an: `TPM2_Quote` über PCR [7, 23] mit der Nonce, signiert mit `PrK.AK.Sig`, sowie das zugehörige `TPM2_EventLog`.
 - *(13) Client-Statement:* Der Client generiert das `client-statement` mit OS- und Primärsystem-Daten sowie der Evidence.
-- *(14) Client Assertion:* Abschließend wird die Client Assertion als JWT erstellt und mit `PrK.Client.Sig` signiert.
+- *(14) Client Assertion:* Abschließend wird die Client Assertion als JWT erstellt und mit `PrK.Client.Sig` signiert (Windows über PCP/NCrypt, Linux über den ZAS).
 
 ![Abbildung 6: Vorbereitung Token Exchange für Windows/Linux mit TPM Attestation](../../../images/zeta-flows/Abb-ZETA-Vorbereitung-Token-Exchange-Win-Linux-TPM-Att.svg)
 
@@ -626,10 +634,10 @@ Unter macOS basiert der Vertrauensaufbau auf der **Secure Enclave** und dem **Ap
 #### 4.2.1 Client Installation und Schlüsselgenerierung
 
 - *(01) Installation:* Der ZETA Client wird im User Space installiert.
-- *(02)–(04) Client Instance Key:* Das langlebige Signatur-Schlüsselpaar (`PrK.Client.Sig` / `PuK.Client.Sig`) wird über `SecKeyCreateRandomKey` in der Secure Enclave erzeugt. Der private Schlüssel verlässt die Hardware nie; der Client erhält eine Key-Referenz (`keyId`).
-- *Fallback:* Ist keine Secure Enclave verfügbar (z. B. in virtualisierten Umgebungen), wird auf softwarebasierte Schlüsselgenerierung zurückgefallen (siehe [4.3 Software-basierte Attestation](#43-stationäre-clients-mit-rein-software-basierter-attestation)).
+- *(02)–(05) Client Instance Key:* Das langlebige Signatur-Schlüsselpaar (`PrK.Client.Sig` / `PuK.Client.Sig`) wird über `SecKeyCreateRandomKey` in der Secure Enclave erzeugt. Der private Schlüssel verlässt die Hardware nie; der Client erhält eine Key-Referenz (`keyId`).
+- *Fallback (21)–(26):* Ist keine Secure Enclave oder App Attest nicht verfügbar (z. B. in virtualisierten Umgebungen), gilt die [Software-basierte Attestation](#43-stationäre-clients-mit-rein-software-basierter-attestation) (gemSpec_ZETA 2.0.1 A_30480). Mit Secure Enclave erzeugt der Client `PrK.Client.Sig` trotzdem dort (21)–(24) (A_30481). Nur ohne Secure Enclave erzeugt er das Schlüsselpaar in Software und speichert `PrK.Client.Sig` verschlüsselt, nie im Klartext (25)–(26) (Tab-ZETA-Client-Keys, A_30482).
 
-![Abbildung 8: Schlüsselgenerierung auf macOS](../../../images/zeta-flows/Abb-ZETA-Schlüsselgenerierung-macOS.svg)
+![Abbildung 8: Schlüsselgenerierung auf macOS](../../../images/zeta-flows/Abb-ZETA-Schlüsselgenerierung-Apple.svg)
 
 #### 4.2.2 Dynamic Client Registration (DCR)
 
@@ -726,14 +734,12 @@ Siehe [Abbildung 7: Token Exchange mit Attestation](#416-token-exchange-post-tok
 
 ### 4.3 Stationäre Clients mit rein Software-basierter Attestation
 
-Die rein software-basierte Attestation dient als **Fallback**, wenn kein TPM 2.0 (Windows/Linux) und keine Secure Enclave (macOS) verfügbar sind. In diesem Fall erfolgt die Registrierung ohne hardware-gebundenen Nachweis. Der AuthS gewährt entsprechend ein niedrigeres Vertrauensniveau.
+Die rein software-basierte Attestation dient als **Fallback**, wenn keine hardwaregestützte Attestierung möglich ist (gemSpec_ZETA 2.0.1 A_30480), z. B. kein TPM 2.0 oder kein ZAS bzw. kein freies PCR (Windows/Linux), keine Secure Enclave oder kein App Attest (macOS). In diesem Fall erfolgt die Registrierung ohne hardware-gebundenen Nachweis; ein vorhandenes Hardware-Sicherheitsmodul wird trotzdem für den Client Instance Key genutzt. Der AuthS gewährt entsprechend ein niedrigeres Vertrauensniveau.
 
 #### 4.3.1 Client Installation und Schlüsselgenerierung
 
 - *(01) Installation:* Der ZETA Client wird im User Space installiert.
-- *(02) Client Instance Key:* Das Schlüsselpaar (`PrK.Client.Sig` / `PuK.Client.Sig`) wird rein softwarebasiert generiert (z. B. über die OS-Kryptobibliothek). Der private Schlüssel wird im Dateisystem oder Keychain gespeichert — eine Hardware-Bindung besteht nicht.
-
-![Abbildung 11: Schlüsselgenerierung bei Software-basierter Attestation](../../../images/zeta-flows/Abb-ZETA-Schlüsselgenerierung-SW-Att.svg)
+- *(02) Client Instance Key:* Stellt das Gerät ein Hardware-Sicherheitsmodul (TPM, Secure Enclave, TEE/StrongBox) bereit, erzeugt der Client das Schlüsselpaar (`PrK.Client.Sig` / `PuK.Client.Sig`, ECDSA P-256) dort als nicht exportierbaren Schlüssel, auch ohne Hardware-Attestierung (gemSpec_ZETA 2.0.1 A_30481). Nur ohne Hardware-Sicherheitsmodul erzeugt er es in Software und speichert `PrK.Client.Sig` verschlüsselt, nie im Klartext (Tab-ZETA-Client-Keys, A_30482). Abläufe: Fallback in [4.1.1](#411-client-installation-und-schlüsselgenerierung), Schritte (18)–(22) (Windows/Linux), und [4.2.1](#421-client-installation-und-schlüsselgenerierung) (macOS).
 
 #### 4.3.2 Dynamic Client Registration (DCR)
 
@@ -746,7 +752,7 @@ Die Registrierung bei Software-basierter Attestation erfordert kein Challenge-Re
 
 > **Hinweis:** `nonce` und `signed_hash_puk_client_sig` sind im Software-Zweig aus Kompatibilitätsgründen optional — eine Registrierung ohne sie bleibt gültig. Ohne Besitznachweis ist die Registrierung allerdings nicht an den Besitz von `PrK.Client.Sig` gebunden; ein Dritter kann dann einen fremden öffentlichen Schlüssel registrieren und dessen spätere Registrierung per `409 registration_conflict` blockieren. Neue Client-Implementierungen sollten beide Felder setzen.
 
-![Abbildung 12: DCR für stationäre Software-Attestation Clients](../../../images/zeta-flows/Abb-ZETA-DCR-für-stationäre-SW-Att-Clients.svg)
+![Abbildung 11: DCR für stationäre Software-Attestation Clients](../../../images/zeta-flows/Abb-ZETA-DCR-für-stationäre-SW-Att-Clients.svg)
 
 ##### 4.3.2.1 Dynamic Client Registration Request
 
@@ -811,7 +817,7 @@ Die Vorbereitung bei Software-basierter Attestation ist vereinfacht, da keine Ha
 - *(08) Client-Statement:* Generierung mit OS- und Primärsystem-Daten (ohne kryptografische Evidence).
 - *(09) Client Assertion:* JWT signiert mit `PrK.Client.Sig`.
 
-![Abbildung 13: Vorbereitung Token Exchange bei Software-basierter Attestation](../../../images/zeta-flows/Abb-ZETA-Vorbereitung-Token-Exchange-SW-Att.svg)
+![Abbildung 12: Vorbereitung Token Exchange bei Software-basierter Attestation](../../../images/zeta-flows/Abb-ZETA-Vorbereitung-Token-Exchange-SW-Att.svg)
 
 #### 4.3.4 Token Exchange (POST /token)
 
@@ -927,7 +933,7 @@ iOS- und iPadOS-Clients nutzen die **Secure Enclave** und das **Apple App Attest
 
 Die Schlüsselgenerierung unter iOS/iPadOS ist identisch mit macOS (siehe [4.2.1 Schlüsselgenerierung macOS](#421-client-installation-und-schlüsselgenerierung)) — das Apple DeviceCheck-Framework nutzt auf allen Apple-Plattformen dieselbe API (`SecKeyCreateRandomKey` für die Secure Enclave).
 
-![Abbildung 14: Schlüsselgenerierung auf macOS/iOS/iPadOS](../../../images/zeta-flows/Abb-ZETA-Schlüsselgenerierung-macOS.svg)
+![Abbildung 13: Schlüsselgenerierung auf macOS/iOS/iPadOS](../../../images/zeta-flows/Abb-ZETA-Schlüsselgenerierung-Apple.svg)
 
 #### 5.1.2 Dynamic Client Registration (DCR)
 
@@ -953,7 +959,7 @@ Der `zeta_attestation_token` (signiert, an `PuK.AK.Sig` gebunden über `cnf`, en
 > - `grant_types`: `authorization_code` (äußerer Flow) und `refresh_token` sowie `urn:ietf:params:oauth:grant-type:token-exchange` (Freischaltung der vollen Token nach der E-Mail-Bindung, siehe [5.1.3.3](#5133-teilflow-c-token-bezug-e-mail-bindung-und-ausstellung-der-zeta-token)).
 > - `token_endpoint_auth_method: private_key_jwt`: Die Client Assertion mit `PrK.Client.Sig` authentisiert den Client sowohl am `pushed_authorization_request_endpoint` (`POST /par`) als auch am `token_endpoint` (RFC 9126, Abschnitt 2).
 
-![Abbildung 15: DCR für mobile Apple Clients mit Hardware Attestation](../../../images/zeta-flows/Abb-ZETA-DCR-für-mobile-Apple-HW-Att-Clients.svg)
+![Abbildung 14: DCR für mobile Apple Clients mit Hardware Attestation](../../../images/zeta-flows/Abb-ZETA-DCR-für-mobile-Apple-HW-Att-Clients.svg)
 
 ##### 5.1.2.1 Dynamic Client Registration Request
 
@@ -1027,7 +1033,7 @@ Der Token-Bezug für mobile Benutzer erfolgt über den standardisierten **OpenID
 
 Der Gesamtablauf gliedert sich in drei Teilflows (A–C):
 
-![Abbildung 16: Übersicht OIDC-Authentifizierung mobiler Clients](../../../images/zeta-flows/Abb-ZETA-OIDC-Authentifizierung-mobiler-Clients.svg)
+![Abbildung 15: Übersicht OIDC-Authentifizierung mobiler Clients](../../../images/zeta-flows/Abb-ZETA-OIDC-Authentifizierung-mobiler-Clients.svg)
 
 ##### 5.1.3.1 Teilflow (A): Authorization Request mit äußerem und innerem PAR
 
@@ -1054,7 +1060,7 @@ Client und AuthS verwenden jeweils eigenes PKCE-Material (`*_app` bzw. `*_as`).
 - *(09) 201 Created:* Der IDP validiert den PAR – u. a. prüft er `oidc_redirect_uri` gegen die im **AS-Entity-Statement** geführten `redirect_uris` –, erzeugt eine `request_uri` und antwortet mit `{request_uri, expires_in}` (max. 90 s).
 - *(10) 302 Found:* Der AuthS beantwortet den `GET /authorize` des Clients mit einer Weiterleitung an den `authorization_endpoint` des IDP (`?client_id&request_uri`).
 
-![Abbildung 17: OIDC Authorization Request mit äußerem und innerem PAR](../../../images/zeta-flows/Abb-ZETA-OIDC-Authorization-Request-mit-äußerem-und-innerem-PAR.svg)
+![Abbildung 16: OIDC Authorization Request mit äußerem und innerem PAR](../../../images/zeta-flows/Abb-ZETA-OIDC-Authorization-Request-mit-äußerem-und-innerem-PAR.svg)
 
 ##### 5.1.3.2 Teilflow (B): Nutzerauthentisierung am sektoralen IDP
 
@@ -1068,7 +1074,7 @@ Die Authentisierung des Nutzers erfolgt über das Authenticator-Modul des sektor
 - *(06) 302 Found:* Der IDP antwortet mit `Location: <oidc_redirect_uri>?code=AUTH_CODE_IDP&state=state_as`.
 - *(07) App-Link Rücksprung:* Das Betriebssystem stellt den App-Link / Universal-Link der ZETA Client App zu (`{code=AUTH_CODE_IDP, state=state_as}`). Der Client prüft `state_as` auf Übereinstimmung.
 
-![Abbildung 18: OIDC Nutzerauthentisierung am sektoralen IDP](../../../images/zeta-flows/Abb-ZETA-OIDC-Nutzerauthentisierung.svg)
+![Abbildung 17: OIDC Nutzerauthentisierung am sektoralen IDP](../../../images/zeta-flows/Abb-ZETA-OIDC-Nutzerauthentisierung.svg)
 
 ##### 5.1.3.3 Teilflow (C): Token-Bezug, E-Mail-Bindung und Ausstellung der ZETA Token
 
@@ -1106,7 +1112,7 @@ Im inneren Flow löst der AuthS den IDP-Code ein und gewinnt die Identitäts-Cla
 
 Der ZETA Client besitzt nun ein DPoP-gebundenes Access Token und kann auf den Resource Server zugreifen (siehe [Kapitel 7](#7-zugriff-auf-den-resource-server)). Die Session-Erneuerung erfolgt über den Refresh Token.
 
-![Abbildung 19: OIDC Token-Bezug, E-Mail-Bindung und Ausstellung der ZETA Token](../../../images/zeta-flows/Abb-ZETA-OIDC-Token-Bezug.svg)
+![Abbildung 18: OIDC Token-Bezug, E-Mail-Bindung und Ausstellung der ZETA Token](../../../images/zeta-flows/Abb-ZETA-OIDC-Token-Bezug.svg)
 
 ---
 
@@ -1122,7 +1128,7 @@ Android-Clients nutzen den **Android Keystore** mit **TEE (Trusted Execution Env
 - *(04) Besitznachweis:* Der Client signiert `hash_puk_client_sig` mit `PrK.AK.Sig` → `signed_hash_puk_client_sig`.
 - *(05) Play Integrity (optional):* Über `requestIntegrityToken(nonce = hash_puk_client_sig)` wird ein Geräte- und App-Integritätstoken eingeholt.
 
-![Abbildung 20: Schlüsselgenerierung auf Android](../../../images/zeta-flows/Abb-ZETA-Schlüsselgenerierung-Android.svg)
+![Abbildung 19: Schlüsselgenerierung auf Android](../../../images/zeta-flows/Abb-ZETA-Schlüsselgenerierung-Android.svg)
 
 #### 5.2.2 Dynamic Client Registration (DCR)
 
@@ -1134,7 +1140,7 @@ Der Ablauf entspricht dem der Apple-Clients (siehe [5.1.2](#512-dynamic-client-r
 - *(04) 201 Created:* Der AuthS speichert den Client im Status `pending_user_binding` und antwortet mit `{client_id, status: "pending_user_binding"}`.
 - *Fast-Path:* Mit einem gültigen `zeta_attestation_token` registriert sich der Client wie in [5.1.2](#512-dynamic-client-registration-dcr) beschrieben ohne erneute Hardware-Attestierung und ohne erneute E-Mail-Bindung (`status: "bound"`).
 
-![Abbildung 21: DCR für mobile Android Clients mit Hardware Attestation](../../../images/zeta-flows/Abb-ZETA-DCR-für-mobile-Android-HW-Att-Clients.svg)
+![Abbildung 20: DCR für mobile Android Clients mit Hardware Attestation](../../../images/zeta-flows/Abb-ZETA-DCR-für-mobile-Android-HW-Att-Clients.svg)
 
 ##### 5.2.2.1 Dynamic Client Registration Request
 
@@ -1209,13 +1215,11 @@ Der OIDC-Ablauf (Authorization Request mit äußerem und innerem PAR, Nutzerauth
 
 ### 5.3 Mobile Clients mit Software Attestation
 
-Mobile Clients ohne verfügbare Hardware-Sicherheitsmodule (kein TEE/StrongBox auf Android, keine Secure Enclave auf iOS) können den Software-Attestation-Fallback nutzen. Das Vertrauensniveau ist entsprechend niedriger.
+Mobile Clients, auf denen keine hardwaregestützte Attestierung möglich ist (A_30480), z. B. ohne TEE/StrongBox bzw. Play Integrity auf Android oder ohne Secure Enclave bzw. App Attest auf iOS, können den Software-Attestation-Fallback nutzen. Das Vertrauensniveau ist entsprechend niedriger.
 
 #### 5.3.1 Client Installation und Schlüsselgenerierung
 
-Die Schlüsselgenerierung erfolgt rein softwarebasiert, identisch zu stationären Clients (siehe [4.3.1 Schlüsselgenerierung SW-Att](#431-client-installation-und-schlüsselgenerierung)).
-
-![Abbildung 22: Schlüsselgenerierung bei Software-basierter Attestation](../../../images/zeta-flows/Abb-ZETA-Schlüsselgenerierung-SW-Att.svg)
+Die Schlüsselgenerierung erfolgt wie bei stationären Clients (siehe [4.3.1](#431-client-installation-und-schlüsselgenerierung)): Ist ein Hardware-Sicherheitsmodul vorhanden (TEE/StrongBox, Secure Enclave), erzeugt der Client `PrK.Client.Sig` dort als nicht exportierbaren Schlüssel (A_30481). Nur ohne Hardware-Sicherheitsmodul erzeugt er ihn in Software und speichert ihn verschlüsselt, nie im Klartext (Tab-ZETA-Client-Keys, A_30482).
 
 #### 5.3.2 Dynamic Client Registration (DCR)
 
@@ -1226,7 +1230,7 @@ Die Registrierung erfolgt wie bei der stationären Software-Attestation, ergänz
 - *(03) Prüfung und Pinning:* Der AuthS prüft `nonce` und `signed_hash_puk_client_sig` (sofern übermittelt) und pinnt `attestation_type: "software"` sowie – sofern übermittelt – `platform` und `product_id` (kein `ak_jkt`).
 - *(04) 201 Created:* Der AuthS speichert den Client im Status `pending_user_binding` und antwortet mit `{client_id, status: "pending_user_binding"}`.
 
-![Abbildung 23: DCR für mobile Clients mit Software Attestation](../../../images/zeta-flows/Abb-ZETA-DCR-für-mobile-SW-Att-Clients.svg)
+![Abbildung 21: DCR für mobile Clients mit Software Attestation](../../../images/zeta-flows/Abb-ZETA-DCR-für-mobile-SW-Att-Clients.svg)
 
 ##### 5.3.2.1 Dynamic Client Registration Request
 
@@ -1322,7 +1326,7 @@ Für die sichere Maschine-zu-Maschine Interaktion zwischen Backends wird die **W
 
 ### 6.1 POST /token (Client Credentials & Token Exchange)
 
-*Siehe auch [Abbildung 24: Dienst-zu-Dienst Kommunikation](../../../images/zeta-flows/Abb-ZETA-Dienst-zu-Dienst-Kommunikation.svg)*
+*Siehe auch [Abbildung 22: Dienst-zu-Dienst Kommunikation](../../../images/zeta-flows/Abb-ZETA-Dienst-zu-Dienst-Kommunikation.svg)*
 
 **Anfrage-Beispiel:**
 
@@ -1358,7 +1362,7 @@ Nach erfolgreichem Erhalt der Access-Token sendet der ZETA-Client Anfragen an de
 
 ### 7.1. Option A: Zugriff mit ZETA/ASL (Tunnelverschlüsselung)
 
-![Abbildung 25: Zugriff auf RS mit ASL](../../../images/zeta-flows/Abb-ZETA-Zugriff-auf-RS-mit-ASL.svg)*
+![Abbildung 23: Zugriff auf RS mit ASL](../../../images/zeta-flows/Abb-ZETA-Zugriff-auf-RS-mit-ASL.svg)*
 
 Erfordert der Fachdienst eine dedizierte Verschlüsselung (ASL), baut der Client einen verschlüsselten Tunnel auf. Der Client sendet die verschlüsselten Fachdaten per HTTP `POST` an den Endpoint `/ASL` des PEP Proxys.
 
@@ -1378,7 +1382,7 @@ DPoP: eyJhbGciOiJFUzI1NiIsInR5cCI6ImRwb3Arand0IiwiandrIjp7...
 
 ### 7.2. Option B: Direkter Zugriff ohne ZETA/ASL
 
-*![Abbildung 26: Zugriff auf RS ohne ASL](../../../images/zeta-flows/Abb-ZETA-Zugriff-auf-RS-ohne-ASL.svg)*
+*![Abbildung 24: Zugriff auf RS ohne ASL](../../../images/zeta-flows/Abb-ZETA-Zugriff-auf-RS-ohne-ASL.svg)*
 
 Der Client sendet den Request direkt an den PEP mit dem Access Token im `Authorization`-Header (DPoP-gebunden) und dem DPoP-Proof im `DPoP`-Header.
 

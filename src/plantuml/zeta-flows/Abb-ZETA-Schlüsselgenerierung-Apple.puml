@@ -14,7 +14,7 @@ Client++
 AppleOS++
 Client --> Client: Installation (User Space)
 
-alt Secure Enclave
+alt Secure Enclave und App Attest verfügbar
 == Client Instance Key Pair (PrK.Client.Sig; PuK.Client.Sig) ==
       Client -> AppleOS: SecKeyCreateRandomKey\n(für PrK.Client.Sig, PuK.Client.Sig in SE)
     note left of Client: Generierung des primären Schlüssels\nfür Client Assertions.
@@ -47,8 +47,30 @@ alt Secure Enclave
     SE --> AppleOS--: ECDSA Signatur
     AppleOS --> Client: signed_hash_puk_client_sig
 
-else Fallback
-  Client -> Client: Generiere PrK.Client.Sig,\nPuK.Client.Sig
+else Fallback: keine Secure Enclave oder App Attest nicht verfügbar
+== Client Instance Key Pair (PrK.Client.Sig; PuK.Client.Sig) ==
+    note left of Client
+      Es gilt die Software Attestierung (A_30480).
+      Der Client Instance Key wird trotzdem in der Secure Enclave
+      erzeugt, sofern das Gerät eine bereitstellt (A_30481).
+    end note
+    alt Secure Enclave vorhanden
+      Client -> AppleOS: SecKeyCreateRandomKey\n(für PrK.Client.Sig, PuK.Client.Sig in SE)
+      AppleOS -> SE++: Generiere Schlüssel (Client.Sig)
+      SE --> AppleOS--: keyId (Referenz für PrK.Client.Sig)
+      AppleOS --> Client: keyId (Referenz für PrK.Client.Sig)
+    else keine Secure Enclave
+      Client -> Client: Generiere PrK.Client.Sig,\nPuK.Client.Sig (ECDSA P-256)
+      note left of Client
+        Ausnahme nach Tab-ZETA-Client-Keys: Software-Verschlüsselung
+        mit einem vom Anmeldepasswort abgeleiteten Schlüssel
+        (Keychain, gerätegebunden, ohne iCloud-Synchronisation;
+        iOS/iPadOS: kSecAttrAccessibleWhenUnlockedThisDeviceOnly;
+        macOS: Login- bzw. Data-Protection-Keychain);
+        kein Klartext-Persistieren (A_30482).
+      end note
+      Client -> Client: Speichere PrK.Client.Sig verschlüsselt
+    end
 end
 
 @enduml

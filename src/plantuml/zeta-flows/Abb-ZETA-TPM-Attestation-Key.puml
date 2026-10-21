@@ -22,7 +22,7 @@ AuthS --> Client--: 200 OK {nonce}\n(A_28144-01: 128 Bit, base64url ohne Padding
 
 ZAS++
 TPM++
-note left of Client: Key-Blob (Windows: PCP_KEY_BLOB, Linux: TPM2B_PUBLIC/TPM2B_PRIVATE)\nnur, wenn der Client Instance Key im TPM liegt;\nder Schlüssel kann nur im TPM verwendet werden.
+note left of Client: Key-Blob (Windows: PCP_KEY_BLOB) nur, wenn der Client Instance Key im TPM liegt;\nder Schlüssel kann nur im TPM verwendet werden.\nLinux: Der Key-Blob liegt beim ZAS (je Benutzerkonto); der Client übergibt keinen Blob.
 Client -> ZAS: hash_puk_client_sig, nonce [, Key-Blob(prk_client_sig, puk_client_sig)]
 
 opt Client Instance Key im TPM
@@ -48,7 +48,7 @@ TPM --> ZAS: signed_hash_puk_client_sig
 
 ZAS --> Client: puk_ak_sig, signed_hash_puk_client_sig\n[, tpm_client_key_public, tpm2b_attest, tpmt_signature]
 
-note left of Client: client_key_pop: Selbstsignatur mit prk_client_sig über den Krypto-Provider\nder Plattform (Windows: PCP/NCrypt; Linux: z. B. tpm2-tss);\nnicht restricted, kein Validierungsticket.
+note left of Client: client_key_pop: Selbstsignatur mit prk_client_sig\n(Windows: über den Krypto-Provider PCP/NCrypt;\nLinux: über den ZAS per TPM2_Sign, kein direkter TPM-Zugriff des Clients);\nnicht restricted, kein Validierungsticket.
 Client -> Client: client_key_pop = Sign(prk_client_sig,\nSHA-256(SHA-256(puk_client_sig || nonce)))
 
 Client -> ZAS: Request puk_ek_enc, c_ek_enc
