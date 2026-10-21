@@ -81,7 +81,7 @@ else ZETA Attestation Token vorhanden (Fast-Path)
     Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token", client_name, zeta_attestation_token,\njwks (enthält PuK.Client.Sig), nonce, signed_hash_puk_client_sig, attestation_pop}
     AuthS -> AuthS: Prüfe Token-Signatur & Vertrauensstellung
     AuthS -> AuthS: Prüfe nonce (frisch, einmalig, nicht abgelaufen)
-    AuthS -> AuthS: Prüfe signed_hash_puk_client_sig mit PuK.Client.Sig (Selbstsignatur, PoP des Client Instance Keys)
+    AuthS -> AuthS: Prüfe signed_hash_puk_client_sig mit PuK.Client.Sig über SHA-256(PuK.Client.Sig || nonce)\n(Selbstsignatur, PoP des Client Instance Keys)
     AuthS -> AuthS: Extrahiere attestation_type und PuK.AK.Sig (cnf.jwk) aus dem Token
 
     alt attestation_type == "apple"
@@ -98,7 +98,8 @@ else ZETA Attestation Token vorhanden (Fast-Path)
 
       Nonce-Bindung (empfohlen): Ohne nonce wäre der Besitznachweis nicht challenge-gebunden und ein
       mitgeschnittener Fast-Path-Request bliebe an beliebigen Guards wiedereinlösbar (Cross-Guard-Onboarding).
-      Abwärtskompatibel: fehlt nonce im Request, prüft der AuthS wie bisher gegen SHA-256(PuK.Client.Sig);
+      Abwärtskompatibel: fehlt nonce im Request, prüft der AuthS signed_hash_puk_client_sig und attestation_pop
+      wie bisher gegen SHA-256(PuK.Client.Sig);
       der Schutz beruht dann allein auf der Pflicht-Benachrichtigung der gebundenen E-Mail (F1).
       Die Legacy-Form ohne nonce wird ab dem Stichtag 01.01.2028 nicht mehr akzeptiert (A_30193).
     end note

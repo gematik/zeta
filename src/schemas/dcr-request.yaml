@@ -1,5 +1,5 @@
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.2.3"
+schemaVersion: "1.2.4"
 title: RegistrationRequest
 description: >-
   Payload Schema für den DCR POST /register Body.
@@ -59,6 +59,14 @@ description: >-
   (Vorschlag A_30193-01, abweichend von A_30193 in gemSpec_ZETA 2.0.1). Grund:
   Nach A_30481 liegt der Client Instance Key im TPM-Pfad immer im TPM; die
   bisherige Begründung für die Optionalität entfällt.
+
+  Präzisierung 1.2.4 (nur Beschreibung, gültige Instanzen unverändert):
+  signed_hash_puk_client_sig im Fast-Path wird wie in den Zweigen apple,
+  android und software über SHA-256(puk_client_sig || nonce) gebildet, sofern
+  nonce gesetzt ist (A_30515, gemSpec_ZETA 2.0.1 5.3.1.5 (16));
+  ohne nonce gilt die Legacy-Form über SHA-256(puk_client_sig) bis zum
+  Stichtag 01.01.2028 (A_30193). Bisher nannte die Beschreibung nur die
+  Legacy-Form, gemSpec_ZETA 2.0.1 5.3.1.5 (16) bereits die Form mit nonce.
 
   Auswahl des Zweigs: attestation_type lesen; fehlt das Feld, gilt "software"
   (Requests nach Schema 1.0.0). tpm | apple | android | zeta_attestation_token
@@ -456,11 +464,15 @@ definitions:
         type: string
         contentEncoding: base64url
         description: >-
-          Selbstsignatur: Signatur des SHA-256-Hashes von puk_client_sig,
-          erstellt mit prk_client_sig (Proof-of-Possession des Client
+          Selbstsignatur mit prk_client_sig (Proof-of-Possession des Client
           Instance Keys). Base64url-kodiert, Signaturformat:
-          definitions/hash_signature. Einheitlich für alle
-          Plattformen.
+          definitions/hash_signature. Einheitlich für alle Plattformen.
+          Der signierte Hash ist SHA-256(puk_client_sig || nonce), sofern das
+          Feld nonce gesetzt ist, andernfalls SHA-256(puk_client_sig)
+          (Legacy-Form, client_key_binding = pop_static). Der AuthS akzeptiert
+          bis zum Stichtag 01.01.2028 (A_30193) beide Formen und wählt anhand
+          der An-/Abwesenheit von nonce; dieselbe nonce geht in
+          attestation_pop ein.
       nonce: { $ref: "#/definitions/nonce" }
       attestation_pop:
         type: string

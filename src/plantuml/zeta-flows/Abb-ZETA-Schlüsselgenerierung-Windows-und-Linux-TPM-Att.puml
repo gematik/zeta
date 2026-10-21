@@ -65,7 +65,9 @@ alt TPM und ZAS vorhanden
     Auf Anforderung des über (03)–(04) authentisierten Clients führt
     der ZAS nur TPM2_Create, TPM2_Load, TPM2_ReadPublic und TPM2_Sign
     für PrK.Client.Sig aus und lehnt alle anderen Anforderungen ab
-    (TPM2_Certify der Key Certification, Abb. 7, bleibt unberührt).
+    (TPM2_Certify der Key Certification bei Registrierung, Abb. 7,
+    und Rollover bleibt unberührt; beim Rollover erzeugt der ZAS
+    auch den neuen Schlüssel).
     Der Key-Blob bleibt beim ZAS, gespeichert je Benutzerkonto
     (UID per SO_PEERCRED); der ZAS lädt nur den Schlüssel des
     anfragenden Kontos.

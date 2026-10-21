@@ -62,8 +62,10 @@ else ZETA Attestation Token vorhanden (Fast-Path)
     note right of AuthS
       nonce vom nonce_endpoint (GET /nonce, nicht dargestellt).
       attestation_pop bindet den (ggf. neuen) Client Instance Key frisch an den
-      bereits attestierten Attestation Key. Legacy-Form ohne nonce (Prüfung gegen
-      SHA-256(PuK.Client.Sig)) nur bis 01.01.2028 (A_30193).
+      bereits attestierten Attestation Key. signed_Hash_PuK.Client.Sig und
+      attestation_pop sind beide über SHA-256(PuK.Client.Sig || nonce) gebildet
+      (wie 5.3.1.5 (16)). Legacy-Form ohne nonce (über SHA-256(PuK.Client.Sig))
+      nur bis 01.01.2028 (A_30193).
     end note
     AuthS -> AuthS: Übernimm registrierte redirect_uris aus dem Token\n(kein erneutes Senden im Fast-Path)
     AuthS --> Client: 201 Created {client_id, status: bound}
