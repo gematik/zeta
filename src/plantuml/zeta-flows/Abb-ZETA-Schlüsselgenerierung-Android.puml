@@ -39,6 +39,9 @@
       Besitznachweis des Client Instance Keys.
       Die AK-Kette beweist die HW-Bindung des AK;
       diese Signatur beweist Besitz von PrK.Client.Sig.
+      Legacy-Form ohne nonce (bis 01.01.2028, A_30193). Mit nonce erzeugt der Client
+      signed_hash_puk_client_sig erst bei der Registrierung nach GET /nonce über
+      SHA-256(PuK.Client.Sig || nonce) (Abb-ZETA-DCR-für-mobile-Clients).
     end note
     Client -> AndroidOS: Signature.sign(KeyStore.getKey(Alias_Client_Sig),\nhash_puk_client_sig)
     AndroidOS -> StrongBox++: Signiere Hash mit PrK.Client.Sig

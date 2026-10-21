@@ -1,5 +1,5 @@
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.2.2"
+schemaVersion: "1.2.3"
 title: RegistrationRequest
 description: >-
   Payload Schema für den DCR POST /register Body.
@@ -52,6 +52,13 @@ description: >-
   Präzisierung 1.2.2 (nur Beschreibung, gültige Instanzen unverändert):
   attestation_pop im Fast-Path nennt den Stichtag 01.01.2028 aus A_30193 für
   die Legacy-Form ohne nonce.
+
+  Präzisierung 1.2.3 (nur Beschreibung, gültige Instanzen unverändert):
+  tpm_certify_info samt tpm_certify_signature und tpm_client_key_public ist
+  im TPM-Zweig bis zum Stichtag 01.01.2028 optional und danach Pflicht
+  (Vorschlag A_30193-01, abweichend von A_30193 in gemSpec_ZETA 2.0.1). Grund:
+  Nach A_30481 liegt der Client Instance Key im TPM-Pfad immer im TPM; die
+  bisherige Begründung für die Optionalität entfällt.
 
   Auswahl des Zweigs: attestation_type lesen; fehlt das Feld, gilt "software"
   (Requests nach Schema 1.0.0). tpm | apple | android | zeta_attestation_token
@@ -215,7 +222,8 @@ definitions:
         type: string
         contentEncoding: base64
         description: >-
-          Optional. Base64-kodierte TPM2B_ATTEST-Struktur (Kodierung wie
+          Bis zum Stichtag 01.01.2028 optional, danach im TPM-Zweig Pflicht
+          (Vorschlag A_30193-01). Base64-kodierte TPM2B_ATTEST-Struktur (Kodierung wie
           puk_ak_sig) aus TPM2_Certify über den Client Instance Key, signiert
           mit dem Attestation Key. Belegt, dass PrK.Client.Sig ein Schlüssel im
           selben TPM ist wie der Attestation Key. Erzeugung gemäß
@@ -244,11 +252,12 @@ definitions:
           Policy Engine (policy-engine-client-data.yaml).
           Nur bei erfolgreicher Prüfung gilt der Client Instance Key als
           hardware-gebunden; ohne das Feld ist die Hardware-Bindung von
-          PrK.Client.Sig eine Selbstauskunft des Clients. Das Feld bleibt
-          auch nach dem Stichtag aus A_30193 optional: Nicht jede Umgebung
-          erzeugt den Client Instance Key im TPM; ob eine Registrierung ohne
-          diesen Nachweis genügt, entscheidet die Policy über
-          client_key_binding. Nur zusammen mit
+          PrK.Client.Sig eine Selbstauskunft des Clients. Ab dem Stichtag
+          01.01.2028 (Vorschlag A_30193-01) lehnt der AuthS eine
+          TPM-Registrierung ohne das Feld mit invalid_attestation ab; im
+          TPM-Pfad liegt der Client Instance Key nach A_30481 immer im TPM.
+          Bis dahin entscheidet die Policy über client_key_binding, ob eine
+          Registrierung ohne diesen Nachweis genügt. Nur zusammen mit
           nonce, client_key_pop, tpm_certify_signature und
           tpm_client_key_public zulässig
           (dependencies im Zweig). Setzt voraus, dass der Client Instance Key im TPM

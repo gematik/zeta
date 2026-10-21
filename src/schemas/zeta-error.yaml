@@ -10,8 +10,12 @@
 # aufgenommen (ersetzen den camelCase-ProblemCode aus application/problem+json). Fachliche Fehler des
 # dahinterliegenden Resource Servers werden hingegen unverändert durchgereicht und
 # folgen NICHT diesem Schema (A_29853).
+#
+# 1.5.0 (abwärtskompatibel, offenes Enum): tpm_certify_required ergänzt
+# (Rollover im TPM-Zweig ohne Key Certification nach dem Stichtag, Vorschlag
+# A_30189-01); invalid_attestation auch beim Rollover.
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.4.0"
+schemaVersion: "1.5.0"
 title: HTTP ZETA Error Response
 description: Schema for transmitting error information for HTTP ZETA error response.
 type: object
@@ -78,6 +82,10 @@ definitions:
           # Rollover ohne attestation_pop bei attestation_type ≠ software, erst
           # nach Abschaltung des Kompatibilitätsprofils; 400. (A_30189, künftig)
           - attestation_pop_required
+          # Rollover bei attestation_type tpm ohne tpm_certify_info/-signature/
+          # tpm_client_key_public, erst nach dem Stichtag 01.01.2028; 400.
+          # (Vorschlag A_30189-01)
+          - tpm_certify_required
 
           # --- Client Management (zeta-guard-client-management.yaml) ----------
           # Replay-Nonce des Rollovers fehlt/verbraucht; 400 mit neuem Header
@@ -99,7 +107,8 @@ definitions:
           - pop_required
           # Identität gelöscht (Tombstone); 409.
           - tombstoned
-          # Registrierung: Attestierung ungültig; 400.
+          # Registrierung: Attestierung ungültig; Rollover (TPM): Key Certification
+          # nicht verifizierbar; 400.
           - invalid_attestation
           # Registrierung an diesem Guard nicht erlaubt; 403.
           - registration_forbidden

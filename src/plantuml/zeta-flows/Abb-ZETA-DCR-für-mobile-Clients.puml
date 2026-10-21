@@ -22,22 +22,27 @@ end box
 
 Client++
 alt Kein ZETA Attestation Token
-    
+    note right of Client
+      nonce vom nonce_endpoint (GET /nonce, nicht dargestellt). Sie geht nur in
+      signed_hash_puk_client_sig ein; clientDataHash (Apple) und attestationChallenge
+      (Android) bleiben SHA-256(PuK.Client.Sig).
+    end note
+
     alt Hardware Attestation: iOS, iPadOS, macOS (Apple App Attest)
-        Client -> AuthS++: POST /register {attestation_type="apple", client_name, jwks (enthält PuK.Client.Sig),\napple_attestation_object, signed_hash_puk_client_sig, redirect_uris}
+        Client -> AuthS++: POST /register {attestation_type="apple", client_name, jwks (enthält PuK.Client.Sig),\napple_attestation_object, nonce, signed_hash_puk_client_sig, redirect_uris}
         AuthS -> AuthS: Validiere apple_attestation_object
-        AuthS -> AuthS: Prüfe signed_hash_puk_client_sig mit PuK.Client.Sig (Selbstsignatur, PoP des Client Instance Keys)
+        AuthS -> AuthS: Prüfe und verbrauche nonce; prüfe signed_hash_puk_client_sig mit PuK.Client.Sig\nüber SHA-256(PuK.Client.Sig || nonce) (Selbstsignatur, PoP des Client Instance Keys;\nohne nonce Legacy-Form über SHA-256(PuK.Client.Sig) bis 01.01.2028, A_30193)
         note right of AuthS: AuthS verifiziert Apple App Attest Root CA. Extrahiert clientDataHash aus dem\nAttestation Object und prüft: clientDataHash == SHA-256(PuK.Client.Sig).
     else Hardware Attestation: Android (Keystore, TEE, StrongBox)
-        Client -> AuthS: POST /register\n{attestation_type="android", client_name, jwks (enthält PuK.Client.Sig),\nandroid_key_attestation_certificate_chain, signed_hash_puk_client_sig,\nplay_integrity_token, redirect_uris}
+        Client -> AuthS: POST /register\n{attestation_type="android", client_name, jwks (enthält PuK.Client.Sig),\nandroid_key_attestation_certificate_chain, nonce, signed_hash_puk_client_sig,\nplay_integrity_token, redirect_uris}
         AuthS -> AuthS: Validiere Zertifikatskette gegen Google Root CA
         AuthS -> AuthS: Extrahiere attestationChallenge aus KeyDescription ASN.1-Extension des Blatt-Zertifikats
         AuthS -> AuthS: Prüfe attestationChallenge == SHA-256(PuK.Client.Sig)
-        AuthS -> AuthS: Prüfe signed_hash_puk_client_sig mit PuK.Client.Sig (Selbstsignatur, PoP des Client Instance Keys)
+        AuthS -> AuthS: Prüfe und verbrauche nonce; prüfe signed_hash_puk_client_sig mit PuK.Client.Sig\nüber SHA-256(PuK.Client.Sig || nonce) (Selbstsignatur, PoP des Client Instance Keys;\nohne nonce Legacy-Form über SHA-256(PuK.Client.Sig) bis 01.01.2028, A_30193)
 
         opt Play Integrity Prüfung
             AuthS -> AuthS: Entschlüssele play_integrity_token (lokal/remote)
-            AuthS -> AuthS: Verifiziere Nonce (Muss SHA-256(PuK.Client.Sig) entsprechen)
+            AuthS -> AuthS: Verifiziere Play-Integrity-Nonce (Muss SHA-256(PuK.Client.Sig) entsprechen)
             AuthS -> AuthS: Werte Verdicts aus (appIntegrity, deviceIntegrity, accountDetails)
         end
 

@@ -1,5 +1,5 @@
 {
-  "$comment": "DCR POST /register TPM Hardware Attestation (oneOf variant 1)",
+  "$comment": "DCR POST /register TPM Hardware Attestation (oneOf variant 1). LEGACY-FORM: ohne nonce, client_key_pop und Key Certification (tpm_certify_info, tpm_certify_signature, tpm_client_key_public). Nur bis zum Stichtag 01.01.2028 zulässig (A_30193, A_30193-01 Vorschlag); danach lehnt der AuthS mit invalid_attestation ab. Aktuelle Form: dcr-request-tpm-certified.json.",
   "attestation_type": "tpm",
   "client_name": "ZETA Client (Windows/Linux TPM)",
   "token_endpoint_auth_method": "private_key_jwt",

@@ -16,14 +16,20 @@ end box
 
 Client++
 alt Kein ZETA Guard Attestation Token
-    Client -> AuthS++: POST /register\n{attestation_type="apple", Apple_Attestation_Object, PuK.Client.Sig}
-    AuthS -> AuthS: Validiere Apple_Attestation_Object
+    Client -> AuthS++: POST /register\n{attestation_type="apple", Apple_Attestation_Object, PuK.Client.Sig,\nnonce, signed_Hash_PuK.Client.Sig}
+    AuthS -> AuthS: Validiere Apple_Attestation_Object;\nprüfe und verbrauche nonce; prüfe signed_hash_puk_client_sig mit PuK.Client.Sig\nüber SHA-256(PuK.Client.Sig || nonce) (Selbstsignatur, PoP des Client Instance Keys;\nohne nonce Legacy-Form über SHA-256(PuK.Client.Sig) bis 01.01.2028, A_30193)
     note right of AuthS: AuthS verifiziert Apple App Attest Root CA.\nExtrahiert Hash(PuK.Client.Sig) aus Objekt\nund vergleicht ihn mit dem Payload.
 
 else ZETA Attestation Token vorhanden
-    Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token",\nzeta_attestation_token, PuK.Client.Sig,\nsigned_Hash_PuK.Client.Sig}
-    AuthS -> AuthS: Prüfe Token-Signatur & Vertrauensstellung
-    AuthS -> AuthS: Extrahiere PuK.AK.Sig aus Token, prüfe signed_Hash_PuK.Client.Sig
+    Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token",\nzeta_attestation_token, PuK.Client.Sig,\nnonce, signed_Hash_PuK.Client.Sig, attestation_pop}
+    AuthS -> AuthS: Prüfe Token-Signatur & Vertrauensstellung;\nprüfe und verbrauche nonce
+    AuthS -> AuthS: Extrahiere PuK.AK.Sig (cnf.jwk) aus Token; prüfe signed_Hash_PuK.Client.Sig\nüber SHA-256(PuK.Client.Sig || nonce) mit PuK.Client.Sig;\nvalidiere attestation_pop als App-Attest-Assertion mit PuK.AK.Sig\n(clientDataHash = SHA-256(PuK.Client.Sig || nonce), rpIdHash, Counter-Monotonie)
+    note right of AuthS
+      nonce vom nonce_endpoint (GET /nonce, nicht dargestellt).
+      attestation_pop bindet den (ggf. neuen) Client Instance Key frisch an den
+      bereits attestierten Attestation Key. Legacy-Form ohne nonce (Prüfung gegen
+      SHA-256(PuK.Client.Sig)) nur bis 01.01.2028 (A_30193).
+    end note
 end
 
 AuthS -> AuthS: Pinne attestation_type, platform, product_id und ak_jkt (Thumbprint PuK.AK.Sig)\nim Registrierungsdatensatz (binding_status: pinned)

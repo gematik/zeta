@@ -41,6 +41,9 @@ alt Secure Enclave und App Attest verfügbar
     note left of Client
       Besitznachweis des Client Instance Keys. Das apple_attestation_object beweist die HW-Bindung des AK;
       diese Signatur beweist den physischen Besitz von PrK.Client.Sig.
+      Legacy-Form ohne nonce (bis 01.01.2028, A_30193). Mit nonce erzeugt der Client
+      signed_hash_puk_client_sig erst bei der Registrierung nach GET /nonce über
+      SHA-256(PuK.Client.Sig || nonce) (Abb-ZETA-DCR-für-mobile-Clients).
     end note
     Client -> AppleOS: SecKeyCreateSignature(\n  PrK.Client.Sig, SHA-256(PuK.Client.Sig))
     AppleOS -> SE++: Signiere Hash mit PrK.Client.Sig

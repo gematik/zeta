@@ -23,14 +23,18 @@ end box
 
 Client++
 alt Kein ZETA Attestation Token vorhanden
-    
-        Client -> AuthS++: POST /register\n{attestation_type="android", PuK.AK.Sig,\nAndroid_Key_Attestation_Certificate_Chain,\nPuK.Client.Sig, signed_Hash_PuK.Client.Sig,\nplay_integrity_token, redirect_uris}
+    note right of Client
+      nonce vom nonce_endpoint (GET /nonce, nicht dargestellt). Sie geht nur in
+      signed_hash_puk_client_sig ein; clientDataHash (Apple) und attestationChallenge
+      (Android) bleiben SHA-256(PuK.Client.Sig).
+    end note
+        Client -> AuthS++: POST /register\n{attestation_type="android", PuK.AK.Sig,\nAndroid_Key_Attestation_Certificate_Chain,\nPuK.Client.Sig, nonce, signed_Hash_PuK.Client.Sig,\nplay_integrity_token, redirect_uris}
         AuthS -> AuthS: Validiere Zertifikatskette gegen Google Root CA
-        AuthS -> AuthS: Prüfe signed_Hash_PuK.Client.Sig
+        AuthS -> AuthS: Prüfe und verbrauche nonce; prüfe signed_hash_puk_client_sig mit PuK.Client.Sig\nüber SHA-256(PuK.Client.Sig || nonce) (Selbstsignatur, PoP des Client Instance Keys;\nohne nonce Legacy-Form über SHA-256(PuK.Client.Sig) bis 01.01.2028, A_30193)
         
         opt Play Integrity Prüfung
             AuthS -> AuthS: Entschlüssele play_integrity_token (lokal/remote)
-            AuthS -> AuthS: Verifiziere Nonce (Muss Hash(PuK.Client.Sig) entsprechen)
+            AuthS -> AuthS: Verifiziere Play-Integrity-Nonce (Muss SHA-256(PuK.Client.Sig) entsprechen)
             AuthS -> AuthS: Werte Verdicts aus (appIntegrity, deviceIntegrity, accountDetails)
         end
         
@@ -52,9 +56,15 @@ alt Kein ZETA Attestation Token vorhanden
     AuthS --> Client--: 201 Created {client_id, status: pending_user_binding}
 
 else ZETA Attestation Token vorhanden (Fast-Path)
-    Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token",\nzeta_attestation_token, PuK.Client.Sig,\nBesitznachweis (Signatur/Assertion)}
-    AuthS -> AuthS: Prüfe Token-Signatur & Vertrauensstellung
-    AuthS -> AuthS: Extrahiere PuK.AK.Sig aus Token, verifiziere Besitznachweis
+    Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token",\nzeta_attestation_token, PuK.Client.Sig,\nnonce, signed_Hash_PuK.Client.Sig, attestation_pop}
+    AuthS -> AuthS: Prüfe Token-Signatur & Vertrauensstellung;\nprüfe und verbrauche nonce
+    AuthS -> AuthS: Extrahiere PuK.AK.Sig (cnf.jwk) aus Token; prüfe signed_Hash_PuK.Client.Sig\nüber SHA-256(PuK.Client.Sig || nonce) mit PuK.Client.Sig;\nvalidiere attestation_pop als Signatur über SHA-256(PuK.Client.Sig || nonce) mit PuK.AK.Sig
+    note right of AuthS
+      nonce vom nonce_endpoint (GET /nonce, nicht dargestellt).
+      attestation_pop bindet den (ggf. neuen) Client Instance Key frisch an den
+      bereits attestierten Attestation Key. Legacy-Form ohne nonce (Prüfung gegen
+      SHA-256(PuK.Client.Sig)) nur bis 01.01.2028 (A_30193).
+    end note
     AuthS -> AuthS: Übernimm registrierte redirect_uris aus dem Token\n(kein erneutes Senden im Fast-Path)
     AuthS --> Client: 201 Created {client_id, status: bound}
 end

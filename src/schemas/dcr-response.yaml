@@ -6,7 +6,7 @@
 # Fehlerantworten (RFC 7591 Abschnitt 3.2.2, z. B. invalid_redirect_uri,
 # invalid_client_metadata) folgen zeta-error.yaml.
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.2.0"
+schemaVersion: "1.2.1"
 title: DCR Response
 description: >-
   Antwort des AuthS auf POST /register, POST /register/verify sowie
@@ -21,6 +21,10 @@ description: >-
   transaction_id.
 
   Fehlerantworten (HTTP 4xx) folgen zeta-error.yaml.
+
+  Präzisierung 1.2.1 (nur Beschreibung, gültige Instanzen unverändert):
+  client_key_binding im TPM-Zweig ab dem Stichtag 01.01.2028 nur
+  "tpm_certified" (Vorschlag A_30514-01, beim Rollover A_30189-01).
 
   Für Codegeneratoren: Die Wurzel ist bewusst kein oneOf. Generierter Code
   bindet je HTTP-Status direkt an definitions/ClientInformationResponse (201)
@@ -188,15 +192,23 @@ definitions:
           "tpm_certified" – wie "pop", zusätzlich tpm_certify_info geprüft:
           der Schlüssel liegt im selben TPM wie der Attestation Key. Der Wert
           gilt erst nach erfolgreichem POST /register/verify.
+          Bei attestation_type "tpm" setzt der AuthS ab dem Stichtag
+          01.01.2028 bei der Registrierung nur noch "tpm_certified"; fehlt
+          client_key_pop oder tpm_certify_info, lehnt er mit
+          invalid_attestation ab (Vorschlag A_30514-01). "none" und "pop"
+          entstehen im TPM-Zweig danach nur noch für Altregistrierungen;
+          ab dem Stichtag erfordert auch der Rollover den Certify-Nachweis.
           Optional aus Kompatibilitätsgründen; fehlt das Feld, ist "none"
           anzunehmen. Ergänzt in Schema 1.1.0. Der Wert
           wird an die Policy Engine übergeben (policy-engine-client-data.yaml).
           Nach einem Schlüssel-Rollover bestimmt
           der AuthS den Wert für den NEUEN Schlüssel neu: Der Rollover weist
           dessen Besitz mit einer Nonce nach (innere Signatur), also "pop";
-          "tpm_certified" bleibt nur, wenn der Rollover einen neuen
-          Certify-Nachweis für den neuen Schlüssel trägt – das heutige
-          Rollover-Format trägt keinen, der Wert fällt also auf "pop".
+          "tpm_certified" bleibt nur, wenn der Rollover einen geprüften
+          Certify-Nachweis für den neuen Schlüssel trägt (tpm_certify_info,
+          tpm_certify_signature, tpm_client_key_public im Rollover-Envelope).
+          Im TPM-Zweig ist dieser Nachweis bis zum 01.01.2028 optional und
+          danach Pflicht (Vorschlag A_30189-01).
       binding_status:
         type: string
         enum: [pinned, legacy_unpinned]

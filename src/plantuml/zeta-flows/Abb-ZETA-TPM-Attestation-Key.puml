@@ -26,6 +26,7 @@ note left of Client: Key-Blob (Windows: PCP_KEY_BLOB) nur, wenn der Client Insta
 Client -> ZAS: hash_puk_client_sig, nonce [, Key-Blob(prk_client_sig, puk_client_sig)]
 
 opt Client Instance Key im TPM
+  note right of TPM: Im TPM-Pfad liegt der Client Instance Key immer im TPM (A_30481).\nBis 01.01.2028 optional, danach Pflicht (A_30193-01).
   ZAS -> TPM: TPM2_Load(Key-Blob)
   TPM --> ZAS: Handle_prk_client_sig
 
