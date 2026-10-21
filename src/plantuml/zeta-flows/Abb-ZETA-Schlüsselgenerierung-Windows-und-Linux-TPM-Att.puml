@@ -28,8 +28,9 @@ alt TPM und ZAS vorhanden
     (Tab-ZETA-Client-Keys): ECDSA P-256, Attribut sign, nicht exportierbar.
     Windows: Der Client nutzt das TPM direkt über den Krypto-Provider.
     Der Key-Blob (PCP_KEY_BLOB) ist nur im TPM verwendbar.
-    Vorbehalt: ungeprüft, ob TBS Standardbenutzern TPM2_PCR_Reset(23)
-    verwehrt; Voraussetzung für die TPM Attestation unter Windows.
+    TBS sperrt TPM2_PCR_Extend/TPM2_PCR_Reset für nicht erhöhte
+    Prozesse (getestet 2026-10-21, Build 26100); erhöhte Prozesse können
+    PCR 23 zurücksetzen. Voraussetzung: Client läuft ohne erhöhte Rechte.
     Linux: siehe (14)–(17).
   end note
   opt Windows
