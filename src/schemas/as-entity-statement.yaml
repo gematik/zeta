@@ -170,6 +170,8 @@ properties:
             properties:
               organization_name:
                 type: string
+              name:
+                type: string
               contacts:
                 type: array
                 items:
