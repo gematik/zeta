@@ -48,7 +48,7 @@ while IFS=: read -r file line id; do
       echo "VERALTET  $id → ${current% }  $file:$line"; found=$((found+1))
     fi
   fi
-done < <(grep -rnoE '\bA_[0-9]{5}(-[0-9]{2})?\b' "${paths[@]}" \
+done < <(grep -rHnoE '\bA_[0-9]{5}(-[0-9]{2})?\b' "${paths[@]}" \
            --include='*.yaml' --include='*.yml' --include='*.json' --include='*.md' \
            --include='*.puml' --include='*.proto' --include='*.rego' 2>/dev/null \
          | grep -v '/ReleaseNotes/' | sort -u)
