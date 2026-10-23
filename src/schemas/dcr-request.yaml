@@ -1,5 +1,5 @@
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.2.4"
+schemaVersion: "1.2.5"
 title: RegistrationRequest
 description: >-
   Payload Schema für den DCR POST /register Body.
@@ -67,6 +67,11 @@ description: >-
   ohne nonce gilt die Legacy-Form über SHA-256(puk_client_sig) bis zum
   Stichtag 01.01.2028 (A_30193). Bisher nannte die Beschreibung nur die
   Legacy-Form, gemSpec_ZETA 2.0.1 5.3.1.5 (16) bereits die Form mit nonce.
+
+  Präzisierung 1.2.5 (nur Beschreibung, gültige Instanzen unverändert):
+  Hinweis zu gemSpec_ZETA 5.3.2.2 Schritt (12) in definitions/grant_types
+  auf 2.0.1 aktualisiert (dort Form (1); die Mischform jwt-bearer +
+  token-exchange stand nur in 2.0.0).
 
   Auswahl des Zweigs: attestation_type lesen; fehlt das Feld, gilt "software"
   (Requests nach Schema 1.0.0). tpm | apple | android | zeta_attestation_token
@@ -613,9 +618,9 @@ definitions:
         invalid_client_metadata. Eine Registrierung ist entweder identitätslos
         oder nicht; sonst könnte sie Token mit SM(C)-B-Identität und zugleich
         ohne Nutzer-Identität beziehen. Achtung: Der Ablauf "Software
-        Attestation (Legacy OIDC DCR)" in gemSpec_ZETA 5.3.2.2 Schritt (12)
-        nennt diese Kombination; Clients, die ihm wörtlich folgen, müssen auf
-        Form (2) oder (3) umstellen.
+        Attestation (Legacy OIDC DCR)" in gemSpec_ZETA 2.0.0 5.3.2.2 Schritt
+        (12) nannte diese Kombination; Clients, die ihm wörtlich folgten,
+        müssen umstellen. gemSpec_ZETA 2.0.1 nennt dort Form (1).
       - jeder andere Inhalt wird bis zum Stichtag angenommen (Legacy-Form):
         ein fehlendes Feld, ein leeres Array, "refresh_token" allein und
         Werte, die kein ZETA-Grant sind. Das gilt für jeden attestation_type:

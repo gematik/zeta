@@ -1,5 +1,5 @@
 {
-  "$comment": "DCR POST /register – Android Hardware Attestation (oneOf variant 3). PuK.AK.Sig ist der im TEE/StrongBox erzeugte Attestierungsschlüssel; Android_Key_Attestation_Certificate_Chain enthält die X.509-Kette bis zur Google Root CA.",
+  "$comment": "DCR POST /register – Android Hardware Attestation (oneOf variant 3). PuK.AK.Sig ist der im TEE/StrongBox erzeugte Attestierungsschlüssel; Android_Key_Attestation_Certificate_Chain enthält die X.509-Kette bis zur Google Root CA. grant_types Form (3) (token-exchange, refresh_token, ohne authorization_code) → Status registered (A_30086); ohne nonce = Legacy-Form bis 01.01.2028 (A_30193). Mobiler, identitätsgebundener Client: dcr-request-android-mobile.json.",
   "attestation_type": "android",
   "client_name": "ZETA Client App (Android)",
   "token_endpoint_auth_method": "private_key_jwt",

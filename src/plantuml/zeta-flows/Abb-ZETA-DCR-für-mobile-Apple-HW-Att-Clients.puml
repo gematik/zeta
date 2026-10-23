@@ -28,8 +28,8 @@ alt Kein ZETA Attestation Token vorhanden
       signed_hash_puk_client_sig ein; clientDataHash (Apple) und attestationChallenge
       (Android) bleiben SHA-256(PuK.Client.Sig).
     end note
-    Client -> AuthS++: POST /register\n{attestation_type="apple", Apple_Attestation_Object, PuK.Client.Sig,\nnonce, signed_Hash_PuK.Client.Sig, redirect_uris}
-    AuthS -> AuthS: Validiere Apple_Attestation_Object;\nprüfe und verbrauche nonce; prüfe signed_hash_puk_client_sig mit PuK.Client.Sig\nüber SHA-256(PuK.Client.Sig || nonce) (Selbstsignatur, PoP des Client Instance Keys;\nohne nonce Legacy-Form über SHA-256(PuK.Client.Sig) bis 01.01.2028, A_30193)
+    Client -> AuthS++: POST /register\n{attestation_type="apple", client_name, apple_attestation_object, jwks (enthält PuK.Client.Sig),\nnonce, signed_hash_puk_client_sig, grant_types (authorization_code, token-exchange, refresh_token), redirect_uris}
+    AuthS -> AuthS: Prüfe und verbrauche nonce (zuerst, A_30515); prüfe signed_hash_puk_client_sig mit PuK.Client.Sig\nüber SHA-256(PuK.Client.Sig || nonce) (Selbstsignatur, PoP des Client Instance Keys;\nohne nonce Legacy-Form über SHA-256(PuK.Client.Sig) bis 01.01.2028, A_30193);\nvalidiere apple_attestation_object
     note right of AuthS: AuthS verifiziert Apple App Attest Root CA. Extrahiert Hash(PuK.Client.Sig) aus Objekt\nund vergleicht ihn mit dem Payload.
 
     note right of AuthS
@@ -44,23 +44,23 @@ alt Kein ZETA Attestation Token vorhanden
     end note
 
     AuthS -> AuthS: Pinne attestation_type, platform, product_id und ak_jkt (Thumbprint PuK.AK.Sig)\nim Registrierungsdatensatz (binding_status: pinned)
-    AuthS -> AuthS: Store Client (state: pending_user_binding)
-    AuthS --> Client--: 201 Created {client_id, status: pending_user_binding}
+    AuthS -> AuthS: Store Client (status: pending_user_binding,\ngrant_types mit authorization_code, A_30086)
+    AuthS --> Client--: 201 Created {client_id[, status: pending_user_binding]}\n(status informativ, Werte gemäß dcr-response.yaml)
 
 else ZETA Attestation Token vorhanden (Fast-Path)
-    Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token",\nzeta_attestation_token, PuK.Client.Sig,\nnonce, signed_Hash_PuK.Client.Sig, attestation_pop}
-    AuthS -> AuthS: Prüfe Token-Signatur & Vertrauensstellung;\nprüfe und verbrauche nonce
-    AuthS -> AuthS: Extrahiere PuK.AK.Sig (cnf.jwk) aus Token; prüfe signed_Hash_PuK.Client.Sig\nüber SHA-256(PuK.Client.Sig || nonce) mit PuK.Client.Sig;\nvalidiere attestation_pop als App-Attest-Assertion mit PuK.AK.Sig\n(clientDataHash = SHA-256(PuK.Client.Sig || nonce), rpIdHash, Counter-Monotonie)
+    Client -> AuthS: POST /register\n{attestation_type="zeta_attestation_token",\nzeta_attestation_token, jwks (enthält PuK.Client.Sig),\nnonce, signed_hash_puk_client_sig, attestation_pop}
+    AuthS -> AuthS: Prüfe und verbrauche nonce (zuerst, A_30515);\nprüfe Token-Signatur & Vertrauensstellung
+    AuthS -> AuthS: Extrahiere PuK.AK.Sig (cnf.jwk) aus Token; prüfe signed_hash_puk_client_sig\nüber SHA-256(PuK.Client.Sig || nonce) mit PuK.Client.Sig;\nvalidiere attestation_pop als App-Attest-Assertion mit PuK.AK.Sig\n(clientDataHash = SHA-256(PuK.Client.Sig || nonce), rpIdHash, Counter-Monotonie)
     note right of AuthS
       nonce vom nonce_endpoint (GET /nonce, nicht dargestellt).
       attestation_pop bindet den (ggf. neuen) Client Instance Key frisch an den
-      bereits attestierten Attestation Key. signed_Hash_PuK.Client.Sig und
+      bereits attestierten Attestation Key. signed_hash_puk_client_sig und
       attestation_pop sind beide über SHA-256(PuK.Client.Sig || nonce) gebildet
       (wie 5.3.1.5 (16)). Legacy-Form ohne nonce (über SHA-256(PuK.Client.Sig))
       nur bis 01.01.2028 (A_30193).
     end note
     AuthS -> AuthS: Übernimm registrierte redirect_uris aus dem Token\n(kein erneutes Senden im Fast-Path)
-    AuthS --> Client: 201 Created {client_id, status: bound}
+    AuthS --> Client: 201 Created {client_id[, status: bound]}
 end
 
 note over Client, AuthS

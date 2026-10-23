@@ -1,5 +1,5 @@
 {
-  "$comment": "DCR POST /register – Apple Hardware Attestation iOS/iPadOS/macOS (oneOf variant 2). PuK.Client.Sig ist der zu registrierende ECDSA-Schlüssel; Apple_Attestation_Object ist das CBOR-kodierte Ergebnis der App Attest API.",
+  "$comment": "DCR POST /register – Apple Hardware Attestation iOS/iPadOS/macOS (oneOf variant 2). PuK.Client.Sig ist der zu registrierende ECDSA-Schlüssel; Apple_Attestation_Object ist das CBOR-kodierte Ergebnis der App Attest API. grant_types Form (3) (token-exchange, refresh_token, ohne authorization_code) → Status registered (A_30086), z. B. stationärer macOS-Client mit SM(C)-B; mobiler, identitätsgebundener Client: dcr-request-apple-mobile.json.",
   "attestation_type": "apple",
   "client_name": "ZETA Client App (Apple)",
   "token_endpoint_auth_method": "private_key_jwt",

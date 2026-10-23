@@ -1,0 +1,29 @@
+{
+  "$comment": "DCR POST /register – mobiler, identitätsgebundener Apple-Client (iOS/iPadOS), Abb-ZETA-DCR-für-mobile-Clients Schritt (01). grant_types Form (1) mit authorization_code → Status pending_user_binding (A_30086); nonce aus GET /nonce, signed_hash_puk_client_sig über SHA-256(PuK.Client.Sig || nonce).",
+  "attestation_type": "apple",
+  "client_name": "ZETA Client App (Apple)",
+  "token_endpoint_auth_method": "private_key_jwt",
+  "grant_types": [
+    "authorization_code",
+    "urn:ietf:params:oauth:grant-type:token-exchange",
+    "refresh_token"
+  ],
+  "redirect_uris": [
+    "https://app.example-hersteller.de/cb/praxis-app/oidc",
+    "https://app.example-hersteller.de/cb/praxis-app/app"
+  ],
+  "jwks": {
+    "keys": [
+      {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "WKn-ZIGevcwGIyyrzFoZNBdaq9_n_kRy3g5LteDfm3s",
+        "y": "y77t-RvAHRKTsSGdIYESfh-nN6Nekm9b_SnpY92EI7I"
+      }
+    ]
+  },
+  "apple_attestation_object": "o2NmbXRvYXBwbGUtYXBwYXR0ZXN0Z2F0dFN0bXSiY3g1Y4JZAu8wggLrMIICcaADAgECAgYBkBrd8KAwCgYIKoZIzj0EAwIwTzEjMCEGA1UEAwwaQXBwbGUgQXBwIEF0dGVzdGF0aW9uIENBMTETMBEGA1UEChMKQXBwbGUgSW5jLjETMBEGA1UECBMKCaliZm9ybmlhMB4XDTIzMDUxMDE0NTIwMFoXDTIzMDUxMzE0NTIwMFowgYExgYAGCgMCBAUGBwECAwQxLTArBgkqhkiG9w0BCQIxHhMcY29tLmV4YW1wbGUubXlhcHAuMTIzNDU2Nzg5GDAYBgNVBAMMEUFwcCBBdHRlc3QgUHVia2V5MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEWKn+ZIGevcwGIyyrzFoZNBdaq9/n/kRy3g5LteDfm3sy77t+RvAHRKTsSGdIYESfh+nN6Nekm9b/SnpY92EI7Kg==",
+  "nonce": "h1X5-uT5hKkvyLr0DpCHcA",
+  "signed_hash_puk_client_sig": "MEUCIQDExampleAppleSignatureHashBase64urlEncodedValueAABBCCDDEEFFGGHHIIJJKKLLMMNNOOPPQQRRSSTTUUVVWWXXYYZZAiEA1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
+  "platform": "apple"
+}
