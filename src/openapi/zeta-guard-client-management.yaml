@@ -1494,11 +1494,15 @@ components:
       required: [email]
       properties:
         email:
-          # Längengrenze hier statt in dcr-request.yaml (dort unverändert, abwärtskompatibel).
-          allOf:
-            - $ref: '../schemas/dcr-request.yaml#/definitions/user_email'
-            - maxLength: 254
-          description: Address; at most 254 characters (RFC 5321 section 4.5.3.1), checked before further processing.
+          # Wie dcr-request.yaml#/definitions/user_email, zusätzlich mit Längengrenze.
+          # Bewusst ausgeschrieben statt allOf aus $ref und maxLength: oapi-codegen 2.8.0
+          # kann diese Kombination nicht zusammenführen ("incompatible formats").
+          type: string
+          format: email
+          maxLength: 254
+          description: >-
+            Address; at most 254 characters (RFC 5321 section 4.5.3.1), checked before further
+            processing. Same meaning as `user_email` in `dcr-request.yaml`.
 
     OtpChallenge:
       type: object
@@ -1524,12 +1528,15 @@ components:
           type: string
           const: email_otp
         code:
-          type: string
-          description: >-
-            OTP entered by the user: 8 decimal digits (Tab_ZETA_CM_Werte; a guard MAY
-            configure longer codes, up to 10 digits).
-          pattern: '^[0-9]{8,10}$'
-          example: "12345678"
+          $ref: '#/components/schemas/OtpCode'
+
+    OtpCode:
+      type: string
+      description: >-
+        OTP entered by the user: 8 decimal digits (Tab_ZETA_CM_Werte; a guard MAY configure
+        longer codes, up to 10 digits).
+      pattern: '^[0-9]{8,10}$'
+      example: "12345678"
 
     RebindVerifyRequest:
       type: object
@@ -1543,7 +1550,7 @@ components:
           type: string
           const: email_otp
         code:
-          $ref: '#/components/schemas/OtpVerifyRequest/properties/code'
+          $ref: '#/components/schemas/OtpCode'
         recovery_code:
           $ref: '#/components/schemas/RecoveryCode'
 
@@ -1585,13 +1592,13 @@ components:
           then:
             required: [effective_at]
             properties:
-              effective_at: true
+              effective_at: { type: integer }
         - if:
             properties: { status: { const: aborted } }
           then:
             required: [abort_reason]
             properties:
-              abort_reason: true
+              abort_reason: { type: string }
 
     ClientList:
       type: object
