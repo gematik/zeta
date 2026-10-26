@@ -1,5 +1,5 @@
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.2.6"
+schemaVersion: "1.2.7"
 title: RegistrationRequest
 description: >-
   Payload Schema für den DCR POST /register Body.
@@ -79,6 +79,11 @@ description: >-
   neue Clients SOLLEN einen Namen aus höchstens 64 Buchstaben, Ziffern,
   Leerzeichen, "-" und "." senden (Zielbild Client Management A_CM-32,
   Platzhalter-ID). user_email gilt auch für E-Mail-Änderung und Neubindung.
+
+  Präzisierung 1.2.7 (nur Beschreibung, gültige Instanzen unverändert):
+  user_email gilt nur noch für die Registrierung; E-Mail-Bindung, -Änderung
+  und Neubindung beschreibt EmailRequest in
+  zeta-guard-client-management.yaml (mit Längengrenze 254).
 
   Auswahl des Zweigs: attestation_type lesen; fehlt das Feld, gilt "software"
   (Requests nach Schema 1.0.0). tpm | apple | android | zeta_attestation_token
@@ -829,9 +834,12 @@ definitions:
       (TOFU) Bindung mobiler Clients. Wird NACH der OIDC-Nutzerauthentisierung über
       POST /zeta/identity/bind-email übermittelt (nur bei Erstnutzung einer Identität);
       bei Folgeregistrierung sendet der AuthS das OTP an die gespeicherte Adresse.
-      Siehe Abb-ZETA-OIDC-Token-Bezug.puml. Dieselbe Definition gilt für die
-      neue Adresse bei E-Mail-Änderung (POST /zeta/identity/email) und
-      Neubindung (POST /zeta/identity/rebind), Zielbild A_CM-35, A_CM-50.
+      Siehe Abb-ZETA-OIDC-Token-Bezug.puml. Die Endpunkte der
+      Client-Management-API (POST /zeta/identity/bind-email, /email, /rebind)
+      verwenden nicht diese Definition, sondern EmailRequest in
+      zeta-guard-client-management.yaml (gleiche Bedeutung, zusätzlich höchstens
+      254 Zeichen). Diese Definition ist informativ und wird im Schema nicht
+      referenziert.
   redirect_uris:
     type: array
     description: >-

@@ -150,9 +150,18 @@ info:
     authorization server creates no challenge, consumes none of the limits of A_CM-15 and
     A_CM-17 and answers `503` (A_CM-15).
 
+    **Rejections at the PEP.** Before the authorization server sees a request, the PEP HTTP
+    Proxy MAY reject it: `400` (path variant, e.g. `;` in the path), `404` (path not part of
+    this API), `405` with `Allow` (method not listed for the path; `HEAD` only where listed),
+    `413` (body above the configured limit of the route). These answers carry `zeta-error.yaml`
+    with `error: invalid_request`; they are not repeated per operation. Example configuration:
+    `examples/pep-config/`.
+
     **Concurrency.** Checks that depend on the set of registrations of a TI identity
     (conditional step-up A_CM-33, maximum number A_CM-36) and the change of F1 run
-    serialised per TI identity together with the change they guard (A_CM-33).
+    serialised per TI identity together with the change they guard (A_CM-33); deletions in
+    progress count as executed, including self-deregistration (`DELETE /register/{client_id}`,
+    A_CM-30).
 
     Error responses follow `zeta-error.yaml`; any other failure of a check leads to rejection
     (fail closed). Configurable values per Tab_ZETA_CM_Werte; deviations only towards higher

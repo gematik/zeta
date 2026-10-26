@@ -1,0 +1,39 @@
+# =============================================================================
+# BEISPIEL - NICHT NORMATIV
+# Zusätzliche Ingress-Regel für Helm-Chart zeta-guard v1.3.x (nginx-ingress mit
+# mergeable Ingresses). In v1.3.x leitet der Minion `zeta-guard-auth` das Präfix
+# /auth direkt an den Authorization Server; der PEP sieht dort nur /auth/admin.
+# Ohne diese Regel erreichten alle Anfragen an die Client-Management-API den
+# Authorization Server am PEP vorbei (A_CM-20 verletzt).
+#
+# Die Pfade sind länger als /auth und gewinnen deshalb (längstes Präfix, nginx
+# und Ingress-Spezifikation). Host und ingressClassName wie im Chart setzen.
+# Pfadvarianten mit `;` und fremde Realms erfasst diese Regel nicht; dafür ist
+# eine Änderung am Minion `zeta-guard-auth` nötig (README, „Chart v1.3.x“).
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: zeta-guard-client-management
+  annotations:
+    nginx.org/mergeable-ingress-type: "minion"
+spec:
+  ingressClassName: nginx            # wie .Values.ingressClassName
+  rules:
+    - host: zeta-guard.example.de    # wie .Values.authserver.hostname
+      http:
+        paths:
+          - path: /auth/realms/zeta-guard/zeta
+            pathType: Prefix
+            backend:
+              service:
+                name: pep-proxy-svc
+                port:
+                  number: 80
+          - path: /auth/realms/zeta-guard/register
+            pathType: Prefix
+            backend:
+              service:
+                name: pep-proxy-svc
+                port:
+                  number: 80
