@@ -1,0 +1,19 @@
+{
+    "header": {
+        "typ": "at+jwt",
+        "alg": "ES256",
+        "kid": "pdp-signing-key-2026-01"
+    },
+    "payload": {
+        "token_profile": "workload",
+        "ver": 2,
+        "iss": "https://zeta-guard.anbieter-b.example.ti-dienste.de/auth/realms/zeta-guard",
+        "sub": "system:serviceaccount:fachdienst-a:resource-server",
+        "client_id": "https://zeta-guard.anbieter-a.example.ti-dienste.de/auth/realms/zeta-guard",
+        "aud": "b_resource",
+        "scope": "b-api:read",
+        "exp": 1793009100,
+        "iat": 1793008800,
+        "jti": "6f1c2a9e-3b7d-4e55-9a10-7c2d4b8e1f03"
+    }
+}

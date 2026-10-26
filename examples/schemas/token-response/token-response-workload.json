@@ -1,0 +1,6 @@
+{
+    "access_token": "eyJ0eXAiOiJhdCtqd3QiLCJhbGciOiJFUzI1NiIsImtpZCI6InBkcC1zaWduaW5nLWtleS0yMDI2LTAxIn0.eyJ0b2tlbl9wcm9maWxlIjoid29ya2xvYWQifQ.c2lnbmF0dXJl",
+    "token_type": "Bearer",
+    "expires_in": 300,
+    "issued_token_type": "urn:ietf:params:oauth:token-type:access_token"
+}

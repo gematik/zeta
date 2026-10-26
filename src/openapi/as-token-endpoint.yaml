@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: OAuth 2.0 Token Endpoint (RFC 6749 Section 3.2)
-  version: 1.1.2
+  version: 1.2.0
   description: |
     Token endpoint of the ZETA Guard Authorization Server.
 
@@ -24,8 +24,19 @@ info:
     token carries the audience of the Client Management API, because all its operations run
     through the PEP HTTP Proxy (A_CM-12, A_CM-20).
 
+    Changes 1.1.2 -> 1.2.0: token exchange of Workload Identity Federation (service-to-service
+    communication, gemSpec_ZETA 2.0.1 A_28431, proposal A_NEU-ABL-12): `subject_token_type`
+    `urn:ietf:params:oauth:token-type:id_token` and the parameter `requested_token_type` are
+    added; `client_assertion_type`, `client_assertion` and the `DPoP` header are no longer
+    required by the schema, because this variant has no registered client. For all other
+    grants they remain mandatory (checked by the Authorization Server, A_25659). For code
+    generators the three fields become optional.
+
     Every request is authenticated with a `private_key_jwt` client assertion (RFC 7523) and
-    carries a DPoP proof (RFC 9449); requests without them are rejected (A_25659).
+    carries a DPoP proof (RFC 9449); requests without them are rejected with
+    `401 invalid_client` resp. `400 invalid_dpop_proof` (A_25659). Only exception: the token
+    exchange of Workload Identity Federation, where the requesting service is identified by
+    the validated subject token and a DPoP proof is optional (proposal A_NEU-ABL-12).
 
     Nonce: where a request carries a nonce (subject token, posture of the client
     statement, DPoP proof), the Authorization Server checks and consumes it in one
@@ -46,9 +57,28 @@ paths:
           * `urn:ietf:params:oauth:grant-type:token-exchange` (RFC 8693). The meaning is
             selected by `subject_token_type`:
               - `urn:ietf:params:oauth:token-type:jwt` — SM(C)-B signed subject token
-                (`subject-token-smb.yaml`, A_25645-01);
+                (`subject-token-smb.yaml`, A_25645-02);
               - `urn:ietf:params:oauth:token-type:access_token` — redemption of the
-                down-scoped email-binding token for full tokens (A_30218).
+                down-scoped email-binding token for full tokens (A_30218);
+              - Workload Identity Federation (proposal A_NEU-ABL-12): `subject_token` is a
+                JWT according to `subject-token-workload.yaml`, with `subject_token_type`
+                `urn:ietf:params:oauth:token-type:jwt` or
+                `urn:ietf:params:oauth:token-type:id_token`. The Authorization Server
+                recognises this variant structurally: `id_token`, or `jwt` without `x5c`
+                in the JOSE header; `jwt` with the SM(C)-B certificate in `x5c` is the
+                SM(C)-B subject token (proposal A_25645-03). The variant is chosen from
+                still unverified data; all decisions follow the checks of
+                A_NEU-ABL-12. `iss` MUST be an issuer registered with gematik
+                (A_28437-02) and configured at this Authorization Server
+                (`workload-issuer.yaml`, proposal A_NEU-ABL-18), otherwise
+                `invalid_grant`. No client assertion; DPoP proof optional; the request
+                carries exactly one `resource` and no `audience` (contract v2 only). Each
+                (`iss`, `jti`) of a subject token is accepted once. The Policy Engine input follows
+                `policy-engine-input-workload.yaml`. The response carries an access token
+                according to `access-token-workload.yaml`, `token_type` `Bearer` (or `DPoP`
+                if a valid DPoP proof was sent), `issued_token_type`
+                `urn:ietf:params:oauth:token-type:access_token`, `expires_in` of at most
+                3600 seconds and no refresh token (proposal A_NEU-ABL-25).
           * `authorization_code` — outer Authorization Code Flow of mobile clients with
             PKCE (`code`, `redirect_uri` = app_redirect_uri, `code_verifier`), A_29672.
           * `urn:ietf:params:oauth:grant-type:jwt-bearer` (RFC 7523 section 2.1) —
@@ -124,12 +154,14 @@ paths:
       parameters:
         - name: DPoP
           in: header
-          required: true
+          required: false
           description: >-
             DPoP proof JWT (RFC 9449, `dpop-token.yaml`) with `htm` = `POST` and `htu` = the
             URL of this token endpoint. The issued tokens are bound to the key of this proof
             (`cnf.jkt`). A refresh, and the redemption of the email-binding token, use the
-            same DPoP key as the request that opened the session.
+            same DPoP key as the request that opened the session. REQUIRED for all grants
+            except the token exchange of Workload Identity Federation, where it is optional
+            (A_25659, proposal A_NEU-ABL-12).
           schema:
             type: string
       requestBody:
@@ -149,14 +181,17 @@ paths:
                     - urn:ietf:params:oauth:grant-type:jwt-bearer
                 client_assertion_type:
                   type: string
-                  description: Format of the client assertion (RFC 7521/RFC 7523).
+                  description: >-
+                    Format of the client assertion (RFC 7521/RFC 7523). REQUIRED for all
+                    grants except the token exchange of Workload Identity Federation.
                   enum:
                     - urn:ietf:params:oauth:client-assertion-type:jwt-bearer
                 client_assertion:
                   type: string
                   description: >-
                     The Private Key JWT authenticating the client (`client-assertion-jwt.yaml`),
-                    signed with PrK.Client.Sig.
+                    signed with PrK.Client.Sig. REQUIRED for all grants except the token
+                    exchange of Workload Identity Federation, where it MUST be absent.
                 client_id:
                   type: string
                   description: >-
@@ -190,8 +225,10 @@ paths:
                   type: string
                   description: >-
                     The subject token (RFC 8693) — REQUIRED for the token-exchange grant: the
-                    SM(C)-B signed JWT or, for the identity-binding completion, the down-scoped
-                    email-binding access token.
+                    SM(C)-B signed JWT, for the identity-binding completion the down-scoped
+                    email-binding access token, or for Workload Identity Federation the JWT
+                    of the requesting workload issued by a registered issuer (A_28437-02),
+                    claims according to `subject-token-workload.yaml`.
                 subject_token_type:
                   type: string
                   description: >-
@@ -199,6 +236,14 @@ paths:
                     Selects the processing of the subject token.
                   enum:
                     - urn:ietf:params:oauth:token-type:jwt
+                    - urn:ietf:params:oauth:token-type:access_token
+                    - urn:ietf:params:oauth:token-type:id_token
+                requested_token_type:
+                  type: string
+                  description: >-
+                    Requested token type (RFC 8693). Optional; if present, only an access token
+                    can be requested. Other values are rejected with `invalid_request`.
+                  enum:
                     - urn:ietf:params:oauth:token-type:access_token
                 scope:
                   type: string
@@ -226,14 +271,15 @@ paths:
                     `<issuer>/zeta` (A_CM-22).
               required:
                 - grant_type
-                - client_assertion_type
-                - client_assertion
       responses:
         '200':
           description: >-
             Successful response (`token-response.yaml`, successResponse). With the down-scoped
             email-binding response the granted `scope` is returned explicitly, no refresh
-            token is issued and `email_hint` MAY be present.
+            token is issued and `email_hint` MAY be present. For the token exchange of Workload
+            Identity Federation the access token follows `access-token-workload.yaml`,
+            `token_type` is `Bearer` (or `DPoP` with a valid DPoP proof) and no refresh token
+            is issued.
           headers:
             Cache-Control:
               description: "`no-store` (RFC 6749 section 5.1)."
@@ -257,6 +303,9 @@ paths:
             email-binding token as `subject_token` fails with `invalid_grant` while the
             registration is not yet `bound`, or when the email-binding token is expired or
             unknown — the client MUST then restart with a new OIDC authorization request.
+            Workload Identity Federation: a subject token that is invalid (signature, `iss`
+            not registered, `aud`, expiry) is answered with `invalid_grant` without asking the
+            Policy Engine (proposal A_NEU-ABL-12).
             Every refresh token that can no longer be used — unknown, expired, re-used,
             revoked via `/revoke` or belonging to a terminated session — is answered with
             `invalid_grant` and an identical body; on re-use the session is additionally
@@ -268,7 +317,8 @@ paths:
                 $ref: '../schemas/zeta-error.yaml'
         '401':
           description: >-
-            Client authentication failed (`invalid_client`) — A_25661-01. The token endpoint
+            Client authentication failed or is missing (`invalid_client`) — A_25661-01,
+            A_25659; not used for the token exchange of Workload Identity Federation. The token endpoint
             never signals step-up (`insufficient_user_authentication`): step-up need is signalled
             only by the protected endpoints per RFC 9470 (PEP, A_28525-02; client management,
             A_CM-25), whose `WWW-Authenticate` header supplies the `acr_values`. An insufficient
@@ -287,7 +337,9 @@ paths:
             registration — the configured maximum number of `active` SM(C)-B registrations
             per Telematik-ID is reached (`access_denied`, client-management target model
             A_CM-36; no registration is displaced automatically, the client deletes one via
-            the Client Management API). 403 is used for no other case; a terminated session or
+            the Client Management API). For the token exchange of Workload Identity
+            Federation 403 means the Policy Engine denied the workload. 403 is used for no
+            other case; a terminated session or
             revoked refresh token is `400 invalid_grant`.
           content:
             application/json:
@@ -320,7 +372,9 @@ paths:
         '503':
           description: >-
             A component required for the decision is not available
-            (`temporarily_unavailable`); no tokens are issued.
+            (`temporarily_unavailable`); no tokens are issued. This includes the token
+            exchange of Workload Identity Federation when the JWKS of a registered issuer
+            cannot be obtained and no valid cached copy exists (proposal A_NEU-ABL-18).
           content:
             application/json:
               schema:

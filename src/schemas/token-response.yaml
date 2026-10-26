@@ -3,7 +3,7 @@
 # DPoP-bound (RFC 9449) and follows access-token.yaml.
 # See also https://www.rfc-editor.org/rfc/rfc6749#section-5.1
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.2.1"
+schemaVersion: "1.3.0"
 title: Token Response
 description: >-
   Schema for the JSON response body returned by the token endpoint of the PDP
@@ -17,6 +17,11 @@ description: >-
   - On a deny decision (`result.allow` = false) NO tokens are issued; the
     endpoint returns an error response following zeta-error.yaml that conveys the
     denial `result.reasons` from pdp-decision.yaml.
+
+  Change 1.2.1 -> 1.3.0: token_type "Bearer" added, permitted only for the
+  token exchange of Workload Identity Federation (gemSpec_ZETA 2.0.1 A_28431,
+  proposal A_NEU-ABL-12); the access token then follows
+  access-token-workload.yaml. Generated enums gain one value.
 
   For code generators: the root is deliberately not a oneOf. Generated code
   binds per HTTP status directly to definitions/successResponse (200) or
@@ -49,15 +54,22 @@ definitions:
       access_token:
         type: string
         description: >-
-          The issued DPoP-bound access token as a signed JWT. Its claims follow
-          access-token.yaml.
+          The issued access token as a signed JWT. Its claims follow
+          access-token.yaml (DPoP-bound) or, for the token exchange of Workload
+          Identity Federation, access-token-workload.yaml.
       token_type:
         type: string
         description: >-
-          The type of the issued token. In ZETA this MUST be "DPoP", indicating
-          the token is bound to the client's DPoP key (RFC 9449).
+          The type of the issued token. "DPoP" indicates the token is bound to
+          the client's DPoP key (RFC 9449). "Bearer" is permitted only for an
+          access token according to access-token-workload.yaml issued in a token
+          exchange of Workload Identity Federation without DPoP proof
+          (gemSpec_ZETA 2.0.1 A_28431, proposal A_NEU-ABL-12); in all other
+          cases the value MUST be "DPoP". With "Bearer" the response carries no
+          refresh token and expires_in is at most 3600 (proposal A_NEU-ABL-25).
         enum:
           - DPoP
+          - Bearer
       expires_in:
         type: integer
         description: >-
@@ -114,6 +126,20 @@ definitions:
       - access_token
       - token_type
       - expires_in
+    # Bearer (Workload Identity Federation only): no refresh token, lifetime at
+    # most 3600 s (proposal A_NEU-ABL-25). if/then instead of oneOf, so that
+    # code generators keep one success class.
+    if:
+      required: [token_type]
+      properties:
+        token_type:
+          const: Bearer
+    then:
+      not:
+        required: [refresh_token]
+      properties:
+        expires_in:
+          maximum: 3600
   denyResponse:
     title: Token Deny Response
     description: >-

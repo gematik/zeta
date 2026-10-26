@@ -44,13 +44,13 @@ par Regelmäßiger Token Exchange (Subject Token gegen Access Token)
     ZetaSTS -> OPA++: POST /v1/data/authz {Policy Engine Input}
     OPA --> ZetaSTS--: Policy Decision
     alt Policy Decision allow
-      ZetaSTS --> cronjobClient: 200 OK\n{Access Token}
+      ZetaSTS --> cronjobClient: 200 OK\n{access_token, token_type=Bearer}
       cronjobClient -> etcd: Speichert Access-Token als Secret
     else Policy Decision deny
-      ZetaSTS --> cronjobClient--: 403 Forbidden
+      ZetaSTS --> cronjobClient--: 403 Forbidden {"error": "access_denied"}
     end alt
   else Validation fehlerhaft
-    ZetaSTS --> cronjobClient--: 403 Forbidden
+    ZetaSTS --> cronjobClient--: 400 Bad Request {"error": "invalid_grant"}
   end alt
   cronjobClient--
 end
@@ -58,7 +58,7 @@ par Ressourcenzugriff mit Access Token
   workloadClient++
   workloadClient -> etcd: Liest Access-Token\nSecret aus
   workloadClient -> HP++: Anfrage mit Access-Token
-  HP -> HP: Validiert Access-Token
+  HP -> HP: Validiert Access-Token\n(Bearer, nur auf Dienst-zu-Dienst-Routen)
    alt Erfolgreiche Validierung
     HP -> ResourceServer++: Weiterleitung der Anfrage mit Access-Token
     ResourceServer --> HP--: Antwort

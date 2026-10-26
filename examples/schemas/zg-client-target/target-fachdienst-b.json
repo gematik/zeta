@@ -1,0 +1,35 @@
+{
+    "api_version": "zeta.gematik.de/v1",
+    "kind": "ZgClientTarget",
+    "metadata": {
+        "environment": "TU",
+        "status": "example",
+        "fachdienst_typ": "fachdienst-a",
+        "generated_at": "2026-10-26T12:00:00Z",
+        "note": "Formatbeispiel: Zieldienst ist durch einen ZETA Guard geschützt (statische Konfiguration des Authorization Servers bzw. ab Stufe 3 /targets/ im ZG Client Konfigurations-Image)."
+    },
+    "key": "anbieter_b.fachdienst_b",
+    "purpose": "Abruf von Daten des Fachdienstes B durch den Resource Server des Fachdienstes A",
+    "owner": "ti-provider",
+    "target": {
+        "base_urls": [
+            "https://fachdienst-b.example.ti-dienste.de/api/v1"
+        ]
+    },
+    "sts": {
+        "token_endpoint": "https://zeta-guard.anbieter-b.example.ti-dienste.de/auth/realms/zeta-guard/protocol/openid-connect/token",
+        "resource": "https://fachdienst-b.example.ti-dienste.de/api/v1",
+        "scopes": [
+            "b-api:read"
+        ],
+        "token_endpoint_auth_method": "none",
+        "dpop": false
+    },
+    "subject_token": {
+        "audience": "https://zeta-guard.anbieter-b.example.ti-dienste.de/auth/realms/zeta-guard/protocol/openid-connect/token"
+    },
+    "cache": {
+        "refresh_before_expiry_seconds": 60,
+        "max_ttl_seconds": 3600
+    }
+}

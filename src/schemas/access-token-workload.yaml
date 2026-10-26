@@ -1,0 +1,139 @@
+# Schema for the access token of service-to-service communication (Workload
+# Identity Federation). Issuer is a PDP authorization server acting as Secure
+# Token Service. See also https://www.rfc-editor.org/rfc/rfc9068.html and
+# https://www.rfc-editor.org/rfc/rfc8693.html
+$schema: "http://json-schema.org/draft-07/schema#"
+schemaVersion: "1.0.0"
+title: Access Token (Workload)
+description: >-
+  Access token that the Authorization Server, acting as Secure Token Service,
+  issues in a token exchange (RFC 8693) of Workload Identity Federation for a
+  workload of another provider (gemSpec_ZETA 2.0.1 A_28431, proposal
+  A_NEU-ABL-12). Unlike access-token.yaml it carries no user identity, no
+  client instance data (product_id, platform, ip_address), no session and no
+  acr, because the requesting service is not a registered ZETA client.
+
+  The token is a bearer token (token_type "Bearer") unless the token exchange
+  request carried a valid DPoP proof; then cnf.jkt binds it to that key
+  (token_type "DPoP"). Lifetime (exp - iat) at most 3600 seconds (proposal
+  A_NEU-ABL-25).
+
+  token_profile = "workload" distinguishes it from access-token.yaml. The PEP
+  accepts a token with this profile only on routes configured for
+  service-to-service communication (proposal A_NEU-ABL-13); a token without cnf
+  is accepted only with this profile.
+type: object
+properties:
+  header:
+    type: object
+    description: The JOSE Header of the Access Token.
+    properties:
+      typ:
+        type: string
+        description: Type of the JWT. Must be "at+jwt" (RFC 9068).
+        enum:
+          - at+jwt
+      alg:
+        type: string
+        description: Asymmetric algorithm used to sign the JWT.
+        enum:
+          - ES256
+          - ES384
+      kid:
+        type: string
+        description: The key ID of the public key used to sign the JWT.
+    required:
+      - typ
+      - alg
+      - kid
+  payload:
+    type: object
+    description: The JWT Claims Set of the Access Token.
+    additionalProperties: false
+    properties:
+      token_profile:
+        type: string
+        description: >-
+          Token profile. Always "workload" for this schema; marks the token as
+          service-to-service token for the PEP (proposal A_NEU-ABL-13).
+        enum:
+          - workload
+      iss:
+        type: string
+        description: The issuer of the token (Authorization Server acting as Secure Token Service).
+      sub:
+        type: string
+        description: >-
+          Identity of the requesting workload, taken from the claim sub of the
+          validated subject token (subject-token-workload.yaml, proposal
+          A_NEU-ABL-12). Unique only together with client_id (= iss of the
+          subject token): Policy Engine, PEP and resource server MUST evaluate
+          the pair (client_id, sub), never sub alone.
+      client_id:
+        type: string
+        description: >-
+          Issuer of the validated subject token, i.e. the authorization server or
+          signing key of the requesting provider registered with gematik
+          (gemSpec_ZETA 2.0.1 A_28437-02). RFC 9068 requires client_id; in
+          Workload Identity Federation the requesting party is identified by the
+          registered issuer, not by a dynamic client registration.
+      ver:
+        type: integer
+        description: >-
+          Token-issuance contract version. Always 2: aud is the logical audience
+          determined by the Policy Engine from the resource indicator (RFC 8707);
+          the PEP applies the corresponding audience rule (gemSpec_ZETA 2.0.1
+          A_25668-01). The legacy contract (audience parameter, ver 1) is not
+          offered for Workload Identity Federation.
+        enum:
+          - 2
+      aud:
+        # Same form as access-token.yaml: no `type`, no oneOf (code generators).
+        if:
+          type: array
+        then:
+          items:
+            type: string
+        else:
+          type: string
+        description: >-
+          Logical audience of the target service as determined by the Policy
+          Engine decision (gemSpec_ZETA 2.0.1 A_29953).
+      scope:
+        type: string
+        description: The permissions that this token grants (space-delimited).
+      exp:
+        type: integer
+        description: Expiration time of the token as a Unix timestamp.
+      iat:
+        type: integer
+        description: Issued at time of the token as a Unix timestamp.
+      jti:
+        type: string
+        description: The JWT ID.
+      cnf:
+        type: object
+        description: >-
+          Optional. Present only if the token exchange request carried a valid
+          DPoP proof (RFC 9449); then the PEP verifies the binding as for
+          access-token.yaml (gemSpec_ZETA 2.0.1 A_25667).
+        properties:
+          jkt:
+            type: string
+            description: SHA-256 thumbprint (RFC 7638) of the public key used in the DPoP proof.
+        required:
+          - jkt
+    required:
+      - token_profile
+      - iss
+      - sub
+      - client_id
+      - ver
+      - aud
+      - scope
+      - exp
+      - iat
+      - jti
+required:
+  - header
+  - payload

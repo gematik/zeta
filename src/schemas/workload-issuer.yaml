@@ -1,0 +1,175 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+schemaVersion: "1.0.0"
+title: Workload Issuer
+description: >
+  Schema für die Konfiguration eines Ausstellers von Subject Tokens der
+  Workload Identity Federation, dessen Subject Tokens der Authorization
+  Server eines ZETA Guard als Secure Token Service annimmt (Vorschlag
+  A_NEU-ABL-18). Jede Datei beschreibt genau einen bei der gematik
+  registrierten Aussteller (gemSpec_ZETA 2.0.1 A_28437-02).
+
+  Bis zur Einführung des ZG Client (Stufe 3) konfiguriert der Anbieter des
+  TI 2.0 Dienstes die Aussteller statisch (Vorschlag A_NEU-ABL-26);
+  metadata.status ist dann `normative`. Ab Stufe 3 verteilt die gematik die
+  Einträge je Fachdienst-Typ signiert im ZG Client Konfigurations-Image
+  (Verzeichnis /workload-issuers/, gemSpec_ZETA Kapitel 5.6.7).
+
+  Der Secure Token Service nimmt ein Subject Token nur an, wenn iss exakt dem
+  Feld issuer eines konfigurierten Eintrags entspricht. Er prüft die Signatur
+  ausschließlich mit den hier genannten Schlüsseln (jwks) bzw. dem unter
+  jwks_uri abgerufenen JWKS (Vorschlag A_NEU-ABL-18). Welche Workloads (Paar
+  iss, sub) welche Scopes erhalten, entscheidet die Policy Engine.
+
+type: object
+additionalProperties: false
+required:
+  - api_version
+  - kind
+  - metadata
+  - issuer
+  - provider
+# Genau eines von jwks und jwks_uri. if/then/else statt oneOf (Codegeneratoren),
+# wie in zg-client-target.yaml.
+if:
+  required: [jwks]
+then:
+  not:
+    required: [jwks_uri]
+else:
+  required: [jwks_uri]
+
+properties:
+  api_version:
+    type: string
+    const: "zeta.gematik.de/v1"
+  kind:
+    type: string
+    const: "WorkloadIssuer"
+
+  metadata:
+    type: object
+    additionalProperties: false
+    required:
+      - environment
+      - status
+      - generated_at
+    properties:
+      environment:
+        type: string
+        description: "TI-Umgebung, für die dieser Eintrag gilt."
+        enum: [RU, TU, PU]
+      status:
+        type: string
+        description: >
+          `normative` kennzeichnet einen für den Betrieb bestimmten Eintrag
+          (statische Konfiguration des Anbieters bzw. ab Stufe 3 Eintrag im
+          Konfigurations-Image). `example` kennzeichnet eine
+          Formatdemonstration im Repository, die NICHT für den Betrieb
+          verwendet werden darf; der ZETA Guard ignoriert solche Einträge.
+        enum: [normative, example]
+      generated_at:
+        type: string
+        format: date-time
+      note:
+        type: string
+
+  issuer:
+    type: string
+    format: uri
+    description: >
+      Wert des Claims iss der Subject Tokens dieses Ausstellers
+      (subject-token-workload.yaml). Exakter String-Vergleich, nur https.
+    pattern: "^https://"
+  provider:
+    type: string
+    description: >
+      Anbieter, der den Aussteller registriert hat. Nur informativ (Protokoll,
+      Telemetrie); keine Prüfgrundlage.
+    minLength: 1
+  fachdienst_typ:
+    type: string
+    description: >
+      Optional. Fachdienst-Typ des anfragenden Anbieters, falls der Aussteller
+      ein ZETA Guard ist. Nur informativ.
+    pattern: "^[a-z][a-z0-9-]*$"
+
+  jwks:
+    type: object
+    description: >
+      Öffentliche Signaturschlüssel des Ausstellers als JWK Set (RFC 7517),
+      wenn bei der gematik ein Schlüssel statt eines Authorization Servers
+      registriert wurde (A_28437-02, Alternative). Ein Schlüsselwechsel
+      erfordert eine Änderung der Konfiguration; der Aussteller nimmt den
+      neuen Schlüssel erst in Gebrauch, wenn die Konfiguration mit beiden
+      Schlüsseln bei allen Empfängern eingespielt ist.
+    additionalProperties: false
+    required:
+      - keys
+    properties:
+      keys:
+        type: array
+        minItems: 1
+        items:
+          $ref: "#/definitions/ecPublicJwk"
+
+  jwks_uri:
+    type: string
+    format: uri
+    description: >
+      Adresse des JWKS des Ausstellers (nur https), wenn ein Authorization
+      Server registriert wurde. Der ZETA Guard ruft sie mit TLS und
+      Zertifikatsprüfung ab; Schlüsselverweise im Header des Subject Token
+      (jku, x5u, jwk, x5c) verwendet er nicht.
+    pattern: "^https://"
+
+  jwks_cache:
+    type: object
+    description: >
+      Optional. Vorgaben für die Zwischenspeicherung eines über jwks_uri
+      bezogenen JWKS. Ohne Angabe gelten die Standardwerte.
+    additionalProperties: false
+    properties:
+      max_age_seconds:
+        type: integer
+        description: >
+          Höchstdauer, für die der ZETA Guard ein abgerufenes JWKS verwendet,
+          unabhängig von Cache-Control. Default 3600 Sekunden, damit ein aus dem
+          JWKS entfernter (z. B. kompromittierter) Schlüssel spätestens nach
+          einer Stunde nicht mehr angenommen wird; höchstens 24 Stunden.
+        minimum: 60
+        maximum: 86400
+        default: 3600
+
+definitions:
+  ecPublicJwk:
+    type: object
+    description: Öffentlicher EC-Schlüssel (RFC 7518) für ES256 bzw. ES384.
+    additionalProperties: false
+    required:
+      - kty
+      - crv
+      - x
+      - y
+      - kid
+    properties:
+      kty:
+        type: string
+        const: EC
+      crv:
+        type: string
+        enum: [P-256, P-384]
+      x:
+        type: string
+        pattern: "^[A-Za-z0-9_-]+$"
+      y:
+        type: string
+        pattern: "^[A-Za-z0-9_-]+$"
+      kid:
+        type: string
+        minLength: 1
+      use:
+        type: string
+        const: sig
+      alg:
+        type: string
+        enum: [ES256, ES384]

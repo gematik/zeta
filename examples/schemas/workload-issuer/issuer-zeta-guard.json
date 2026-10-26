@@ -1,0 +1,17 @@
+{
+    "api_version": "zeta.gematik.de/v1",
+    "kind": "WorkloadIssuer",
+    "metadata": {
+        "environment": "TU",
+        "status": "example",
+        "generated_at": "2026-10-26T12:00:00Z",
+        "note": "Formatbeispiel: Aussteller ist der Authorization Server eines ZETA Guard."
+    },
+    "issuer": "https://zeta-guard.anbieter-a.example.ti-dienste.de/auth/realms/zeta-guard",
+    "provider": "Anbieter A",
+    "fachdienst_typ": "fachdienst-a",
+    "jwks_uri": "https://zeta-guard.anbieter-a.example.ti-dienste.de/auth/realms/zeta-guard/protocol/openid-connect/certs",
+    "jwks_cache": {
+        "max_age_seconds": 3600
+    }
+}

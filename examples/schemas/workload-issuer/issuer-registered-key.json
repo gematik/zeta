@@ -1,0 +1,25 @@
+{
+    "api_version": "zeta.gematik.de/v1",
+    "kind": "WorkloadIssuer",
+    "metadata": {
+        "environment": "TU",
+        "status": "example",
+        "generated_at": "2026-10-26T12:00:00Z",
+        "note": "Formatbeispiel: Anbieter ohne ZETA Guard hat einen Signaturschlüssel registriert."
+    },
+    "issuer": "https://wif.anbieter-c.example.de",
+    "provider": "Anbieter C",
+    "jwks": {
+        "keys": [
+            {
+                "kty": "EC",
+                "crv": "P-256",
+                "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+                "y": "eZXwxvO1hvCY0KucrPfKo7yAyMT6Ajc3N7OkAB6VYy8",
+                "kid": "anbieter-c-wif-2026-01",
+                "use": "sig",
+                "alg": "ES256"
+            }
+        ]
+    }
+}

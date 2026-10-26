@@ -1,0 +1,15 @@
+{
+    "header": {
+        "typ": "JWT",
+        "alg": "ES256",
+        "kid": "anbieter-a-wif-2026-01"
+    },
+    "payload": {
+        "iss": "https://zeta-guard.anbieter-a.example.ti-dienste.de/auth/realms/zeta-guard",
+        "sub": "system:serviceaccount:fachdienst-a:resource-server",
+        "aud": "https://zeta-guard.anbieter-b.example.ti-dienste.de/auth/realms/zeta-guard/protocol/openid-connect/token",
+        "exp": 1793008980,
+        "iat": 1793008800,
+        "jti": "c5a9e1d2-7f40-4b8c-a3e6-19d0f2b7c844"
+    }
+}

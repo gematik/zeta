@@ -1,0 +1,118 @@
+# Schema for the subject token of service-to-service communication (Workload
+# Identity Federation). Issuer is the authorization server of the requesting
+# provider (or a signing key registered with gematik); the receiver is the
+# Secure Token Service of the target service. See also
+# https://www.rfc-editor.org/rfc/rfc8693.html and https://www.rfc-editor.org/rfc/rfc7519.html
+$schema: "http://json-schema.org/draft-07/schema#"
+schemaVersion: "1.0.0"
+title: Subject Token (Workload)
+description: >-
+  Subject token that a workload presents in the token exchange (RFC 8693) of
+  Workload Identity Federation (gemSpec_ZETA 2.0.1 A_28431). It is issued by
+  the authorization server of the requesting provider for one of its workloads
+  (proposal A_NEU-ABL-17) and checked by the receiving Secure Token Service
+  (proposal A_NEU-ABL-12): signature against the JWKS of the registered issuer
+  (A_28437-02), iss, aud, exp, nbf and iat.
+
+  The issuer is either a ZETA Guard or a signing key of the provider
+  registered with gematik. The payload therefore deliberately allows further
+  claims (e.g. platform-specific claims of a Kubernetes service account token);
+  the receiving Secure Token Service evaluates only the claims defined here and
+  passes iss and sub to the Policy Engine (policy-engine-input-workload.yaml).
+type: object
+properties:
+  header:
+    type: object
+    description: The JOSE Header of the subject token.
+    properties:
+      typ:
+        type: string
+        description: Optional; if present "JWT".
+        enum:
+          - JWT
+      alg:
+        type: string
+        description: Asymmetric algorithm used to sign the JWT.
+        enum:
+          - ES256
+          - ES384
+      kid:
+        type: string
+        description: >-
+          Key ID of the signing key; selects the key in the JWKS of the
+          registered issuer (workload-issuer.yaml: jwks or jwks_uri). The
+          header MUST NOT carry jku, x5u, jwk or x5c.
+    required:
+      - alg
+      - kid
+    # R-12: the key is taken only from the registered issuer
+    # (workload-issuer.yaml); key references in the header are rejected.
+    not:
+      anyOf:
+        - required: [jku]
+        - required: [x5u]
+        - required: [jwk]
+        - required: [x5c]
+  payload:
+    type: object
+    description: The JWT Claims Set of the subject token.
+    properties:
+      iss:
+        type: string
+        format: uri
+        description: >-
+          Issuer of the subject token. MUST be an issuer registered with gematik
+          (gemSpec_ZETA 2.0.1 A_28437-02); the Secure Token Service recognises the
+          token exchange of Workload Identity Federation by it (proposal
+          A_NEU-ABL-12).
+      sub:
+        type: string
+        minLength: 1
+        description: >-
+          Stable identity of the requesting workload within the issuer (e.g.
+          Kubernetes service account "system:serviceaccount:<namespace>:<name>").
+          Taken over as sub into the access token (access-token-workload.yaml).
+          Unique only together with iss.
+      aud:
+        # Same form as access-token.yaml: no `type`, no oneOf (code generators).
+        if:
+          type: array
+        then:
+          items:
+            type: string
+          minItems: 1
+        else:
+          type: string
+        description: >-
+          Intended receiver: the token endpoint URL or the configured identifier
+          of the receiving Secure Token Service. The Secure Token Service rejects
+          a token whose aud does not contain its own value (invalid_grant).
+      exp:
+        type: integer
+        description: >-
+          Expiration time as a Unix timestamp. The lifetime (exp - iat) MUST NOT
+          exceed 300 seconds; the receiving Secure Token Service rejects longer
+          lifetimes (proposal A_NEU-ABL-12).
+      iat:
+        type: integer
+        description: Issued at time as a Unix timestamp.
+      nbf:
+        type: integer
+        description: Optional. Not before time as a Unix timestamp.
+      jti:
+        type: string
+        minLength: 1
+        description: >-
+          Unique identifier of the subject token. The receiving Secure Token
+          Service accepts each (iss, jti) only once until exp (proposal
+          A_NEU-ABL-12).
+    required:
+      - iss
+      - sub
+      - aud
+      - exp
+      - iat
+      - jti
+required:
+  - header
+  - payload

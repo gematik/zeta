@@ -1,0 +1,99 @@
+# Policy Engine Input Schema for the token exchange of Workload Identity Federation
+# (service-to-service communication). Counterpart of policy-engine-input.yaml for
+# requesting services that are not registered ZETA clients.
+$schema: "http://json-schema.org/draft-07/schema#"
+schemaVersion: "1.0.0"
+title: Policy Engine Input Schema for Workload Identity Federation
+type: object
+description: >-
+  Input for the OPA policy decision when the Authorization Server, acting as
+  Secure Token Service, processes a token exchange of Workload Identity
+  Federation (gemSpec_ZETA 2.0.1 A_28431, A_29953, proposal A_NEU-ABL-12). The
+  requesting service is identified only by the validated subject token; there
+  is no client registration, no user and no client posture. The decision
+  follows pdp-decision.yaml as for policy-engine-input.yaml.
+
+  The Policy Engine distinguishes this input from policy-engine-input.yaml by
+  the property workload_identity. Policies that only know
+  policy-engine-input.yaml deny it, because client_registration_data and
+  user_info are missing (fail closed).
+additionalProperties: false
+properties:
+  version:
+    description: >-
+      Version of the input contract. Always "1.1": the request carries a
+      resource indicator (RFC 8707) and the Policy Engine determines the aud
+      claim. The legacy contract "1.0" (audience parameter) is not offered for
+      Workload Identity Federation.
+    type: string
+    enum:
+      - "1.1"
+  workload_identity:
+    description: >-
+      Claims of the validated subject token (subject-token-workload.yaml) of the
+      requesting workload. The
+      Authorization Server passes them only after the checks of proposal
+      A_NEU-ABL-12 (signature against the JWKS of a registered issuer, iss, aud,
+      expiry). sub is unique only within iss: policies MUST authorise the pair
+      (iss, sub), never sub alone.
+    type: object
+    additionalProperties: false
+    properties:
+      iss:
+        type: string
+        description: Issuer of the subject token, registered with gematik (gemSpec_ZETA 2.0.1 A_28437-02).
+      sub:
+        type: string
+        description: Identity of the requesting workload (claim sub of the subject token).
+      subject_token_type:
+        type: string
+        description: The subject_token_type of the request (RFC 8693).
+        enum:
+          - urn:ietf:params:oauth:token-type:jwt
+          - urn:ietf:params:oauth:token-type:id_token
+      dpop_bound:
+        type: boolean
+        description: true if the request carried a valid DPoP proof and the token will be DPoP-bound.
+    required:
+      - iss
+      - sub
+      - subject_token_type
+      - dpop_bound
+  authorization_request:
+    description: The authorization request data.
+    type: object
+    additionalProperties: false
+    properties:
+      grant_type:
+        type: string
+        description: The OAuth 2.0 grant type; always token exchange.
+        enum:
+          - urn:ietf:params:oauth:grant-type:token-exchange
+      scopes:
+        type: array
+        description: The requested scopes.
+        items:
+          type: string
+      resource:
+        type: string
+        format: uri
+        description: >-
+          Resource indicator (RFC 8707): the single absolute endpoint URL at the
+          resource server. The Policy Engine determines the logical aud returned
+          in the decision.
+      ip_address:
+        type: string
+        description: The source IP address of the request.
+      country_code:
+        type: string
+        description: ISO 3166-1 alpha-2 country code of the source IP, resolved by the Authorization Server via GeoIP.
+        pattern: "^[A-Z]{2}$"
+    required:
+      - grant_type
+      - scopes
+      - resource
+      - ip_address
+required:
+  - version
+  - workload_identity
+  - authorization_request

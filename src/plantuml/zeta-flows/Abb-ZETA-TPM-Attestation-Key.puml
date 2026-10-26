@@ -59,7 +59,7 @@ ZAS -> TPM: TPM2_NV_Read(EndorsementKey_Cert)
 TPM --> ZAS--: c_ek_enc
 ZAS --> Client--: puk_ek_enc, c_ek_enc
 
-note over Client, AuthS: Anschließend POST /register mit nonce innerhalb der Gültigkeit der nonce\n(Abb-ZETA-DCR-für-stationäre-Win-Linux-Clients-TPM-Att).
+note over Client, AuthS: Anschließend POST /register mit nonce innerhalb der Gültigkeit der nonce\n(Abb-ZETA-DCR-für-stationäre-Clients bzw. Abb-ZETA-DCR-für-stationäre-Win-Linux-Clients-TPM-Att).
 Client--
 
 @enduml

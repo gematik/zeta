@@ -714,9 +714,9 @@ Die Vorbereitung für macOS unterscheidet sich in der Evidence-Erhebung: Statt e
 - *(03) Subject Token:* Erstellen und über den Konnektor/TI-Gateway mit der SM(C)-B signieren.
 - *(04)–(07) SMC-B Signatur:* Wie bei Windows/Linux.
 - *(08) Posture-Erhebung:* macOS-spezifische Posture-Daten ermitteln (SIP-Status, Gatekeeper, OS-Version, Secure Boot).
-- *(09) clientDataHash:* Berechnung von `Hash(Nonce + Posture-Daten)`.
+- *(09) clientDataHash:* SHA-256(`nonce` ‖ JCS(Posture-Daten) ‖ `PuK.Client.Sig`), Details in `posture-apple.yaml`.
 - *(10)–(12) App Attest Assertion:* Über `DCAppAttest.generateAssertion(keyId: Handle_PrK.AK.Sig, clientDataHash)` wird in der Secure Enclave eine Hardware-Signatur über den `clientDataHash` erstellt. Ergebnis ist die `dc_assertion` (CBOR: Signatur + authenticatorData mit Counter).
-- *(13) Client-Statement:* Evidence = `dc_assertion` + Posture-Daten im Klartext.
+- *(13) Client-Statement:* `posture` mit den Posture-Daten im Klartext, `nonce` und `assertion` (`dc_assertion`).
 - *(14) Client Assertion:* JWT signiert mit `PrK.Client.Sig`.
 
 ![Abbildung 10: Vorbereitung Token Exchange für macOS mit Apple Attestation](../../../images/zeta-flows/Abb-ZETA-Vorbereitung-Token-Exchange-Apple-Att.svg)

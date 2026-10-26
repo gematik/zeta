@@ -41,11 +41,11 @@ end
 
 Client -> OS: Ermittle Posture\n(SIP, Gatekeeper, OS-Version, Secure Boot)
 OS --> Client: Posture-Daten (Klartext)
-Client -> Client: clientDataHash = Hash(Nonce + Posture-Daten)
+Client -> Client: clientDataHash =\nSHA-256(Nonce || JCS(Posture-Daten) || PuK.Client.Sig)
 Client -> OS: DCAppAttest.generateAssertion(\nkeyId: Handle_PrK.AK.Sig,  clientDataHash)
 OS -> SE: Erstelle Hardware-Signatur\nüber clientDataHash
 SE --> OS: Signatur + Authenticator Data (Counter)
 OS --> Client: dc_assertion\n(CBOR: Signatur + authenticatorData)
-Client -> Client: Generiere client_statement\n(Evidence = dc_assertion + Posture-Daten im Klartext)
+Client -> Client: Generiere client_statement\n(posture = Posture-Daten im Klartext + nonce\n+ assertion (dc_assertion))
 
 @enduml

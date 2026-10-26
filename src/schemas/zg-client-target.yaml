@@ -1,12 +1,21 @@
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.0.1"
+schemaVersion: "1.1.0"
 title: ZG Client Target
 description: >
   Schema für eine Datei im Verzeichnis /targets/ des ZG Client
-  Konfigurations-Images (gemSpec_ZETA Kapitel 5.6.5). Jede Datei beschreibt
-  genau einen externen Zieldienst, zu dem der ZG Client ausgehende
+  Konfigurations-Images (gemSpec_ZETA Kapitel 5.6.7). Jede Datei beschreibt
+  genau einen externen Zieldienst, zu dem der ZETA Guard ausgehende
   Dienst-zu-Dienst-Kommunikation mit Workload Identity Federation absichern
   darf.
+
+  Bis zur Einführung des ZG Client (Stufe 3) konfiguriert der Anbieter die
+  Zieldienste des Authorization Servers (cronjob nach A_28431) statisch im
+  selben Format (Vorschlag A_NEU-ABL-19); metadata.status ist dann
+  `normative`, metadata.fachdienst_typ der eigene Fachdienst-Typ. Ab Stufe 3
+  bezieht der ZETA Guard die Einträge aus dem Konfigurations-Image.
+
+  Änderung 1.0.1 -> 1.1.0: zusätzliche Verwendung als statische Konfiguration
+  des Authorization Servers; am Format ändert sich nichts.
 
   Das Konfigurations-Image wird von der gematik je Fachdienst-Typ signiert
   über die ZETA Artifact Registry bereitgestellt und vom ZG Client über die
@@ -163,7 +172,9 @@ properties:
         description: >
           Wert des Parameters `audience` [RFC8693] im Token Exchange
           (Contract v1, Legacy). Genau eines von `resource` und `audience` ist
-          anzugeben.
+          anzugeben. Nur für Zieldienste ohne ZETA Guard; der Secure Token
+          Service eines ZETA Guard lehnt audience ab (Vorschlag A_NEU-ABL-12,
+          T20) und verlangt resource.
         minLength: 1
       scopes:
         type: array
@@ -181,7 +192,9 @@ properties:
         description: >
           Client-Authentisierung am Token-Endpunkt des STS. `none` bedeutet,
           dass sich der ZG Client ausschließlich über das Subject Token
-          ausweist.
+          ausweist. Für Zieldienste mit ZETA Guard MUSS der Wert `none` sein;
+          `private_key_jwt` nur für Zieldienste ohne ZETA Guard, die eine
+          Client-Authentisierung verlangen (Vorschlag A_NEU-ABL-12, T20).
         enum: [none, private_key_jwt]
         default: none
       dpop:
@@ -189,7 +202,10 @@ properties:
         description: >
           Gibt an, ob der STS DPoP-gebundene Access Tokens ausstellt und der
           ZG Client den Token Exchange und die Requests an den Zieldienst mit
-          DPoP-Proof [RFC9449] ausführen muss.
+          DPoP-Proof [RFC9449] ausführen muss. Default true, weil ein
+          DPoP-gebundenes Token stärker ist als ein Bearer-Token; der STS
+          eines ZETA Guard unterstützt beides (Vorschlag A_NEU-ABL-25). false
+          nur für Zieldienste, die DPoP nicht unterstützen.
         default: true
 
   subject_token:
