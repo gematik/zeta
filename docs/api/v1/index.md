@@ -1004,7 +1004,7 @@ Content-Type: application/json
 
 ##### 5.1.2.2 Dynamic Client Registration Response (201 Created)
 
-*Response-Schema:* [dcr-response.yaml](../../../src/schemas/dcr-response.yaml) (`ClientInformationResponse`). Es wird kein Registration Access Token ausgestellt; Folgeoperationen auf die Registrierung autorisiert der Client per Client Assertion. Das Feld `status` ist rein informativ – ob eine E-Mail-Bindung nötig ist, ergibt sich aus dem am Token-Endpunkt gewährten `scope`.
+*Response-Schema:* [dcr-response.yaml](../../../src/schemas/dcr-response.yaml) (`ClientInformationResponse`). Es wird kein Registration Access Token ausgestellt; Operationen auf die eigene Registrierung (Lesen, Selbst-Deregistrierung, Schlüssel-Rollover) autorisiert der Client per Client Assertion, die übrige Verwaltung unter `/zeta/*` per Verwaltungs-Token über den PEP ([zeta-guard-client-management.yaml](../../../src/openapi/zeta-guard-client-management.yaml), 1.0.0-draft). Das Feld `status` ist rein informativ – ob eine E-Mail-Bindung nötig ist, ergibt sich aus dem am Token-Endpunkt gewährten `scope`.
 
 ```http
 HTTP/1.1 201 Created
@@ -1099,11 +1099,11 @@ Im inneren Flow löst der AuthS den IDP-Code ein und gewinnt die Identitäts-Cla
 
 **E-Mail-Bindung (TOFU) – nur im Status `pending_user_binding`:**
 
-- *(10) Reduziertes Token:* Der AuthS stellt noch **keine** vollen Token aus, sondern ein kurzlebiges, DPoP-gebundenes E-Mail-Binding-Token (`expires_in` 300–900 s, **kein** Refresh Token). Der gewährte `scope` kodiert den nächsten Schritt:
+- *(10) Reduziertes Token:* Der AuthS stellt noch **keine** vollen Token aus, sondern ein kurzlebiges, DPoP-gebundenes E-Mail-Binding-Token (`expires_in` höchstens 900 s, **kein** Refresh Token). Der gewährte `scope` kodiert den nächsten Schritt:
   - Identität neu (Erstnutzung): `scope="zeta:email-binding zeta:email-verify"`.
   - Identität bekannt, E-Mail bereits gebunden: `scope="zeta:email-verify"`; der AuthS sendet das OTP sofort an die **gespeicherte** Adresse und liefert einen maskierten `email_hint` (z. B. `a***@d***.de`).
 - *(11) POST /zeta/identity/bind-email (nur Erstnutzung):* Der Nutzer gibt seine E-Mail-Adresse ein; der Client sendet `{email}` mit `Authorization: DPoP <E-Mail-Binding-Token>` und DPoP Proof. Der AuthS sendet ein OTP an diese Adresse (TOFU-Pin) und antwortet mit `202 Accepted {challenge_type: "email_otp"}`. Ist die Mail nicht angekommen, fordert der Client sie über `POST /zeta/identity/bind-email/resend` erneut an (Cooldown ≥ 60 s, `429` bei Überschreitung).
-- *(12) POST /zeta/identity/bind-email/verify:* Der Nutzer gibt den OTP-Code ein; der Client sendet `{verify_type: "email_otp", code}` mit dem E-Mail-Binding-Token – ohne `transaction_id`, die Korrelation erfolgt über das Token. Der AuthS prüft das OTP, verknüpft die E-Mail mit der Identität und setzt den Status auf `bound` (`200 OK {status: "bound"}`).
+- *(12) POST /zeta/identity/bind-email/verify:* Der Nutzer gibt den OTP-Code ein; der Client sendet `{verify_type: "email_otp", code}` mit dem E-Mail-Binding-Token – ohne `transaction_id`, die Korrelation erfolgt über das Token. Der AuthS prüft das OTP, verknüpft die E-Mail mit der Identität und setzt den Status auf `bound` (`204 No Content`).
 - *(13) Token Exchange:* Der Client tauscht das E-Mail-Binding-Token per Token Exchange (RFC 8693) gegen volle Token: `POST /token` mit `{grant_type=urn:ietf:params:oauth:grant-type:token-exchange, subject_token=<E-Mail-Binding-Token>, subject_token_type=urn:ietf:params:oauth:token-type:access_token, client_assertion}` und demselben DPoP-Schlüssel. Der Token Exchange gelingt nur im Status `bound` (sonst `400 invalid_grant`); läuft das E-Mail-Binding-Token vorher ab, beginnt der Client erneut mit Teilflow (A).
 
 **Ausstellung der ZETA Token:**
@@ -1191,7 +1191,7 @@ Content-Type: application/json
 
 ##### 5.2.2.2 Dynamic Client Registration Response (201 Created)
 
-*Response-Schema:* [dcr-response.yaml](../../../src/schemas/dcr-response.yaml) (`ClientInformationResponse`). Es wird kein Registration Access Token ausgestellt; Folgeoperationen auf die Registrierung autorisiert der Client per Client Assertion. Das Feld `status` ist rein informativ – ob eine E-Mail-Bindung nötig ist, ergibt sich aus dem am Token-Endpunkt gewährten `scope`.
+*Response-Schema:* [dcr-response.yaml](../../../src/schemas/dcr-response.yaml) (`ClientInformationResponse`). Es wird kein Registration Access Token ausgestellt; Operationen auf die eigene Registrierung (Lesen, Selbst-Deregistrierung, Schlüssel-Rollover) autorisiert der Client per Client Assertion, die übrige Verwaltung unter `/zeta/*` per Verwaltungs-Token über den PEP ([zeta-guard-client-management.yaml](../../../src/openapi/zeta-guard-client-management.yaml), 1.0.0-draft). Das Feld `status` ist rein informativ – ob eine E-Mail-Bindung nötig ist, ergibt sich aus dem am Token-Endpunkt gewährten `scope`.
 
 ```http
 HTTP/1.1 201 Created
@@ -1273,7 +1273,7 @@ Content-Type: application/json
 
 ##### 5.3.2.2 Dynamic Client Registration Response (201 Created)
 
-*Response-Schema:* [dcr-response.yaml](../../../src/schemas/dcr-response.yaml) (`ClientInformationResponse`). Es wird kein Registration Access Token ausgestellt; Folgeoperationen auf die Registrierung autorisiert der Client per Client Assertion. Das Feld `status` ist rein informativ – ob eine E-Mail-Bindung nötig ist, ergibt sich aus dem am Token-Endpunkt gewährten `scope`.
+*Response-Schema:* [dcr-response.yaml](../../../src/schemas/dcr-response.yaml) (`ClientInformationResponse`). Es wird kein Registration Access Token ausgestellt; Operationen auf die eigene Registrierung (Lesen, Selbst-Deregistrierung, Schlüssel-Rollover) autorisiert der Client per Client Assertion, die übrige Verwaltung unter `/zeta/*` per Verwaltungs-Token über den PEP ([zeta-guard-client-management.yaml](../../../src/openapi/zeta-guard-client-management.yaml), 1.0.0-draft). Das Feld `status` ist rein informativ – ob eine E-Mail-Bindung nötig ist, ergibt sich aus dem am Token-Endpunkt gewährten `scope`.
 
 ```http
 HTTP/1.1 201 Created

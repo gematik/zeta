@@ -1,5 +1,5 @@
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.2.5"
+schemaVersion: "1.2.6"
 title: RegistrationRequest
 description: >-
   Payload Schema für den DCR POST /register Body.
@@ -73,6 +73,13 @@ description: >-
   auf 2.0.1 aktualisiert (dort Form (1); die Mischform jwt-bearer +
   token-exchange stand nur in 2.0.0).
 
+  Präzisierung 1.2.6 (nur Beschreibung, gültige Instanzen unverändert):
+  client_name ist in definitions/client_name beschrieben. Der AuthS nimmt
+  jeden String an und speichert ihn normalisiert (RFC 7591 Abschnitt 3.2.1);
+  neue Clients SOLLEN einen Namen aus höchstens 64 Buchstaben, Ziffern,
+  Leerzeichen, "-" und "." senden (Zielbild Client Management A_CM-32,
+  Platzhalter-ID). user_email gilt auch für E-Mail-Änderung und Neubindung.
+
   Auswahl des Zweigs: attestation_type lesen; fehlt das Feld, gilt "software"
   (Requests nach Schema 1.0.0). tpm | apple | android | zeta_attestation_token
   | software bestimmen den Zweig; jeder andere Wert ist ungültig. Das Schema
@@ -142,7 +149,7 @@ definitions:
       attestation_type:
         type: string
         const: tpm
-      client_name: { type: string }
+      client_name: { $ref: "#/definitions/client_name" }
       token_endpoint_auth_method: { type: string }
       grant_types: { $ref: "#/definitions/grant_types" }
       redirect_uris: { $ref: "#/definitions/redirect_uris" }
@@ -307,7 +314,7 @@ definitions:
       attestation_type:
         type: string
         const: apple
-      client_name: { type: string }
+      client_name: { $ref: "#/definitions/client_name" }
       token_endpoint_auth_method: { type: string }
       grant_types: { $ref: "#/definitions/grant_types" }
       redirect_uris: { $ref: "#/definitions/redirect_uris" }
@@ -366,7 +373,7 @@ definitions:
       attestation_type:
         type: string
         const: android
-      client_name: { type: string }
+      client_name: { $ref: "#/definitions/client_name" }
       token_endpoint_auth_method: { type: string }
       grant_types: { $ref: "#/definitions/grant_types" }
       redirect_uris: { $ref: "#/definitions/redirect_uris" }
@@ -450,7 +457,7 @@ definitions:
       attestation_type:
         type: string
         const: zeta_attestation_token
-      client_name: { type: string }
+      client_name: { $ref: "#/definitions/client_name" }
       token_endpoint_auth_method: { type: string }
       grant_types: { $ref: "#/definitions/grant_types" }
       redirect_uris: { $ref: "#/definitions/redirect_uris" }
@@ -532,7 +539,7 @@ definitions:
       attestation_type:
         type: string
         const: software
-      client_name: { type: string }
+      client_name: { $ref: "#/definitions/client_name" }
       nonce: { $ref: "#/definitions/nonce" }
       signed_hash_puk_client_sig:
         type: string
@@ -796,6 +803,24 @@ definitions:
       Registrierungsdatensatz. Die für Policy-Entscheidungen maßgebliche
       Version stammt weiterhin aus dem client_statement.
 
+  client_name:
+    # Bewusst ohne pattern/maxLength: Eine Einschränkung würde bisher gültige
+    # Requests ungültig machen. Die Regel setzt der AuthS durch Normalisierung um.
+    type: string
+    description: >-
+      Name der Registrierung (RFC 7591). Neue Clients SOLLEN höchstens 64
+      Zeichen aus Buchstaben, Ziffern, Leerzeichen, "-" und "." senden. Der
+      AuthS nimmt aus Gründen der Abwärtskompatibilität jeden String an und
+      speichert ihn normalisiert: nicht zulässige Zeichen durch Leerzeichen
+      ersetzt, Leerzeichenfolgen zusammengefasst, Rand-Leerzeichen entfernt,
+      auf 64 Zeichen gekürzt; ist das Ergebnis leer, vergibt er einen
+      Ersatznamen. Den gespeicherten Wert gibt er in der Antwort zurück
+      (dcr-response.yaml, RFC 7591 Abschnitt 3.2.1) und verwendet nur ihn in
+      Übersicht und Benachrichtigungen (Zielbild Client Management A_CM-32).
+      Beim Umbenennen (PATCH /zeta/clients/{target_client_id}) gilt die Regel
+      strikt. Der Name kann Personennamen enthalten; Sicherheitsnachrichten
+      bilden den auslösenden Client aus attestierten Angaben, nie aus
+      client_name.
   user_email:
     type: string
     format: email
@@ -804,7 +829,9 @@ definitions:
       (TOFU) Bindung mobiler Clients. Wird NACH der OIDC-Nutzerauthentisierung über
       POST /zeta/identity/bind-email übermittelt (nur bei Erstnutzung einer Identität);
       bei Folgeregistrierung sendet der AuthS das OTP an die gespeicherte Adresse.
-      Siehe Abb-ZETA-OIDC-Token-Bezug.puml.
+      Siehe Abb-ZETA-OIDC-Token-Bezug.puml. Dieselbe Definition gilt für die
+      neue Adresse bei E-Mail-Änderung (POST /zeta/identity/email) und
+      Neubindung (POST /zeta/identity/rebind), Zielbild A_CM-35, A_CM-50.
   redirect_uris:
     type: array
     description: >-

@@ -1,5 +1,5 @@
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.2.0"
+schemaVersion: "1.2.1"
 title: ZETA Guard Attestation Token
 type: object
 description: >-
@@ -22,6 +22,12 @@ description: >-
   ergänzt. Im Schema optional, damit vor 1.2.0 ausgestellte Token gültig
   bleiben; ein AuthS nach dieser Version MUSS den Claim bei
   attestation_type "tpm" setzen.
+  Präzisierung 1.2.1 (nur Beschreibung, gültige Token unverändert): Für die
+  Fast-Path-Registrierung an einem anderen Guard verlangt der Ziel-Guard
+  `user_email` und `email_verified: true` und lehnt sonst mit 400
+  invalid_attestation ab (Zielbild Client Management A_CM-60, A_CM-61,
+  Platzhalter-IDs); `required` bleibt aus Gründen der Abwärtskompatibilität
+  unverändert.
 # oneOf zwingt das Objekt, exakt einem der referenzierten Sub-Schemata zu entsprechen.
 # Die Zuordnung erfolgt eindeutig über den `const`-Wert von `attestation_type`
 # (tpm | apple | android) im jeweiligen Zweig; die Validierung unter draft-07 ist
@@ -90,14 +96,19 @@ definitions:
           im Fast-Path (attestation_type=zeta_attestation_token) nicht erneut
           übertragen und per OTP verifiziert werden muss; der AuthS übernimmt sie
           aus dem Token. Für stationäre Clients i. d. R. nicht gesetzt.
+          Der Fast-Path an einem anderen Guard ist nur mit gesetztem Claim und
+          `email_verified: true` möglich und nur, wenn dort für `sub` noch kein
+          Identitätsdatensatz besteht (A_CM-60, A_CM-61); sonst lehnt der
+          Ziel-Guard ab (400 invalid_attestation bzw. 409 registration_conflict).
       email_verified:
         type: boolean
         description: >-
           Verifikationsstatus (F1) der in `user_email` enthaltenen Adresse
           (A_29914). `true`, wenn die Adresse bei der ursprünglichen Registrierung
           per OTP bestätigt wurde. Pflicht, sobald `user_email` gesetzt ist. Bei
-          `false` DARF der Ziel-Guard die E-Mail nicht als verifiziert übernehmen
-          und MUSS eine OTP-Verifikation nachholen.
+          `false` oder fehlendem Claim lehnt der Ziel-Guard die
+          Fast-Path-Registrierung mit 400 invalid_attestation ab (A_CM-61); der
+          Client registriert sich dann regulär und bindet F1 per Einmalcode.
       redirect_uris:
         type: array
         description: >-

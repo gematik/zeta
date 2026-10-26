@@ -52,8 +52,6 @@ apis:
       security-defined: off
   client-management:
     root: src/openapi/zeta-guard-client-management.yaml
-  admin-oob:
-    root: src/openapi/zeta-guard-admin-oob.yaml
   email:
     root: src/openapi/zeta-guard-email-endpoint.yaml
   notification-service-rs:

@@ -1,5 +1,5 @@
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.0.1"
+schemaVersion: "1.0.2"
 title: DCR Accepted Response (202)
 type: object
 description: >-
@@ -11,8 +11,14 @@ description: >-
   Clients erhalten bei POST /register direkt 201 Created (Status
   pending_user_binding); ihre E-Mail-Bindung (TOFU) erfolgt nach der
   OIDC-Nutzerauthentisierung über /zeta/identity/bind-email ohne
-  transaction_id. Der Zweig email_otp wird nur noch für die Änderung der
-  E-Mail-Adresse (POST /zeta/identity/email) verwendet.
+  transaction_id.
+
+  Präzisierung 1.0.2 (nur Beschreibung, gültige Instanzen unverändert): Der
+  Zweig email_otp ist DEPRECATED. Die E-Mail-Änderung (POST
+  /zeta/identity/email) antwortet seit zeta-guard-client-management.yaml
+  1.0.0-draft mit OtpChallenge ohne transaction_id (Challenge an die
+  aufrufende Registrierung gebunden, A_CM-35). Der Zweig bleibt nur für
+  Server nach Client-Management-API 0.2.0-draft.
 # Die Variante wird über den `const`-Wert von `challenge_type` in den beiden
 # oneOf-Zweigen eindeutig bestimmt; die Validierung unter draft-07 ist damit
 # deterministisch. Das nachfolgende `discriminator`-Feld ist ein OpenAPI-3-Konstrukt
@@ -45,6 +51,7 @@ definitions:
         description: Zeit in Sekunden, bis die transaction_id abläuft (z.B. 600).
 
   # --- E-Mail OTP Fall (nur E-Mail-Änderung, nicht POST /register) ---
+  # DEPRECATED (1.0.2): nur noch Client-Management-API 0.2.0-draft.
   OtpChallengeResponse:
     type: object
     allOf:

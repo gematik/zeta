@@ -14,8 +14,16 @@
 # 1.5.0 (abwärtskompatibel, offenes Enum): tpm_certify_required ergänzt
 # (Rollover im TPM-Zweig ohne Key Certification nach dem Stichtag, Vorschlag
 # A_30189-01); invalid_attestation auch beim Rollover.
+#
+# 1.6.0 (abwärtskompatibel, keine neuen Codes): Client Management nach Zielbild
+# (Ersatz gemSpec_ZETA 2.0.1 Kap. 5.5.5–5.5.10, Platzhalter-IDs A_CM-nn,
+# Tab_ZETA_CM_Fehler). registration_conflict und otp_send_limited präzisiert;
+# tombstoned, factor_required, pop_required und email_mismatch haben im Client
+# Management keinen Auslöser mehr (DEPRECATED, bleiben im offenen Enum).
+# attestation_pop_required bleibt für den fehlenden attestation_pop nach dem
+# Stichtag (Tab-ZETA-PDP-Fehlerfälle-Rollover O03, A_CM-44).
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.5.0"
+schemaVersion: "1.6.0"
 title: HTTP ZETA Error Response
 description: Schema for transmitting error information for HTTP ZETA error response.
 type: object
@@ -67,7 +75,8 @@ definitions:
           - refresh_token_revoked
           # Step-Up-Authentifizierung erforderlich; 401 mit WWW-Authenticate (RFC 9470),
           # nur von geschützten Endpunkten: PEP mit `zeta-error-origin: pep` (A_29860)
-          # und Client Management (A_29911). Der Token-Endpunkt sendet diesen Code nie.
+          # und Client Management (Step-up A_CM-25, auch bedingt bei A_CM-33).
+          # Der Token-Endpunkt sendet diesen Code nie.
           - insufficient_user_authentication
           # `resource`-Indicator (RFC 8707) benennt eine nicht unterstützte
           # Zielressource; Ablehnung am Token Endpoint. (A_29694, S. 84)
@@ -79,8 +88,9 @@ definitions:
           # Rollover: vorhandenes attestation_pop nicht verifizierbar (Signatur,
           # Schlüssel ≠ gepinnter ak_jkt, Daten); 400. (A_30189)
           - invalid_attestation_pop
-          # Rollover ohne attestation_pop bei attestation_type ≠ software, erst
-          # nach Abschaltung des Kompatibilitätsprofils; 400. (A_30189, künftig)
+          # Rollover ohne attestation_pop bei attestation_type ≠ software nach dem
+          # Stichtag gemäß A_30193; 400, Client wiederholt einmal mit
+          # attestation_pop. (A_30189, Tab-ZETA-PDP-Fehlerfälle-Rollover O03, A_CM-44)
           - attestation_pop_required
           # Rollover bei attestation_type tpm ohne tpm_certify_info/-signature/
           # tpm_client_key_public, erst nach dem Stichtag 01.01.2028; 400.
@@ -103,16 +113,20 @@ definitions:
           - invalid_signature
           # Innere Signatur (neuer Instanzschlüssel) ungültig; 401. (A_29922)
           - invalid_new_key_proof
-          # Besitznachweis des bisherigen Instanzschlüssels fehlt; 401. (A_29921)
+          # DEPRECATED (1.6.0): Rollover ohne gültige Client Assertion des
+          # bisherigen Schlüssels → 401 invalid_client (A_CM-41).
           - pop_required
-          # Identität gelöscht (Tombstone); 409.
+          # DEPRECATED (1.6.0): kein Tombstone mehr (keine außerordentliche
+          # Löschung, A_CM-50).
           - tombstoned
           # Registrierung: Attestierung ungültig; Rollover (TPM): Key Certification
           # nicht verifizierbar; 400.
           - invalid_attestation
           # Registrierung an diesem Guard nicht erlaubt; 403.
           - registration_forbidden
-          # Client mit gleicher Identität/gleichem Schlüssel existiert; 409.
+          # Fast-Path-Registrierung für eine TI-Identität, für die an diesem Guard
+          # bereits ein Identitätsdatensatz besteht; 409, Client nutzt die
+          # Folgeregistrierung. (A_CM-60)
           - registration_conflict
           # TPM ActivateCredential: Aktivierungsgeheimnis falsch; 400.
           - invalid_activation_secret
@@ -120,15 +134,21 @@ definitions:
           - challenge_expired
           # E-Mail-OTP falsch; 400.
           - invalid_otp
-          # Keine offene Binding-Challenge für diesen Client; 404.
+          # Keine offene Challenge (E-Mail-Bindung, E-Mail-Änderung, Neubindung,
+          # Wiederherstellungscode) für diese Registrierung; 404.
           - no_open_challenge
-          # OTP-Versandbudget bzw. Cooldown erreicht; 429. (A_30085)
+          # Versandgrenze je Challenge (Abstand, Anzahl; A_CM-15) oder Grenze für
+          # Fehlversuche bzw. Code-Versand je Identität erreicht (A_CM-17; Sperre
+          # für die Sperrdauer); 429 mit Retry-After.
           - otp_send_limited
-          # E-Mail weicht von der gebundenen Adresse ab (bisher nur im Enum geführt).
+          # DEPRECATED (1.6.0): bisher nur im Enum geführt, kein Auslöser.
           - email_mismatch
-          # Überlebender Faktor (F1/F2) nicht vorgelegt; 401. (A_29911, A_29936)
+          # DEPRECATED (1.6.0): kein „überlebender Faktor“ mehr; Step-up
+          # (insufficient_user_authentication, A_CM-25).
           - factor_required
-          # Zielclient gehört nicht zur Identität des Aufrufers; 403. (A_29939)
+          # Ziel unbekannt, fremder Identität zugeordnet oder (E-Mail-Änderung,
+          # Wiederherstellungscode) Challenge einer anderen Registrierung; 403.
+          # (A_CM-27, A_CM-35, A_CM-55)
           - forbidden_target
 
           # --- OAuth 2.0 Authorization Server / Token Endpoint (RFC 6749 §5.2) -

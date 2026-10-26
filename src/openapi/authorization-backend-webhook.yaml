@@ -14,7 +14,7 @@
 openapi: 3.1.0
 info:
   title: ZETA Guard – Application Authorization Backend Webhook
-  version: 1.0.0
+  version: 1.1.0
   description: |-
     Plugin interface between the **PDP Authorization Server** of a ZETA Guard and an
     application-specific **Application Authorization Backend** operated by the
@@ -26,10 +26,16 @@ info:
         implemented by the Application Authorization Backend, called by the
         Authorization Server. The Authorization Server is the OAuth client of these
         operations.
-      * **Authorization Server** (`/sessions/{session_id}/terminate`): implemented by the
-        PDP Authorization Server, called by the Application Authorization Backend (or by
-        the provider's SIEM through the backend) to terminate a session
-        (A_29847, A_29854 – A_29858).
+      * **Authorization Server** (`/sessions/{session_id}/terminate`,
+        `/rebinds/cancel`, `/rebinds/suspend`): implemented by the PDP Authorization
+        Server, called by the Application Authorization Backend (or by the provider's
+        SIEM through the backend) to terminate a session (A_29847, A_29854 – A_29858), to
+        abort a re-binding after an objection by email or to suspend all re-bindings of a
+        sectoral IDP (client-management target model A_CM-57 – A_CM-59, placeholder IDs).
+
+    Changes 1.0.0 -> 1.1.0: `cancelRebind` and `suspendRebinds` added (A_CM-58). Both can
+    only abort or suspend; an operation that completes or resumes a re-binding or lifts a
+    suspension does not exist on this interface.
 
     ## Processing model
 
@@ -57,8 +63,8 @@ info:
     ## Security
 
     Both directions are protected by **mutual TLS** according to gemSpec_Krypt
-    (A_xxxx4). The Authorization Server accepts `terminateSession` only from the one
-    backend configured for this ZETA Guard instance and verifies the presented client
+    (A_xxxx4). The Authorization Server accepts `terminateSession`, `cancelRebind` and
+    `suspendRebinds` only from the one backend configured for this ZETA Guard instance and verifies the presented client
     certificate against that configuration; any other caller receives `401`.
     Every call is logged with the `trace_id` of the triggering request and exported
     as part of the OTel trace (A_xxxx6).
@@ -219,6 +225,83 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/TerminateSessionResponse' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /rebinds/cancel:
+    post:
+      tags: [authorization-server]
+      operationId: cancelRebind
+      summary: Abort a re-binding after an objection by email (cancelRebind)
+      description: |-
+        Called by the provider after receiving a reply to notification N6 at the reply
+        address `widerspruch+<token>@<provider domain>` (A_CM-58, A_CM-59). The provider
+        evaluates only the recipient address and headers, discards automatic replies and
+        bounces and replies received within 60 seconds after N6 was sent, never processes or
+        stores the content, raises an event in its SIEM and passes the objection token here
+        (SHOULD within one hour, with retry on failure).
+
+        The provider lower-cases the token before passing it on (mail systems may change the
+        case of the local part, RFC 5321 section 2.4). The Authorization Server compares the
+        hash of the token with the stored hash; on a
+        match it aborts the open re-binding (A_CM-52 no. 4), sends N9 and counts a deliberate
+        objection for the IDP of the re-binding (A_CM-57 no. 4). An unknown, expired or
+        already used token is answered with `200` and `accepted: true` without effect, so the
+        answer reveals nothing about existing re-bindings. Idempotent (A_29858); every call is
+        written to the audit log.
+      parameters:
+        - $ref: '#/components/parameters/Traceparent'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CancelRebindRequest' }
+      responses:
+        '200':
+          description: Processed (also for unknown, expired or used tokens)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RebindOperationResponse' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /rebinds/suspend:
+    post:
+      tags: [authorization-server]
+      operationId: suspendRebinds
+      summary: Suspend all re-bindings of a sectoral IDP (suspendRebinds)
+      description: |-
+        Called by the provider's SIEM (through the backend) when it detects an attack, e.g.
+        after the reporting threshold for objections was exceeded (A_CM-57 no. 4, A_CM-58).
+        The Authorization Server suspends all open and new re-bindings whose starting ID token
+        was issued by `iss`: they are not completed, deadlines and aborts continue (A_CM-57).
+        It reports the event to the provider's security monitoring, writes the audit log and
+        sends a security event to gematik containing only `iss`, kind of trigger, counter and
+        period.
+
+        The suspension can be lifted ONLY by a configuration change for the whole ZETA Guard;
+        this interface offers no operation to lift it. Idempotent (A_29858).
+      parameters:
+        - $ref: '#/components/parameters/Traceparent'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SuspendRebindsRequest' }
+      responses:
+        '200':
+          description: Suspension in effect (also if already suspended)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RebindOperationResponse' }
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -436,6 +519,63 @@ components:
           type: integer
           minimum: 0
           description: Number of refresh tokens (including rotated ones) invalidated by this call. Informational.
+
+    CancelRebindRequest:
+      type: object
+      additionalProperties: false
+      required: [trace_id, objection_token]
+      properties:
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+        objection_token:
+          type: string
+          description: |-
+            Objection token from the local part of the reply address of N6 (after
+            `widerspruch+`): 130 bit from a CSPRNG, Base32 (RFC 4648) in lower case without
+            padding, 26 characters (A_CM-58). Case-insensitive by construction; the provider
+            lower-cases it before passing it on. Prefix and token together stay within the
+            64-octet limit of the local part (RFC 5321 section 4.5.3.1.1).
+          pattern: '^[a-z2-7]{26}$'
+
+    SuspendRebindsRequest:
+      type: object
+      additionalProperties: false
+      required: [trace_id, iss, reason_code]
+      properties:
+        trace_id:
+          $ref: '#/components/schemas/TraceId'
+        iss:
+          type: string
+          format: uri
+          description: Issuer of the sectoral IDP whose re-bindings are suspended.
+          maxLength: 512
+        reason_code:
+          type: string
+          description: |-
+            Machine-readable reason. Reserved values: `objection_threshold` (reporting
+            threshold for objections exceeded, A_CM-57 no. 4), `siem_detection` (other
+            detection by the SIEM), `idp_incident` (incident reported by the sectoral IDP or
+            gematik). A service may add namespaced values (`urn:<service>:...`).
+          x-extensible-enum: [objection_threshold, siem_detection, idp_incident]
+          maxLength: 128
+        comment:
+          type: string
+          description: Free text for the audit log. MUST NOT contain personal data.
+          maxLength: 1024
+
+    RebindOperationResponse:
+      type: object
+      description: |-
+        Body of `200`. Always `accepted: true`: the operation was processed (idempotent; for
+        `cancelRebind` also for unknown, expired or used tokens). Rejections are never
+        signalled with `200` but with `400` (malformed request), `401` (caller not
+        authorised) or `500`.
+      additionalProperties: false
+      required: [accepted]
+      properties:
+        accepted:
+          type: boolean
+          const: true
 
     Error:
       type: object

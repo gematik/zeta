@@ -8,12 +8,13 @@
 ' ANGEPASST v2.0.1: mit eingefügter identitätsgebundener E-Mail-Bindung NACH dem OIDC-Flow.
 '
 ' Einhängepunkt: im Zweig "Policy Decision allow", NACH Identitätsfeststellung
-' (KVNR aus ID-Token) und VOR Ausgabe der vollen Token (A_29905).
+' (KVNR aus ID-Token) und VOR Ausgabe der vollen Token (Zielbild Client Management
+' A_CM-12 bis A_CM-16, Platzhalter-IDs; ersetzt gemSpec_ZETA 2.0.1 A_29905, A_30085).
 ' Token-Ausstellung: im Status pending_user_binding stellt der Token-Endpunkt ein
 ' reduziertes Access Token aus (Scope zeta:email-binding und/oder zeta:email-verify
 ' je nach E-Mail-Zustand, expliziter scope gem. RFC 6749 §5.1, DPoP-gebunden,
 ' max. 15 Min, KEIN Refresh Token); nach der Bindung tauscht der Client dieses
-' Token per Token Exchange (RFC 8693) gegen volle Token (A_30085).
+' Token per Token Exchange (RFC 8693) gegen volle Token (A_CM-16).
 ' Autorisierung der Bindeaufrufe: E-Mail-Binding-Token (DPoP, RFC 9449). Kein RAT,
 ' keine transaction_id.
 ' ============================================================================
@@ -26,6 +27,7 @@ end box
 
 box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
   box "ZETA Guard" ZETA_GUARD_COLOR
+    participant HP as "PEP\nHTTP Proxy" <<zeta>>
     participant AuthS as "PDP\nAuthorization Server\n(OIDC Relying Party)" <<zeta>>
     participant OPA as "PDP\nPolicy Engine" <<zeta>>
   end box
@@ -74,45 +76,75 @@ alt Policy Decision allow
     alt Status == pending_user_binding  (F1 noch NICHT gebunden)
 
         note over Client, AuthS
-          A_29905: KEINE vollen Token (kein Refresh Token, keine Ressourcen-Scopes/Audiences)
+          A_CM-12: KEINE vollen Token (kein Refresh Token, keine Ressourcen-Scopes/Audiences)
           vor der E-Mail-Verifikation. Der Token-Endpunkt stellt ein REDUZIERTES Access Token
           aus (explizit in der Antwort, RFC 6749 §3.3/§5.1, DPoP-gebunden, expires_in
-          300-900 s, KEIN Refresh Token). Der AuthS entscheidet SERVERSEITIG anhand des
+          höchstens 900 s, KEIN Refresh Token). Der AuthS entscheidet SERVERSEITIG anhand des
           E-Mail-Zustands, welchen Scope er gewährt — der Scope kodiert den nächsten
           Schritt (kein binding_mode-Feld):
           - keine E-Mail gebunden (Erstnutzung): scope="zeta:email-binding zeta:email-verify"
           - E-Mail gebunden, unbestätigt (Folgeregistrierung): scope="zeta:email-verify"
-            (OTP geht sofort an die GESPEICHERTE Adresse, sofern keine Challenge offen ist).
+            (OTP geht sofort an die GESPEICHERTE Adresse, sofern keine Challenge offen ist
+            und die Grenzen je Identität nach A_CM-17/A_CM-18 nicht erreicht sind).
 
+          Das E-Mail-Binding-Token trägt aud = Audience der Client-Management-API; alle
+          Aufrufe an /zeta/identity/* laufen über den PEP HTTP Proxy (A_CM-12, A_CM-20).
+          Antworten nehmen denselben Weg zurück (vereinfacht direkt dargestellt).
           Dedizierte Endpunkte /zeta/identity/bind-email(/resend/verify) — getrennt von der
-          Änderungs-Operation /zeta/identity/email (A_29911).
+          Änderungs-Operation /zeta/identity/email (A_CM-35, Verwaltungs-Token über PEP).
         end note
 
         alt [Server:] Identität NEU — keine E-Mail gebunden  → scope="zeta:email-binding zeta:email-verify"
             AuthS --> Client: 200 OK {access_token (E-Mail-Binding-Token),\nscope: "zeta:email-binding zeta:email-verify",\ntoken_type: DPoP, expires_in}   (KEINE vollen Token)
             Client -> User: Zur Eingabe der E-Mail-Adresse auffordern
             User -> Client: E-Mail-Adresse
-            Client -> AuthS: POST /zeta/identity/bind-email {email}\nauthorization: DPoP <E-Mail-Binding-Token>  dpop: <dpop_proof>
-            AuthS -> AuthS: Prüfe Token (scope zeta:email-binding) + DPoP-Proof;\ngeneriere OTP (max. eine offene Challenge pro Client)
-            AuthS -> User: E-Mail mit OTP an die gelieferte Adresse (TOFU-Pin)
-            AuthS --> Client: 202 Accepted {challenge_type: email_otp}
+            Client -> HP: POST /zeta/identity/bind-email {email}\nauthorization: DPoP <E-Mail-Binding-Token>  dpop: <dpop_proof>
+            HP -> AuthS: weiterleiten (Token, DPoP-Proof inkl. Replay,\naud = cm_resource und Scope des Pfads geprüft, A_CM-20)
+            AuthS -> AuthS: Prüfe Token (scope zeta:email-binding) + DPoP-Proof;\ngeneriere OTP, 8 Stellen, 10 min (max. eine offene Challenge je Registrierung, A_CM-15)
+            AuthS -> User: N7: E-Mail mit OTP an die gelieferte Adresse (A_CM-13)
+            AuthS --> Client: 202 Accepted {challenge_type: email_otp, expires_in}
         else [Server:] Identität BEKANNT — E-Mail bereits gebunden  → scope="zeta:email-verify"
             AuthS -> AuthS: Generiere OTP, sofern keine Challenge offen ist\n(idempotent; Korrelation über das Token)
-            AuthS -> User: E-Mail mit OTP an die GESPEICHERTE Adresse (A_29910)
+            AuthS -> User: N7: E-Mail mit OTP an die GESPEICHERTE Adresse (A_CM-14)
             AuthS --> Client: 200 OK {access_token (E-Mail-Binding-Token),\nscope: "zeta:email-verify", token_type: DPoP, expires_in,\nemail_hint: "a***@d***.de"}   (KEINE vollen Token —\nkein zeta:email-binding: keine abweichende Adresse möglich)
         end
 
-        opt OTP-Mail nicht angekommen (Cooldown ≥ 60 s, Obergrenze je E-Mail-Binding-Token)
-            Client -> AuthS: POST /zeta/identity/bind-email/resend\nauthorization: DPoP <E-Mail-Binding-Token>  dpop: <dpop_proof>
+        opt OTP-Mail nicht angekommen (Abstand ≥ 60 s, höchstens 3 je Challenge, A_CM-15)
+            Client -> HP: POST /zeta/identity/bind-email/resend\nauthorization: DPoP <E-Mail-Binding-Token>  dpop: <dpop_proof>
+            HP -> AuthS: weiterleiten (Token, DPoP-Proof inkl. Replay,\naud = cm_resource und Scope des Pfads geprüft, A_CM-20)
             AuthS -> User: E-Mail mit OTP erneut an die Adresse der offenen Challenge
-            AuthS --> Client: 202 Accepted   (429 bei Cooldown/Limit)
+            AuthS --> Client: 202 Accepted {challenge_type: email_otp, expires_in}\n(429 otp_send_limited bei Abstand/Limit)
+        end
+
+        opt Identität BEKANNT und gespeicherte Adresse verloren — Neubindung (A_CM-50 ff.)
+            note over Client, AuthS
+              Statt den Code der verlorenen Adresse zu bestätigen, startet der Client mit
+              demselben E-Mail-Binding-Token die verzögerte Neubindung (Mindest-acr im
+              Authorization Code Flow). Frist mindestens 7 Tage; Nutzung eines bisherigen
+              Geräts, Einbuchung über die bisherige Adresse oder Antwort auf N6 bricht ab.
+            end note
+            Client -> HP: POST /zeta/identity/rebind {email: <neue Adresse>}\nauthorization: DPoP <E-Mail-Binding-Token>  dpop: <dpop_proof>
+            HP -> AuthS: weiterleiten (Token, DPoP-Proof inkl. Replay,\naud = cm_resource und Scope des Pfads geprüft, A_CM-20)
+            AuthS -> User: N8: E-Mail mit OTP an die NEUE Adresse
+            AuthS --> Client: 202 Accepted {challenge_type: email_otp, expires_in}
+            Client -> HP: POST /zeta/identity/rebind/verify {verify_type: email_otp, code}\nauthorization: DPoP <E-Mail-Binding-Token>  dpop: <dpop_proof>
+            HP -> AuthS: weiterleiten (Token, DPoP-Proof inkl. Replay,\naud = cm_resource und Scope des Pfads geprüft, A_CM-20)
+            AuthS -> User: N6 an die bisherige Adresse (Reply-To mit Widerspruchstoken)\nund per Push an alle Clients der Identität
+            AuthS --> Client: 200 OK {status: pending, effective_at}
+            note over Client, AuthS
+              Stand per GET /zeta/identity/rebind/status (Client Assertion, A_CM-52a). Nach Fristende
+              ohne Abbruch: neue Adresse = F1, übrige Registrierungen entfernt, diese
+              Registrierung bound (A_CM-53); Token über einen erneuten Authorization Code Flow.
+            end note
         end
 
         Client -> User: Zur Eingabe des OTP-Codes auffordern (ggf. mit email_hint)
         User -> Client: OTP-Code
-        Client -> AuthS: POST /zeta/identity/bind-email/verify\n{code, verify_type: email_otp}\nauthorization: DPoP <E-Mail-Binding-Token>  dpop: <dpop_proof>
-        AuthS -> AuthS: Prüfe Token (scope zeta:email-verify) + DPoP-Proof + OTP (F1);\npinne/verknüpfe F1; Status: pending_user_binding → bound
-        AuthS --> Client: 200 OK {status: bound}
+        Client -> HP: POST /zeta/identity/bind-email/verify\n{code, verify_type: email_otp}\nauthorization: DPoP <E-Mail-Binding-Token>  dpop: <dpop_proof>
+        HP -> AuthS: weiterleiten (Token, DPoP-Proof inkl. Replay,\naud = cm_resource und Scope des Pfads geprüft, A_CM-20)
+        AuthS -> AuthS: Prüfe Token (scope zeta:email-verify) + DPoP-Proof + OTP (F1);\npinne/verknüpfe F1; Status: pending_user_binding → bound (A_CM-16)
+        AuthS -> User: N1 client_added (E-Mail an F1, Push an die übrigen Clients)
+        AuthS --> Client: 204 No Content
 
         note over Client, AuthS
           Token Exchange (RFC 8693, im ZETA Guard bereits für SMC-B etabliert, A_25762):
@@ -133,6 +165,10 @@ alt Policy Decision allow
           verifizierten E-Mail (F1) verknüpft und dieser Client (F2) ist gebunden. Der
           Token-Endpunkt stellt die vollen Token unmittelbar auf den initialen
           Token-Request aus (unveränderter Pfad, kein Token Exchange nötig).
+          Jedes Token hat genau eine Audience (genau ein resource, sonst 400
+          invalid_target). Das Verwaltungs-Token für die Client-Management-API bezieht
+          der Client bei Bedarf als eigenes Token per Refresh mit resource=<issuer>/zeta
+          und Scope zeta:client-management/zeta:email-change (A_CM-22, A_CM-23).
         end note
 
     end

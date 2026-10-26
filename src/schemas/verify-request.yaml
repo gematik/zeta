@@ -1,13 +1,20 @@
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.0.0"
+schemaVersion: "1.0.1"
 title: Registration Verify Request
 type: object
 description: >-
   Payload zur Beantwortung einer Challenge mit transaction_id. Bei
   POST /register/verify schließt der Zweig tpm_activation die Registrierung
-  stationärer TPM-Clients ab. Der Zweig email_otp wird für
-  POST /zeta/identity/email/verify (Änderung der E-Mail-Adresse)
-  wiederverwendet; mobile Clients nutzen POST /register/verify nicht.
+  stationärer TPM-Clients ab; mobile Clients nutzen POST /register/verify
+  nicht.
+
+  Präzisierung 1.0.1 (nur Beschreibung, gültige Instanzen unverändert): Der
+  Zweig email_otp ist DEPRECATED. POST /zeta/identity/email/verify nutzt seit
+  zeta-guard-client-management.yaml 1.0.0-draft OtpVerifyRequest ohne
+  transaction_id (A_CM-35). POST /register/verify beantwortet email_otp mit
+  400 invalid_request; das Schema lässt den Zweig aus Gründen der
+  Abwärtskompatibilität weiter zu (eine Einschränkung auf tpm_activation wäre
+  eine Major-Änderung).
 # Die Variante wird über den `const`-Wert von `verify_type` in den beiden
 # oneOf-Zweigen eindeutig bestimmt; die Validierung unter draft-07 ist damit
 # deterministisch. Das nachfolgende `discriminator`-Feld ist ein OpenAPI-3-Konstrukt
@@ -30,8 +37,9 @@ definitions:
         format: uuid
         description: Die im 202 Accepted Request empfangene Transaktions-ID.
 
-  # --- E-Mail OTP Fall (nur E-Mail-Änderung über /zeta/identity/email/verify;
-  #     die TOFU-E-Mail-Bindung nutzt /zeta/identity/bind-email/verify ohne transaction_id) ---
+  # --- E-Mail OTP Fall: DEPRECATED (1.0.1), nur Client-Management-API 0.2.0-draft.
+  #     E-Mail-Bindung und E-Mail-Änderung nutzen seit 1.0.0-draft OtpVerifyRequest
+  #     der Client-Management-API ohne transaction_id ---
   OtpVerifyRequest:
     type: object
     allOf:

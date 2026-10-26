@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: OAuth 2.0 Token Endpoint (RFC 6749 Section 3.2)
-  version: 1.1.0
+  version: 1.1.2
   description: |
     Token endpoint of the ZETA Guard Authorization Server.
 
@@ -13,6 +13,16 @@ info:
     gemSpec_ZETA 2.0.0 does not state: the selection of the token-exchange variant by
     `subject_token_type`, and the answer 503 `temporarily_unavailable` when the Policy
     Engine cannot be reached.
+
+    Changes 1.1.0 -> 1.1.1 (description only): management token of the Client Management API
+    obtained as a separate token with exactly one `resource` (`<issuer>/zeta`); more than one
+    `resource` is rejected with `invalid_target`; rules for the management scopes
+    (client-management target model A_CM-22, A_CM-23, placeholder IDs).
+
+    Changes 1.1.1 -> 1.1.2 (description only): `403 access_denied` also when the maximum
+    number of SM(C)-B registrations per Telematik-ID is reached (A_CM-36); the email-binding
+    token carries the audience of the Client Management API, because all its operations run
+    through the PEP HTTP Proxy (A_CM-12, A_CM-20).
 
     Every request is authenticated with a `private_key_jwt` client assertion (RFC 7523) and
     carries a DPoP proof (RFC 9449); requests without them are rejected (A_25659).
@@ -55,6 +65,25 @@ paths:
         (A_29843: a refresh MAY name another `resource` and `scope`); the redemption of
         the email-binding token carries the target of the original request. A `resource`
         that names an unsupported target is rejected with `invalid_target` (A_29694).
+        Every access token has exactly one audience: a request with more than one
+        `resource` is rejected with `400 invalid_target` (A_CM-22), so that each scope
+        unambiguously belongs to the one target of the token.
+
+        Management token (client-management target model A_CM-22, A_CM-23): a separate
+        token for the Client Management API, obtained when needed with
+        `grant_type=refresh_token` (A_29843), `resource=<issuer>/zeta` as the only
+        resource and the scopes `zeta:client-management` and/or `zeta:email-change` only.
+        Its `aud` is exactly the logical audience of the Client Management API (e.g.
+        `cm_resource`). The client then obtains the Fachdienst token again by refresh with
+        the resource of the Fachdienst; the refresh token rotates each time. The management
+        scopes are granted only with `<issuer>/zeta` and only to registrations in status
+        `bound` (`zeta:client-management` also to `active` SM(C)-B registrations); no other
+        scope is granted with `<issuer>/zeta`. Violations: `400 invalid_scope`. For step-up
+        (A_CM-25) the client runs the `authorization_code` flow with
+        `resource=<issuer>/zeta`, `acr_values` and `max_age` from the `WWW-Authenticate`
+        challenge of the Client Management API; the AS keeps the time of the last user
+        authentication in the session (from `auth_time` of the ID token) and does not change
+        it on refresh.
 
         Which parameters a grant requires is stated per parameter below. The form schema
         itself only requires the parameters common to all grants; it deliberately has no
@@ -65,8 +94,10 @@ paths:
         `authorization_code` grant is presented while the client registration is
         `pending_user_binding`, the endpoint issues a DOWN-SCOPED access token instead of
         the requested scope (returned explicitly per RFC 6749 section 5.1 to signal that
-        less than requested was granted), DPoP-bound, WITHOUT any resource scopes or
-        audiences, WITHOUT a refresh token and with a lifetime of at most 900 seconds
+        less than requested was granted), DPoP-bound, WITHOUT any Fachdienst or management
+        scopes, with `aud` = exactly the logical audience of the Client Management API (e.g.
+        `cm_resource`, A_CM-12; the binding endpoints run through the PEP HTTP Proxy, A_CM-20),
+        WITHOUT a refresh token and with a lifetime of at most 900 seconds
         (SHOULD: 300–900 seconds). The granted scope depends on the email state of the
         identity and encodes the client's next step:
           * NO email bound to the identity (first use): scope
@@ -190,7 +221,9 @@ paths:
                     the logical `aud` claim from this URL via the Policy Engine decision.
                     The resource URL itself is NOT written into the `aud` claim but is
                     bound to the actual request via the DPoP proof `htu` claim (RFC 9449).
-                    MUST NOT be combined with `audience`.
+                    MUST NOT be combined with `audience`. Exactly one value per request
+                    (more than one: `400 invalid_target`); for the Client Management API
+                    `<issuer>/zeta` (A_CM-22).
               required:
                 - grant_type
                 - client_assertion_type
@@ -238,7 +271,7 @@ paths:
             Client authentication failed (`invalid_client`) — A_25661-01. The token endpoint
             never signals step-up (`insufficient_user_authentication`): step-up need is signalled
             only by the protected endpoints per RFC 9470 (PEP, A_28525-02; client management,
-            A_29911), whose `WWW-Authenticate` header supplies the `acr_values`. An insufficient
+            A_CM-25), whose `WWW-Authenticate` header supplies the `acr_values`. An insufficient
             authentication level at the token endpoint is evaluated by the Policy Engine via
             `acr` (scope reduction or `403 access_denied`).
           content:
@@ -250,7 +283,11 @@ paths:
             The Policy Engine denied the request although the credentials are valid
             (`access_denied`; the body then additionally carries `reasons`,
             `token-response.yaml` denyResponse), or the Authorization Backend denied access
-            (`access_denied`, A_30243). 403 is used for no other case; a terminated session or
+            (`access_denied`, A_30243), or — at the first token exchange of an SM(C)-B
+            registration — the configured maximum number of `active` SM(C)-B registrations
+            per Telematik-ID is reached (`access_denied`, client-management target model
+            A_CM-36; no registration is displaced automatically, the client deletes one via
+            the Client Management API). 403 is used for no other case; a terminated session or
             revoked refresh token is `400 invalid_grant`.
           content:
             application/json:

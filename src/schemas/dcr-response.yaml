@@ -6,7 +6,7 @@
 # Fehlerantworten (RFC 7591 Abschnitt 3.2.2, z. B. invalid_redirect_uri,
 # invalid_client_metadata) folgen zeta-error.yaml.
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.2.1"
+schemaVersion: "1.2.2"
 title: DCR Response
 description: >-
   Antwort des AuthS auf POST /register, POST /register/verify sowie
@@ -25,6 +25,12 @@ description: >-
   Präzisierung 1.2.1 (nur Beschreibung, gültige Instanzen unverändert):
   client_key_binding im TPM-Zweig ab dem Stichtag 01.01.2028 nur
   "tpm_certified" (Vorschlag A_30514-01, beim Rollover A_30189-01).
+
+  Präzisierung 1.2.2 (nur Beschreibung, gültige Instanzen unverändert):
+  Statusmodell nach Zielbild Client Management A_CM-02 (Platzhalter-ID,
+  ersetzt gemSpec_ZETA 2.0.1 A_30086); kein Status tombstone mehr; die
+  Verwaltungsoperationen nutzen die Client Assertion nur noch für die eigene
+  Registrierung; client_name ist der gespeicherte, ggf. normalisierte Wert.
 
   Für Codegeneratoren: Die Wurzel ist bewusst kein oneOf. Generierter Code
   bindet je HTTP-Status direkt an definitions/ClientInformationResponse (201)
@@ -60,8 +66,10 @@ definitions:
         - GET /register/{client_id}: Lesen der eigenen Registrierung (RFC 7592).
 
       Es wird KEIN Registration Access Token (registration_access_token,
-      registration_client_uri) ausgestellt (A_30101); Folgeoperationen auf die
-      Registrierung autorisiert der Client je Request per Client Assertion.
+      registration_client_uri) ausgestellt (A_CM-30); Operationen auf die eigene
+      Registrierung (Lesen, Selbst-Deregistrierung, Rollover) autorisiert der
+      Client je Request per Client Assertion, die Verwaltung unter /zeta/* per
+      Verwaltungs-Token (A_CM-20 ff.).
 
       Pflicht ist ausschließlich client_id. Alle weiteren Felder sind optional:
       Für Clients, die vor Einführung des Pinnings registriert wurden, fehlen die
@@ -74,8 +82,8 @@ definitions:
         type: string
         description: >-
           Vom AuthS vergebene Client-Kennung. Nicht geheim; dient als Selektor für
-          die Verwaltungsoperationen unter /register/{client_id}. Die Autorisierung
-          erfolgt stets per Client Assertion (F2).
+          die Operationen unter /register/{client_id}; deren Autorisierung erfolgt
+          per Client Assertion (F2, A_CM-30).
       client_id_issued_at:
         type: integer
         description: Zeitpunkt der Vergabe der client_id (Unix-Zeit in Sekunden, RFC 7591).
@@ -88,21 +96,24 @@ definitions:
           Clients setzen nach der Registrierung stets mit dem Token Exchange fort.
           Der AuthS KANN das Feld weglassen.
 
-          Werte gemäß Registrierungs-Statusmodell A_30086 (seit Schema 1.2.0). Den
-          Lebenszyklus bestimmt der AuthS bei POST /register aus grant_types, nicht
-          aus der Plattform:
-            - pending_user_binding: mobile, identitätsgebundene Registrierung
-              (grant_types mit authorization_code) nach POST /register;
-              TI-Identität und E-Mail (F1) noch nicht gebunden.
-            - bound: identitätsgebundene Registrierung mit TI-Identität und
-              verifizierter E-Mail (F1), z. B. Fast-Path mit zeta_attestation_token.
-            - registered: stationäre (SMC-B) oder identitätslose Registrierung nach
+          Werte gemäß Registrierungs-Statusmodell A_CM-02 (Zielbild Client
+          Management; bis Schema 1.2.1 A_30086). Den Lebenszyklus bestimmt der
+          AuthS bei POST /register aus grant_types, nicht aus der Plattform:
+            - pending_user_binding: identitätsgebundene Registrierung
+              (grant_types mit authorization_code) nach POST /register; F2
+              registriert, TI-Identität ab dem ersten Authorization Code Flow
+              zugeordnet, Bestätigung von F1 ausstehend.
+            - bound: identitätsgebundene Registrierung mit F2, TI-Identität und
+              F1; Fast-Path-Registrierungen (zeta_attestation_token) beginnen
+              hier.
+            - registered: SM(C)-B- oder identitätslose Registrierung nach
               POST /register bzw. bei TPM nach erfolgreichem POST /register/verify.
-            - active: stationäre oder identitätslose Registrierung nach dem ersten
-              erfolgreichen Token Exchange mit Policy-Entscheidung allow (nur bei
+            - active: SM(C)-B- oder identitätslose Registrierung nach dem ersten
+              erfolgreichen Token-Request mit Policy-Entscheidung allow; bei
+              SM(C)-B ist ab dann die Telematik-ID zugeordnet (nur bei
               GET /register/{client_id} zu erwarten).
-          Der Status tombstone (A_30086) wird nicht zurückgegeben, da die
-          Registrierung dann entfernt ist.
+          Registrierungen, die nicht binnen 24 Stunden bound bzw. active
+          erreichen, verwirft der AuthS (A_CM-05).
 
           Veraltete Werte (bis Schema 1.1.0, Implementierungen vor A_30086). Der
           AuthS SOLL sie nicht mehr ausgeben. Der Client behandelt sie wie jeden
@@ -122,7 +133,10 @@ definitions:
         x-extensible-enum: [pending_user_binding, bound, registered, active, pending_attestation, pending_verification]
       client_name:
         type: string
-        description: Echo des registrierten client_name (RFC 7591).
+        description: >-
+          Gespeicherter client_name (RFC 7591 Abschnitt 3.2.1). Weicht der
+          gesendete Name von der Regel nach A_CM-32 ab, ist das der vom AuthS
+          normalisierte Wert (siehe dcr-request.yaml, definitions/client_name).
       token_endpoint_auth_method:
         type: string
         description: Echo der registrierten Authentisierungsmethode, in ZETA "private_key_jwt".
