@@ -1,12 +1,12 @@
-# ZETA API v2.0.0-draft
+# ZETA API v2.0.0-draft-1
 
 ## Dokumenten- und Versionsübersicht
 
 |                               |                                   |
 | ----------------------------- | --------------------------------- |
-| Dokumenttitel                 | ZETA API v2.0.0-draft             |
-| Dokumentversion               | 2.0.0-draft                       |
-| Stand                         | 01.09.2026                        |
+| Dokumenttitel                 | ZETA API v2.0.0-draft-1           |
+| Dokumentversion               | 2.0.0-draft-1                     |
+| Stand                         | 27.10.2026                        |
 | Status                        | Draft                             |
 | Verantwortlich                | gematik                           |
 | Gültigkeitsbereich            | ZETA Guard API                    |
