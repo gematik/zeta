@@ -1,16 +1,16 @@
-# ZETA API v1.3.1-2
+# ZETA API v1.3.1-3
 
 ## Dokumenten- und Versionsübersicht
 
 |                               |                               |
 | ----------------------------- | ----------------------------- |
-| Dokumenttitel                 | ZETA API v1.3.1-2             |
-| Dokumentversion               | 1.3.1-2                       |
-| Stand                         | 03.06.2026                    |
+| Dokumenttitel                 | ZETA API v1.3.1-3             |
+| Dokumentversion               | 1.3.1-3                       |
+| Stand                         | 27.10.2026                    |
 | Status                        | Draft                         |
 | Verantwortlich                | gematik                       |
 | Gültigkeitsbereich            | ZETA Guard API                |
-| Spezifikationsgrundlage       | gemSpec_ZETA, Version 1.3.1   |
+| Spezifikationsgrundlage       | gemSpec_ZETA, Version 1.3.2   |
 
 ---
 
