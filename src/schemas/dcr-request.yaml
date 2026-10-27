@@ -1,5 +1,5 @@
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.2.7"
+schemaVersion: "2.0.0"
 title: RegistrationRequest
 description: >-
   Payload Schema für den DCR POST /register Body.
@@ -85,6 +85,18 @@ description: >-
   und Neubindung beschreibt EmailRequest in
   zeta-guard-client-management.yaml (mit Längengrenze 254).
 
+  Änderung 2.0.0 (Breaking, nur TPM-Zweig): nonce, client_key_pop,
+  tpm_client_key_public, tpm_certify_info und tpm_certify_signature sind im
+  TPM-Zweig Pflicht; die Legacy-Form ohne diese Nachweise und der Stichtag
+  aus Vorschlag A_30193-01 entfallen (Vorschlag A_30514-01). Grund: Die
+  TPM-Attestierung ist nicht Teil von Stufe 1 und 2; es gibt keine
+  TPM-Registrierungen, die eine Übergangsregel bräuchten. Aus demselben
+  Grund gilt die Legacy-Form ohne nonce im Fast-Path nicht, wenn das
+  zeta_attestation_token attestation_type tpm trägt (Vorschlag A_30193,
+  Ä-41); das prüft der AuthS, das Schema kann es nicht ausdrücken.
+  Requests der Zweige apple, android, zeta_attestation_token und software
+  bleiben unverändert gültig.
+
   Auswahl des Zweigs: attestation_type lesen; fehlt das Feld, gilt "software"
   (Requests nach Schema 1.0.0). tpm | apple | android | zeta_attestation_token
   | software bestimmen den Zweig; jeder andere Wert ist ungültig. Das Schema
@@ -140,16 +152,13 @@ definitions:
       - c_ek_enc
       - puk_ak_sig
       - signed_hash_puk_client_sig
-    # Die in 1.2.0 ergänzten Nachweise sind nur mit nonce und nur vollständig
-    # zulässig. dependencies (draft-07) statt allOf mit if/then: kein
-    # Kompositions-Schlüsselwort im Zweig, das Codegeneratoren als Vererbung
-    # oder Hilfstyp deuten. Generatoren ignorieren die Regel; sie wird zur
-    # Laufzeit vom JSON-Schema-Validator geprüft.
-    dependencies:
-      client_key_pop: [nonce]
-      tpm_certify_info: [nonce, client_key_pop, tpm_certify_signature, tpm_client_key_public]
-      tpm_certify_signature: [tpm_certify_info]
-      tpm_client_key_public: [tpm_certify_info]
+      # Seit 2.0.0 Pflicht (Vorschlag A_30514-01); vorher optional mit
+      # dependencies.
+      - nonce
+      - client_key_pop
+      - tpm_client_key_public
+      - tpm_certify_info
+      - tpm_certify_signature
     properties:
       attestation_type:
         type: string
@@ -191,9 +200,8 @@ definitions:
           dies KEINE Selbstsignatur mit prk_client_sig, sondern eine
           AK-Signatur (funktional ein attestation_pop). Den Besitz des Client
           Instance Keys weist client_key_pop nach.
-      # Im TPM-Zweig Pflicht, sobald client_key_pop oder tpm_certify_info
-      # gesendet wird (dependencies). signed_hash_puk_client_sig (AK-Signatur)
-      # bleibt unverändert ohne Nonce.
+      # Im TPM-Zweig Pflicht (seit 2.0.0). signed_hash_puk_client_sig
+      # (AK-Signatur) bleibt ohne Nonce.
       nonce: { $ref: "#/definitions/nonce" }
       client_key_pop:
         type: string
@@ -214,16 +222,9 @@ definitions:
           ersetzt die Nonce hier nicht – er belegt die Frische des Attestation
           Keys, nicht die des Client Instance Keys. Eine Form ohne nonce ist
           deshalb unzulässig.
-          Optional aus Kompatibilitätsgründen (in Schema ≤ 1.1.3 nicht
-          vorhanden): Ist das Feld vorhanden, prüft der AuthS Nonce und
-          Signatur und lehnt bei Fehlschlag ab; fehlt es, registriert er wie
-          bisher und MUSS das Fehlen protokollieren (wie A_30192 für den
-          Software-Zweig). Neue Client-Implementierungen SOLLEN es setzen. Ob
-          der Nachweis vorlag,
-          führt der AuthS als client_key_binding im Registrierungsdatensatz
-          (dcr-response.yaml) und übergibt es der Policy Engine; solange das
-          Feld weggelassen werden darf, entsteht die Schutzwirkung erst
-          dadurch, dass die Policy client_key_binding auswertet.
+          Pflicht seit 2.0.0 (Vorschlag A_30514-01): Der AuthS prüft Nonce
+          und Signatur und lehnt bei Fehlen oder Fehlschlag mit
+          invalid_attestation ab.
           Signatur mit dem Client Instance Key als gewöhnlichem (nicht
           restricted) Signaturschlüssel: TPM2_Sign über SHA-256(h) ohne
           Validierungsticket; der TPM-Sonderfall aus definitions/hash_signature
@@ -232,7 +233,7 @@ definitions:
         type: string
         contentEncoding: base64
         description: >-
-          Optional. Öffentlicher Bereich des Client Instance Keys, wie ihn das
+          Öffentlicher Bereich des Client Instance Keys, wie ihn das
           TPM führt (Base64-kodierte TPM2B_PUBLIC-Bytes, Kodierung wie
           puk_ak_sig). Nötig für die Prüfung von tpm_certify_info: Der dort
           zertifizierte Name ist nameAlg || Hash(TPMT_PUBLIC) und umfasst
@@ -242,13 +243,11 @@ definitions:
           jwks; nameAlg = TPM_ALG_SHA256 (ein Name mit SHA-1 wird abgelehnt);
           objectAttributes enthält fixedTPM, fixedParent,
           sensitiveDataOrigin und sign, nicht restricted und nicht decrypt.
-          Nur zusammen mit tpm_certify_info zulässig.
       tpm_certify_info:
         type: string
         contentEncoding: base64
         description: >-
-          Bis zum Stichtag 01.01.2028 optional, danach im TPM-Zweig Pflicht
-          (Vorschlag A_30193-01). Base64-kodierte TPM2B_ATTEST-Struktur (Kodierung wie
+          Pflicht seit 2.0.0 (Vorschlag A_30514-01). Base64-kodierte TPM2B_ATTEST-Struktur (Kodierung wie
           puk_ak_sig) aus TPM2_Certify über den Client Instance Key, signiert
           mit dem Attestation Key. Belegt, dass PrK.Client.Sig ein Schlüssel im
           selben TPM ist wie der Attestation Key. Erzeugung gemäß
@@ -275,25 +274,15 @@ definitions:
           Das Ergebnis führt der AuthS als client_key_binding im
           Registrierungsdatensatz (dcr-response.yaml) und übergibt es der
           Policy Engine (policy-engine-client-data.yaml).
-          Nur bei erfolgreicher Prüfung gilt der Client Instance Key als
-          hardware-gebunden; ohne das Feld ist die Hardware-Bindung von
-          PrK.Client.Sig eine Selbstauskunft des Clients. Ab dem Stichtag
-          01.01.2028 (Vorschlag A_30193-01) lehnt der AuthS eine
-          TPM-Registrierung ohne das Feld mit invalid_attestation ab; im
-          TPM-Pfad liegt der Client Instance Key nach A_30481 immer im TPM.
-          Bis dahin entscheidet die Policy über client_key_binding, ob eine
-          Registrierung ohne diesen Nachweis genügt. Nur zusammen mit
-          nonce, client_key_pop, tpm_certify_signature und
-          tpm_client_key_public zulässig
-          (dependencies im Zweig). Setzt voraus, dass der Client Instance Key im TPM
-          erzeugt wurde.
+          Bei Fehlen oder Fehlschlag lehnt der AuthS die Registrierung mit
+          invalid_attestation ab. Damit liegt der Client Instance Key im
+          TPM-Pfad immer im TPM (erzwungen durch Vorschlag A_30514-01).
       tpm_certify_signature:
         type: string
         contentEncoding: base64
         description: >-
-          Optional. Base64-kodierte TPMT_SIGNATURE (Kodierung wie puk_ak_sig)
-          zu tpm_certify_info, erstellt mit dem Attestation Key. Nur zusammen
-          mit tpm_certify_info zulässig.
+          Base64-kodierte TPMT_SIGNATURE (Kodierung wie puk_ak_sig) zu
+          tpm_certify_info, erstellt mit dem Attestation Key.
 
   # -----------------------------------------------------------------
   # 2. Apple Hardware Attestation (iOS, iPadOS & macOS)
@@ -489,7 +478,9 @@ definitions:
           (Legacy-Form, client_key_binding = pop_static). Der AuthS akzeptiert
           bis zum Stichtag 01.01.2028 (A_30193) beide Formen und wählt anhand
           der An-/Abwesenheit von nonce; dieselbe nonce geht in
-          attestation_pop ein.
+          attestation_pop ein. Trägt das zeta_attestation_token
+          attestation_type tpm, gibt es keine Legacy-Form: ohne nonce lehnt
+          der AuthS mit invalid_attestation ab (seit 2.0.0).
       nonce: { $ref: "#/definitions/nonce" }
       attestation_pop:
         type: string
@@ -752,9 +743,8 @@ definitions:
       Plattform-Attestierung ändert sich dadurch nicht.
 
       Optional aus Kompatibilitätsgründen; ohne nonce gilt die Legacy-Form des
-      jeweiligen Besitznachweises (siehe dort). Ausnahme: client_key_pop und
-      tpm_certify_info im TPM-Zweig haben keine Legacy-Form und sind ohne
-      nonce unzulässig.
+      jeweiligen Besitznachweises (siehe dort). Ausnahme: Im TPM-Zweig ist
+      nonce seit 2.0.0 Pflicht; dort gibt es keine Legacy-Form.
 
   platform:
     type: string

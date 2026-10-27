@@ -19,10 +19,10 @@ end box
 alt Kein ZETA Guard Attestation Token
     alt Hardware Attestation: Windows / Linux (TPM)
         Client++
-        note right of Client: nonce, client_key_pop, tpm_* aus\nAbb-ZETA-TPM-Attestation-Key;\nempfohlen (A_NEU-TPM-NONCE); ab 01.01.2028\nPflicht (A_30193, tpm_*: A_30193-01)
-        Client -> AuthS++: POST /register\n{attestation_type="tpm", PuK.EK.Enc, C.EK.Enc,\nPuK.AK.Sig, PuK.Client.Sig, signed_Hash_PuK.Client.Sig\n[, nonce, client_key_pop [, tpm_client_key_public, tpm_certify_info, tpm_certify_signature]]}
+        note right of Client: nonce, client_key_pop, tpm_* aus\nAbb-ZETA-TPM-Attestation-Key;\nPflicht (A_30514-01)
+        Client -> AuthS++: POST /register\n{attestation_type="tpm", PuK.EK.Enc, C.EK.Enc,\nPuK.AK.Sig, PuK.Client.Sig, signed_Hash_PuK.Client.Sig,\nnonce, client_key_pop, tpm_client_key_public, tpm_certify_info, tpm_certify_signature}
         AuthS -> AuthS: Validiere C.EK.Enc-Chain & signed_Hash_PuK.Client.Sig;\nprüfe und verbrauche nonce; prüfe client_key_pop mit PuK.Client.Sig;\nprüfe tpm_certify_info (extraData = nonce, certify.name = tpm_client_key_public,\nSignatur mit PuK.AK.Sig) – Ergebnis vorläufig bis /register/verify
-        note right of AuthS: Fehlschlag: invalid_attestation (A_30514-01).\nFehlt client_key_pop oder tpm_certify_info: bis 01.01.2028\nannehmen und protokollieren, danach invalid_attestation.
+        note right of AuthS: Fehlt ein Nachweis oder schlägt eine Prüfung fehl:\ninvalid_attestation (A_30514-01).
         AuthS -> AuthS: CredentialBlob = MakeCredential(...);\n(TPM 2.0 Commands, Section 12.5)
         AuthS --> Client: 202 Accepted {challenge_type, tpm_credential_blob, tpm_encrypted_secret}
 
@@ -32,7 +32,7 @@ alt Kein ZETA Guard Attestation Token
         ZAS --> Client--: Secret
 
         Client -> AuthS: POST /register/verify {Secret}
-        AuthS -> AuthS: Secret korrekt? → PuK.AK.Sig im selben TPM wie PuK.EK.Enc ✓;\nclient_key_binding = tpm_certified (mit tpm_certify_info) | pop | none
+        AuthS -> AuthS: Secret korrekt? → PuK.AK.Sig im selben TPM wie PuK.EK.Enc ✓;\nclient_key_binding = tpm_certified
 
     else Hardware Attestation: macOS (Apple App Attest)
         Client -> AuthS: POST /register\n{attestation_type="apple", PuK.AK.Sig, Apple_Attestation_Object,\nPuK.Client.Sig, nonce, signed_Hash_PuK.Client.Sig}
@@ -61,8 +61,9 @@ else ZETA Attestation Token vorhanden (Fast-Path)
       App-Attest-Assertion mit clientDataHash = SHA-256(PuK.Client.Sig || nonce),
       erzeugt vom Client selbst (keine ZAS-Beteiligung); bei "tpm" eine
       TPM-Signatur mit PrK.AK.Sig, die der ZAS erstellt.
-      Ohne nonce prüft der AuthS abwärtskompatibel über SHA-256(PuK.Client.Sig),
-      nur bis zum Stichtag 01.01.2028 (A_30193).
+      Ohne nonce prüft der AuthS bei "apple" abwärtskompatibel über
+      SHA-256(PuK.Client.Sig), nur bis zum Stichtag 01.01.2028 (A_30193);
+      bei "tpm" ist nonce Pflicht.
     end note
 end
 

@@ -30,7 +30,7 @@
 
 $schema: "http://json-schema.org/draft-07/schema#"
 type: object
-schemaVersion: "1.3.1"
+schemaVersion: "1.3.2"
 title: Policy Engine Client Data
 description: >
   Enthält die vom AuthS verifizierten Client-Registrierungsdaten sowie die
@@ -46,6 +46,8 @@ description: >
   Präzisierung 1.3.1 (nur Beschreibung): client_key_binding im TPM-Zweig ab
   dem Stichtag 01.01.2028 bei Registrierung nur "tpm_certified"
   (Vorschlag A_30514-01, beim Rollover A_30189-01).
+  Präzisierung 1.3.2 (nur Beschreibung): client_key_binding im TPM-Zweig
+  sofort nur "tpm_certified", ohne Stichtag (dcr-request.yaml 2.0.0).
 properties:
   client_id:
     type: string
@@ -110,7 +112,7 @@ properties:
       Wie der Besitz und die Hardware-Bindung des Client Instance Keys
       bei der Registrierung nachgewiesen wurden:
       "none" – kein Besitznachweis (Software-Registrierung ohne
-      signed_hash_puk_client_sig; TPM-Registrierung ohne client_key_pop);
+      signed_hash_puk_client_sig);
       "pop_static" – Selbstsignatur mit PrK.Client.Sig über
       SHA-256(puk_client_sig) OHNE Nonce geprüft (Zweige apple,
       android, Fast-Path und Software, wenn der Request keine nonce
@@ -124,11 +126,8 @@ properties:
       "tpm_certified" – wie "pop", zusätzlich tpm_certify_info geprüft:
       der Schlüssel liegt im selben TPM wie der Attestation Key. Der Wert
       gilt erst nach erfolgreichem POST /register/verify.
-      Bei attestation_type "tpm" setzt der AuthS ab dem Stichtag
-      01.01.2028 bei der Registrierung nur noch "tpm_certified" (Vorschlag
-      A_30514-01); "none" und "pop" kommen im TPM-Zweig danach nur noch bei
-      Altregistrierungen vor, weil ab dem Stichtag auch der Rollover den
-      Certify-Nachweis erfordert (Vorschlag A_30189-01).
+      Bei attestation_type "tpm" ist der Wert immer "tpm_certified"
+      (Vorschlag A_30514-01; beim Rollover A_30189-01).
       Optional aus Kompatibilitätsgründen; fehlt das Feld, ist "none"
       anzunehmen. Quelle:
       Registrierungsdatensatz (dcr-response.yaml). Ergänzt in 1.3.0. Policies
@@ -137,8 +136,8 @@ properties:
       der AuthS den Wert für den NEUEN Schlüssel neu: Der Rollover weist
       dessen Besitz mit einer Nonce nach (innere Signatur), also "pop";
       "tpm_certified" bleibt nur, wenn der Rollover einen geprüften
-      Certify-Nachweis für den neuen Schlüssel trägt (im TPM-Zweig bis
-      01.01.2028 optional, danach Pflicht; Vorschlag A_30189-01).
+      Certify-Nachweis für den neuen Schlüssel trägt (im TPM-Zweig Pflicht;
+      Vorschlag A_30189-01).
     example: "pop"
 
   binding_status:

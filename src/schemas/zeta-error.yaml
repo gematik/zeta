@@ -22,8 +22,12 @@
 # Management keinen Auslöser mehr (DEPRECATED, bleiben im offenen Enum).
 # attestation_pop_required bleibt für den fehlenden attestation_pop nach dem
 # Stichtag (Tab-ZETA-PDP-Fehlerfälle-Rollover O03, A_CM-44).
+#
+# 1.6.1 (nur Kommentar): tpm_certify_required gilt sofort, ohne Stichtag;
+# attestation_pop_required gilt bei attestation_type tpm ebenfalls sofort
+# (TPM-Attestierung nicht Teil von Stufe 1 und 2; dcr-request.yaml 2.0.0).
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.6.0"
+schemaVersion: "1.6.1"
 title: HTTP ZETA Error Response
 description: Schema for transmitting error information for HTTP ZETA error response.
 type: object
@@ -89,11 +93,11 @@ definitions:
           # Schlüssel ≠ gepinnter ak_jkt, Daten); 400. (A_30189)
           - invalid_attestation_pop
           # Rollover ohne attestation_pop bei attestation_type ≠ software nach dem
-          # Stichtag gemäß A_30193; 400, Client wiederholt einmal mit
+          # Stichtag gemäß A_30193, bei tpm sofort; 400, Client wiederholt einmal mit
           # attestation_pop. (A_30189, Tab-ZETA-PDP-Fehlerfälle-Rollover O03, A_CM-44)
           - attestation_pop_required
           # Rollover bei attestation_type tpm ohne tpm_certify_info/-signature/
-          # tpm_client_key_public, erst nach dem Stichtag 01.01.2028; 400.
+          # tpm_client_key_public; 400.
           # (Vorschlag A_30189-01)
           - tpm_certify_required
 

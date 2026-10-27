@@ -318,8 +318,8 @@ paths:
             `invalid_client_metadata` (e.g. fast path without `authorization_code`) or `invalid_attestation` (attestation or
             ZETA Attestation Token not verifiable, token without verified email, A_CM-61).
             For `attestation_type: tpm` the guard rejects with `invalid_attestation` if
-            `client_key_pop` or `tpm_certify_info` fails verification; from the cut-off date
-            2028-01-01 also if either is missing (proposal A_30514-01).
+            `client_key_pop` or `tpm_certify_info` is missing or fails verification
+            (proposal A_30514-01).
           content:
             application/json:
               schema: { $ref: '../schemas/zeta-error.yaml' }
@@ -446,8 +446,10 @@ paths:
         * **Re-anchoring (A_CM-44).** For `attestation_type` ≠ `software` the client SHOULD
           carry `attestation_pop` over `SHA-256(new_puk_client_sig || nonce)`, verifiable
           against the pinned `ak_jkt`. A present but failing `attestation_pop` →
-          `400 invalid_attestation_pop`, the previous key stays active. Without
-          `attestation_pop` the guard accepts the rollover until the cut-off date of A_30193
+          `400 invalid_attestation_pop`, the previous key stays active. For
+          `attestation_type: tpm` `attestation_pop` is REQUIRED without transition (no TPM
+          registrations exist before stage 3; `400 attestation_pop_required`). For the other
+          types, without `attestation_pop` the guard accepts the rollover until the cut-off date of A_30193
           and marks the registration as no longer hardware-attested; afterwards it rejects
           with `400 attestation_pop_required` (the client repeats the rollover once with
           `attestation_pop`; gemSpec_ZETA 2.0.1 Tab-ZETA-PDP-Fehlerfälle-Rollover O03). A
@@ -459,8 +461,7 @@ paths:
           `tpm_certify_signature` and `tpm_client_key_public` for the new key (TPM2_Certify by
           the pinned attestation key, `qualifyingData` = UTF-8 bytes of the rollover `nonce`).
           A failing certification → `400 invalid_attestation`, the previous key stays active.
-          Without it the guard accepts until 2028-01-01 and sets `client_key_binding` to
-          `pop`; from that date `400 tpm_certify_required`.
+          Without it the guard rejects with `400 tpm_certify_required`.
         * **Transition (A_CM-45).** After success the previous key is accepted for a
           configurable period ONLY for client assertions at the token endpoint for resource
           access, then removed. It authorises no further rollover, no self-deregistration and
@@ -493,7 +494,7 @@ paths:
             invalid_binding | stale_request | invalid_key_change | invalid_attestation_pop
             (present but not verifiable, A_CM-44, O01) | attestation_pop_required (missing after
             the cut-off date of A_30193, A_CM-44, O03) | invalid_attestation (TPM key certification not verifiable) |
-            tpm_certify_required (TPM key certification missing, from 2028-01-01)
+            tpm_certify_required (TPM key certification missing)
           content:
             application/json:
               schema: { $ref: '../schemas/zeta-error.yaml' }
@@ -1478,11 +1479,12 @@ components:
           * `nonce` — the single-use value from `HEAD /zeta/rollover-nonce`;
           * `htm` — `PUT`; `htu` — the target URI (`/register/{client_id}`);
           * `aud` — this ZETA Guard's issuer; `iat` — issue time;
-          * `attestation_pop` — OPTIONAL until the cut-off date of A_30193: signature over
+          * `attestation_pop` — REQUIRED for `attestation_type: tpm`, otherwise OPTIONAL until
+            the cut-off date of A_30193: signature over
             `SHA-256(new_puk_client_sig || nonce)` verifiable against the pinned `ak_jkt`
             (for `apple`, the CBOR assertion object with that hash as `clientDataHash`);
           * `tpm_certify_info`, `tpm_certify_signature`, `tpm_client_key_public` — only for
-            `attestation_type: tpm`; OPTIONAL until 2028-01-01, then REQUIRED (proposal
+            `attestation_type: tpm`; REQUIRED (proposal
             A_30188-01, A_30189-01). Encoding and checks as the fields of the same name in
             `dcr-request.yaml#/definitions/registration_tpm`, with the rollover `nonce` in
             place of the registration nonce and the new `jwk` in place of `jwks`.

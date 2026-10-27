@@ -6,7 +6,7 @@
 # Fehlerantworten (RFC 7591 Abschnitt 3.2.2, z. B. invalid_redirect_uri,
 # invalid_client_metadata) folgen zeta-error.yaml.
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.2.2"
+schemaVersion: "1.2.3"
 title: DCR Response
 description: >-
   Antwort des AuthS auf POST /register, POST /register/verify sowie
@@ -25,6 +25,10 @@ description: >-
   Präzisierung 1.2.1 (nur Beschreibung, gültige Instanzen unverändert):
   client_key_binding im TPM-Zweig ab dem Stichtag 01.01.2028 nur
   "tpm_certified" (Vorschlag A_30514-01, beim Rollover A_30189-01).
+
+  Präzisierung 1.2.3 (nur Beschreibung, gültige Instanzen unverändert):
+  client_key_binding im TPM-Zweig sofort nur "tpm_certified", ohne Stichtag
+  (dcr-request.yaml 2.0.0, Vorschlag A_30514-01; beim Rollover A_30189-01).
 
   Präzisierung 1.2.2 (nur Beschreibung, gültige Instanzen unverändert):
   Statusmodell nach Zielbild Client Management A_CM-02 (Platzhalter-ID,
@@ -192,7 +196,7 @@ definitions:
           Wie der Besitz und die Hardware-Bindung des Client Instance Keys
           bei der Registrierung nachgewiesen wurden:
           "none" – kein Besitznachweis (Software-Registrierung ohne
-          signed_hash_puk_client_sig; TPM-Registrierung ohne client_key_pop);
+          signed_hash_puk_client_sig);
           "pop_static" – Selbstsignatur mit PrK.Client.Sig über
           SHA-256(puk_client_sig) OHNE Nonce geprüft (Zweige apple,
           android, Fast-Path und Software, wenn der Request keine nonce
@@ -206,12 +210,10 @@ definitions:
           "tpm_certified" – wie "pop", zusätzlich tpm_certify_info geprüft:
           der Schlüssel liegt im selben TPM wie der Attestation Key. Der Wert
           gilt erst nach erfolgreichem POST /register/verify.
-          Bei attestation_type "tpm" setzt der AuthS ab dem Stichtag
-          01.01.2028 bei der Registrierung nur noch "tpm_certified"; fehlt
-          client_key_pop oder tpm_certify_info, lehnt er mit
-          invalid_attestation ab (Vorschlag A_30514-01). "none" und "pop"
-          entstehen im TPM-Zweig danach nur noch für Altregistrierungen;
-          ab dem Stichtag erfordert auch der Rollover den Certify-Nachweis.
+          Bei attestation_type "tpm" ist der Wert immer "tpm_certified":
+          fehlt client_key_pop oder tpm_certify_info, lehnt der AuthS mit
+          invalid_attestation ab (Vorschlag A_30514-01), und auch der
+          Rollover erfordert den Certify-Nachweis (Vorschlag A_30189-01).
           Optional aus Kompatibilitätsgründen; fehlt das Feld, ist "none"
           anzunehmen. Ergänzt in Schema 1.1.0. Der Wert
           wird an die Policy Engine übergeben (policy-engine-client-data.yaml).
@@ -221,8 +223,7 @@ definitions:
           "tpm_certified" bleibt nur, wenn der Rollover einen geprüften
           Certify-Nachweis für den neuen Schlüssel trägt (tpm_certify_info,
           tpm_certify_signature, tpm_client_key_public im Rollover-Envelope).
-          Im TPM-Zweig ist dieser Nachweis bis zum 01.01.2028 optional und
-          danach Pflicht (Vorschlag A_30189-01).
+          Im TPM-Zweig ist dieser Nachweis Pflicht (Vorschlag A_30189-01).
       binding_status:
         type: string
         enum: [pinned, legacy_unpinned]

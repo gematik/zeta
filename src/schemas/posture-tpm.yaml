@@ -1,14 +1,20 @@
 # Posture schema for generic software clients with TPM attestation
 # 
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.1.0"
+schemaVersion: "2.0.0"
 title: Posture with TPM attestation
 description: >-
   The posture of the client instance. The structure depends on the platform.
 
   Change 1.0.0 -> 1.1.0 (compatible): optional field nonce added
-  (gemSpec_ZETA 2.0.1 A_30515, proposal A_NEU-ABL-03); mandatory from the
-  cutoff date of A_30193 (01.01.2028).
+  (gemSpec_ZETA 2.0.1 A_30515, proposal A_NEU-ABL-03).
+
+  Change 1.1.0 -> 2.0.0 (breaking): nonce is required; the legacy rules
+  until the cutoff date of A_30193 (posture without nonce, verification of
+  tpm_quote against tpm_attestation_key for legacy_unpinned registrations)
+  are removed. Reason: TPM attestation is not part of stages 1 and 2, so no
+  TPM client exists that would need a transition rule (proposal
+  A_NEU-ABL-03).
 type: object
 properties:
   platform_product_id:
@@ -38,11 +44,7 @@ properties:
       encoded). Reference and diagnostic value only — NOT a trust anchor: the
       AuthS verifies tpm_quote against the attestation key pinned at
       registration (ak_jkt in the client record) and rejects the assertion if
-      this value does not match it. For registrations with binding_status
-      legacy_unpinned (registered before pinning was introduced, gemSpec_ZETA
-      2.0.1 A_30193) the AuthS verifies tpm_quote against this value until the
-      cutoff date of A_30193 (01.01.2028) and rejects such client statements
-      afterwards (invalid_client); proposal A_NEU-ABL-03.
+      this value does not match it (proposal A_NEU-ABL-03).
   nonce:
     type: string
     pattern: "^[A-Za-z0-9_-]{22}$"
@@ -53,8 +55,7 @@ properties:
       damit in extraData von tpm_quote. Der AuthS prüft und verbraucht sie nach
       gemSpec_ZETA 2.0.1 A_30515 und lehnt das Client Statement mit
       invalid_client ab, wenn nonce und extraData nicht übereinstimmen
-      (Vorschlag A_NEU-ABL-03). Bis zum Stichtag nach A_30193 (01.01.2028)
-      optional; fehlt sie, gilt allein extraData. Danach Pflicht.
+      (Vorschlag A_NEU-ABL-03). Pflicht seit 2.0.0.
   tpm_quote:
     type: string
     description: The TPM quote of the client instance
@@ -73,6 +74,7 @@ required:
   - os_version
   - arch
   - tpm_attestation_key
+  - nonce
   - tpm_quote
   - tpm_event_log
   - tpm_ek_certificate_chain

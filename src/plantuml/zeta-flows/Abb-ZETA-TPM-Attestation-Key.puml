@@ -25,8 +25,8 @@ TPM++
 note left of Client: Key-Blob (Windows: PCP_KEY_BLOB) nur, wenn der Client Instance Key im TPM liegt;\nder Schlüssel kann nur im TPM verwendet werden.\nLinux: Der Key-Blob liegt beim ZAS (je Benutzerkonto); der Client übergibt keinen Blob.
 Client -> ZAS: hash_puk_client_sig, nonce [, Key-Blob(prk_client_sig, puk_client_sig)]
 
-opt Client Instance Key im TPM
-  note right of TPM: Im TPM-Pfad liegt der Client Instance Key immer im TPM (A_30481).\nBis 01.01.2028 optional, danach Pflicht (A_30193-01).
+group Key Certification (Pflicht, A_30514-01)
+  note right of TPM: Im TPM-Pfad liegt der Client Instance Key immer im TPM\n(erzwungen durch A_30514-01: ohne Certify-Nachweis keine Registrierung).
   ZAS -> TPM: TPM2_Load(Key-Blob)
   TPM --> ZAS: Handle_prk_client_sig
 
