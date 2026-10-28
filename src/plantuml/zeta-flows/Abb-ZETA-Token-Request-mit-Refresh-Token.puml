@@ -50,9 +50,10 @@ else Validation fehlerhaft
   end
 end alt
 
-note over AuthS, Client
+note right of Client
   Fehlercodes gemäß [RFC6749]#section-5.2 (Refresh Grant §6):
-  400 = technischer Grant-/Request-Fehler (invalid_dpop_proof [RFC9449]; invalid_grant für jedes nicht\n  nutzbare Refresh Token: abgelaufen, wiederverwendet, widerrufen, Session terminiert, SM(C)-B gesperrt),
+  400 = technischer Grant-/Request-Fehler (invalid_dpop_proof [RFC9449];
+  invalid_grant für jedes nicht\n  nutzbare Refresh Token: abgelaufen, wiederverwendet, widerrufen, Session terminiert,
   401 = Client-Authentifizierung fehlgeschlagen (invalid_client),
   403 = Policy-Ablehnung bei gültigen Credentials (access_denied).
   Zuordnung je Fehlerfall: Tab-ZETA-PDP-Fehlerfaelle-Token-Endpunkt.
