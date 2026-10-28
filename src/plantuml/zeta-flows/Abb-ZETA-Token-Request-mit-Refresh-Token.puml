@@ -45,7 +45,7 @@ else Validation fehlerhaft
     AuthS --> Client: 401 Unauthorized {"error": "invalid_client"}
   else DPoP-Proof ungültig
     AuthS --> Client: 400 Bad Request {"error": "invalid_dpop_proof"}
-  else Refresh Token ungültig/abgelaufen/wiederverwendet, SM(C)-B gesperrt
+  else Refresh Token ungültig/abgelaufen/wiederverwendet
     AuthS --> Client--: 400 Bad Request {"error": "invalid_grant"}
   end
 end alt
