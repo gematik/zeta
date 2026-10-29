@@ -56,7 +56,7 @@ note right of Client
   invalid_grant für jedes nicht\n  nutzbare Refresh Token: abgelaufen, wiederverwendet, widerrufen, Session terminiert,
   401 = Client-Authentifizierung fehlgeschlagen (invalid_client),
   403 = Policy-Ablehnung bei gültigen Credentials (access_denied).
-  Zuordnung je Fehlerfall: Tab-ZETA-PDP-Fehlerfaelle-Token-Endpunkt.
+  Zuordnung je Fehlerfall: Tab-ZETA-PDP-Fehlerfälle-Token-Endpunkt.
   Response-Body gemäß [zeta-error.yaml].
 end note
 
