@@ -33,10 +33,22 @@ par Regelmäßiger Token Exchange (Subject Token gegen Access Token)
   AuthS --> cronjobClient--: Subject Token
 
   cronjobClient -> ZetaSTS++: Fordert Access-Token an\n(Token Exchange mit Subject Token)
-  ZetaSTS -> AuthS++:  GET /.well-known/openid-configuration
-  AuthS --> ZetaSTS--: OpenID Provider Metadaten
-  ZetaSTS -> AuthS++:  GET /openid/v1/jwks
-  AuthS --> ZetaSTS--: JWKS
+  ZetaSTS -> ZetaSTS: Prüft iss (konfigurierter Aussteller)\nund kid (gültiger JWKS-Cache des Ausstellers)
+  alt kid nicht im gültigen JWKS-Cache (nur Aussteller mit jwks_uri)
+    opt Abruf nicht gesperrt (höchstens einmal je Minute und Aussteller)
+      ZetaSTS -> AuthS++:  GET jwks_uri (konfiguriert)
+      alt JWKS abrufbar
+        AuthS --> ZetaSTS--: JWKS
+        ZetaSTS -> ZetaSTS: Aktualisiert JWKS-Cache des Ausstellers
+      else JWKS nicht abrufbar
+        deactivate AuthS
+      end alt
+    end opt
+    opt keine gültige Kopie des JWKS
+      ZetaSTS --> cronjobClient: 503 Service Unavailable\n{"error": "temporarily_unavailable"}
+      note over cronjobClient, ZetaSTS: Ablauf endet
+    end opt
+  end alt
   ZetaSTS -> ZetaSTS: Validiert Subject Token (Signaturprüfung)
 
   alt Validation successful
