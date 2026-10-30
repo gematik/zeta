@@ -1,0 +1,29 @@
+{
+  "format_version": "1.0.0",
+  "updated_at": 1793361009,
+  "env": "prod",
+  "signing-certificates": {
+    "release-signing": {
+        "GEM.KOMP-CA8": {
+            "type": "root-ca",
+            "pem": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----",
+            "hash": "",
+            "mirror": {
+                "type": "tsl",
+                "url": "https://download.tsl.ti-dienste.de/ECC/ECC-RSA_TSL.xml"
+            }
+        }
+    },
+    "provisioning-container-signing": {
+        "GEM.KOMP-CA10": {
+            "type": "ca-chain",
+            "pem": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE----------BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----",
+            "hash": "",
+            "mirror": {
+                "type": "tsl",
+                "url": "https://download.tsl.ti-dienste.de/ECC/ECC-RSA_TSL.xml"
+            }
+        }
+    }
+  }
+}
