@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: OAuth 2.0 Pushed Authorization Requests (PAR) Endpoint (RFC 9126)
-  version: 1.1.0
+  version: 1.2.0
   description: |
     Outer Pushed Authorization Request of mobile ZETA Clients
     (Abb-ZETA-OIDC-Authorization-Request-mit-äußerem-und-innerem-PAR, A_29660).
@@ -11,6 +11,10 @@ info:
     (`code_challenge`, `code_challenge_method=S256`), `redirect_uri` and `state` are
     REQUIRED as used in the flow; the JWT request object (`request`) is removed because
     no ZETA flow uses it; error responses reference `zeta-error.yaml`.
+
+    Changes 1.1.0 -> 1.2.0: optional parameter `max_age` (OpenID Connect Core 1.0,
+    RFC 9470), e.g. from a `403 insufficient_acr` of the token endpoint (T15); enforced at the sectoral IDP as `max_age=0` in the inner PAR
+    (gemSpec_IDP_Sek 3.3.0 A_25753).
 servers:
   - url: https://as.example.com
 paths:
@@ -85,10 +89,29 @@ paths:
                     value is the `resource` of the token request.
                 acr_values:
                   type: string
+                  example: gematik-ehealth-loa-high
                   description: >-
                     Requested authentication level, e.g. after a step-up challenge
-                    (RFC 9470, `insufficient_user_authentication`). Passed on to the sectoral
-                    IDP in the inner PAR.
+                    (RFC 9470, `insufficient_user_authentication`) or from `acr_values` of a
+                    `403 insufficient_acr` at the token endpoint (T15).
+                    Passed on to the sectoral IDP in the inner PAR.
+                max_age:
+                  type: integer
+                  minimum: 0
+                  maximum: 86400
+                  example: 300
+                  description: >-
+                    Added in 1.2.0. Maximum age in seconds of the user authentication
+                    (OpenID Connect Core 1.0, RFC 9470), e.g. from `max_age` of a step-up
+                    challenge or of a `403 insufficient_acr` at the token endpoint (T15). The Authorization Server enforces it at the
+                    sectoral IDP by sending `max_age=0` in the inner PAR (the IDP only
+                    guarantees max_age=0, gemSpec_IDP_Sek 3.3.0 A_25753). It issues the authorization code only if `auth_time`
+                    of the ID token shows an authentication within this flow (not
+                    before the inner PAR minus 60 s); otherwise it
+                    issues no code and redirects with error `access_denied` (RFC 6749
+                    §4.1.2.1), and the client aborts as on a repeated 403 (T15). The age
+                    itself is checked later by the Policy Engine or
+                    the step-up window, each with 60 s tolerance.
                 state:
                   type: string
                   description: Opaque value of the client (state_app), returned with the redirect.

@@ -144,3 +144,5 @@ yml
 toml
 dotenv
 ietf
+ehealth
+ocsp

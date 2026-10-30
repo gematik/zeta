@@ -31,8 +31,8 @@ description: >-
   (dcr-request.yaml 2.0.0, Vorschlag A_30514-01; beim Rollover A_30189-01).
 
   Präzisierung 1.2.2 (nur Beschreibung, gültige Instanzen unverändert):
-  Statusmodell nach Zielbild Client Management A_CM-02 (Platzhalter-ID,
-  ersetzt gemSpec_ZETA 2.0.1 A_30086); kein Status tombstone mehr; die
+  Statusmodell nach Zielbild Client Management (ersetzt
+  gemSpec_ZETA 2.0.1 A_30086); kein Status tombstone mehr; die
   Verwaltungsoperationen nutzen die Client Assertion nur noch für die eigene
   Registrierung; client_name ist der gespeicherte, ggf. normalisierte Wert.
 
@@ -70,10 +70,10 @@ definitions:
         - GET /register/{client_id}: Lesen der eigenen Registrierung (RFC 7592).
 
       Es wird KEIN Registration Access Token (registration_access_token,
-      registration_client_uri) ausgestellt (A_CM-30); Operationen auf die eigene
+      registration_client_uri) ausgestellt; Operationen auf die eigene
       Registrierung (Lesen, Selbst-Deregistrierung, Rollover) autorisiert der
       Client je Request per Client Assertion, die Verwaltung unter /zeta/* per
-      Verwaltungs-Token (A_CM-20 ff.).
+      Verwaltungs-Token.
 
       Pflicht ist ausschließlich client_id. Alle weiteren Felder sind optional:
       Für Clients, die vor Einführung des Pinnings registriert wurden, fehlen die
@@ -87,7 +87,7 @@ definitions:
         description: >-
           Vom AuthS vergebene Client-Kennung. Nicht geheim; dient als Selektor für
           die Operationen unter /register/{client_id}; deren Autorisierung erfolgt
-          per Client Assertion (F2, A_CM-30).
+          per Client Assertion (F2).
       client_id_issued_at:
         type: integer
         description: Zeitpunkt der Vergabe der client_id (Unix-Zeit in Sekunden, RFC 7591).
@@ -100,7 +100,7 @@ definitions:
           Clients setzen nach der Registrierung stets mit dem Token Exchange fort.
           Der AuthS KANN das Feld weglassen.
 
-          Werte gemäß Registrierungs-Statusmodell A_CM-02 (Zielbild Client
+          Werte gemäß Registrierungs-Statusmodell (Zielbild Client
           Management; bis Schema 1.2.1 A_30086). Den Lebenszyklus bestimmt der
           AuthS bei POST /register aus grant_types, nicht aus der Plattform:
             - pending_user_binding: identitätsgebundene Registrierung
@@ -117,7 +117,7 @@ definitions:
               SM(C)-B ist ab dann die Telematik-ID zugeordnet (nur bei
               GET /register/{client_id} zu erwarten).
           Registrierungen, die nicht binnen 24 Stunden bound bzw. active
-          erreichen, verwirft der AuthS (A_CM-05).
+          erreichen, verwirft der AuthS.
 
           Veraltete Werte (bis Schema 1.1.0, Implementierungen vor A_30086). Der
           AuthS SOLL sie nicht mehr ausgeben. Der Client behandelt sie wie jeden
@@ -139,7 +139,7 @@ definitions:
         type: string
         description: >-
           Gespeicherter client_name (RFC 7591 Abschnitt 3.2.1). Weicht der
-          gesendete Name von der Regel nach A_CM-32 ab, ist das der vom AuthS
+          gesendete Name von der Regel für client_name ab, ist das der vom AuthS
           normalisierte Wert (siehe dcr-request.yaml, definitions/client_name).
       token_endpoint_auth_method:
         type: string

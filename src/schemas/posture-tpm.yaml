@@ -7,14 +7,13 @@ description: >-
   The posture of the client instance. The structure depends on the platform.
 
   Change 1.0.0 -> 1.1.0 (compatible): optional field nonce added
-  (gemSpec_ZETA 2.0.1 A_30515, proposal A_NEU-ABL-03).
+  (gemSpec_ZETA 2.0.1 A_30515).
 
   Change 1.1.0 -> 2.0.0 (breaking): nonce is required; the legacy rules
   until the cutoff date of A_30193 (posture without nonce, verification of
   tpm_quote against tpm_attestation_key for legacy_unpinned registrations)
   are removed. Reason: TPM attestation is not part of stages 1 and 2, so no
-  TPM client exists that would need a transition rule (proposal
-  A_NEU-ABL-03).
+  TPM client exists that would need a transition rule.
 type: object
 properties:
   platform_product_id:
@@ -44,7 +43,7 @@ properties:
       encoded). Reference and diagnostic value only — NOT a trust anchor: the
       AuthS verifies tpm_quote against the attestation key pinned at
       registration (ak_jkt in the client record) and rejects the assertion if
-      this value does not match it (proposal A_NEU-ABL-03).
+      this value does not match it.
   nonce:
     type: string
     pattern: "^[A-Za-z0-9_-]{22}$"
@@ -54,8 +53,7 @@ properties:
       Dieselbe Nonce ist als qualifyingData in TPM2_Quote eingegangen und steht
       damit in extraData von tpm_quote. Der AuthS prüft und verbraucht sie nach
       gemSpec_ZETA 2.0.1 A_30515 und lehnt das Client Statement mit
-      invalid_client ab, wenn nonce und extraData nicht übereinstimmen
-      (Vorschlag A_NEU-ABL-03). Pflicht seit 2.0.0.
+      invalid_client ab, wenn nonce und extraData nicht übereinstimmen. Pflicht seit 2.0.0.
   tpm_quote:
     type: string
     description: The TPM quote of the client instance

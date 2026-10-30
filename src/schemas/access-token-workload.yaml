@@ -8,19 +8,17 @@ title: Access Token (Workload)
 description: >-
   Access token that the Authorization Server, acting as Secure Token Service,
   issues in a token exchange (RFC 8693) of Workload Identity Federation for a
-  workload of another provider (gemSpec_ZETA 2.0.1 A_28431, proposal
-  A_NEU-ABL-12). Unlike access-token.yaml it carries no user identity, no
+  workload of another provider (gemSpec_ZETA 2.0.1 A_28431). Unlike access-token.yaml it carries no user identity, no
   client instance data (product_id, platform, ip_address), no session and no
   acr, because the requesting service is not a registered ZETA client.
 
   The token is a bearer token (token_type "Bearer") unless the token exchange
   request carried a valid DPoP proof; then cnf.jkt binds it to that key
-  (token_type "DPoP"). Lifetime (exp - iat) at most 3600 seconds (proposal
-  A_NEU-ABL-25).
+  (token_type "DPoP"). Lifetime (exp - iat) at most 3600 seconds.
 
   token_profile = "workload" distinguishes it from access-token.yaml. The PEP
   accepts a token with this profile only on routes configured for
-  service-to-service communication (proposal A_NEU-ABL-13); a token without cnf
+  service-to-service communication; a token without cnf
   is accepted only with this profile.
 type: object
 properties:
@@ -55,7 +53,7 @@ properties:
         type: string
         description: >-
           Token profile. Always "workload" for this schema; marks the token as
-          service-to-service token for the PEP (proposal A_NEU-ABL-13).
+          service-to-service token for the PEP.
         enum:
           - workload
       iss:
@@ -65,8 +63,7 @@ properties:
         type: string
         description: >-
           Identity of the requesting workload, taken from the claim sub of the
-          validated subject token (subject-token-workload.yaml, proposal
-          A_NEU-ABL-12). Unique only together with client_id (= iss of the
+          validated subject token (subject-token-workload.yaml). Unique only together with client_id (= iss of the
           subject token): Policy Engine, PEP and resource server MUST evaluate
           the pair (client_id, sub), never sub alone.
       client_id:

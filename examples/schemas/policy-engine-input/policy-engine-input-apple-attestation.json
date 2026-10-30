@@ -44,6 +44,6 @@
     "previous_ip_address": "203.0.113.100",
     "grant_type": "authorization_code",
     "amr": ["biometric"],
-    "acr": "loa2"
+    "acr": "gematik-ehealth-loa-high"
   }
 }

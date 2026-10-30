@@ -44,6 +44,6 @@
     "amr": [
       "smartcard"
     ],
-    "acr": "loa3"
+    "acr": "gematik-ehealth-loa-high"
   }
 }

@@ -30,7 +30,7 @@
 
 $schema: "http://json-schema.org/draft-07/schema#"
 type: object
-schemaVersion: "1.3.2"
+schemaVersion: "1.4.0"
 title: Policy Engine Client Data
 description: >
   Enthält die vom AuthS verifizierten Client-Registrierungsdaten sowie die
@@ -48,6 +48,12 @@ description: >
   (Vorschlag A_30514-01, beim Rollover A_30189-01).
   Präzisierung 1.3.2 (nur Beschreibung): client_key_binding im TPM-Zweig
   sofort nur "tpm_certified", ohne Stichtag (dcr-request.yaml 2.0.0).
+  Änderung 1.4.0 (abwärtskompatibel): Optionale Felder attested_os_version,
+  attested_os_patch_level, verified_boot_state und device_locked unter
+  attestation_result.android ergänzt (Werte aus der Key Attestation der
+  Registrierung). app_package_names und app_signing_cert_digests prüft der
+  AuthS bei der Registrierung und übergibt sie immer
+  (dcr-request.yaml 2.0.1).
 properties:
   client_id:
     type: string
@@ -310,12 +316,13 @@ properties:
             type: array
             items: { type: string }
             description: >
-              Optional: Paketnamen aus attestationApplicationId.package_infos des
+              Paketnamen aus attestationApplicationId.package_infos des
               Blatt-Zertifikats (C.AK.Sig) der android_key_attestation_certificate_chain,
-              beim DCR im Registrierungsdatensatz gespeichert. Fehlt, wenn keine
-              Kette vorlag oder die Extension nicht ausgewertet wurde.
-              Die Policy Engine kann den Wert gegen die für product_id
-              hinterlegten Paketnamen prüfen.
+              beim DCR im Registrierungsdatensatz gespeichert. Der AuthS hat
+              bei der Registrierung geprüft, dass sie zur für product_id
+              registrierten App-Identität passen (dcr-request.yaml →
+              android_key_attestation_certificate_chain). Fehlt nur bei
+              Registrierungsdatensätzen von vor Schema 1.4.0.
             example: ["de.gematik.zeta.testclient"]
           app_signing_cert_digests:
             type: array
@@ -323,11 +330,46 @@ properties:
               type: string
               pattern: "^[0-9a-f]{64}$"
             description: >
-              Optional: SHA-256-Digests der App-Signaturzertifikate aus
+              SHA-256-Digests der App-Signaturzertifikate aus
               attestationApplicationId.signature_digests, hexadezimal in
               Kleinbuchstaben ohne Trennzeichen. Herkunft und Prüfung wie
               app_package_names.
             example: ["3f1e8a0c5d2b47e6a9c18f0b2d7e4a6c51b9e03f8d2a7c6e14b0f9d8a3c5e2b7"]
+          attested_os_version:
+            type: integer
+            minimum: 0
+            description: >
+              osVersion aus dem hardwaregeschützten Teil der KeyDescription
+              des Blatt-Zertifikats (C.AK.Sig), Kodierung MMmmpp (140000 =
+              Android 14; 0 = vom Gerät nicht angegeben). Quelle:
+              Registrierungsdatensatz. Stand der Registrierung, nicht der
+              Laufzeit; Vergleichswert für das selbst gemeldete sdk_int.
+              Fehlt nur bei Registrierungsdatensätzen von vor Schema 1.4.0.
+            example: 140000
+          attested_os_patch_level:
+            type: integer
+            minimum: 0
+            description: >
+              osPatchLevel aus dem hardwaregeschützten Teil der
+              KeyDescription, Kodierung JJJJMM. Quelle und Stand wie
+              attested_os_version; Vergleichswert für das selbst gemeldete
+              security_patch.
+            example: 202403
+          verified_boot_state:
+            type: string
+            enum: [ verified, self_signed, unverified, failed ]
+            description: >
+              rootOfTrust.verifiedBootState aus dem hardwaregeschützten Teil
+              der KeyDescription (Verified, SelfSigned, Unverified, Failed).
+              Quelle und Stand wie attested_os_version.
+            example: "verified"
+          device_locked:
+            type: boolean
+            description: >
+              rootOfTrust.deviceLocked aus dem hardwaregeschützten Teil der
+              KeyDescription; false bei entsperrtem Bootloader. Quelle und
+              Stand wie attested_os_version.
+            example: true
 
       apple:
         type: object

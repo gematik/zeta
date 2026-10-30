@@ -17,7 +17,7 @@ description: >-
   Zweig email_otp ist DEPRECATED. Die E-Mail-Änderung (POST
   /zeta/identity/email) antwortet seit zeta-guard-client-management.yaml
   1.0.0-draft mit OtpChallenge ohne transaction_id (Challenge an die
-  aufrufende Registrierung gebunden, A_CM-35). Der Zweig bleibt nur für
+  aufrufende Registrierung gebunden). Der Zweig bleibt nur für
   Server nach Client-Management-API 0.2.0-draft.
 # Die Variante wird über den `const`-Wert von `challenge_type` in den beiden
 # oneOf-Zweigen eindeutig bestimmt; die Validierung unter draft-07 ist damit

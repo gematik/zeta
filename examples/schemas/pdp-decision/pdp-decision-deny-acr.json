@@ -1,0 +1,13 @@
+{
+  "decision_id": "7c0e4f2a-9d31-4b6e-8a52-3f1d2e6b9c47",
+  "result": {
+    "allow": false,
+    "required_acr": [
+      "gematik-ehealth-loa-high"
+    ],
+    "required_max_age": 300,
+    "reasons": {
+      "Authentication level below the level required for the requested scope": true
+    }
+  }
+}

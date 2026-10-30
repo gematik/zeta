@@ -39,6 +39,6 @@
     "previous_ip_address": "10.0.0.42",
     "grant_type": "authorization_code",
     "amr": ["pwd"],
-    "acr": "loa2"
+    "acr": "gematik-ehealth-loa-high"
   }
 }

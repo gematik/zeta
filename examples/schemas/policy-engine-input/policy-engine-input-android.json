@@ -22,7 +22,13 @@
         "meets_basic_integrity": true,
         "meets_device_integrity": true,
         "meets_strong_integrity": true,
-        "key_attestation_verified": true
+        "key_attestation_verified": true,
+        "app_package_names": ["de.gematik.zeta.testclient"],
+        "app_signing_cert_digests": ["3f1e8a0c5d2b47e6a9c18f0b2d7e4a6c51b9e03f8d2a7c6e14b0f9d8a3c5e2b7"],
+        "attested_os_version": 140000,
+        "attested_os_patch_level": 202403,
+        "verified_boot_state": "verified",
+        "device_locked": true
       }
     }
   },
@@ -57,6 +63,7 @@
     "previous_ip_address": "203.0.113.42",
     "grant_type": "authorization_code",
     "amr": ["pwd", "mfa"],
-    "acr": "loa2"
+    "acr": "gematik-ehealth-loa-high",
+    "auth_time": 1761740000
   }
 }

@@ -1,76 +1,89 @@
 openapi: 3.1.0
 info:
   title: ZETA Guard — Client Registration and Management API
-  version: 1.0.0-draft
+  version: 1.2.0-draft
   description: |
+    1.2.0-draft (backward compatible, from Stufe 3 on): every 403 body carries the optional
+    field `denial_reason` (zeta-error.yaml 1.8.0) according to Tab-ZETA-Ablehnungsgründe,
+    rows AC01–AC06 and, for 403 of the PEP HTTP Proxy in front of
+    this API, rows AP01–AP04. The reaction of the client follows
+    HTTP status and `error` only. For an unknown target and a target of another identity
+    the value is the same (`target_not_accessible`), so that the response does not reveal
+    whether a `client_id` exists.
+
+    1.1.0-draft: step-up signals `max_age=0` in `WWW-Authenticate` instead of
+    the session-age limit (formerly `max_age=300`). The sectoral IDP guarantees only
+    `max_age=0` (gemSpec_IDP_Sek 3.3.0 A_25753). The authorization server checks the last
+    user authentication of the session against a separate step-up window (default 300 s,
+    configurable) plus a tolerance of 60 s for clock skew between IDP and authorization
+    server, which covers the time between the new authentication and the retry.
+
     1.0.0-draft (breaking): aligned with the client-management target model that replaces
-    gemSpec_ZETA 2.0.1 chapters 5.5.5–5.5.10 (requirement IDs `A_CM-nn` are placeholders
-    of that proposal). Changes against 0.2.0-draft:
+    gemSpec_ZETA 2.0.1 chapters 5.5.5–5.5.10. Changes against 0.2.0-draft:
       * The `/zeta/*` management operations are a protected resource behind the PEP HTTP
         Proxy, authorised by a DPoP-bound access token with the scopes
-        `zeta:client-management` / `zeta:email-change` (management token, A_CM-20 ff.)
+        `zeta:client-management` / `zeta:email-change` (management token)
         instead of a per-request client assertion. The header/body field `idp_step_up` is
-        removed; step-up is a property of the presented access token (`acr`, session age,
-        A_CM-25).
+        removed; step-up is a property of the presented access token (`acr`, session age).
       * New: `PATCH /zeta/clients/{target_client_id}` (rename), `GET /zeta/identity/events`
         (user log), `POST /zeta/identity/rebind`, `POST /zeta/identity/rebind/verify`,
         `GET /zeta/identity/rebind/status`, `POST /zeta/identity/rebind/cancel` (delayed re-binding after
         loss of the bound email), `POST /zeta/identity/recovery-code`,
         `POST /zeta/identity/recovery-code/verify` (optional recovery code).
       * The management token is a separate token with exactly one audience, obtained by
-        refresh with `resource=<issuer>/zeta` (A_CM-22).
+        refresh with `resource=<issuer>/zeta`.
       * All operations run through the PEP HTTP Proxy; each path and method has exactly one
-        authorisation class (A_CM-20); the email-binding token carries the audience of this
-        API (A_CM-12).
+        authorisation class; the email-binding token carries the audience of this
+        API.
       * Removed: `POST /zeta/deletions/{deletion_id}/veto` and the separate Admin OOB API
-        (no operator recovery path, A_CM-50); the JSON metadata update on
-        `PUT /register/{client_id}` (renaming moved to `PATCH`, A_CM-32).
+        (no operator recovery path); the JSON metadata update on
+        `PUT /register/{client_id}` (renaming moved to `PATCH`).
       * `POST /zeta/identity/email/verify` without step-up and without `transaction_id`
-        (the challenge is bound to the calling registration, A_CM-35).
+        (the challenge is bound to the calling registration).
       * `client_name`: strict character set only for renaming; at registration accepted and
-        normalized (A_CM-32, `dcr-request.yaml` stays compatible).
+        normalized (`dcr-request.yaml` stays compatible).
       * `GET /zeta/clients` returns an object with `clients`; `ClientSummary` without `jkt`,
-        with `product_id`, `platform` and `last_used_at` (A_CM-31).
+        with `product_id`, `platform` and `last_used_at`.
       * Error codes per Tab_ZETA_CM_Fehler; `tombstoned`, `factor_required` and
         `pop_required` are no longer used here; `attestation_pop_required` stays for a missing
-        `attestation_pop` after the cut-off date (O03, A_CM-44).
+        `attestation_pop` after the cut-off date (O03).
 
     Client Registration and Management API of a single ZETA Guard (one guard = one realm =
-    one Fachdienst; no central registry, no sharing between guards, A_CM-06). Covers Dynamic
+    one Fachdienst; no central registry, no sharing between guards). Covers Dynamic
     Client Registration (gemSpec_ZETA 2.0.1 A_29658) and the client management built on it.
 
-    **Trust model (A_CM-01 ff.).** The sectoral IDP may be compromised. An IDP
+    **Trust model.** The sectoral IDP may be compromised. An IDP
     authentication alone never takes over, changes or extends an existing registration;
-    the only exception is the delayed re-binding (A_CM-50 ff.), which takes effect only after
+    the only exception is the delayed re-binding, which takes effect only after
     a waiting period and only if the owner does not react. Factors: F1 = the verified email
     bound to the identity record, F2 = the instance key of a registration (proof of
     possession by client assertion, A_25767).
       1. A management token exists only for a registration in status `bound` (identity-bound)
-         or, for `zeta:client-management` only, `active` (stationary SM(C)-B) (A_CM-23).
-      2. `bound` requires F2 AND control over F1 (A_CM-12 to A_CM-16), except after a
-         completed re-binding (A_CM-53).
+         or, for `zeta:client-management` only, `active` (stationary SM(C)-B).
+      2. `bound` requires F2 AND control over F1, except after a
+         completed re-binding.
       3. Every token request (including refresh) carries a client assertion with the instance
          key, so a management token proves F2 of the calling registration.
       4. Operations that can lock the owner out or redirect the warning channel (email change,
          deleting all clients but the caller, issuing a recovery code) additionally require a
-         fresh user authentication (step-up, A_CM-25).
+         fresh user authentication (step-up).
       5. Every security-relevant change is notified by email to F1 and by push to the other
-         clients (A_CM-70).
+         clients.
 
-    **Scope of application (A_CM-01).** Selected by `grant_types` of the registration, not by
+    **Scope of application.** Selected by `grant_types` of the registration, not by
     platform:
       * identity-bound (`authorization_code`): all operations;
       * SM(C)-B (`token-exchange` with SM(C)-B subject token): listing, renaming and deleting
         other clients of the same Telematik-ID, self-deregistration, rollover;
       * identity-less (`jwt-bearer`): self-deregistration and rollover only.
 
-    **Registration status (A_CM-02).** `pending_user_binding` → `bound` (identity-bound),
+    **Registration status.** `pending_user_binding` → `bound` (identity-bound),
     `registered` → `active` (SM(C)-B, identity-less). A registration that does not reach
-    `bound`/`active` within 24 hours is discarded (A_CM-05). Management tokens are honoured
+    `bound`/`active` within 24 hours is discarded. Management tokens are honoured
     only while the calling registration is fully registered; the authorization server
-    determines the status from its current data on every request (A_CM-04).
+    determines the status from its current data on every request.
 
-    **Routing and authorisation classes (A_CM-20, Tab_ZETA_CM_Operationen).** EVERY operation
+    **Routing and authorisation classes (Tab_ZETA_CM_Operationen).** EVERY operation
     of this API is reachable only through the PEP HTTP Proxy. Each combination of path and
     method has exactly one authorisation class, and each path exactly one PEP route
     configuration (audience and scope per request path, A_25668-01):
@@ -86,9 +99,7 @@ info:
       * **Token** — the PEP checks access token and DPoP proof by the regular procedures
         including replay (A_25668-01, A_25667, A_30003, A_28803-01), `aud` = exactly the
         audience of this API (e.g. `cm_resource`), the scope of the path and, where fixed, the
-        minimum `acr`; the authorization server checks token and DPoP proof again
-        (A_CM-21), plus object ownership (A_CM-27), conditional step-up and session age
-        (A_CM-25):
+        minimum `acr`; the authorization server checks token and DPoP proof again, plus object ownership, conditional step-up and session age:
           - email-binding token (`emailBindingToken`): `/zeta/identity/bind-email`,
             `/zeta/identity/bind-email/resend`, `/zeta/identity/bind-email/verify`,
             `/zeta/identity/rebind`, `/zeta/identity/rebind/verify`;
@@ -101,7 +112,7 @@ info:
         `/zeta/` is NOT a routing rule (`/zeta/rollover-nonce` and
         `/zeta/identity/rebind/status` are pass-through routes).
 
-    **Requesting the management token (A_CM-22, A_CM-23).** The management token is a
+    **Requesting the management token.** The management token is a
     separate access token with exactly one audience. The resource identifier of this API is
     `<issuer>/zeta` (`issuer` per the AS well-known). When management is needed, the client
     exchanges its refresh token (A_29843) with `resource=<issuer>/zeta` as the ONLY resource
@@ -115,40 +126,42 @@ info:
     for a registration not in `bound` (`active` for SM(C)-B and `zeta:client-management`) →
     `400 invalid_scope`.
 
-    **Step-up (A_CM-25).** Marked per operation with `x-zeta-step-up`: `always` (minimum
+    **Step-up.** Marked per operation with `x-zeta-step-up`: `always` (minimum
     `acr` and session age), `conditional` (only if the condition of the operation holds,
     checked by the authorization server), `acr` (minimum `acr` of the presented token only,
     no session age). For `always` the PEP checks the fixed minimum `acr` of the route; the
     authorization server checks `acr` and session age. The authorization server requires `acr` ≥ the highest level offered by the sectoral IDP and a last user
-    authentication of the session (`sid`) not older than `max_age` (default 300 s); otherwise
-    it answers `401 insufficient_user_authentication` with `WWW-Authenticate` (`acr_values`,
-    `max_age`, RFC 9470). The client then runs the regular Authorization Code Flow (PAR,
+    authentication of the session (`sid`) not older than the step-up window (default 300 s,
+    configurable) plus 60 s tolerance (clock skew); otherwise it answers `401 insufficient_user_authentication` with
+    `WWW-Authenticate` (`acr_values`, `max_age=0`, RFC 9470). `max_age=0` forces a new user
+    authentication at the sectoral IDP, the only value the IDP guarantees (gemSpec_IDP_Sek
+    3.3.0 A_25753); the step-up window covers the time between that authentication and the
+    retry. The client then runs the regular Authorization Code Flow (PAR,
     `GET /authorize`, user authentication, `POST /token` with client assertion) with
-    `resource=<issuer>/zeta`, the required scope, `acr_values` and `max_age`, and retries ONCE.
+    `resource=<issuer>/zeta`, the required scope, `acr_values` and `max_age=0`, and retries ONCE.
     The time of the last user authentication is kept in the AS session (taken from
     `auth_time` of the ID token, unchanged by refresh); the access token needs no
     `auth_time` claim. For SM(C)-B registrations a new token exchange with SM(C)-B subject
     token counts as step-up; `acr` is not checked.
 
-    **ZETA/ASL (A_CM-26).** As for the other PEP and PDP endpoints (A_28852). If ZETA/ASL is
+    **ZETA/ASL.** As for the other PEP and PDP endpoints (A_28852). If ZETA/ASL is
     enabled at the PEP HTTP Proxy (A_26480), the management routes are accepted only via the
     ZETA/ASL channel.
 
-    **Rate limit (A_CM-28).** At most 30 requests per minute and registration on the
+    **Rate limit.** At most 30 requests per minute and registration on the
     management routes; beyond that `429 rate_limit_exceeded` with `Retry-After`.
 
     **Notifications and logs.** Notifications per Tab_gemSpec_ZETA_Nachrichtenkatalog are
-    named per operation (N1–N10, A_CM-70); they are sent after the event takes effect, and a
-    failed delivery never reverts the event. Every operation writes the user log (A_CM-80,
-    readable via `GET /zeta/identity/events`) and the tamper-evident audit log (A_CM-81).
-    Tokens, OTPs, client assertions and key material are never logged (A_CM-82).
+    named per operation (N1–N10); they are sent after the event takes effect, and a
+    failed delivery never reverts the event. Every operation writes the user log (readable via `GET /zeta/identity/events`) and the tamper-evident audit log.
+    Tokens, OTPs, client assertions and key material are never logged.
 
     **Unavailable dependencies.** Every operation may answer `500 server_error` or
     `503 temporarily_unavailable` with `Retry-After` (authorization server behind the PEP,
     database, mail delivery not reachable); the client retries after `Retry-After` with
     exponential backoff. If an OTP mail (N7, N8) cannot be handed over for delivery, the
-    authorization server creates no challenge, consumes none of the limits of A_CM-15 and
-    A_CM-17 and answers `503` (A_CM-15).
+    authorization server creates no challenge, consumes none of the one-time-code limits (per
+    challenge and per identity) and answers `503`.
 
     **Rejections at the PEP.** Before the authorization server sees a request, the PEP HTTP
     Proxy MAY reject it: `400` (path variant, e.g. `;` in the path), `404` (path not part of
@@ -158,10 +171,9 @@ info:
     `examples/pep-config/`.
 
     **Concurrency.** Checks that depend on the set of registrations of a TI identity
-    (conditional step-up A_CM-33, maximum number A_CM-36) and the change of F1 run
-    serialised per TI identity together with the change they guard (A_CM-33); deletions in
-    progress count as executed, including self-deregistration (`DELETE /register/{client_id}`,
-    A_CM-30).
+    (conditional step-up when deleting another client, maximum number of registrations) and the change of F1 run
+    serialised per TI identity together with the change they guard; deletions in
+    progress count as executed, including self-deregistration (`DELETE /register/{client_id}`).
 
     Error responses follow `zeta-error.yaml`; any other failure of a check leads to rejection
     (fail closed). Configurable values per Tab_ZETA_CM_Werte; deviations only towards higher
@@ -176,7 +188,7 @@ servers:
     description: >-
       One guard = one realm = one Fachdienst. The base URL is the AS `issuer`; ALL routes of
       this API are exposed by the PEP HTTP Proxy under this URL (resource identifier
-      `<issuer>/zeta`, A_CM-20, A_CM-22).
+      `<issuer>/zeta`).
     variables:
       guardHost:
         default: guard-epa.example
@@ -191,19 +203,18 @@ tags:
       (`POST /register/verify`), plus read and self-deregistration of the caller's own
       registration on `/register/{client_id}`.
   - name: keys
-    description: Instance-key rollover (F2, A_CM-40 to A_CM-46)
+    description: Instance-key rollover (F2)
   - name: email
     description: >-
-      F1 binding after the OIDC user authentication (`/zeta/identity/bind-email`, A_CM-12 to
-      A_CM-17) and email change (`/zeta/identity/email`, A_CM-35)
+      F1 binding after the OIDC user authentication (`/zeta/identity/bind-email`) and email change (`/zeta/identity/email`)
   - name: devices
-    description: Listing, renaming and deleting the identity's clients (A_CM-31 to A_CM-33)
+    description: Listing, renaming and deleting the identity's clients
   - name: recovery
     description: >-
-      Delayed re-binding after loss of the bound email (A_CM-50 to A_CM-57) and the optional
-      recovery code (A_CM-55)
+      Delayed re-binding after loss of the bound email and the optional
+      recovery code
   - name: log
-    description: User log (A_CM-80, A_CM-83)
+    description: User log
 
 security:
   - clientAssertion: []
@@ -220,28 +231,27 @@ paths:
         the attestation variant union in `dcr-request.yaml` (TPM, Apple, Android, ZETA
         attestation token fast path, software).
 
-        **Life cycle (A_CM-02).** Determined from `grant_types`: with `authorization_code` the
+        **Life cycle.** Determined from `grant_types`: with `authorization_code` the
         registration starts in `pending_user_binding` (identity-bound), otherwise in
         `registered` (SM(C)-B, identity-less). Fast-path registrations start in `bound`.
 
         Flow by client class:
           * **Identity-bound** — `201 Created`, status `pending_user_binding`. The TI identity
-            is assigned by the first Authorization Code Flow (A_CM-10), F1 is confirmed after
-            it (`/zeta/identity/bind-email*`, A_CM-12 to A_CM-16).
+            is assigned by the first Authorization Code Flow, F1 is confirmed after
+            it (`/zeta/identity/bind-email*`).
           * **TPM activation (stationary)** — `202 Accepted` (`dcr-response-202.yaml`,
             `challenge_type: tpm_activation`), completed via `POST /register/verify`.
-          * **Fast path (A_CM-60, A_CM-61, A_CM-63)** — `attestation_type:
+          * **Fast path** — `attestation_type:
             zeta_attestation_token`, ONLY with `authorization_code` in `grant_types`
             (otherwise `400 invalid_client_metadata`). The client presents a ZETA Attestation
             Token (gemSpec_ZETA 2.0.1 A_29842) of another ZETA Guard.
               - If no identity record exists for the TI identity (`sub` of the token), the
                 guard creates it with TI identity and F1 from the verified token, creates the
                 registration in `bound` and asks for no further OTP; it sends N2 to the
-                adopted address and by push to the other clients (A_CM-63).
+                adopted address and by push to the other clients.
               - If an identity record exists, the guard rejects with
-                `409 registration_conflict`; the client uses the follow-up registration
-                (A_CM-14). A fast path never changes an existing identity record.
-            Checks (A_CM-61): signature against PuK.AuthS.Sig from the entity statement of the
+                `409 registration_conflict`; the client uses the follow-up registration. A fast path never changes an existing identity record.
+            Checks: signature against PuK.AuthS.Sig from the entity statement of the
             issuing guard, whose membership in the TI federation is checked via the entity
             statement of the Federation Master; `aud`, `exp`, `sub`, `cnf`; `user_email`
             present and `email_verified` = `true`; for TPM `tpm.ek_root_fingerprint`; the DCR
@@ -251,9 +261,9 @@ paths:
             `SHA-256(puk_client_sig || nonce)`; without `nonce` it accepts the legacy form
             `SHA-256(puk_client_sig)` until the cut-off date of A_30193 and logs the
             redemption, afterwards it rejects. Any failed check → `400 invalid_attestation`.
-            The source guard is used only for the check and is never stored (A_CM-62).
+            The source guard is used only for the check and is never stored.
 
-        **`client_name` (A_CM-32).** Accepted as any string for backwards compatibility and
+        **`client_name`.** Accepted as any string for backwards compatibility and
         stored normalized: characters other than letters, digits, space, `-` and `.` are
         replaced by a space, runs of spaces collapsed, leading/trailing spaces removed, the
         result truncated to 64 characters (substitute name if empty). The stored value is
@@ -275,14 +285,13 @@ paths:
         the client statement. `binding_status: legacy_unpinned` is reserved for records created
         before pinning was specified.
 
-        No registration access token (RFC 7592) or other long-lived bearer secret is issued
-        (A_CM-30).
+        No registration access token (RFC 7592) or other long-lived bearer secret is issued.
 
         **Request size.** Because `client_name` and other fields are accepted without a
         length limit in `dcr-request.yaml` (backwards compatibility), the authorization server
         rejects request bodies above a configurable limit (default 64 KiB) with
         `413 Content Too Large` before parsing; `client_name` is truncated during
-        normalisation (A_CM-32).
+        normalisation.
       security:
         - {}   # Self-authenticating request (attestation + instance-key PoP).
       requestBody:
@@ -295,7 +304,7 @@ paths:
           description: |
             Client registered (identity-bound, fast path, or after a completed TPM
             ActivateCredential challenge). Body: `dcr-response.yaml`
-            (`ClientInformationResponse`); `status` is informative only (A_CM-02) — clients
+            (`ClientInformationResponse`); `status` is informative only — clients
             MUST NOT base their flow on it. `client_id` is a non-secret selector.
           headers:
             Location:
@@ -316,7 +325,7 @@ paths:
           description: >-
             Invalid registration request (RFC 7591 section 3.2.2): `invalid_redirect_uri`,
             `invalid_client_metadata` (e.g. fast path without `authorization_code`) or `invalid_attestation` (attestation or
-            ZETA Attestation Token not verifiable, token without verified email, A_CM-61).
+            ZETA Attestation Token not verifiable, token without verified email).
             For `attestation_type: tpm` the guard rejects with `invalid_attestation` if
             `client_key_pop` or `tpm_certify_info` is missing or fails verification
             (proposal A_30514-01).
@@ -329,7 +338,10 @@ paths:
             application/json:
               schema: { $ref: '../schemas/zeta-error.yaml' }
         '403':
-          description: registration_forbidden — the client is not permitted to register at this guard
+          description: >-
+            registration_forbidden — the client is not permitted to register at this guard.
+            From Stufe 3 on with `denial_reason` `client_not_allowed` (product or platform
+            not admitted, AC01) or `policy_denied` (AC02).
           content:
             application/json:
               schema: { $ref: '../schemas/zeta-error.yaml' }
@@ -341,8 +353,8 @@ paths:
         '409':
           description: >-
             registration_conflict — fast path for a TI identity that already has an identity
-            record at this guard (A_CM-60); the client continues with the follow-up
-            registration (A_CM-14).
+            record at this guard; the client continues with the follow-up
+            registration.
           content:
             application/json:
               schema: { $ref: '../schemas/zeta-error.yaml' }
@@ -360,7 +372,7 @@ paths:
         Second step of the registration of stationary TPM clients (gemSpec_ZETA 2.0.1
         A_29658, A_25432-01). Submits the answer to the TPM ActivateCredential challenge of the
         `202 Accepted` response of `POST /register` together with the `transaction_id`. On
-        success the registration is in status `registered` (A_CM-02).
+        success the registration is in status `registered`.
       security:
         - {}   # Authenticated by the challenge answer + transaction_id.
       requestBody:
@@ -408,7 +420,7 @@ paths:
       tags: [registration]
       summary: Read the caller's own registration
       description: >-
-        Returns the caller's own registration (Tab_ZETA_CM_Operationen, A_CM-30). Authorised
+        Returns the caller's own registration (Tab_ZETA_CM_Operationen). Authorised
         by the client assertion of that registration (F2), in every status.
       security:
         - clientAssertion: []
@@ -429,21 +441,20 @@ paths:
       tags: [keys]
       summary: Roll over the instance key (F2) in place
       description: |
-        In-place rollover of the instance key of the caller's own registration (A_CM-40 to
-        A_CM-46). Allowed for all life cycles (A_CM-41). This is the only use of `PUT` on this
-        resource; renaming is `PATCH /zeta/clients/{target_client_id}` (A_CM-32).
+        In-place rollover of the instance key of the caller's own registration. Allowed for all life cycles. This is the only use of `PUT` on this
+        resource; renaming is `PATCH /zeta/clients/{target_client_id}`.
 
-        * **Authorisation (A_CM-41).** Exclusively the client assertion with the previous,
+        * **Authorisation.** Exclusively the client assertion with the previous,
           active instance key plus the envelope signed with it. A management token is never
           sufficient.
-        * **Nested signature (A_CM-42).** Body `RolloverEnvelope`: outer JWS signed with the
+        * **Nested signature.** Body `RolloverEnvelope`: outer JWS signed with the
           previous key (`401 invalid_signature` if invalid), inner JWS signed with the new key
           (`401 invalid_new_key_proof` if invalid).
-        * **Replay and misdirection (A_CM-43).** Bound to a single-use nonce from
+        * **Replay and misdirection.** Bound to a single-use nonce from
           `HEAD /zeta/rollover-nonce`, consumed atomically (`400 bad_nonce`), to the guard
           (`aud`, `400 wrong_audience`) and to method and target URI (`htm`, `htu`,
           `400 invalid_binding`).
-        * **Re-anchoring (A_CM-44).** For `attestation_type` ≠ `software` the client SHOULD
+        * **Re-anchoring.** For `attestation_type` ≠ `software` the client SHOULD
           carry `attestation_pop` over `SHA-256(new_puk_client_sig || nonce)`, verifiable
           against the pinned `ak_jkt`. A present but failing `attestation_pop` →
           `400 invalid_attestation_pop`, the previous key stays active. For
@@ -462,17 +473,17 @@ paths:
           the pinned attestation key, `qualifyingData` = UTF-8 bytes of the rollover `nonce`).
           A failing certification → `400 invalid_attestation`, the previous key stays active.
           Without it the guard rejects with `400 tpm_certify_required`.
-        * **Transition (A_CM-45).** After success the previous key is accepted for a
+        * **Transition.** After success the previous key is accepted for a
           configurable period ONLY for client assertions at the token endpoint for resource
           access, then removed. It authorises no further rollover, no self-deregistration and
           no management token. Management tokens issued before the rollover are rejected
-          (`401 invalid_token`, A_CM-21).
-        * **Key loss (A_CM-46).** Re-enrolment as follow-up registration (A_CM-14); for
+          (`401 invalid_token`).
+        * **Key loss.** Re-enrolment as follow-up registration; for
           registrations without F1 there is no recovery, the client registers anew.
 
         The envelope never carries an email (F1) change; that is a separate operation.
       security:
-        - clientAssertion: []   # previous, active instance key (A_CM-41)
+        - clientAssertion: []   # previous, active instance key
       requestBody:
         required: true
         content:
@@ -480,7 +491,7 @@ paths:
             schema: { $ref: '#/components/schemas/RolloverEnvelope' }
       responses:
         '200':
-          description: New key active; previous key in the transition period (A_CM-45).
+          description: New key active; previous key in the transition period.
           headers:
             Replay-Nonce:
               schema: { $ref: '#/components/schemas/ReplayNonce' }
@@ -492,8 +503,8 @@ paths:
           description: >-
             bad_nonce (retry once with the nonce from `Replay-Nonce`) | wrong_audience |
             invalid_binding | stale_request | invalid_key_change | invalid_attestation_pop
-            (present but not verifiable, A_CM-44, O01) | attestation_pop_required (missing after
-            the cut-off date of A_30193, A_CM-44, O03) | invalid_attestation (TPM key certification not verifiable) |
+            (present but not verifiable, O01) | attestation_pop_required (missing after
+            the cut-off date of A_30193, O03) | invalid_attestation (TPM key certification not verifiable) |
             tpm_certify_required (TPM key certification missing)
           content:
             application/json:
@@ -506,7 +517,7 @@ paths:
           description: >-
             invalid_signature (outer JWS, previous key) | invalid_new_key_proof (inner JWS,
             new key) | invalid_client (client assertion missing or invalid, or signed with a
-            key in its transition period, A_CM-45)
+            key in its transition period)
           content:
             application/json:
               schema: { $ref: '../schemas/zeta-error.yaml' }
@@ -519,10 +530,9 @@ paths:
       tags: [registration]
       summary: Deregister the caller's own registration
       description: |
-        Self-deregistration (A_CM-30), for every registration regardless of life cycle and
+        Self-deregistration, for every registration regardless of life cycle and
         status. Authorised by a client assertion with the registration's active instance key
-        (F2) with `aud`, `htm`, `htu`, `jti` and a lifetime of at most 60 seconds. Effect
-        (A_CM-34): the registration is removed, its sessions and refresh tokens are revoked
+        (F2) with `aud`, `htm`, `htu`, `jti` and a lifetime of at most 60 seconds. Effect: the registration is removed, its sessions and refresh tokens are revoked
         immediately (A_29847); the identity record and F1 are kept, re-enrolment is a
         follow-up registration. For an identity-bound registration the guard sends N3. Used
         by A_30366 (deleting the identity-less registration). Deleting another client:
@@ -545,7 +555,7 @@ paths:
       tags: [keys]
       summary: Obtain a single-use rollover nonce
       description: >-
-        Guard-scoped, single-use, short-lived nonce required for a rollover (A_CM-43).
+        Guard-scoped, single-use, short-lived nonce required for a rollover.
         Available to all life cycles. Requiring the client assertion prevents nonce farming.
       security:
         - clientAssertion: []
@@ -558,7 +568,7 @@ paths:
               description: >-
                 Same format as `GET /nonce` (128 bit, base64url without padding, 22 characters;
                 A_28144-01), so that its UTF-8 bytes fit TPM2_Certify `qualifyingData`
-                (at most 34 bytes) in a TPM key certification (proposal A_NEU-ROLLOVER-NONCE).
+                (at most 34 bytes) in a TPM key certification.
               schema: { $ref: '#/components/schemas/ReplayNonce' }
         '401':
           description: invalid_client — client assertion missing or invalid
@@ -573,19 +583,18 @@ paths:
       tags: [email]
       summary: Register the address to bind as F1 (first use)
       description: |
-        First use of an identity at this guard (A_CM-13). After the Authorization Code Flow a
-        registration in `pending_user_binding` receives only an email-binding token (A_CM-12):
+        First use of an identity at this guard. After the Authorization Code Flow a
+        registration in `pending_user_binding` receives only an email-binding token:
           * no bound address (first use): scope `zeta:email-binding zeta:email-verify`;
           * bound address (follow-up registration): scope `zeta:email-verify`; the OTP (N7)
             was already sent to the STORED address at token issuance. This endpoint is then
-            NOT authorised (`403 insufficient_scope`, A_CM-14); a client-supplied address is
+            NOT authorised (`403 insufficient_scope`); a client-supplied address is
             structurally excluded.
 
         The guard sends an OTP (N7) to the supplied address and binds it only after a
         successful `POST /zeta/identity/bind-email/verify`. Calling again replaces a still-open
-        challenge of this registration (at most one open challenge per registration, A_CM-15);
-        this corrects a mistyped address. Every send counts towards the per-challenge limits
-        (A_CM-15) and the per-identity limits (A_CM-17).
+        challenge of this registration (at most one open challenge per registration);
+        this corrects a mistyped address. Every send counts towards the per-challenge limits and the per-identity limits.
       security:
         - emailBindingToken: [zeta:email-binding]
       parameters:
@@ -611,7 +620,8 @@ paths:
         '403':
           description: >-
             insufficient_scope — the token does not carry `zeta:email-binding` (follow-up
-            registration, A_CM-14)
+            registration); from Stufe 3 on with `denial_reason` `scope_insufficient`
+            (AP03)
           content:
             application/json:
               schema: { $ref: '../schemas/zeta-error.yaml' }
@@ -628,10 +638,9 @@ paths:
       tags: [email]
       summary: Re-send the OTP of the open binding challenge
       description: >-
-        Re-sends the OTP (N7) of the open binding challenge to the address of that challenge
-        (A_CM-15): client-supplied at first use, the stored address at follow-up registration.
+        Re-sends the OTP (N7) of the open binding challenge to the address of that challenge: client-supplied at first use, the stored address at follow-up registration.
         At least 60 seconds between two sends and at most 3 sends per challenge; beyond that
-        `429 otp_send_limited` with `Retry-After`. The per-identity limits of A_CM-17 apply.
+        `429 otp_send_limited` with `Retry-After`. The per-identity limits for one-time codes apply.
       security:
         - emailBindingToken: [zeta:email-verify]
       parameters:
@@ -659,16 +668,16 @@ paths:
       tags: [email]
       summary: Confirm the binding OTP (registration becomes bound)
       description: |
-        Confirms the OTP of the open binding challenge (A_CM-13, A_CM-14, A_CM-16). OTPs have
+        Confirms the OTP of the open binding challenge. OTPs have
         8 digits, are valid for at most 10 minutes and allow at most 5 failed attempts per
-        challenge, after which the challenge is discarded (A_CM-15). Failed attempts also count
-        per identity (A_CM-17): once a limit is reached, the guard discards all open challenges
+        challenge, after which the challenge is discarded. Failed attempts also count
+        per identity: once a limit is reached, the guard discards all open challenges
         of the identity, issues no new ones and answers `429 otp_send_limited` for the blocking
         period (24 h).
 
         On success the guard binds the address to the identity record (first use) or links the
         registration to the existing identity record (follow-up registration), sets the
-        registration to `bound` and sends N1 (A_CM-16). Full access and refresh tokens are then
+        registration to `bound` and sends N1. Full access and refresh tokens are then
         obtained by token exchange (RFC 8693, `subject_token` = email-binding token,
         `subject_token_type` = `urn:ietf:params:oauth:token-type:access_token`) bound to the
         same client assertion and DPoP key; before `bound` the token exchange is rejected with
@@ -712,15 +721,15 @@ paths:
       tags: [email]
       summary: Change the bound email (F1) — start
       description: |
-        Step 1 of the email change (A_CM-35). The guard sends an OTP (N8) to the NEW address
+        Step 1 of the email change. The guard sends an OTP (N8) to the NEW address
         and binds the challenge to the calling registration (`client_id` of the token); an
-        open challenge of the same registration is replaced. Limits per A_CM-15 and A_CM-17.
+        open challenge of the same registration is replaced. One-time-code limits per challenge and per identity apply.
 
-        Requires step-up (A_CM-25): the PEP checks the fixed minimum `acr` of this route; the
-        authorization server checks `acr` and the session age (`max_age`).
+        Requires step-up: the PEP checks the fixed minimum `acr` of this route; the
+        authorization server checks `acr` and the session age (step-up window).
 
         Rejected with `400 invalid_request` if the new address equals the bound one or a
-        re-binding is open (A_CM-51).
+        re-binding is open.
       x-zeta-step-up: always
       security:
         - managementToken: [zeta:email-change]
@@ -759,13 +768,13 @@ paths:
       tags: [email]
       summary: Change the bound email (F1) — confirm
       description: |
-        Step 2 of the email change (A_CM-35), without step-up. The guard accepts the
+        Step 2 of the email change, without step-up. The guard accepts the
         confirmation only from the registration the challenge is bound to; if the identity has
         an open email-change challenge of another registration it answers
         `403 forbidden_target`. On success the new address is bound as F1 immediately, for all
-        registrations of the TI identity at this guard (not at other guards, A_CM-06). The
+        registrations of the TI identity at this guard (not at other guards). The
         guard sends N5 to the previous and the new address and by push to the other clients,
-        and invalidates an existing recovery code (A_CM-55).
+        and invalidates an existing recovery code.
       security:
         - managementToken: [zeta:email-change]
       parameters:
@@ -788,7 +797,8 @@ paths:
         '403':
           description: >-
             forbidden_target — the open challenge belongs to another registration |
-            insufficient_scope (PEP)
+            insufficient_scope (PEP). From Stufe 3 on with `denial_reason`
+            `challenge_other_registration` (AC06) resp. `scope_insufficient` (AP03).
           content:
             application/json:
               schema: { $ref: '../schemas/zeta-error.yaml' }
@@ -808,13 +818,12 @@ paths:
       summary: List the clients of the caller's identity at this guard
       description: |
         Returns the registrations of the caller's TI identity in status `bound`, for SM(C)-B
-        the registrations of the caller's Telematik-ID in status `active` (A_CM-31, A_CM-01).
-        Registrations in `pending_user_binding` are never listed (A_CM-02). No key material,
+        the registrations of the caller's Telematik-ID in status `active`.
+        Registrations in `pending_user_binding` are never listed. No key material,
         thumbprints, IP addresses or locations. Authorised by the management token alone,
         without a per-request client assertion (deliberate deviation from gemSpec_ZETA 2.0.1
         A_30101 no. 2, which requires the client assertion plus a DPoP-bound access token; F2
-        is proven at the token request, the registration status is checked per request,
-        A_CM-04). No step-up: whoever holds an unlocked device with a valid session can access
+        is proven at the token request, the registration status is checked per request). No step-up: whoever holds an unlocked device with a valid session can access
         the Fachdienst data anyway. Basis for A_25733.
       security:
         - managementToken: [zeta:client-management]
@@ -846,7 +855,7 @@ paths:
       summary: Rename a client of the same identity
       description: |
         Changes `client_name` of a registration of the same TI identity (Telematik-ID for
-        SM(C)-B), including the caller's own (A_CM-32, A_CM-27). Only `client_name` is
+        SM(C)-B), including the caller's own. Only `client_name` is
         accepted; any other field → `400 invalid_client_metadata`. In particular `jwks`,
         `redirect_uris`, `grant_types`, `attestation_type`, `platform`, `product_id`, `ak_jkt`
         and factors cannot be changed here. Unlike `POST /register`, a `client_name` outside
@@ -887,14 +896,14 @@ paths:
       summary: Delete another client of the same identity
       description: |
         Deletes another registration of the same TI identity in status `bound` (SM(C)-B:
-        Telematik-ID, status `active`) (A_CM-33, A_CM-27, A_CM-02). Effect per A_CM-34:
+        Telematik-ID, status `active`). Effect:
         registration removed, its sessions and refresh tokens revoked immediately; identity
         record and F1 unchanged. Sends N3. Bulk deletion is not offered; the client repeats
         this call. The caller's own registration is deleted via
-        `DELETE /register/{client_id}` (A_CM-30); targeting it here → `400 invalid_request`.
+        `DELETE /register/{client_id}`; targeting it here → `400 invalid_request`.
 
         **Conditional step-up.** If after the deletion only the calling registration of this TI
-        identity would remain, the authorization server requires step-up (A_CM-25). The PEP
+        identity would remain, the authorization server requires step-up. The PEP
         has no minimum `acr` configured for this route because only the authorization server
         knows the condition. The authorization server runs the check and the deletion
         serialised per TI identity (atomic): deletions of the same identity in progress count
@@ -935,22 +944,21 @@ paths:
       tags: [recovery]
       summary: Start the delayed re-binding to a new address (bound email lost)
       description: |
-        For a user who has lost the bound address (A_CM-50). Started with the email-binding
-        token of a follow-up registration (scope `zeta:email-verify`, A_CM-12) instead of
+        For a user who has lost the bound address. Started with the email-binding
+        token of a follow-up registration (scope `zeta:email-verify`) instead of
         confirming the OTP sent to the lost address. The underlying Authorization Code Flow
-        MUST meet the minimum `acr` of A_CM-25; otherwise
+        MUST meet the minimum `acr` for step-up; otherwise
         `401 insufficient_user_authentication` and the client repeats the flow with
         `acr_values`.
 
         The guard sends an OTP (N8) to the new address; the re-binding is created only after
         `POST /zeta/identity/rebind/verify`. At most one open re-binding per identity; while
-        one is open, further starts are rejected with `400 invalid_request` (A_CM-51). After
-        an abort (A_CM-52) new starts are rejected for 7 days with
-        `429 rate_limit_exceeded` and `Retry-After`. If re-binding is disabled at this guard
-        (A_CM-50a): `403 access_denied`.
+        one is open, further starts are rejected with `400 invalid_request`. After
+        an abort new starts are rejected for 7 days with
+        `429 rate_limit_exceeded` and `Retry-After`. If re-binding is disabled at this guard: `403 access_denied`.
 
         There is no other recovery path, in particular none via the provider or an
-        administration interface (A_CM-50).
+        administration interface.
       x-zeta-step-up: acr
       security:
         - emailBindingToken: [zeta:email-verify]
@@ -975,14 +983,14 @@ paths:
         '401':
           $ref: '#/components/responses/StepUpRequired'
         '403':
-          description: access_denied — re-binding disabled at this guard (A_CM-50a)
+          description: access_denied — re-binding disabled at this guard
           content:
             application/json:
               schema: { $ref: '../schemas/zeta-error.yaml' }
         '429':
           description: >-
-            rate_limit_exceeded — blocking period after an abort (7 days, A_CM-50) |
-            otp_send_limited — OTP limits (A_CM-15, A_CM-17). Both with `Retry-After`.
+            rate_limit_exceeded — blocking period after an abort (7 days) |
+            otp_send_limited — OTP limits. Both with `Retry-After`.
           headers:
             Retry-After:
               $ref: '#/components/headers/RetryAfter'
@@ -1000,23 +1008,21 @@ paths:
       tags: [recovery]
       summary: Confirm the new address and create the re-binding
       description: |
-        Confirms the OTP sent to the new address (A_CM-50) and creates the re-binding with a
-        deadline of at least 7 days (A_CM-51). The guard sends N6 to the bound (lost) address
-        with the objection token in `Reply-To` (A_CM-58) and by push to all clients of the
-        identity. Existing registrations stay usable; their use aborts the re-binding
-        (A_CM-52). After the deadline without abort, and while not suspended (A_CM-57), the
-        guard completes it in one step (A_CM-53): binds the new address as F1, removes all
+        Confirms the OTP sent to the new address and creates the re-binding with a
+        deadline of at least 7 days. The guard sends N6 to the bound (lost) address
+        with the objection token in `Reply-To` and by push to all clients of the
+        identity. Existing registrations stay usable; their use aborts the re-binding. After the deadline without abort, and while not suspended, the
+        guard completes it in one step: binds the new address as F1, removes all
         other registrations of the identity, sets the starting registration to `bound`, resets
-        the limits of A_CM-17/A_CM-18, invalidates a recovery code and sends N10 to the
+        the per-identity limits for one-time codes and open registrations, invalidates a recovery code and sends N10 to the
         previous address and N1.
 
-        **Recovery code (A_CM-55, optional).** With a valid `recovery_code` the guard completes
+        **Recovery code (optional).** With a valid `recovery_code` the guard completes
         the re-binding immediately instead of after the deadline (response `completed`); N6 and
         N9 are not sent, N10 is. Order of checks: first the OTP, then the recovery code. If a
         `recovery_code` is present and wrong, the WHOLE request is rejected with
         `400 invalid_otp` (fail closed): no re-binding is created, the challenge stays open and
-        the attempt counts as a failed attempt for the challenge (A_CM-15) and for the identity
-        (A_CM-17). A client that sent `recovery_code` and receives `invalid_otp` asks the user
+        the attempt counts as a failed attempt for the challenge and for the identity. A client that sent `recovery_code` and receives `invalid_otp` asks the user
         to check both codes; to start the re-binding with deadline it repeats without
         `recovery_code`. If recovery codes are not enabled or re-binding is disabled,
         a present `recovery_code` → `403 access_denied`.
@@ -1046,7 +1052,7 @@ paths:
           $ref: '#/components/responses/InvalidToken'
         '403':
           description: >-
-            access_denied — re-binding disabled at this guard (A_CM-50a), or `recovery_code`
+            access_denied — re-binding disabled at this guard, or `recovery_code`
             sent while recovery codes are not enabled
           content:
             application/json:
@@ -1067,18 +1073,17 @@ paths:
       summary: Status of the re-binding started by the caller
       description: |
         Returns the status of the re-binding to the registration that started it, until
-        7 days after the deadline (A_CM-52a). Authorised by that registration's client
+        7 days after the deadline. Authorised by that registration's client
         assertion (F2) — its email-binding token has expired long before the deadline. Own path
-        so that the path has exactly one authorisation class (pass-through at the PEP,
-        A_CM-20).
+        so that the path has exactly one authorisation class (pass-through at the PEP).
           * `pending` with `effective_at`;
-          * `suspended` with `effective_at` (A_CM-57; deadline and aborts continue, the
+          * `suspended` with `effective_at` (deadline and aborts continue, the
             re-binding is not completed while suspended);
-          * `aborted` with `abort_reason`: `device_used` (A_CM-52 no. 1), `address_login`
+          * `aborted` with `abort_reason`: `device_used`, `address_login`
             (no. 2), `cancelled` (no. 3), `reply_received` (no. 4). After an abort the starting
-            registration falls under the deadline of A_CM-05;
+            registration falls under the deadline for discarding incomplete registrations;
           * `completed` — the registration is `bound`; tokens via a new Authorization Code
-            Flow (A_CM-53).
+            Flow.
         The categories tell the caller which channel the owner still controls (device, bound
         address, reply to N6). This is accepted: the caller already holds IDP access, and the
         information helps a legitimate user whose old address still answers automatically.
@@ -1108,11 +1113,11 @@ paths:
       tags: [recovery]
       summary: Abort an open re-binding from an existing client
       description: >-
-        Aborts the open re-binding of the caller's TI identity (A_CM-52 no. 3) and sends N9.
+        Aborts the open re-binding of the caller's TI identity and sends N9.
         Any successful request of another fully registered registration of the identity
         already aborts it (no. 1); this operation makes the abort explicit and counts as a
-        deliberate objection for A_CM-57 no. 4. No request body. Own path so that each path
-        has exactly one authorisation class and scope (A_CM-20, A_25668-01).
+        deliberate objection when re-bindings accumulate across identities. No request body. Own path so that each path
+        has exactly one authorisation class and scope (A_25668-01).
       security:
         - managementToken: [zeta:client-management]
       parameters:
@@ -1142,7 +1147,7 @@ paths:
       tags: [recovery]
       summary: Request a recovery code (optional) — start
       description: >-
-        Only if recovery codes are enabled for this Fachdienst (A_CM-55); otherwise
+        Only if recovery codes are enabled for this Fachdienst; otherwise
         `403 access_denied`. Requires step-up. The guard sends an OTP (N7 with purpose
         "issuing a recovery code") to the BOUND address and binds the challenge to the calling
         registration. The OTP mail is also the notification of the issuance.
@@ -1181,7 +1186,7 @@ paths:
         registration (`403 forbidden_target` otherwise). The guard generates a recovery code
         from a CSPRNG (16 characters Base32, 80 bit), delivers it ONCE in this response and
         stores only a salted hash; an existing code of the identity becomes invalid (at most
-        one valid code per identity, A_CM-55). Issuance is written to the user and audit log.
+        one valid code per identity). Issuance is written to the user and audit log.
         The client SHOULD guide the user to keep the code outside the device.
       security:
         - managementToken: [zeta:email-change]
@@ -1231,10 +1236,9 @@ paths:
       tags: [log]
       summary: Read the user log of the caller's identity
       description: |
-        Gives the user insight into the user log (A_CM-83 for A_25734; content per A_25749 and
-        A_CM-80). Returns the entries of the caller's TI identity (Telematik-ID for SM(C)-B) at
+        Gives the user insight into the user log (A_25734; content per A_25749). Returns the entries of the caller's TI identity (Telematik-ID for SM(C)-B) at
         this guard, newest first. Entries are kept per A_28808. No tokens, OTPs, key material,
-        IP addresses or locations; email addresses only masked (A_CM-82).
+        IP addresses or locations; email addresses only masked.
       security:
         - managementToken: [zeta:client-management]
       parameters:
@@ -1287,35 +1291,34 @@ components:
         the active instance key (`PrK.Client.Sig`, F2) of the registration addressed by the
         request, sent in the `Client-Assertion` header (the JWT alone; body-less operations
         cannot carry form parameters). Payload per `client-assertion-jwt.yaml`. Used only for
-        operations on the caller's own registration (A_CM-30, A_CM-41, A_CM-43, A_CM-52a); no
+        operations on the caller's own registration; no
         registration access token or other bearer secret exists. These routes run through the
-        PEP HTTP Proxy as pass-through (no token check at the PEP, A_CM-20); replay protection
+        PEP HTTP Proxy as pass-through (no token check at the PEP); replay protection
         is the authorization server's `jti` cache.
 
         The guard rejects with `401 invalid_client` if `iss`/`sub` are not the `client_id`,
         `aud` does not identify this authorization server, `htm`/`htu` do not match method and
         target URI of the request, the lifetime exceeds 60 seconds, `jti` was already used
-        within that lifetime, or the key is in its transition period after a rollover
-        (A_CM-45).
+        within that lifetime, or the key is in its transition period after a rollover.
     emailBindingToken:
       type: http
       scheme: dpop
       description: |
-        Email-binding token (A_CM-12): DPoP-bound access token issued at the end of the
+        Email-binding token: DPoP-bound access token issued at the end of the
         Authorization Code Flow to a registration in `pending_user_binding`, valid for at most
         15 minutes, without refresh token and without Fachdienst or management scopes; its
         `aud` is exactly the audience of this API (e.g. `cm_resource`). Sent as
         `Authorization: DPoP <token>` with a `DPoP` proof. Checked by the PEP HTTP Proxy
         (token, DPoP proof including replay, audience, scope of the path) and again by the
-        authorization server (A_CM-20, A_CM-21). Scopes:
-          * `zeta:email-binding` — register the address at first use (A_CM-13);
-          * `zeta:email-verify` — re-send and confirm the OTP (A_CM-14 to A_CM-16), start a
-            re-binding (A_CM-50).
+        authorization server. Scopes:
+          * `zeta:email-binding` — register the address at first use;
+          * `zeta:email-verify` — re-send and confirm the OTP, start a
+            re-binding.
     managementToken:
       type: http
       scheme: dpop
       description: |
-        Management token (A_CM-20 to A_CM-23): separate DPoP-bound ZETA access token whose
+        Management token: separate DPoP-bound ZETA access token whose
         `aud` is exactly the logical audience of this API (e.g. `cm_resource`, resource
         identifier `<issuer>/zeta`) and that carries only `zeta:client-management` and/or
         `zeta:email-change`; obtained by refresh (A_29843) or, for step-up, by the
@@ -1324,13 +1327,11 @@ components:
 
         The PEP HTTP Proxy checks token and DPoP proof by the regular procedures (A_25668-01,
         A_25667, A_30003, A_28803-01, including replay protection) and enforces audience,
-        scope and the fixed minimum `acr` per route. The authorization server checks again
-        (A_CM-21): signature, `exp`, `aud`, `scope`, `client_id`, `sub`; the forwarded DPoP
+        scope and the fixed minimum `acr` per route. The authorization server checks again: signature, `exp`, `aud`, `scope`, `client_id`, `sub`; the forwarded DPoP
         proof (signature, `htm`, `htu` against the configured EXTERNAL URL of the route — not
         against `Host`/`X-Forwarded-*` —, `iat`, key = `cnf.jkt`). It determines the calling
         registration and TI identity only from the verified token, never from PEP headers
-        alone. `401 invalid_token` if the calling registration is not fully registered
-        (A_CM-04) or the token was issued before its last rollover (A_CM-45);
+        alone. `401 invalid_token` if the calling registration is not fully registered or the token was issued before its last rollover;
         `401 invalid_dpop_proof` for a missing or invalid proof.
 
   parameters:
@@ -1347,7 +1348,7 @@ components:
       description: >-
         `client_id` of a registration of the caller's identity. Possession of the value is
         never authorisation; unknown and foreign targets are answered identically with
-        `403 forbidden_target` (A_CM-27).
+        `403 forbidden_target`.
       schema: { type: string, minLength: 1, maxLength: 128 }
     DPoPProof:
       name: DPoP
@@ -1374,7 +1375,7 @@ components:
     InvalidToken:
       description: >-
         invalid_token (token missing, invalid or expired; calling registration not fully
-        registered or deleted; token issued before the last rollover — A_CM-04, A_CM-21) |
+        registered or deleted; token issued before the last rollover) |
         invalid_dpop_proof (DPoP proof missing, invalid or replayed). Client: once refresh or
         new proof, then new authentication; for a deleted registration a follow-up
         registration.
@@ -1388,28 +1389,33 @@ components:
     StepUpRequired:
       description: |
         insufficient_user_authentication — `acr` below the minimum of the route or last user
-        authentication of the session older than `max_age` (A_CM-25, RFC 9470). The client
-        runs the Authorization Code Flow with the `acr_values` and `max_age` from
+        authentication of the session older than the step-up window (RFC 9470). The
+        client runs the Authorization Code Flow with the `acr_values` and `max_age=0` from
         `WWW-Authenticate` and retries once. Also returned for every `InvalidToken` case.
       headers:
         WWW-Authenticate:
           description: >-
             For the step-up case, e.g.
-            `DPoP error="insufficient_user_authentication", acr_values="<required>", max_age=300`.
+            `DPoP error="insufficient_user_authentication", acr_values="gematik-ehealth-loa-high", max_age=0`.
           schema: { type: string }
       content:
         application/json:
           schema: { $ref: '../schemas/zeta-error.yaml' }
     InsufficientScope:
-      description: insufficient_scope — required scope missing (PEP); the client obtains a token with the scope once.
+      description: >-
+        insufficient_scope — required scope missing (PEP); the client obtains a token with the
+        scope once. From Stufe 3 on with `denial_reason` `scope_insufficient` (AP03).
       content:
         application/json:
           schema: { $ref: '../schemas/zeta-error.yaml' }
     ForbiddenTarget:
       description: >-
         forbidden_target — target unknown, of another identity, in `pending_user_binding`, or
-        (SM(C)-B) of another `product_id` and not inactive for 30 days (A_CM-27, A_CM-33) |
-        insufficient_scope (PEP)
+        (SM(C)-B) of another `product_id` and not inactive for 30 days |
+        insufficient_scope (PEP). From Stufe 3 on with `denial_reason`:
+        `target_not_accessible` (unknown or of another identity, AC03),
+        `target_pending_binding` (AC04), `target_still_active` (AC05); insufficient_scope with
+        `scope_insufficient` (AP03).
       content:
         application/json:
           schema: { $ref: '../schemas/zeta-error.yaml' }
@@ -1420,9 +1426,9 @@ components:
           schema: { $ref: '../schemas/zeta-error.yaml' }
     OtpSendLimited:
       description: >-
-        otp_send_limited — send interval or sends per challenge (A_CM-15) or failed attempts /
-        sends per identity (A_CM-17) reached; for the blocking period all challenges of the
-        identity are discarded and no new ones issued. Also `rate_limit_exceeded` (A_CM-28).
+        otp_send_limited — send interval or sends per challenge or failed attempts /
+        sends per identity reached; for the blocking period all challenges of the
+        identity are discarded and no new ones issued. Also `rate_limit_exceeded`.
       headers:
         Retry-After:
           $ref: '#/components/headers/RetryAfter'
@@ -1437,8 +1443,7 @@ components:
     Unavailable:
       description: >-
         temporarily_unavailable — authorization server, database or mail delivery not
-        reachable. For OTP operations no challenge was created and no limit consumed
-        (A_CM-15). Retry after `Retry-After`.
+        reachable. For OTP operations no challenge was created and no limit consumed. Retry after `Retry-After`.
       headers:
         Retry-After:
           $ref: '#/components/headers/RetryAfter'
@@ -1446,7 +1451,7 @@ components:
         application/json:
           schema: { $ref: '../schemas/zeta-error.yaml' }
     RateLimitExceeded:
-      description: rate_limit_exceeded — more than 30 requests per minute and registration (A_CM-28)
+      description: rate_limit_exceeded — more than 30 requests per minute and registration
       headers:
         Retry-After:
           $ref: '#/components/headers/RetryAfter'
@@ -1464,7 +1469,7 @@ components:
     RolloverEnvelope:
       type: string
       description: |
-        Compact-serialized NESTED JWS authorizing an instance-key rollover (A_CM-42). The
+        Compact-serialized NESTED JWS authorizing an instance-key rollover. The
         guard verifies BOTH signature layers before applying the change. Sent as the request
         body with `Content-Type: application/zeta-rollover+jws`.
 
@@ -1475,7 +1480,7 @@ components:
           * INNER JWS — signed by the NEW instance key = proof that the caller controls the
             key being pinned. Its protected header carries the full new public key as `jwk`.
 
-        Claims in the inner payload (A_CM-43, A_CM-44):
+        Claims in the inner payload:
           * `nonce` — the single-use value from `HEAD /zeta/rollover-nonce`;
           * `htm` — `PUT`; `htu` — the target URI (`/register/{client_id}`);
           * `aud` — this ZETA Guard's issuer; `iat` — issue time;
@@ -1499,8 +1504,8 @@ components:
     EmailRequest:
       type: object
       description: >-
-        Address for first-use binding (`bind-email`, A_CM-13), email change
-        (`identity/email`, A_CM-35) or re-binding (`identity/rebind`, A_CM-50).
+        Address for first-use binding (`bind-email`), email change
+        (`identity/email`) or re-binding (`identity/rebind`).
       additionalProperties: false
       required: [email]
       properties:
@@ -1517,7 +1522,7 @@ components:
 
     OtpChallenge:
       type: object
-      description: OTP challenge issued (A_CM-15).
+      description: OTP challenge issued.
       additionalProperties: false
       required: [challenge_type, expires_in]
       properties:
@@ -1530,7 +1535,7 @@ components:
     OtpVerifyRequest:
       type: object
       description: >-
-        Confirmation of an OTP (A_CM-15). No `transaction_id`: at most one challenge is open
+        Confirmation of an OTP. No `transaction_id`: at most one challenge is open
         per registration, it is resolved from the token.
       additionalProperties: false
       required: [verify_type, code]
@@ -1552,8 +1557,8 @@ components:
     RebindVerifyRequest:
       type: object
       description: >-
-        Confirmation of the OTP sent to the new address of a re-binding (A_CM-50), optionally
-        with a recovery code (A_CM-55).
+        Confirmation of the OTP sent to the new address of a re-binding, optionally
+        with a recovery code.
       additionalProperties: false
       required: [verify_type, code]
       properties:
@@ -1568,7 +1573,7 @@ components:
     RecoveryCode:
       type: string
       description: >-
-        Recovery code (A_CM-55): 16 characters Base32 (RFC 4648 alphabet, 80 bit). The client
+        Recovery code: 16 characters Base32 (RFC 4648 alphabet, 80 bit). The client
         MAY display it in groups; it sends it without separators.
       pattern: '^[A-Z2-7]{16}$'
       example: "JBSWY3DPEHPK3PXP"
@@ -1583,7 +1588,7 @@ components:
 
     RebindStatus:
       type: object
-      description: Status of a re-binding (A_CM-52a).
+      description: Status of a re-binding.
       additionalProperties: false
       required: [status]
       properties:
@@ -1595,7 +1600,7 @@ components:
           description: Deadline (Unix time, seconds); present for `pending` and `suspended`.
         abort_reason:
           type: string
-          description: Present for `aborted` (A_CM-52 no. 1 to 4).
+          description: Present for `aborted`.
           enum: [device_used, address_login, cancelled, reply_received]
       allOf:
         - if:
@@ -1619,13 +1624,13 @@ components:
         clients:
           type: array
           maxItems: 1000
-          description: At most the configured maximum number of registrations (A_25748-02, A_CM-36).
+          description: At most the configured maximum number of registrations (A_25748-02).
           items: { $ref: '#/components/schemas/ClientSummary' }
 
     ClientSummary:
       type: object
       description: >-
-        One registration in the overview (A_CM-31). No key material, thumbprints, IP
+        One registration in the overview. No key material, thumbprints, IP
         addresses or locations.
       additionalProperties: false
       required: [client_id, client_name, registered_at, is_self]
@@ -1654,7 +1659,7 @@ components:
 
     RenameRequest:
       type: object
-      description: Only `client_name` can be changed (A_CM-32).
+      description: Only `client_name` can be changed.
       additionalProperties: false
       required: [client_name]
       properties:
@@ -1662,7 +1667,7 @@ components:
           type: string
           description: >-
             New name: 1–64 characters from letters, digits, space, `-` and `.`, with at least
-            one letter or digit (A_CM-32). The authorization server normalises to Unicode NFC
+            one letter or digit. The authorization server normalises to Unicode NFC
             before the check (clients SHOULD send NFC) and rejects violations with
             `400 invalid_client_metadata`. `\p{L}`/`\p{N}` need a Unicode-aware regex engine
             (ECMA-262 with `u` flag, Go RE2, Java; not Python `re`); the pattern uses no
@@ -1687,7 +1692,7 @@ components:
 
     UserLogEvent:
       type: object
-      description: One user log entry (A_CM-80).
+      description: One user log entry.
       additionalProperties: false
       required: [occurred_at, event]
       properties:
@@ -1698,7 +1703,7 @@ components:
           type: string
           maxLength: 64
           description: |
-            Event (A_25749, A_CM-80, A_CM-55). Open enum; clients display unknown values
+            Event (A_25749). Open enum; clients display unknown values
             generically.
               * `client_added` — registration reached `bound` (first use, follow-up, re-binding)
               * `client_added_crossguard` — fast-path registration
@@ -1708,7 +1713,7 @@ components:
               * `email_added` — F1 bound at first use
               * `email_changed`
               * `key_rollover`
-              * `otp_limit_reached` — limit of A_CM-17 reached
+              * `otp_limit_reached` — per-identity limit for one-time codes reached
               * `rebind_started`, `rebind_aborted`, `rebind_completed`
               * `recovery_code_issued`, `recovery_code_used`
           x-extensible-enum:
@@ -1746,5 +1751,5 @@ components:
           type: string
           maxLength: 254
           description: >-
-            Affected address, masked per A_CM-12 (e.g. `a***@d***.de`); for `email_added`,
+            Affected address, masked (e.g. `a***@d***.de`); for `email_added`,
             `email_changed` and re-binding events.

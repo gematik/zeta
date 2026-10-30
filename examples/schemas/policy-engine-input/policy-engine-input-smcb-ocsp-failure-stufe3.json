@@ -1,0 +1,55 @@
+{
+  "version": "1.1",
+  "schema_version": "1.5.0",
+  "client_registration_data": {
+    "client_id": "cid-win-sw-pqrst",
+    "product_id": "vsdm_test_client",
+    "product_version": "0.1.0",
+    "platform": "windows",
+    "posture_type": "software",
+    "registration_timestamp": 1678890000,
+    "attestation_timestamp": 1678890010,
+    "device_info": {
+      "os": "Windows 11 Home",
+      "os_version": "10.0.22000"
+    },
+    "attestation_result": {
+      "software": {
+        "arch": "amd64",
+        "binding_verified": true
+      }
+    }
+  },
+  "user_info": {
+    "identifier": "1-2-1234567890",
+    "professionOID": "1.2.276.0.76.4.50",
+    "commonName": "Arztpraxis Walter"
+  },
+  "delegation_context": null,
+  "authorization_request": {
+    "scopes": [
+      "vsdservice"
+    ],
+    "resource": "https://test-ik-nr.vsdm2.ti-dienste.de/vsdservice/v1/vsdmbundle",
+    "country_code": "DE",
+    "http_method": "POST",
+    "ip_address": "192.0.2.150",
+    "previous_ip_address": "192.0.2.150",
+    "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+    "amr": [
+      "urn:telematik:auth:sc"
+    ],
+    "acr": "gematik-ehealth-loa-substantial"
+  },
+  "ocsp_failures": [
+    {
+      "certificate_usage": "smcb_subject_token",
+      "certificate_issuer": "CN=GEM.SMCB-CA57 TEST-ONLY,OU=Institution des Gesundheitswesens-CA der Telematikinfrastruktur,O=gematik GmbH NOT-VALID,C=DE",
+      "responder_url": "http://ocsp.example-tsp.de/ocsp",
+      "failure": "timeout",
+      "attempted_at": 1761822000,
+      "duration_ms": 5000,
+      "last_good_response_at": 1761800400
+    }
+  ]
+}

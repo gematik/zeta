@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: OAuth 2.0 Token Endpoint (RFC 6749 Section 3.2)
-  version: 1.2.0
+  version: 1.4.0
   description: |
     Token endpoint of the ZETA Guard Authorization Server.
 
@@ -17,26 +17,45 @@ info:
     Changes 1.1.0 -> 1.1.1 (description only): management token of the Client Management API
     obtained as a separate token with exactly one `resource` (`<issuer>/zeta`); more than one
     `resource` is rejected with `invalid_target`; rules for the management scopes
-    (client-management target model A_CM-22, A_CM-23, placeholder IDs).
+    (client-management target model).
 
     Changes 1.1.1 -> 1.1.2 (description only): `403 access_denied` also when the maximum
-    number of SM(C)-B registrations per Telematik-ID is reached (A_CM-36); the email-binding
+    number of SM(C)-B registrations per Telematik-ID is reached (client-management target
+    model only, not yet part of gemSpec_ZETA 2.0.1); the email-binding
     token carries the audience of the Client Management API, because all its operations run
-    through the PEP HTTP Proxy (A_CM-12, A_CM-20).
+    through the PEP HTTP Proxy.
 
     Changes 1.1.2 -> 1.2.0: token exchange of Workload Identity Federation (service-to-service
-    communication, gemSpec_ZETA 2.0.1 A_28431, proposal A_NEU-ABL-12): `subject_token_type`
+    communication, gemSpec_ZETA 2.0.1 A_28431): `subject_token_type`
     `urn:ietf:params:oauth:token-type:id_token` and the parameter `requested_token_type` are
     added; `client_assertion_type`, `client_assertion` and the `DPoP` header are no longer
     required by the schema, because this variant has no registered client. For all other
     grants they remain mandatory (checked by the Authorization Server, A_25659). For code
     generators the three fields become optional.
 
+    Changes 1.2.0 -> 1.3.0: a Policy Engine denial caused solely by the user authentication
+    (`acr` below the required level, or authentication older than the required maximum age)
+    is answered with `403 insufficient_acr` and `acr_values` in the body
+    (and `max_age` if required) instead of `403 access_denied`, only for grants with user
+    authentication (zeta-error.yaml 1.7.0, token-response.yaml 1.4.0,
+    pdp-decision.yaml 1.3.0 `required_acr`, `required_max_age`; table Tab-ZETA-PDP-Fehlerfälle-Token-Endpunkt
+    T15). A client that does not know the code treats it as
+    `access_denied`.
+
+    Changes 1.3.0 -> 1.4.0 (backward compatible; to be implemented from Stufe 3 on): the
+    403 body (token-response.yaml 1.5.0 denyResponse) and the 503 body gain the optional
+    fields `denial_reason` (zeta-error.yaml 1.8.0), `trace_id` and, with update codes,
+    `min_version`; the Authorization Server maps `result.reason_codes` of the decision
+    (pdp-decision.yaml 1.4.0) according to Tab-ZETA-Ablehnungsgründe. A denial solely
+    because the revocation status of the SM(C)-B certificate is unavailable is answered
+    with `503 temporarily_unavailable` and `Retry-After`. The `Retry-After` header of 503 is now documented (T18). Until Stufe 3
+    the Authorization Server sends none of the new fields; clients ignore unknown fields.
+
     Every request is authenticated with a `private_key_jwt` client assertion (RFC 7523) and
     carries a DPoP proof (RFC 9449); requests without them are rejected with
     `401 invalid_client` resp. `400 invalid_dpop_proof` (A_25659). Only exception: the token
     exchange of Workload Identity Federation, where the requesting service is identified by
-    the validated subject token and a DPoP proof is optional (proposal A_NEU-ABL-12).
+    the validated subject token and a DPoP proof is optional.
 
     Nonce: where a request carries a nonce (subject token, posture of the client
     statement, DPoP proof), the Authorization Server checks and consumes it in one
@@ -60,7 +79,7 @@ paths:
                 (`subject-token-smb.yaml`, A_25645-02);
               - `urn:ietf:params:oauth:token-type:access_token` — redemption of the
                 down-scoped email-binding token for full tokens (A_30218);
-              - Workload Identity Federation (proposal A_NEU-ABL-12): `subject_token` is a
+              - Workload Identity Federation: `subject_token` is a
                 JWT according to `subject-token-workload.yaml`, with `subject_token_type`
                 `urn:ietf:params:oauth:token-type:jwt` or
                 `urn:ietf:params:oauth:token-type:id_token`. The Authorization Server
@@ -68,9 +87,9 @@ paths:
                 in the JOSE header; `jwt` with the SM(C)-B certificate in `x5c` is the
                 SM(C)-B subject token (proposal A_25645-03). The variant is chosen from
                 still unverified data; all decisions follow the checks of
-                A_NEU-ABL-12. `iss` MUST be an issuer registered with gematik
+                the subject token. `iss` MUST be an issuer registered with gematik
                 (A_28437-02) and configured at this Authorization Server
-                (`workload-issuer.yaml`, proposal A_NEU-ABL-18), otherwise
+                (`workload-issuer.yaml`), otherwise
                 `invalid_grant`. No client assertion; DPoP proof optional; the request
                 carries exactly one `resource` and no `audience` (contract v2 only). Each
                 (`iss`, `jti`) of a subject token is accepted once. The Policy Engine input follows
@@ -78,7 +97,7 @@ paths:
                 according to `access-token-workload.yaml`, `token_type` `Bearer` (or `DPoP`
                 if a valid DPoP proof was sent), `issued_token_type`
                 `urn:ietf:params:oauth:token-type:access_token`, `expires_in` of at most
-                3600 seconds and no refresh token (proposal A_NEU-ABL-25).
+                3600 seconds and no refresh token.
           * `authorization_code` — outer Authorization Code Flow of mobile clients with
             PKCE (`code`, `redirect_uri` = app_redirect_uri, `code_verifier`), A_29672.
           * `urn:ietf:params:oauth:grant-type:jwt-bearer` (RFC 7523 section 2.1) —
@@ -96,10 +115,10 @@ paths:
         the email-binding token carries the target of the original request. A `resource`
         that names an unsupported target is rejected with `invalid_target` (A_29694).
         Every access token has exactly one audience: a request with more than one
-        `resource` is rejected with `400 invalid_target` (A_CM-22), so that each scope
+        `resource` is rejected with `400 invalid_target`, so that each scope
         unambiguously belongs to the one target of the token.
 
-        Management token (client-management target model A_CM-22, A_CM-23): a separate
+        Management token: a separate
         token for the Client Management API, obtained when needed with
         `grant_type=refresh_token` (A_29843), `resource=<issuer>/zeta` as the only
         resource and the scopes `zeta:client-management` and/or `zeta:email-change` only.
@@ -108,8 +127,7 @@ paths:
         the resource of the Fachdienst; the refresh token rotates each time. The management
         scopes are granted only with `<issuer>/zeta` and only to registrations in status
         `bound` (`zeta:client-management` also to `active` SM(C)-B registrations); no other
-        scope is granted with `<issuer>/zeta`. Violations: `400 invalid_scope`. For step-up
-        (A_CM-25) the client runs the `authorization_code` flow with
+        scope is granted with `<issuer>/zeta`. Violations: `400 invalid_scope`. For step-up the client runs the `authorization_code` flow with
         `resource=<issuer>/zeta`, `acr_values` and `max_age` from the `WWW-Authenticate`
         challenge of the Client Management API; the AS keeps the time of the last user
         authentication in the session (from `auth_time` of the ID token) and does not change
@@ -126,7 +144,7 @@ paths:
         the requested scope (returned explicitly per RFC 6749 section 5.1 to signal that
         less than requested was granted), DPoP-bound, WITHOUT any Fachdienst or management
         scopes, with `aud` = exactly the logical audience of the Client Management API (e.g.
-        `cm_resource`, A_CM-12; the binding endpoints run through the PEP HTTP Proxy, A_CM-20),
+        `cm_resource`; the binding endpoints run through the PEP HTTP Proxy),
         WITHOUT a refresh token and with a lifetime of at most 900 seconds
         (SHOULD: 300–900 seconds). The granted scope depends on the email state of the
         identity and encodes the client's next step:
@@ -161,7 +179,7 @@ paths:
             (`cnf.jkt`). A refresh, and the redemption of the email-binding token, use the
             same DPoP key as the request that opened the session. REQUIRED for all grants
             except the token exchange of Workload Identity Federation, where it is optional
-            (A_25659, proposal A_NEU-ABL-12).
+            (A_25659).
           schema:
             type: string
       requestBody:
@@ -268,7 +286,7 @@ paths:
                     bound to the actual request via the DPoP proof `htu` claim (RFC 9449).
                     MUST NOT be combined with `audience`. Exactly one value per request
                     (more than one: `400 invalid_target`); for the Client Management API
-                    `<issuer>/zeta` (A_CM-22).
+                    `<issuer>/zeta`.
               required:
                 - grant_type
       responses:
@@ -305,7 +323,7 @@ paths:
             unknown — the client MUST then restart with a new OIDC authorization request.
             Workload Identity Federation: a subject token that is invalid (signature, `iss`
             not registered, `aud`, expiry) is answered with `invalid_grant` without asking the
-            Policy Engine (proposal A_NEU-ABL-12).
+            Policy Engine.
             Every refresh token that can no longer be used — unknown, expired, re-used,
             revoked via `/revoke` or belonging to a terminated session — is answered with
             `invalid_grant` and an identical body; on re-use the session is additionally
@@ -320,10 +338,9 @@ paths:
             Client authentication failed or is missing (`invalid_client`) — A_25661-01,
             A_25659; not used for the token exchange of Workload Identity Federation. The token endpoint
             never signals step-up (`insufficient_user_authentication`): step-up need is signalled
-            only by the protected endpoints per RFC 9470 (PEP, A_28525-02; client management,
-            A_CM-25), whose `WWW-Authenticate` header supplies the `acr_values`. An insufficient
+            only by the protected endpoints per RFC 9470 (PEP, A_28525-02; client management), whose `WWW-Authenticate` header supplies the `acr_values`. An insufficient
             authentication level at the token endpoint is evaluated by the Policy Engine via
-            `acr` (scope reduction or `403 access_denied`).
+            `acr` (scope reduction, `403 insufficient_acr` or `403 access_denied`).
           content:
             application/json:
               schema:
@@ -332,23 +349,59 @@ paths:
           description: >-
             The Policy Engine denied the request although the credentials are valid
             (`access_denied`; the body then additionally carries `reasons`,
-            `token-response.yaml` denyResponse), or the Authorization Backend denied access
-            (`access_denied`, A_30243), or — at the first token exchange of an SM(C)-B
-            registration — the configured maximum number of `active` SM(C)-B registrations
-            per Telematik-ID is reached (`access_denied`, client-management target model
-            A_CM-36; no registration is displaced automatically, the client deletes one via
-            the Client Management API). For the token exchange of Workload Identity
+            `token-response.yaml` denyResponse), or denied it solely because of the
+            user authentication, i.e. the authentication level (`acr`) is insufficient or the
+            authentication is older than the required maximum age (`insufficient_acr`, decision
+            carries `required_acr` and in the latter case `required_max_age`; the body
+            additionally carries `acr_values` and, if the decision carries
+            `required_max_age`, `max_age`; the client runs the
+            authorization code flow at most once per original request with these values,
+            and not at all if the request was the token request of a step-up after a PEP
+            401, T15). `insufficient_acr` is sent only for grants with user
+            authentication (`authorization_code`, redemption of the email-binding token,
+            `refresh_token` of such a session); for all other grants the Authorization
+            Server ignores `required_acr` and answers `access_denied`. The Authorization
+            Backend never sends `insufficient_acr`. A client that receives
+            `insufficient_acr` without valid `acr_values` treats it as `access_denied`
+            (T16). 403 is further used when the Authorization Backend denied access
+            (`access_denied`, A_30243). Client-management target model only (not yet part
+            of gemSpec_ZETA 2.0.1): at the first token exchange of an SM(C)-B registration
+            403 is also used when the configured maximum number of `active` SM(C)-B
+            registrations per Telematik-ID is reached (`access_denied`; no registration is
+            displaced automatically, the client deletes one via the Client Management API). For the token exchange of Workload Identity
             Federation 403 means the Policy Engine denied the workload. 403 is used for no
             other case; a terminated session or
             revoked refresh token is `400 invalid_grant`.
+            From Stufe 3 on every 403 body carries `denial_reason` and `trace_id`; the
+            Authorization Server determines `denial_reason` from `result.reason_codes`, the
+            Authorization Backend (`backend_denied`) or, with the client-management target
+            model only, the registration limit (`registration_limit_reached`) according to
+            Tab-ZETA-Ablehnungsgründe. The reaction of the client still follows
+            `error` only (T16, for Workload Identity Federation T23).
           content:
             application/json:
               schema:
                 # anyOf, not oneOf: denyResponse is zeta-error plus `reasons`, so a
-                # deny body matches both branches.
+                # deny body matches both branches. The second branch excludes
+                # insufficient_acr, acr_values and max_age, so that their rules
+                # (token-response.yaml denyResponse, T15) hold at the interface.
                 anyOf:
                   - $ref: '../schemas/token-response.yaml#/definitions/denyResponse'
-                  - $ref: '../schemas/zeta-error.yaml'
+                  - allOf:
+                      - $ref: '../schemas/zeta-error.yaml'
+                      - properties:
+                          trace_id:
+                            $ref: '../schemas/token-response.yaml#/definitions/traceId'
+                      - not:
+                          anyOf:
+                            - required: [error]
+                              properties:
+                                error:
+                                  const: insufficient_acr
+                                  example: insufficient_acr
+                            - required: [acr_values]
+                            - required: [max_age]
+                            - required: [min_version]
         '429':
           description: Rate limit exceeded (`rate_limit_exceeded`, A_26668-02).
           headers:
@@ -374,8 +427,35 @@ paths:
             A component required for the decision is not available
             (`temporarily_unavailable`); no tokens are issued. This includes the token
             exchange of Workload Identity Federation when the JWKS of a registered issuer
-            cannot be obtained and no valid cached copy exists (proposal A_NEU-ABL-18).
+            cannot be obtained and no valid cached copy exists, and the token exchange
+            with an SM(C)-B-signed subject token when no usable OCSP response for the
+            SM(C)-B certificate is available and the Authorization Server is configured
+            to fail closed (default); the Policy Engine is not asked then.
+            From Stufe 3 on also when the Policy Engine denies solely because the
+            revocation status of the SM(C)-B certificate is unavailable (`reason_codes`
+            only `revocation_status_unavailable` and no other reason, row AG17 of
+            Tab-ZETA-Ablehnungsgründe). From Stufe 3 on the body carries `denial_reason`
+            `revocation_status_unavailable` and `trace_id` in both cases (fail closed and
+            policy denial; row AG17). The
+            client repeats at the earliest after `Retry-After`, at most once per
+            original request from Stufe 3 on (T18).
+          headers:
+            Retry-After:
+              description: >-
+                Optional (T18): seconds after which the client may repeat the request.
+                From Stufe 3 on always set for `denial_reason`
+                `revocation_status_unavailable`: `retry_after` of the decision or the
+                configured default (60 s), at least 30 s.
+              example: 60
+              schema:
+                type: integer
+                minimum: 1
+                maximum: 3600
           content:
             application/json:
               schema:
-                $ref: '../schemas/zeta-error.yaml'
+                allOf:
+                  - $ref: '../schemas/zeta-error.yaml'
+                properties:
+                  trace_id:
+                    $ref: '../schemas/token-response.yaml#/definitions/traceId'

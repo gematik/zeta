@@ -9,9 +9,7 @@ title: Subject Token (Workload)
 description: >-
   Subject token that a workload presents in the token exchange (RFC 8693) of
   Workload Identity Federation (gemSpec_ZETA 2.0.1 A_28431). It is issued by
-  the authorization server of the requesting provider for one of its workloads
-  (proposal A_NEU-ABL-17) and checked by the receiving Secure Token Service
-  (proposal A_NEU-ABL-12): signature against the JWKS of the registered issuer
+  the authorization server of the requesting provider for one of its workloads and checked by the receiving Secure Token Service: signature against the JWKS of the registered issuer
   (A_28437-02), iss, aud, exp, nbf and iat.
 
   The issuer is either a ZETA Guard or a signing key of the provider
@@ -63,8 +61,7 @@ properties:
         description: >-
           Issuer of the subject token. MUST be an issuer registered with gematik
           (gemSpec_ZETA 2.0.1 A_28437-02); the Secure Token Service recognises the
-          token exchange of Workload Identity Federation by it (proposal
-          A_NEU-ABL-12).
+          token exchange of Workload Identity Federation by it.
       sub:
         type: string
         minLength: 1
@@ -92,7 +89,7 @@ properties:
         description: >-
           Expiration time as a Unix timestamp. The lifetime (exp - iat) MUST NOT
           exceed 300 seconds; the receiving Secure Token Service rejects longer
-          lifetimes (proposal A_NEU-ABL-12).
+          lifetimes.
       iat:
         type: integer
         description: Issued at time as a Unix timestamp.
@@ -104,8 +101,7 @@ properties:
         minLength: 1
         description: >-
           Unique identifier of the subject token. The receiving Secure Token
-          Service accepts each (iss, jti) only once until exp (proposal
-          A_NEU-ABL-12).
+          Service accepts each (iss, jti) only once until exp.
     required:
       - iss
       - sub

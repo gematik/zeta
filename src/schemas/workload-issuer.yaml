@@ -4,12 +4,11 @@ title: Workload Issuer
 description: >
   Schema für die Konfiguration eines Ausstellers von Subject Tokens der
   Workload Identity Federation, dessen Subject Tokens der Authorization
-  Server eines ZETA Guard als Secure Token Service annimmt (Vorschlag
-  A_NEU-ABL-18). Jede Datei beschreibt genau einen bei der gematik
+  Server eines ZETA Guard als Secure Token Service annimmt. Jede Datei beschreibt genau einen bei der gematik
   registrierten Aussteller (gemSpec_ZETA 2.0.1 A_28437-02).
 
   Bis zur Einführung des ZG Client (Stufe 3) konfiguriert der Anbieter des
-  TI 2.0 Dienstes die Aussteller statisch (Vorschlag A_NEU-ABL-26);
+  TI 2.0 Dienstes die Aussteller statisch;
   metadata.status ist dann `normative`. Ab Stufe 3 verteilt die gematik die
   Einträge je Fachdienst-Typ signiert im ZG Client Konfigurations-Image
   (Verzeichnis /workload-issuers/, gemSpec_ZETA Kapitel 5.6.7).
@@ -17,7 +16,7 @@ description: >
   Der Secure Token Service nimmt ein Subject Token nur an, wenn iss exakt dem
   Feld issuer eines konfigurierten Eintrags entspricht. Er prüft die Signatur
   ausschließlich mit den hier genannten Schlüsseln (jwks) bzw. dem unter
-  jwks_uri abgerufenen JWKS (Vorschlag A_NEU-ABL-18). Welche Workloads (Paar
+  jwks_uri abgerufenen JWKS. Welche Workloads (Paar
   iss, sub) welche Scopes erhalten, entscheidet die Policy Engine.
 
 type: object

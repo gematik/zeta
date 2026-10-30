@@ -15,8 +15,12 @@ box "Anbieter TI 2.0 Dienst" PROVIDER_COLOR
   box "ZETA Guard" ZETA_GUARD_COLOR
     participant AuthS as "PDP\nAuthorization Server" <<zeta>>
     participant OPA as "PDP\nPolicy Engine" <<zeta>>
+    participant Telemetrie as "Telemetriedaten-\nService" <<zeta>>
   end box
 end box
+
+participant OCSP as "OCSP Responder\ndes SM(C)-B-TSP"
+participant SIEM as "TI-SIEM\n(gematik)"
 
 Client++
 Client -> Client : Create DPoP Key Pair (PrK.DPoP.Sig, PuK.DPoP.Sig)
@@ -32,34 +36,75 @@ end
 Client -> Client : Create DPoP Proof (with Nonce from AuthS)
 Client -> AuthS++: POST /token dpop: dpop_proof\nclient_assertion (JWT, PrK.Client.Sig signiert), subject_token (SMC-B signiert, inkl. Nonce)\ngrant_type, resource/audience, scope, subject_token_type
 
-AuthS -> AuthS: Validate Request (Client Assertion, DPoP Proof,\nSubject Token, Nonce, verify key bindings (client_key with DCR Client Key,\ndpop_key with DPoP Proof), Sperrstatus (OCSP) der SM(C)-B)
+AuthS -> AuthS: Validate Request (Client Assertion, DPoP Proof,\nSubject Token, Nonce, verify key bindings (client_key with DCR Client Key,\ndpop_key with DPoP Proof))
 alt TPM Attestation (Windows / Linux)
     AuthS -> AuthS: Verifiziere Hardware-Signatur (Quote) gegen extrahierte Nonce\nPCR-Replay via Event Log
 else macOS Attestation (Secure Enclave)
     AuthS -> AuthS: Prüfe Signaturen und counter (Replay-Schutz)
 end
+opt Client Assertion, Attestierung und Signatur des Subject Token gültig, Zertifikatskette gegen TSL geprüft\nund keine gültige OCSP Response für das SM(C)-B-Zertifikat im Cache
+  alt Responder im Negativ-Cache
+    AuthS -> AuthS: gespeicherte Fehlerart verwenden (keine Abfrage)
+  else
+    AuthS -> OCSP: OCSP Request an Responder-Adresse aus der TSL\n(SM(C)-B-Zertifikat C.HCI.AUT; mit Timeout)
+    alt verwertbare OCSP Response
+      OCSP --> AuthS: OCSP Response (certStatus good, revoked oder unknown)
+    else keine verwertbare OCSP Response (Timeout, Verbindungsfehler,\nHTTP-/OCSP-Fehlerstatus, ungültige Response)
+      OCSP --> AuthS: keine bzw. unbrauchbare Antwort
+      AuthS -> AuthS: Fehlschlag je Responder zwischenspeichern
+    end
+  end
+  opt keine verwertbare OCSP Response
+    AuthS ->> Telemetrie: OTel-Log-Event zeta.ocsp.responder_unavailable\n(Responder-URL, Fehlerart, failure_count; gedrosselt)
+    Telemetrie ->> SIEM: Event weiterleiten
+    note right of Telemetrie
+      Betreiber erhält nur die Metrik
+      zeta.ocsp.responder.failures
+      (server.address, error.type)
+    end note
+    AuthS -> AuthS: Fehlschlag für die Entscheidung nach Konfiguration vormerken
+  end
+end
 alt Validation successful
-    AuthS -> AuthS: Policy Engine Input erstellen
-    AuthS -> OPA++: POST /v1/data/authz {Policy Engine Input}
-    OPA --> AuthS--: Policy Decision
+    alt keine verwertbare OCSP Response und Konfiguration fail_closed (Standard)
+        AuthS --> Client: 503 Service Unavailable {"error": "temporarily_unavailable"}, Retry-After (optional)\n(keine Abfrage der Policy Engine; ab Stufe 3\ndenial_reason revocation_status_unavailable)
+    else verwertbare OCSP Response oder Konfiguration policy
+        AuthS -> AuthS: Policy Engine Input erstellen\n(bei Konfiguration policy ggf. mit ocsp_failures)
+        AuthS -> OPA++: POST /v1/data/authz {Policy Engine Input}
+        OPA --> AuthS--: Policy Decision
+        note right of OPA
+          Bei ocsp_failures entscheidet die Policy
+          über fail open (allow) oder fail closed
+          (deny); ohne Auswertung fail open.
+          Betreiber sollte policy nur wählen, wenn
+          die Policy ocsp_failures auswertet.
+        end note
 
-    alt Policy Decision allow
-        AuthS -> AuthS: Create Token (Access Token, Refresh Token)
-        alt Hardware Attestation  (TPM / SE)
-            AuthS -> AuthS: Create ZETA Attestation Token (zeta_attestation_token)
-            AuthS --> Client: 200 OK {Access Token, Refresh Token, zeta_attestation_token}
-        else Software Attestation (Fallback)
-            AuthS --> Client: 200 OK {Access Token, Refresh Token}
+        alt Policy Decision allow
+            AuthS -> AuthS: Create Token (Access Token, Refresh Token)
+            alt Hardware Attestation  (TPM / SE)
+                AuthS -> AuthS: Create ZETA Attestation Token (zeta_attestation_token)
+                AuthS --> Client: 200 OK {Access Token, Refresh Token, zeta_attestation_token}
+            else Software Attestation (Fallback)
+                AuthS --> Client: 200 OK {Access Token, Refresh Token}
+            end
+        else Policy Decision deny
+            AuthS --> Client: 403 Forbidden {"error": "access_denied", "reasons": {...}}
+            note right of AuthS
+              Ab Stufe 3: Mapping der reason_codes nach
+              Tab-ZETA-Ablehnungsgründe;
+              Body zusätzlich denial_reason, trace_id.
+              revocation_status_unavailable als einziger
+              Grund: 503 temporarily_unavailable + Retry-After.
+            end note
         end
-    else Policy Decision deny
-        AuthS --> Client: 403 Forbidden {"error": "access_denied", "reasons": [...]}
     end
 else Validation fehlerhaft
     alt Client-Authentifizierung fehlgeschlagen (Client Assertion)
         AuthS --> Client: 401 Unauthorized {"error": "invalid_client"}
     else DPoP-Proof ungültig
         AuthS --> Client: 400 Bad Request {"error": "invalid_dpop_proof"}
-    else Subject-Token/SM(C)-B ungültig oder gesperrt, Nonce/Grant ungültig
+    else Subject-Token/SM(C)-B ungültig oder gesperrt (OCSP revoked/unknown), Nonce/Grant ungültig
         AuthS --> Client--: 400 Bad Request {"error": "invalid_grant"}
     end
 end

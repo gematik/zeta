@@ -10,7 +10,7 @@ description: >
 
   Bis zur Einführung des ZG Client (Stufe 3) konfiguriert der Anbieter die
   Zieldienste des Authorization Servers (cronjob nach A_28431) statisch im
-  selben Format (Vorschlag A_NEU-ABL-19); metadata.status ist dann
+  selben Format; metadata.status ist dann
   `normative`, metadata.fachdienst_typ der eigene Fachdienst-Typ. Ab Stufe 3
   bezieht der ZETA Guard die Einträge aus dem Konfigurations-Image.
 
@@ -173,8 +173,7 @@ properties:
           Wert des Parameters `audience` [RFC8693] im Token Exchange
           (Contract v1, Legacy). Genau eines von `resource` und `audience` ist
           anzugeben. Nur für Zieldienste ohne ZETA Guard; der Secure Token
-          Service eines ZETA Guard lehnt audience ab (Vorschlag A_NEU-ABL-12,
-          T20) und verlangt resource.
+          Service eines ZETA Guard lehnt audience ab (T20) und verlangt resource.
         minLength: 1
       scopes:
         type: array
@@ -194,7 +193,7 @@ properties:
           dass sich der ZG Client ausschließlich über das Subject Token
           ausweist. Für Zieldienste mit ZETA Guard MUSS der Wert `none` sein;
           `private_key_jwt` nur für Zieldienste ohne ZETA Guard, die eine
-          Client-Authentisierung verlangen (Vorschlag A_NEU-ABL-12, T20).
+          Client-Authentisierung verlangen (T20).
         enum: [none, private_key_jwt]
         default: none
       dpop:
@@ -204,7 +203,7 @@ properties:
           ZG Client den Token Exchange und die Requests an den Zieldienst mit
           DPoP-Proof [RFC9449] ausführen muss. Default true, weil ein
           DPoP-gebundenes Token stärker ist als ein Bearer-Token; der STS
-          eines ZETA Guard unterstützt beides (Vorschlag A_NEU-ABL-25). false
+          eines ZETA Guard unterstützt beides. false
           nur für Zieldienste, die DPoP nicht unterstützen.
         default: true
 

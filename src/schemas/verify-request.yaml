@@ -11,7 +11,7 @@ description: >-
   Präzisierung 1.0.1 (nur Beschreibung, gültige Instanzen unverändert): Der
   Zweig email_otp ist DEPRECATED. POST /zeta/identity/email/verify nutzt seit
   zeta-guard-client-management.yaml 1.0.0-draft OtpVerifyRequest ohne
-  transaction_id (A_CM-35). POST /register/verify beantwortet email_otp mit
+  transaction_id. POST /register/verify beantwortet email_otp mit
   400 invalid_request; das Schema lässt den Zweig aus Gründen der
   Abwärtskompatibilität weiter zu (eine Einschränkung auf tpm_activation wäre
   eine Major-Änderung).

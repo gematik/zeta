@@ -42,8 +42,8 @@ alt Kein ZETA Attestation Token
         Client -> AuthS: POST /register\n{attestation_type="android", client_name, jwks (enthält PuK.Client.Sig),\nandroid_key_attestation_certificate_chain, nonce, signed_hash_puk_client_sig,\nplay_integrity_token, grant_types, redirect_uris}
         AuthS -> AuthS: Prüfe und verbrauche nonce (zuerst, A_30515); prüfe signed_hash_puk_client_sig mit PuK.Client.Sig\nüber SHA-256(PuK.Client.Sig || nonce) (Selbstsignatur, PoP des Client Instance Keys;\nohne nonce Legacy-Form über SHA-256(PuK.Client.Sig) bis 01.01.2028, A_30193)
         AuthS -> AuthS: Validiere Zertifikatskette gegen Google Root CA
-        AuthS -> AuthS: Extrahiere attestationChallenge aus KeyDescription ASN.1-Extension des Blatt-Zertifikats
-        AuthS -> AuthS: Prüfe attestationChallenge == SHA-256(PuK.Client.Sig)
+        AuthS -> AuthS: Extrahiere aus KeyDescription ASN.1-Extension des Blatt-Zertifikats:\nattestationChallenge, attestationApplicationId, osVersion, osPatchLevel, rootOfTrust
+        AuthS -> AuthS: Prüfe attestationChallenge == SHA-256(PuK.Client.Sig);\nprüfe attestationApplicationId (Paketname, Signatur-Digest) gegen die App-Identität der product_id
 
         opt Play Integrity Prüfung
             AuthS -> AuthS: Entschlüssele play_integrity_token (lokal/remote)
@@ -54,6 +54,8 @@ alt Kein ZETA Attestation Token
         note right of AuthS
           PuK.AK.Sig ist der Public Key des Blatt-Zertifikats der Certificate Chain (kein eigenes Request-Feld). Sicherheitsniveau:
           TrustedEnvironment oder StrongBox. attestationChallenge im Blatt-Zertifikat beweist die TEE-interne Bindung AK ↔ PuK.Client.Sig.
+          Fehlt attestationApplicationId, lehnt der AuthS mit invalid_attestation ab. osVersion, osPatchLevel und
+          rootOfTrust (verifiedBootState, deviceLocked) speichert er im Registrierungsdatensatz für die Policy Engine.
         end note
     else Software Attestation (Legacy OIDC DCR)
         Client -> AuthS: POST /register\n{attestation_type="software", client_name, "grant_types": ["authorization_code", "urn:ietf:params:oauth:grant-type:token-exchange",\n"refresh_token"], jwks, token_endpoint_auth_method="private_key_jwt", nonce, signed_hash_puk_client_sig,\n  "redirect_uris": ["https://<App-FQDN>/cb/<app>/oidc", "https://<App-FQDN>/cb/<app>/app"]}

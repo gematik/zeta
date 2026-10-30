@@ -1,5 +1,23 @@
+# 1.3.0 (abwärtskompatibel): required_acr und required_max_age für die
+# Ablehnung wegen unzureichendem Authentifizierungsniveau (Tab-ZETA-PDP-
+# Fehlerfälle-Token-Endpunkt T15). `result` ist
+# additionalProperties: false: Erst den Authorization Server auf 1.3.0
+# aktualisieren, dann Policies ausrollen, die die Felder setzen; ein AS nach
+# 1.2.0 wertet eine solche Entscheidung als Policy-Fehler (fail closed).
+#
+# 1.4.0 (abwärtskompatibel, Umsetzung ab Stufe 3): optionales Feld reason_codes
+# mit maschinenlesbaren Ablehnungsgründen der Policy; der Authorization Server
+# bildet sie über Tab-ZETA-Ablehnungsgründe auf genau einen Client-Code ab
+# (zeta-error.yaml denial_reason).
+# reasons darf eine Map oder ein Array von Strings sein (Policies erzeugen mit
+# Partial Set Rules ein Array). Die Antwort hängt von der Version des Inputs
+# ab: reason_codes nur, wenn der Policy Engine Input schema_version ab 1.5.0
+# (policy-engine-input.yaml) bzw. ab 1.1.0 (policy-engine-input-workload.yaml)
+# trägt. Ein AS der Stufe 2 setzt schema_version
+# nicht und erhält daher keine reason_codes; das gilt je Instanz, also auch im
+# Mischbetrieb während eines Rolling Update.
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.2.0"
+schemaVersion: "1.4.0"
 title: PDP Decision Response
 description: Schema for the PDP Decision as provided by the OPA Policy Engine
   REST API (/v1/data/...).
@@ -13,7 +31,7 @@ properties:
     type: object
     description: >
       The evaluated decision value. Contains 'allow' and either 'ttl' (on
-      success) or 'reasons' (on denial).
+      success) or 'reasons' and optionally 'reason_codes' (on denial).
     additionalProperties: false
     properties:
       allow:
@@ -77,14 +95,285 @@ properties:
         items:
           type: string
         uniqueItems: true
+      required_acr:
+        description: >
+          Optional (added in 1.3.0). Only present when allow is false and the
+          denial is caused solely by the user authentication: (a) the `acr` of
+          the authenticated user (Policy Engine Input) is below the level
+          required for the requested scopes or resource, or (b) the `acr` is
+          sufficient but the authentication is older than the maximum age
+          required by the policy (`auth_time` missing or too old). Lists the acr values, any of which would satisfy the
+          policy, in order of preference; in case (b) it lists the required
+          level (which the current `acr` may already meet) and
+          `required_max_age` MUST be set. Only the two levels defined for the sectoral IDP are
+          allowed: gematik-ehealth-loa-substantial and gematik-ehealth-loa-high
+          (gemSpec_IDP_Sek 3.3.0 A_22987, A_22988; other acr values are not
+          used in the TI).
+          For grants with user authentication (`authorization_code`, token
+          exchange of the email-binding token, `refresh_token` of a session
+          opened by one of them) the Authorization Server answers 403 with
+          error `insufficient_acr` and returns the values space-separated in
+          `acr_values` (without duplicates, as here), and `required_max_age`
+          as `max_age`
+          (token-response.yaml denyResponse; T15). For all
+          other grants (token exchange with SM(C)-B subject token,
+          `jwt-bearer`, Workload Identity Federation, `refresh_token` of their
+          sessions) it ignores `required_acr` and `required_max_age` and
+          answers `access_denied` (T16), because the client cannot raise the
+          authentication level there. Without this field a denial is answered
+          with `access_denied` (T16). A decision that does not conform to this
+          schema (e.g. `required_acr` with allow true, an unknown acr value,
+          `required_acr` without `reasons`) is
+          a policy error: 500 server_error, no token set, report to security
+          monitoring (T19, proposal).
+          Note for policy authors (PAP): set the field only if the request
+          would be allowed at the required level.
+        type: array
+        items:
+          type: string
+          enum:
+            - gematik-ehealth-loa-substantial
+            - gematik-ehealth-loa-high
+        minItems: 1
+        maxItems: 2
+        uniqueItems: true
+        example: ["gematik-ehealth-loa-high"]
+      required_max_age:
+        description: >
+          Optional (added in 1.3.0). Only together with `required_acr`: maximum
+          age in seconds of the user authentication the policy accepts (as
+          `max_age` in OpenID Connect Core 1.0 and RFC 9470). Returned to the
+          client as `max_age` with error `insufficient_acr` (T15). At most 86400 (24 h). A maximum age N is fulfilled only
+          if `auth_time` is present in the Policy Engine Input and (time of the
+          decision − auth_time) ≤ N + 60 s; a missing auth_time never fulfils
+          it. The Authorization Server enforces any
+          max_age at the sectoral IDP as max_age=0 (gemSpec_IDP_Sek 3.3.0
+          A_25753) and issues the authorization code only
+          for an authentication within that flow, so
+          N = 0 is satisfiable.
+        type: integer
+        minimum: 0
+        maximum: 86400
+        example: 300
       reasons:
         description: >
-          Map of denial reasons. Keys are human-readable reason strings, values
-          are always true.
-        type: object
-        additionalProperties:
-          type: boolean
+          Denial reasons in human-readable form: either a map (keys are the
+          reason strings, values are always true) or, since 1.4.0, an array of
+          reason strings (as produced by a Rego partial set rule). Always
+          forwarded to the TI-SIEM (gemSpec_ZETA 2.0.1 A_28867). Towards the
+          client the Authorization Server always sends a map
+          (token-response.yaml denyResponse); from Stufe 3 on it forwards the
+          strings only for decisions without `reason_codes`, otherwise the
+          client receives the mapped code instead.
+        # Deliberately no `type` (as `aud`): generators have no working
+        # mapping for "map or array"; the rule is enforced by the validator.
+        if:
+          type: array
+        then:
+          items:
+            type: string
+            minLength: 1
+          uniqueItems: true
+        else:
+          type: object
+          additionalProperties:
+            type: boolean
+        example: {"Produktversion 2.1.3 unter Mindestversion 2.4.0": true}
+      reason_codes:
+        description: >
+          Optional (added in 1.4.0; to be implemented from Stufe 3 on). Only present when allow is false and the Policy Engine
+          Input carries `schema_version` 1.5.0 or later
+          (policy-engine-input.yaml) resp. 1.1.0 or later
+          (policy-engine-input-workload.yaml); otherwise the policy MUST NOT
+          set it, because an Authorization Server of
+          Stufe 2 treats it as a policy error (T19). Machine-readable denial
+          reasons of the policy, exactly one entry per code: several violated
+          rules with the same code yield one entry. JSON Schema draft-07
+          cannot express the uniqueness of `code` (`uniqueItems` only rejects
+          identical entries); the Authorization Server treats a code listed
+          more than once as a policy error (T19). The Authorization Server
+          maps the codes to exactly one client code according to
+          Tab-ZETA-Ablehnungsgründe; the codes
+          themselves are never passed to the client. A
+          code unknown to the Authorization Server is mapped like `other`
+          (`policy_denied`). If `required_acr` is present, only
+          `acr_insufficient` and `authentication_too_old` are allowed (the
+          denial is caused solely by the user authentication, T15). With this
+          field `reasons` must name at least one reason (TI-SIEM, A_28867).
+        type: array
+        minItems: 1
+        maxItems: 32
+        uniqueItems: true
+        items:
+          $ref: "#/definitions/reasonCodeEntry"
     required:
       - allow
+    # required_acr/required_max_age only on a denial; required_max_age only
+    # together with required_acr. Code generators ignore these rules; the
+    # Authorization Server validates the decision (T19).
+    # required_acr needs reasons: the Authorization Server passes them to the
+    # client (gemSpec_ZETA 2.0.1 A_25752-01; denyResponse requires reasons).
+    dependencies:
+      required_max_age: [required_acr]
+      required_acr: [reasons]
+      reason_codes: [reasons]
+    if:
+      properties:
+        allow:
+          const: true
+          example: true
+      required: [allow]
+    then:
+      not:
+        anyOf:
+          - required: [required_acr]
+          - required: [required_max_age]
+          - required: [reason_codes]
+    # With required_acr the denial is caused solely by the user
+    # authentication; reason_codes may then name only these two codes.
+    allOf:
+      - if:
+          required: [required_acr, reason_codes]
+        then:
+          properties:
+            reason_codes:
+              example: [{"code": "acr_insufficient"}]
+              items:
+                properties:
+                  code:
+                    enum: [acr_insufficient, authentication_too_old]
+                    example: acr_insufficient
+      # reason_codes needs at least one human-readable reason for the SIEM.
+      - if:
+          required: [reason_codes]
+        then:
+          properties:
+            reasons:
+              minProperties: 1
+              minItems: 1
+              example: ["Produktversion 2.1.3 unter Mindestversion 2.4.0"]
 required:
   - result
+definitions:
+  reasonCodeEntry:
+    title: Policy Reason Code Entry
+    description: >
+      One machine-readable denial reason of the policy (added in 1.4.0).
+      `min_version` only with
+      `product_version_outdated` or `os_version_outdated`, `retry_after` only
+      with `revocation_status_unavailable`.
+    type: object
+    additionalProperties: false
+    properties:
+      code:
+        $ref: "#/definitions/reasonCode"
+      min_version:
+        description: >
+          Minimum version the policy accepts (product version of the ZETA
+          Client resp. operating system version). Passed to the client as
+          `min_version` (token-response.yaml denyResponse). If several rules
+          require a minimum version, the highest one.
+          MUST NOT contain anything but the version.
+        type: string
+        minLength: 1
+        maxLength: 64
+        pattern: "^[0-9A-Za-z][0-9A-Za-z.+_-]{0,63}$"
+        example: "2.4.0"
+      retry_after:
+        description: >
+          Seconds after which a repetition of the request may succeed. Passed
+          to the client in the `Retry-After` header of the 503 response;
+          without this field the Authorization Server uses its configured
+          default. At least 30 seconds, so that an
+          outage of the OCSP responder is not amplified by retries (each
+          retry needs a new SM(C)-B signature and may trigger a new OCSP
+          request).
+        type: integer
+        minimum: 30
+        maximum: 3600
+        example: 60
+    required:
+      - code
+    allOf:
+      - if:
+          required: [min_version]
+        then:
+          properties:
+            code:
+              enum: [product_version_outdated, os_version_outdated]
+              example: product_version_outdated
+      - if:
+          required: [retry_after]
+        then:
+          properties:
+            code:
+              const: revocation_status_unavailable
+              example: revocation_status_unavailable
+  reasonCode:
+    description: >-
+      Machine-readable denial reason of the policy (added in 1.4.0). Each code
+      names the Policy Engine Input attribute it is derived from
+      (policy-engine-input.yaml); the mapping to the client code is
+      Tab-ZETA-Ablehnungsgründe.
+
+      Open enum: the first branch lists the known codes, the second accepts
+      any further snake_case string, so that a policy may introduce a new
+      code before the Authorization Server knows it (mapped like `other`).
+    type: string
+    pattern: "^[a-z][a-z0-9_]{0,63}$"
+    example: product_version_outdated
+    # anyOf instead of a constraining enum (as zeta-error.yaml errorCode):
+    # generators keep a plain string, the list documents the catalogue.
+    anyOf:
+      - description: Known codes and their source attribute.
+        enum:
+          # authorization_request.scopes
+          - scope_not_allowed
+          # authorization_request.audience / resource
+          - audience_not_allowed
+          # authorization_request.http_method
+          - http_method_not_allowed
+          # authorization_request.grant_type
+          - grant_type_not_allowed
+          # client_registration_data.product_id
+          - product_not_allowed
+          # client_registration_data.product_version (min_version)
+          - product_version_outdated
+          # client_registration_data.platform / posture_type
+          - platform_not_allowed
+          # client_registration_data.device_info.os_version (min_version)
+          - os_version_outdated
+          # client_registration_data.device_info.device_model
+          - device_model_not_allowed
+          # client_registration_data.attestation_timestamp
+          - attestation_outdated
+          # client_registration_data.attestation_result
+          - device_integrity_failed
+          # client_registration_data.client_key_binding / binding_status
+          - client_binding_invalid
+          # user_info.identifier (block or allow list)
+          - user_not_allowed
+          # user_info.professionOID
+          - profession_not_allowed
+          # delegation_context
+          - delegation_not_allowed
+          # authorization_request.amr
+          - authentication_method_not_allowed
+          # authorization_request.acr (T15)
+          - acr_insufficient
+          # authorization_request.auth_time (T15)
+          - authentication_too_old
+          # authorization_request.country_code
+          - country_not_allowed
+          # workload_identity (iss, sub) of policy-engine-input-workload.yaml
+          - workload_not_allowed
+          # authorization_request.ip_address (TOR, VPN, blocked range)
+          - network_not_allowed
+          # authorization_request.ip_address / previous_ip_address
+          - impossible_travel
+          # ocsp_failures
+          - revocation_status_unavailable
+          # no specific code applies
+          - other
+      - description: Further code, not listed here (forward compatibility).
+        type: string

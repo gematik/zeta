@@ -24,7 +24,7 @@ TEE++
 Client -> AuthS ++ : GET /nonce
 AuthS --> Client -- : Nonce
 
-alt Android Key / ID Attestation
+alt Android Key Attestation
   Client -> OS: Ermittle Posture\n(OS-Version, Security Patch Level,\nHersteller, Modell, Verified Boot,\nApp-Signaturinformationen)
   OS --> Client: Posture-Daten (Klartext)
 Client -> Client: clientDataHash =\nSHA-256(Nonce || JCS(Posture-Daten) || PuK.Client.Sig)

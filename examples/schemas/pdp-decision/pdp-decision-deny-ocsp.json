@@ -1,0 +1,15 @@
+{
+  "decision_id": "9b4f2d7e-1c58-4a63-8e20-5d6c3b1a7f94",
+  "result": {
+    "allow": false,
+    "reason_codes": [
+      {
+        "code": "revocation_status_unavailable",
+        "retry_after": 60
+      }
+    ],
+    "reasons": {
+      "Revocation status of the SM(C)-B certificate unavailable (OCSP timeout) and last good response older than 24 h": true
+    }
+  }
+}

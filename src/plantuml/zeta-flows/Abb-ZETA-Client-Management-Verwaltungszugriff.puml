@@ -2,8 +2,7 @@
 !include ../puml-layout.txt
 
 ' Verwaltung über die Client-Management-API mit Verwaltungs-Token (Zielbild Client
-' Management A_CM-20 bis A_CM-35, Platzhalter-IDs; ersetzt gemSpec_ZETA 2.0.1
-' Kap. 5.5.5–5.5.10). Schnittstelle: zeta-guard-client-management.yaml 1.0.0-draft.
+' Management; ersetzt gemSpec_ZETA 2.0.1 Kap. 5.5.5–5.5.10). Schnittstelle: zeta-guard-client-management.yaml 1.0.0-draft.
 
 actor User as "Nutzer"
 
@@ -27,7 +26,7 @@ end note
 == Verwaltungs-Token beziehen (eigenes Token, genau eine Audience) ==
 
 Client -> AuthS++: POST /token  dpop: <dpop_proof>\n{grant_type=refresh_token, refresh_token,\nresource=<issuer>/zeta,\nscope="zeta:client-management zeta:email-change",\nclient_assertion (PrK.Client.Sig)}
-AuthS -> AuthS: Client Assertion (F2), DPoP-Proof, Refresh Token prüfen;\ngenau ein resource (sonst 400 invalid_target);\nVerwaltungs-Scopes nur mit <issuer>/zeta und nur bei Status bound\n(sonst 400 invalid_scope, A_CM-22, A_CM-23)
+AuthS -> AuthS: Client Assertion (F2), DPoP-Proof, Refresh Token prüfen;\ngenau ein resource (sonst 400 invalid_target);\nVerwaltungs-Scopes nur mit <issuer>/zeta und nur bei Status bound\n(sonst 400 invalid_scope)
 AuthS --> Client--: 200 OK {access_token (aud: cm_resource,\nscope: "zeta:client-management zeta:email-change"),\nrefresh_token (rotiert), token_type: DPoP, expires_in}
 note over Client, AuthS
   Danach bezieht der Client das Fachdienst-Token wieder per Refresh mit
@@ -37,15 +36,15 @@ end note
 == Clients auflisten, umbenennen (ohne Step-up) ==
 
 Client -> HP++: GET /zeta/clients\nAuthorization: DPoP <Access Token>  DPoP: <dpop_proof>
-HP -> HP: Prüfe Access Token, DPoP-Proof (inkl. Replay),\naud = cm_resource, scope zeta:client-management (A_CM-20)
+HP -> HP: Prüfe Access Token, DPoP-Proof (inkl. Replay),\naud = cm_resource, scope zeta:client-management
 HP -> AuthS++: weiterleiten mit Token und DPoP-Proof
-AuthS -> AuthS: Prüfe Token und DPoP-Proof selbst (htu gegen externe Route-URL),\naufrufende Registrierung vollständig registriert, iat nach letztem Rollover (A_CM-21, A_CM-04)
+AuthS -> AuthS: Prüfe Token und DPoP-Proof selbst (htu gegen externe Route-URL),\naufrufende Registrierung vollständig registriert, iat nach letztem Rollover
 AuthS --> HP--: 200 OK {clients: [{client_id, client_name, product_id,\nplatform, registered_at, last_used_at, is_self}]}
 HP --> Client--: 200 OK
 
 Client -> HP++: PATCH /zeta/clients/{target_client_id} {client_name}
 HP -> AuthS++: weiterleiten
-AuthS -> AuthS: Objektprüfung: Ziel gehört zur TI-Identität des Aufrufers (A_CM-27);\nnur client_name (A_CM-32)
+AuthS -> AuthS: Objektprüfung: Ziel gehört zur TI-Identität des Aufrufers;\nnur client_name
 AuthS -> User: N4 client_renamed (E-Mail an F1, Push an die übrigen Clients)
 AuthS --> HP--: 200 OK {ClientSummary}
 HP --> Client--: 200 OK
@@ -54,23 +53,23 @@ HP --> Client--: 200 OK
 
 Client -> HP++: DELETE /zeta/clients/{target_client_id}
 HP -> AuthS++: weiterleiten (Route ohne festes Mindest-acr)
-AuthS -> AuthS: Objektprüfung (A_CM-27); Prüfung und Löschung serialisiert je TI-Identität,\nlaufende Löschungen zählen als ausgeführt (A_CM-33)
+AuthS -> AuthS: Objektprüfung; Prüfung und Löschung serialisiert je TI-Identität,\nlaufende Löschungen zählen als ausgeführt
 alt nach der Löschung bliebe nur der Aufrufer übrig
-  AuthS -> AuthS: acr ≥ Mindest-acr und letzte Nutzerauthentisierung\nder Session (sid) ≤ max_age (A_CM-25, A_CM-33)
+  AuthS -> AuthS: acr ≥ Mindest-acr und letzte Nutzerauthentisierung\nder Session (sid) ≤ Step-up-Fenster
   opt Bedingung nicht erfüllt
-    AuthS --> HP: 401 insufficient_user_authentication\nWWW-Authenticate: DPoP acr_values=..., max_age=300
+    AuthS --> HP: 401 insufficient_user_authentication\nWWW-Authenticate: DPoP acr_values=..., max_age=0
     HP --> Client: 401
     Client -> User: Anmeldung beim sektoralen IDP
     note over Client, AuthS
       Regulärer Authorization Code Flow (PAR, GET /authorize, Nutzerauthentisierung,
       POST /token mit Client Assertion) mit resource=<issuer>/zeta, Scope, acr_values
-      und max_age; danach wiederholt der Client die Anfrage einmal.
+      und max_age=0; danach wiederholt der Client die Anfrage einmal.
     end note
     Client -> HP: DELETE /zeta/clients/{target_client_id} (neues Access Token)
     HP -> AuthS: weiterleiten
   end
 end
-AuthS -> AuthS: Registrierung entfernen, Sessions und Refresh Token widerrufen (A_CM-34)
+AuthS -> AuthS: Registrierung entfernen, Sessions und Refresh Token widerrufen
 AuthS -> User: N3 client_removed
 AuthS --> HP--: 204 No Content
 HP --> Client--: 204
@@ -80,14 +79,14 @@ HP --> Client--: 204
 Client -> HP++: POST /zeta/identity/email {email}
 HP -> HP: scope zeta:email-change, festes Mindest-acr der Route
 HP -> AuthS++: weiterleiten
-AuthS -> AuthS: Sitzungsalter ≤ max_age (sonst 401 insufficient_user_authentication);\nneue Adresse ≠ gebundene, keine offene Neubindung (sonst 400 invalid_request)
+AuthS -> AuthS: Sitzungsalter ≤ Step-up-Fenster (sonst 401 insufficient_user_authentication);\nneue Adresse ≠ gebundene, keine offene Neubindung (sonst 400 invalid_request)
 AuthS -> User: N8: Einmalcode an die NEUE Adresse; Challenge an client_id gebunden
 AuthS --> HP--: 202 Accepted {challenge_type: email_otp, expires_in}
 HP --> Client--: 202
 User -> Client: Einmalcode
 Client -> HP++: POST /zeta/identity/email/verify {verify_type: email_otp, code}
 HP -> AuthS++: weiterleiten (ohne Step-up)
-AuthS -> AuthS: dieselbe Registrierung wie beim Start (sonst 403 forbidden_target);\nneue Adresse sofort als F1 für alle Registrierungen der Identität;\nWiederherstellungscode ungültig (A_CM-35)
+AuthS -> AuthS: dieselbe Registrierung wie beim Start (sonst 403 forbidden_target);\nneue Adresse sofort als F1 für alle Registrierungen der Identität;\nWiederherstellungscode ungültig
 AuthS -> User: N5 email_changed an bisherige und neue Adresse, Push an die übrigen Clients
 AuthS --> HP--: 204 No Content
 HP --> Client--: 204

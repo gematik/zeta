@@ -1,7 +1,7 @@
 # ===================================================================
 # Hauptschema für Apple Posture
 # ===================================================================
-# Beschreibt die Daten, die von einer Apple iOS App zur Überprüfung ihrer
+# Beschreibt die Daten, die von einer Apple-App (iOS, iPadOS, macOS) zur Überprüfung ihrer
 # Integrität gesendet werden. Die Struktur ist flach und enthält
 # die dekodierten Inhalte der Attestation- und Assertion-Objekte.
 # ===================================================================

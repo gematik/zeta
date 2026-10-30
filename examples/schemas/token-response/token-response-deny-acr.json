@@ -1,0 +1,9 @@
+{
+  "error": "insufficient_acr",
+  "error_description": "Authentication level insufficient for the requested scope",
+  "acr_values": "gematik-ehealth-loa-high",
+  "max_age": 300,
+  "reasons": {
+    "Authentication level below the level required for the requested scope": true
+  }
+}

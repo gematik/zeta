@@ -1,0 +1,5 @@
+{
+  "error": "access_denied",
+  "error_description": "DPoP htu does not match the requested URL",
+  "denial_reason": "dpop_target_mismatch"
+}

@@ -4,7 +4,7 @@
 # mergeable Ingresses). In v1.3.x leitet der Minion `zeta-guard-auth` das Präfix
 # /auth direkt an den Authorization Server; der PEP sieht dort nur /auth/admin.
 # Ohne diese Regel erreichten alle Anfragen an die Client-Management-API den
-# Authorization Server am PEP vorbei (A_CM-20 verletzt).
+# Authorization Server am PEP vorbei (die API ist aber eine geschützte Ressource hinter dem PEP).
 #
 # Die Pfade sind länger als /auth und gewinnen deshalb (längstes Präfix, nginx
 # und Ingress-Spezifikation). Host und ingressClassName wie im Chart setzen.

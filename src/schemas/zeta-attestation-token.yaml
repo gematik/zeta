@@ -25,8 +25,7 @@ description: >-
   Präzisierung 1.2.1 (nur Beschreibung, gültige Token unverändert): Für die
   Fast-Path-Registrierung an einem anderen Guard verlangt der Ziel-Guard
   `user_email` und `email_verified: true` und lehnt sonst mit 400
-  invalid_attestation ab (Zielbild Client Management A_CM-60, A_CM-61,
-  Platzhalter-IDs); `required` bleibt aus Gründen der Abwärtskompatibilität
+  invalid_attestation ab (Zielbild Client Management); `required` bleibt aus Gründen der Abwärtskompatibilität
   unverändert.
 # oneOf zwingt das Objekt, exakt einem der referenzierten Sub-Schemata zu entsprechen.
 # Die Zuordnung erfolgt eindeutig über den `const`-Wert von `attestation_type`
@@ -98,7 +97,7 @@ definitions:
           aus dem Token. Für stationäre Clients i. d. R. nicht gesetzt.
           Der Fast-Path an einem anderen Guard ist nur mit gesetztem Claim und
           `email_verified: true` möglich und nur, wenn dort für `sub` noch kein
-          Identitätsdatensatz besteht (A_CM-60, A_CM-61); sonst lehnt der
+          Identitätsdatensatz besteht; sonst lehnt der
           Ziel-Guard ab (400 invalid_attestation bzw. 409 registration_conflict).
       email_verified:
         type: boolean
@@ -107,7 +106,7 @@ definitions:
           (A_29914). `true`, wenn die Adresse bei der ursprünglichen Registrierung
           per OTP bestätigt wurde. Pflicht, sobald `user_email` gesetzt ist. Bei
           `false` oder fehlendem Claim lehnt der Ziel-Guard die
-          Fast-Path-Registrierung mit 400 invalid_attestation ab (A_CM-61); der
+          Fast-Path-Registrierung mit 400 invalid_attestation ab; der
           Client registriert sich dann regulär und bindet F1 per Einmalcode.
       redirect_uris:
         type: array

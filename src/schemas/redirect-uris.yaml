@@ -3,8 +3,8 @@
 # Ablage im Provisioning Image: /redirect-uris/*.json (Dateiname dynamisch,
 # A_29738). Die gematik erzeugt die Datei aus den von den Herstellern gemeldeten
 # Client-Metadaten (A_29723-01). Der Authorization Server nutzt sie
-#   - beim DCR zur Prüfung der redirect_uris (A_xxxx1),
-#   - beim PAR zur erneuten Prüfung der registrierten redirect_uri (A_xxxx3),
+#   - beim DCR zur Prüfung der redirect_uris,
+#   - beim PAR zur erneuten Prüfung der registrierten redirect_uri,
 #   - für die redirect_uris im Entity Statement (A_25656-01).
 $schema: "http://json-schema.org/draft-07/schema#"
 schemaVersion: "1.0.1"

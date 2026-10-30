@@ -41,9 +41,7 @@ alt TPM und ZAS vorhanden
   == Hardware-Attestierung (Attestation Key) ==
   note left of Client
     Messung des Primärsystems und Erzeugung des Attestation Keys durch den ZAS.
-    Linux: Vor jeder Messung und jedem TPM2_Quote prüft der ZAS, dass außer root
-    bzw. dem ZAS-Dienstkonto niemand TPM-Kommandos absetzen kann
-    (/dev/tpm0, /dev/tpmrm0, z. B. tpm2-abrmd); sonst Software Attestierung (A_30480).
+    Linux: exklusiver TPM-Zugriff des ZAS nach A_30591, sonst Software Attestierung.
   end note
   ZAS --> ZAS: Messung des PS & Vergleich mit Hersteller-Wert
   ZAS -> TPM++: TPM2_CreatePrimary() → Storage Root Key (SRK)
@@ -62,15 +60,9 @@ alt TPM und ZAS vorhanden
   note left of Client
     Linux: kein direkter TPM-Zugriff des Clients, weil PCR 23
     aus Locality 0 rücksetzbar ist (TPM2_PCR_Reset).
-    Auf Anforderung des über (03)–(04) authentisierten Clients führt
-    der ZAS nur TPM2_Create, TPM2_Load, TPM2_ReadPublic und TPM2_Sign
-    für PrK.Client.Sig aus und lehnt alle anderen Anforderungen ab
-    (TPM2_Certify der Key Certification bei Registrierung, Abb. 7,
-    und Rollover bleibt unberührt; beim Rollover erzeugt der ZAS
-    auch den neuen Schlüssel).
-    Der Key-Blob bleibt beim ZAS, gespeichert je Benutzerkonto
-    (UID per SO_PEERCRED); der ZAS lädt nur den Schlüssel des
-    anfragenden Kontos.
+    Erlaubte TPM-Kommandos, Key-Blob je Benutzerkonto und
+    Bindung an den über (03)–(04) authentisierten Client: A_30590.
+    Beim Rollover erzeugt der ZAS auch den neuen Schlüssel.
   end note
   opt Linux
     Client -> ZAS: Erzeuge Client Instance Key (IPC)

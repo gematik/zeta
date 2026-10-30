@@ -50,7 +50,7 @@ note right of RS #lightblue
 end note
 
 note over NS, HSM #lightyellow
-  **At-rest-Schutz (nur VAU-Betrieb, A_NS_DEPLOY_01):**
+  **At-rest-Schutz (nur VAU-Betrieb):**
   **Alle** persistierten Daten liegen **verschlüsselt** vor
   (Envelope: DEK, KEK-gewrappt im HSM; Identifikatoren als
   Keyed-HMAC-Pseudonym). Vor **jedem** DB-Zugriff werden die
@@ -58,13 +58,13 @@ note over NS, HSM #lightyellow
   Gecacht (flüchtig im VAU-Speicher) wird nur der **langlebige**
   Schlüssel: der **HMAC-Schlüssel** bzw. der **Single-DEK**
   (resp. der **VAU-Wrapping-Key** bei Per-Record-DEK) -> HSM-
-  Decrypt nur bei **Cache-Miss** (A_NS_HSM_02/03). Bei Per-Record-
+  Decrypt nur bei **Cache-Miss**. Bei Per-Record-
   DEK werden die einzelnen **Record-DEK lokal in der VAU** (ohne
   HSM) ent-/gewrappt und nur **transient** verwendet (nicht gecacht).
   Ent-/Verschlüsselung erfolgt **in der VAU**.
   **AES-GCM:** **eindeutige Nonce** je DEK-Operation, DEK-Rotation
   vor GCM-Mengengrenze; **empfohlen Per-Record-DEK** (Crypto-
-  Shredding bei Löschung) -> KEK bleibt im HSM (A_NS_HSM_02).
+  Shredding bei Löschung) -> KEK bleibt im HSM.
   **Ohne VAU** entfallen die HSM-/Krypto-Schritte.
 end note
 
@@ -105,7 +105,7 @@ else >= 1 Pusher vorhanden
     **geräteindividuell je pushkey** (GET/POST
     /channels/{pushkey}). Die Nutzer-Sicht hier ist
     nur eine **Aggregation** über alle Geräte des
-    Nutzers (A_NS_API_03/A_NS_API_09).
+    Nutzers.
   end note
 
   NS -->> RS : 200 OK\n{ user, has_registered_devices=true,\n  registered_device_count (>=1), channels[] }
@@ -144,8 +144,7 @@ opt Langlebiger At-rest-Schlüssel nicht im VAU-Cache (Cache-Miss)
   note right of HSM #lightblue
     Der **HSM Proxy** entwrappt den **langlebigen** at-rest-Schlüssel
     mit dem HSM-**KEK** (Sealing); der KEK verlässt das HSM nicht.
-    **Single-DEK:** ein globaler DEK wird gecacht. **Empfohlen
-    (A_NS_HSM_02): Per-Record-DEK** - hier wird nur der **VAU-
+    **Single-DEK:** ein globaler DEK wird gecacht. **Empfohlen: Per-Record-DEK** - hier wird nur der **VAU-
     Wrapping-Key** gecacht; die einzelnen **Record-DEK** werden
     **lokal in der VAU** (kein HSM-Aufruf je Datensatz) entwrappt
     und nur **transient** verwendet (nicht gecacht).
@@ -164,7 +163,7 @@ alt Kein Pusher zum Pseudonym vorhanden (Nutzer unbekannt)
     **mind. ein** registriertes Gerät (Pusher) existiert
     (geräte-/pushkey-gebundene Haltung). Kein Gerät =
     **unbekannter Nutzer** -> **404**. **Keine** Persistierung
-    (Datensparsamkeit, A_NS_RETENTION_01).
+    (Datensparsamkeit).
   end note
 else >= 1 Pusher vorhanden
   NS -> NS : Channel-Status + Pusher-Daten **entschlüsseln** (in der VAU;\nbei Per-Record-DEK Record-DEK **lokal** entwrappen, transient;\nAAD=Pseudonym/Record-ID)
@@ -179,7 +178,7 @@ else >= 1 Pusher vorhanden
 
   alt Channel aktiv (enabled für >= 1 Gerät)
     ' --- Erst jetzt (echter Versand) wird ein Datensatz angelegt ---
-    NS -> NS : Notification-Datensatz **verschlüsseln** (Record-/Single-DEK, in der VAU,\n**eindeutige GCM-Nonce**, AAD=Pseudonym/Record-ID; A_NS_HSM_02)
+    NS -> NS : Notification-Datensatz **verschlüsseln** (Record-/Single-DEK, in der VAU,\n**eindeutige GCM-Nonce**, AAD=Pseudonym/Record-ID)
     NS -> NSDB ++ : Notification anlegen\n(**verschlüsselt**, initialer Status "accepted")
     NSDB --> NS -- : gespeichert
     opt Verschlüsselung aktiviert (NS-Konfiguration)
@@ -222,7 +221,7 @@ else >= 1 Pusher vorhanden
     note left of NS #FFCCCC
       Terminaler Status **synchron** in der Antwort.
       **Kein** Versand und **keine** Persistierung
-      (Datensparsamkeit, A_NS_RETENTION_01) -
+      (Datensparsamkeit) -
       notification_id nur transient erzeugt.
     end note
   end alt

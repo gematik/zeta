@@ -7,13 +7,12 @@ description: >-
   defined in RFC 7523, with custom claims for client attestation.
 
   Clarification 1.0.2 (description only, valid instances unchanged): following
-  the client-management target model (placeholder IDs A_CM-nn, replacing
+  the client-management target model (replacing
   gemSpec_ZETA 2.0.1 A_30101), the per-request assertion in the
   `Client-Assertion` header is used only for operations on the caller's own
-  registration — read and self-deregistration (`/register/{client_id}`,
-  A_CM-30), rollover nonce and rollover (A_CM-41, A_CM-43) and the status of a
-  re-binding (A_CM-52a). All other Client Management operations use an
-  access token (management token or email-binding token, A_CM-20).
+  registration — read and self-deregistration (`/register/{client_id}`), rollover nonce and rollover and the status of a
+  re-binding. All other Client Management operations use an
+  access token (management token or email-binding token).
 type: object
 properties:
   header:
@@ -79,25 +78,25 @@ properties:
           type: string
           description: Audience for the JWT. It MUST identify the Authorization Server;
             for OAuth requests the Authorization Server's token endpoint URL, for
-            own-registration operations (A_CM-30) the issuer of the Authorization
+            own-registration operations the issuer of the Authorization
             Server.
         minItems: 1
       exp:
         type: integer
         description: Expiration time of the JWT in seconds since epoch. For
-          own-registration operations (A_CM-30) the lifetime MUST NOT exceed 60
+          own-registration operations the lifetime MUST NOT exceed 60
           seconds.
       jti:
         type: string
         description: JWT ID, a unique identifier for the token. For own-registration
-          operations (A_CM-30) the Authorization Server rejects a re-used jti within
+          operations the Authorization Server rejects a re-used jti within
           the lifetime of the assertion (replay protection).
 
       htm:
         type: string
         description: >
           HTTP method of the request in upper case, formed as defined in RFC 9449
-          section 4.2. Only present for own-registration operations (A_CM-30), where it
+          section 4.2. Only present for own-registration operations, where it
           binds the assertion to the request and prevents its re-use against another
           endpoint.
         example: DELETE
@@ -106,7 +105,7 @@ properties:
         format: uri
         description: >
           Target URI of the request without query and fragment, formed as defined in
-          RFC 9449 section 4.2. Only present for own-registration operations (A_CM-30).
+          RFC 9449 section 4.2. Only present for own-registration operations.
         example: https://as.example.com/register/abc123
 
       client_statement:

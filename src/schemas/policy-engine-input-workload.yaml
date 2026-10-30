@@ -2,13 +2,13 @@
 # (service-to-service communication). Counterpart of policy-engine-input.yaml for
 # requesting services that are not registered ZETA clients.
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.0.0"
+schemaVersion: "1.1.0"
 title: Policy Engine Input Schema for Workload Identity Federation
 type: object
 description: >-
   Input for the OPA policy decision when the Authorization Server, acting as
   Secure Token Service, processes a token exchange of Workload Identity
-  Federation (gemSpec_ZETA 2.0.1 A_28431, A_29953, proposal A_NEU-ABL-12). The
+  Federation (gemSpec_ZETA 2.0.1 A_28431, A_29953). The
   requesting service is identified only by the validated subject token; there
   is no client registration, no user and no client posture. The decision
   follows pdp-decision.yaml as for policy-engine-input.yaml.
@@ -17,8 +17,24 @@ description: >-
   the property workload_identity. Policies that only know
   policy-engine-input.yaml deny it, because client_registration_data and
   user_info are missing (fail closed).
+
+  Change 1.0.0 -> 1.1.0 (backward compatible, from Stufe 3 on): optional
+  schema_version (reason_codes in the decision only from 1.1.0 on;
+  pdp-decision.yaml 1.4.0).
 additionalProperties: false
 properties:
+  schema_version:
+    description: >-
+      Added in 1.1.0 (to be implemented from Stufe 3 on). Version of this schema (schemaVersion) according to which
+      the Authorization Server built the input. The Policy Engine shapes its
+      decision by it: `result.reason_codes` (pdp-decision.yaml 1.4.0) only if
+      the value is 1.1.0 or later.
+      Absent: Authorization Server of Stufe 2; the policy answers in the form
+      of pdp-decision.yaml 1.3.0 without reason_codes. Independent of
+      `version`, which names the contract for `aud`.
+    type: string
+    pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    example: "1.1.0"
   version:
     description: >-
       Version of the input contract. Always "1.1": the request carries a
@@ -32,8 +48,8 @@ properties:
     description: >-
       Claims of the validated subject token (subject-token-workload.yaml) of the
       requesting workload. The
-      Authorization Server passes them only after the checks of proposal
-      A_NEU-ABL-12 (signature against the JWKS of a registered issuer, iss, aud,
+      Authorization Server passes them only after its checks of the subject token
+      (signature against the JWKS of a registered issuer, iss, aud,
       expiry). sub is unique only within iss: policies MUST authorise the pair
       (iss, sub), never sub alone.
     type: object

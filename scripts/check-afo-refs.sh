@@ -13,7 +13,8 @@
 #   VERALTET  Stamm existiert mit höherem Suffix (Repo zitiert alte Fassung)
 #   VORSCHLAG Repo-Suffix höher als im Stand (Änderungsvorschlag, z. B. A_30189-01);
 #             zählt nicht als Befund, mit -v ausgeben
-#   A_NEU/A_KEK-Entwürfe werden ignoriert.
+#   ENTWURF   Platzhalter-ID eines Afo-Entwurfs (A_NEU-…, A_CM-…, A_KEK-…, A_xxxx…);
+#             gehört nicht ins Repo, weil Polarion andere IDs vergibt
 # Exit-Code: 0 = keine Befunde, 1 = Befunde, 2 = Stand nicht gefunden.
 set -u
 cd "$(git rev-parse --show-toplevel)" || exit 2
@@ -29,6 +30,9 @@ paths=("$@"); [ ${#paths[@]} -eq 0 ] && paths=(src docs examples)
 
 # Bestand: volle IDs des Stands
 known=$(grep -oE '^A_[0-9]{5}(-[0-9]{2})?' "$stand/AFOS.md" | sort -u)
+
+includes=(--include='*.yaml' --include='*.yml' --include='*.json' --include='*.md'
+          --include='*.puml' --include='*.proto' --include='*.rego')
 
 suffix() { case $1 in *-*) echo $((10#${1##*-}));; *) echo 0;; esac; }
 found=0; proposals=0
@@ -48,9 +52,13 @@ while IFS=: read -r file line id; do
       echo "VERALTET  $id → ${current% }  $file:$line"; found=$((found+1))
     fi
   fi
-done < <(grep -rHnoE '\bA_[0-9]{5}(-[0-9]{2})?\b' "${paths[@]}" \
-           --include='*.yaml' --include='*.yml' --include='*.json' --include='*.md' \
-           --include='*.puml' --include='*.proto' --include='*.rego' 2>/dev/null \
+done < <(grep -rHnoE '\bA_[0-9]{5}(-[0-9]{2})?\b' "${paths[@]}" "${includes[@]}" 2>/dev/null \
+         | grep -v '/ReleaseNotes/' | sort -u)
+
+# Platzhalter-IDs von Afo-Entwürfen: A_ gefolgt von einem Buchstaben
+while IFS=: read -r file line id; do
+  echo "ENTWURF   $id  $file:$line"; found=$((found+1))
+done < <(grep -rHnoE '\bA_[A-Za-z][A-Za-z0-9]*([-_][A-Za-z0-9]+)*' "${paths[@]}" "${includes[@]}" 2>/dev/null \
          | grep -v '/ReleaseNotes/' | sort -u)
 
 echo "== Stand: $(basename "$stand"); Befunde: $found; Vorschläge (nicht gezählt): $proposals"

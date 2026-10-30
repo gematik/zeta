@@ -1,0 +1,10 @@
+{
+  "error": "access_denied",
+  "error_description": "Access denied by policy",
+  "denial_reason": "client_update_required",
+  "min_version": "2.4.0",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "reasons": {
+    "client_update_required": true
+  }
+}

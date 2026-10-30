@@ -37,6 +37,8 @@ alt Validation successful
   OPA --> AuthS--: Policy Decision
   alt Policy Decision allow
     AuthS --> Client: 200 OK {Access Token, Refresh Token}
+  else Policy Decision deny wegen acr oder Alter der Authentisierung (required_acr), Session mit Nutzerauthentisierung
+    AuthS --> Client: 403 Forbidden {"error": "insufficient_acr", "acr_values": ..., "max_age": ...}
   else Policy Decision deny
     AuthS --> Client: 403 Forbidden {"error": "access_denied"}
   end alt
@@ -55,7 +57,10 @@ note right of Client
   400 = technischer Grant-/Request-Fehler (invalid_dpop_proof [RFC9449];
   invalid_grant für jedes nicht\n  nutzbare Refresh Token: abgelaufen, wiederverwendet, widerrufen, Session terminiert,
   401 = Client-Authentifizierung fehlgeschlagen (invalid_client),
-  403 = Policy-Ablehnung bei gültigen Credentials (access_denied).
+  403 = Policy-Ablehnung bei gültigen Credentials (access_denied;
+  insufficient_acr bei zu niedrigem acr oder zu alter
+  Authentisierung in Sessions mit
+  Nutzerauthentisierung, T15).
   Zuordnung je Fehlerfall: Tab-ZETA-PDP-Fehlerfälle-Token-Endpunkt.
   Response-Body gemäß [zeta-error.yaml].
 end note

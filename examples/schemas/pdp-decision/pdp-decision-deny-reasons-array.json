@@ -1,0 +1,10 @@
+{
+  "decision_id": "5f1c9e2a-7b34-4d81-a6e0-2c9d8b4f1a37",
+  "result": {
+    "allow": false,
+    "reasons": [
+      "One or more requested scopes are not allowed",
+      "Source IP address is a known TOR exit node"
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "version": "1.1",
+  "schema_version": "1.1.0",
+  "workload_identity": {
+    "iss": "https://zeta-guard.anbieter-a.example.ti-dienste.de/auth/realms/zeta-guard",
+    "sub": "system:serviceaccount:fachdienst-a:resource-server",
+    "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+    "dpop_bound": false
+  },
+  "authorization_request": {
+    "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+    "scopes": [
+      "b-api:read"
+    ],
+    "resource": "https://fachdienst-b.example.ti-dienste.de/api/v1",
+    "ip_address": "198.51.100.23",
+    "country_code": "DE"
+  }
+}

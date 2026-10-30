@@ -1,0 +1,5 @@
+{
+  "error": "forbidden_target",
+  "error_description": "Target client not accessible",
+  "denial_reason": "target_not_accessible"
+}

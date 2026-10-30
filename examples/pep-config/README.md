@@ -48,7 +48,7 @@ Ingress-Regel nötig und eine Chart-Änderung empfohlen (Abschnitt [Chart v1.3.x
 | --- | --- | --- | --- |
 | Durchleitung, selbstauthentisierend | `POST /register`, `POST /register/verify` | `pep off`; Body-Grenze 64 KiB bzw. 16 KiB | prüft Attestierung und Besitznachweis bzw. Aktivierungsgeheimnis |
 | Durchleitung, Client Assertion | `GET`/`PUT`/`DELETE /register/{client_id}`, `HEAD /zeta/rollover-nonce`, `GET /zeta/identity/rebind/status` | `pep off`; Body-Grenze 32 KiB bzw. 1 KiB | prüft die Client Assertion einschließlich `jti`-Replay-Cache, `htm`/`htu`, Lebensdauer |
-| Token, E-Mail-Binding-Token | `/zeta/identity/bind-email`, `…/resend`, `…/verify`, `/zeta/identity/rebind`, `…/verify` | `pep on`, `pep_require_aud cm_resource`, Scope `zeta:email-binding` bzw. `zeta:email-verify`; Body-Grenze 8 KiB | prüft Token und DPoP-Proof erneut (A_CM-21), Status der Registrierung |
+| Token, E-Mail-Binding-Token | `/zeta/identity/bind-email`, `…/resend`, `…/verify`, `/zeta/identity/rebind`, `…/verify` | `pep on`, `pep_require_aud cm_resource`, Scope `zeta:email-binding` bzw. `zeta:email-verify`; Body-Grenze 8 KiB | prüft Token und DPoP-Proof erneut, Status der Registrierung |
 | Token, Verwaltungs-Token | `/zeta/identity/email`, `…/verify`, `/zeta/clients`, `/zeta/clients/{target_client_id}`, `/zeta/identity/rebind/cancel`, `/zeta/identity/recovery-code`, `…/verify`, `/zeta/identity/events` | `pep on`, `pep_require_aud cm_resource`, Scope `zeta:client-management` bzw. `zeta:email-change`; Body-Grenze 8 KiB | prüft Token und DPoP-Proof erneut, Objektprüfung, Step-up (acr, Sitzungsalter) |
 
 Der Token-Endpunkt und die übrigen OAuth-Endpunkte des Authorization Servers sind nicht Teil
@@ -62,7 +62,7 @@ Die Werte entsprechen dem Helm-Chart `zeta-guard` v1.2.4 (Template
 - Der Ingress leitet `/auth` zum PEP; der PEP hat eine allgemeine Location `/auth` ohne
   PEP-Prüfung zum Authorization Server.
 - Issuer `https://<host>/auth/realms/zeta-guard`; damit ist der Ressourcenbezeichner der API
-  `https://<host>/auth/realms/zeta-guard/zeta` (A_CM-22).
+  `https://<host>/auth/realms/zeta-guard/zeta`.
 - Upstream des Authorization Servers `http://authserver`.
 - Logische Audience der API `cm_resource`; sie muss mit der Audience übereinstimmen, die die
   Policy Engine für den Ressourcenbezeichner vergibt.
@@ -77,7 +77,7 @@ beiden Snippet-Dateien neben `proxy_headers.conf` in die ConfigMap des PEP.
 Im Chart v1.3.3 leitet der Ingress-Minion `zeta-guard-auth` das Präfix `/auth` **direkt** an den
 Authorization Server; zum PEP gelangen nur `/auth/admin` und `/`. Die Locations dieses Beispiels
 allein reichen dort nicht: Anfragen an die API erreichten den Authorization Server am PEP vorbei
-(A_CM-20 verletzt), die Auffang-Location und der Pfadfilter griffen nie.
+(die API ist aber eine geschützte Ressource hinter dem PEP), die Auffang-Location und der Pfadfilter griffen nie.
 
 Nötig bzw. empfohlen:
 
@@ -109,15 +109,15 @@ Nötig bzw. empfohlen:
 ## Bekannte Grenzen
 
 - **Mindest-acr:** `libngx_pep.so` hat keine Direktive für ein Mindest-`acr`. Der Authorization
-  Server prüft `acr` und Sitzungsalter selbst (A_CM-25); die Sicherheit hängt nicht am PEP. Die
+  Server prüft `acr` und Sitzungsalter selbst; die Sicherheit hängt nicht am PEP. Die
   im Zielbild vorgesehene zusätzliche acr-Prüfung am PEP setzt eine neue Direktive voraus.
 - **Weiterreichen von Token und DPoP-Proof:** `proxy_headers.conf` entfernt `Authorization` und
   `DPoP` für den Upstream. Die Token-Routen setzen beide wieder, damit der Authorization Server
-  sie erneut prüfen kann (A_CM-21). Das Verhalten ist mit nginx 1.27.5 und einer Nachbildung der
+  sie erneut prüfen kann. Das Verhalten ist mit nginx 1.27.5 und einer Nachbildung der
   Strips getestet, gegen die `proxy_headers.conf` des PEP-Images noch nicht.
 - **Netzwerk:** Der Authorization Server soll Anfragen an die Client-Management-API nur vom PEP
   annehmen (NetworkPolicy). Dann ist die API auch bei einer Fehlkonfiguration des Ingress nicht am
-  PEP vorbei erreichbar; ohne PEP fehlt sonst der DPoP-Replay-Schutz (A_CM-21).
+  PEP vorbei erreichbar; ohne PEP fehlt sonst der DPoP-Replay-Schutz.
 - **Fehlerformat des PEP selbst:** Die Antworten von `libngx_pep.so` (401, 403) sind nicht Teil
   dieses Beispiels.
 - **Referenzdoku:** [Konfiguration_des_PEP_Http_Proxy.md](../../docs/user-manual/Referenzen/Konfiguration_des_PEP_Http_Proxy.md)

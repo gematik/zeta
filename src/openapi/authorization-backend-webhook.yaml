@@ -31,9 +31,9 @@ info:
         Server, called by the Application Authorization Backend (or by the provider's
         SIEM through the backend) to terminate a session (A_29847, A_29854 – A_29858), to
         abort a re-binding after an objection by email or to suspend all re-bindings of a
-        sectoral IDP (client-management target model A_CM-57 – A_CM-59, placeholder IDs).
+        sectoral IDP (client-management target model).
 
-    Changes 1.0.0 -> 1.1.0: `cancelRebind` and `suspendRebinds` added (A_CM-58). Both can
+    Changes 1.0.0 -> 1.1.0: `cancelRebind` and `suspendRebinds` added. Both can
     only abort or suspend; an operation that completes or resumes a re-binding or lifts a
     suspension does not exist on this interface.
 
@@ -44,10 +44,10 @@ info:
     granted scope; it can never widen the scope beyond the Policy Engine decision.
     The Authorization Server enforces this by intersecting the returned
     `additional_scopes` / `additional_authorization_details` with what the Policy
-    Engine allowed (A_xxxx2). If the backend does not answer within the configured
+    Engine allowed. If the backend does not answer within the configured
     timeout (default 500 ms) or returns an error, the Authorization Server fails
     **closed**: no token set is issued and the client receives
-    `503 temporarily_unavailable` (A_xxxx5).
+    `503 temporarily_unavailable`.
 
     `notifyAccessDenied` and `notifySessionTermination` are **fire-and-forget**
     notifications. A failure of these calls never influences the triggering operation;
@@ -58,16 +58,15 @@ info:
     The Authorization Server passes exactly the data it also passes to the Policy
     Engine: client registration data, user information and the authorization request
     (`policy-engine-input.yaml`) plus the Policy Engine decision (`pdp-decision.yaml`).
-    It never passes tokens, keys, nonces or attestation evidence (A_xxxx3).
+    It never passes tokens, keys, nonces or attestation evidence.
 
     ## Security
 
-    Both directions are protected by **mutual TLS** according to gemSpec_Krypt
-    (A_xxxx4). The Authorization Server accepts `terminateSession`, `cancelRebind` and
+    Both directions are protected by **mutual TLS** according to gemSpec_Krypt. The Authorization Server accepts `terminateSession`, `cancelRebind` and
     `suspendRebinds` only from the one backend configured for this ZETA Guard instance and verifies the presented client
     certificate against that configuration; any other caller receives `401`.
     Every call is logged with the `trace_id` of the triggering request and exported
-    as part of the OTel trace (A_xxxx6).
+    as part of the OTel trace.
 
     ## Correlation
 
@@ -110,12 +109,12 @@ paths:
       summary: Application-specific authorization before token issuance (authorizeAccess)
       description: |-
         Called by the Authorization Server after the Policy Engine returned
-        `allow: true` and before the token set is issued (A_xxxx1). The backend
+        `allow: true` and before the token set is issued. The backend
         decides whether the access is allowed from the perspective of the service
         (e.g. representation rules, consent, contractual relationship, service-side
         block) and may narrow the granted scope.
 
-        Timeout and failure handling: see A_xxxx5 (fail-closed).
+        Timeout and failure handling: fail closed.
       parameters:
         - $ref: '#/components/parameters/Traceparent'
       requestBody:
@@ -207,7 +206,7 @@ paths:
 
         Only the backend configured for this ZETA Guard instance is authorised; the
         Authorization Server verifies the mTLS client certificate against that
-        configuration (A_xxxx4).
+        configuration.
       parameters:
         - $ref: '#/components/parameters/Traceparent'
         - name: session_id
@@ -239,7 +238,7 @@ paths:
       summary: Abort a re-binding after an objection by email (cancelRebind)
       description: |-
         Called by the provider after receiving a reply to notification N6 at the reply
-        address `widerspruch+<token>@<provider domain>` (A_CM-58, A_CM-59). The provider
+        address `widerspruch+<token>@<provider domain>`. The provider
         evaluates only the recipient address and headers, discards automatic replies and
         bounces and replies received within 60 seconds after N6 was sent, never processes or
         stores the content, raises an event in its SIEM and passes the objection token here
@@ -248,8 +247,8 @@ paths:
         The provider lower-cases the token before passing it on (mail systems may change the
         case of the local part, RFC 5321 section 2.4). The Authorization Server compares the
         hash of the token with the stored hash; on a
-        match it aborts the open re-binding (A_CM-52 no. 4), sends N9 and counts a deliberate
-        objection for the IDP of the re-binding (A_CM-57 no. 4). An unknown, expired or
+        match it aborts the open re-binding, sends N9 and counts a deliberate
+        objection for the IDP of the re-binding. An unknown, expired or
         already used token is answered with `200` and `accepted: true` without effect, so the
         answer reveals nothing about existing re-bindings. Idempotent (A_29858); every call is
         written to the audit log.
@@ -280,9 +279,9 @@ paths:
       summary: Suspend all re-bindings of a sectoral IDP (suspendRebinds)
       description: |-
         Called by the provider's SIEM (through the backend) when it detects an attack, e.g.
-        after the reporting threshold for objections was exceeded (A_CM-57 no. 4, A_CM-58).
+        after the reporting threshold for objections was exceeded.
         The Authorization Server suspends all open and new re-bindings whose starting ID token
-        was issued by `iss`: they are not completed, deadlines and aborts continue (A_CM-57).
+        was issued by `iss`: they are not completed, deadlines and aborts continue.
         It reports the event to the provider's security monitoring, writes the audit log and
         sends a security event to gematik containing only `iss`, kind of trigger, counter and
         period.
@@ -413,7 +412,7 @@ components:
           description: |-
             Scopes to add to the access token. Only scopes within the set allowed by
             the Policy Engine decision are taken over; others are discarded and reported
-            as a security event (A_xxxx2).
+            as a security event.
           items: { type: string }
           uniqueItems: true
         additional_authorization_details:
@@ -532,7 +531,7 @@ components:
           description: |-
             Objection token from the local part of the reply address of N6 (after
             `widerspruch+`): 130 bit from a CSPRNG, Base32 (RFC 4648) in lower case without
-            padding, 26 characters (A_CM-58). Case-insensitive by construction; the provider
+            padding, 26 characters. Case-insensitive by construction; the provider
             lower-cases it before passing it on. Prefix and token together stay within the
             64-octet limit of the local part (RFC 5321 section 4.5.3.1.1).
           pattern: '^[a-z2-7]{26}$'
@@ -553,7 +552,7 @@ components:
           type: string
           description: |-
             Machine-readable reason. Reserved values: `objection_threshold` (reporting
-            threshold for objections exceeded, A_CM-57 no. 4), `siem_detection` (other
+            threshold for objections exceeded), `siem_detection` (other
             detection by the SIEM), `idp_incident` (incident reported by the sectoral IDP or
             gematik). A service may add namespaced values (`urn:<service>:...`).
           x-extensible-enum: [objection_threshold, siem_detection, idp_incident]
