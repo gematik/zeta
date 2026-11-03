@@ -53,8 +53,6 @@ http {
     gzip  on;
 
     pep_pdp_issuer https://my.zeta.service.de/auth/realms/zeta-guard;
-    # Geburtsdatum im ZETA-User-Info-Header, Standardwert 1900-01-01 (Interimslösung)
-    # pep_user_info_birthdate 1900-01-01;
     # optional http client config, defaults:
     # pep_http_client_connect_timeout 2; # s
     # pep_http_client_timeout 10; # s
@@ -177,13 +175,13 @@ Felder lässt er **weg**, wenn der zugehörige Claim im Token fehlt — sie
 erscheinen also nicht als `null`. Fehlt `commonName`, lehnt der PEP die Anfrage
 ab.
 
-| Feld               | Typ                   | Immer gesetzt | Beschreibung                                                                                   |
-|--------------------|-----------------------|---------------|------------------------------------------------------------------------------------------------|
-| `identifier`       | string                | ja            | Telematik-ID, KVNR oder anderer eindeutiger Identifikator des Subjekts (aus dem `sub`-Claim).  |
-| `professionOID`    | string                | ja            | Profession-OID des Subjekts.                                                                   |
-| `commonName`       | string                | ja            | Kurzname der Institution.                                                                      |
-| `organizationName` | string                | nein          | Name der Organisation oder Institution. Entfällt, wenn der Access-Token den Claim nicht trägt. |
-| `birthdate`        | string (`YYYY-MM-DD`) | nein          | Geburtsdatum des Versicherten nach ISO 8601 (A_27558). Nur bei Versicherten-Token (`professionOID` `1.2.276.0.76.4.49`); bei SMC-B-/LEI-Token entfällt das Feld. Siehe Hinweis unten. |
+| Feld               | Typ                   | Immer gesetzt | Beschreibung                                                                                                                                                                                                              |
+|--------------------|-----------------------|---------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `identifier`       | string                | ja            | Telematik-ID, KVNR oder anderer eindeutiger Identifikator des Subjekts (aus dem `sub`-Claim).                                                                                                                             |
+| `professionOID`    | string                | ja            | Profession-OID des Subjekts.                                                                                                                                                                                              |
+| `commonName`       | string                | ja            | Kurzname der Institution; bei Versicherten der vollständige Anzeigename (A_26973-03).                                                                                                                                     |
+| `organizationName` | string                | nein          | Name der Organisation oder Institution. Entfällt, wenn der Access-Token den Claim nicht trägt.                                                                                                                            |
+| `birthdate`        | string (`YYYY-MM-DD`) | nein          | Geburtsdatum des Versicherten nach ISO 8601 (A_27558, A_26973-03). Aus dem `birthdate`-Claim des Access-Tokens; entfällt ohne Einwilligung des Nutzers am sektoralen IDP sowie bei SMC-B-/LEI-Token. Siehe Hinweis unten. |
 
 Dekodiertes Beispiel:
 
@@ -196,29 +194,24 @@ Dekodiertes Beispiel:
 }
 ```
 
-Dekodiertes Beispiel für ein Versicherten-Token (mit `birthdate`):
+Dekodiertes Beispiel für ein Versicherten-Token (Nutzer hat der Freigabe des Geburtsdatums zugestimmt):
 
 ```json
 {
   "identifier": "X110411675",
   "professionOID": "1.2.276.0.76.4.49",
-  "commonName": "Max Mustermann",
-  "birthdate": "1900-01-01"
+  "commonName": "Dr. Max Mustermann",
+  "birthdate": "1987-06-05"
 }
 ```
 
-> **Hinweis — Interimslösung für `birthdate`:** A_27558 verlangt das Geburtsdatum
-> als Pflichtfeld, der Authorization Server liefert dafür derzeit jedoch keinen
-> Claim. Der PEP setzt deshalb für Token mit der Versicherten-`professionOID`
-> `1.2.276.0.76.4.49` einen festen Wert — standardmäßig `1900-01-01`, pro
-> Umgebung über [`pep_user_info_birthdate`](#konfigurationsparameter-pep-basis)
-> überschreibbar. Bei allen anderen Token (SMC-B, LEI) fehlt das Feld. Bei
-> Versicherten-Token ist es damit immer vorhanden, trägt aber **kein echtes
-> Geburtsdatum**. Fachdienste dürfen den Wert bis auf Weiteres nicht fachlich
-> auswerten. Sobald der Authorization Server das einwilligungsabhängige
-> `birthdate` des sektoralen IDP weitergibt (A_26973-02), tritt der echte Claim
-> an die Stelle des festen Werts; das Feld kann dann entfallen, wenn keine
-> Freigabe des Nutzers vorliegt.
+> **Hinweis — `birthdate`:** Der Authorization Server fragt das Geburtsdatum
+> beim sektoralen IDP an und übernimmt den einwilligungsabhängigen
+> `birthdate`-Claim des id_tokens ins Access-Token (A_26973-03); der PEP
+> schreibt ihn unverändert in den Header. Hat der Nutzer der Freigabe nicht
+> zugestimmt, fehlt das Feld — Fachdienste müssen damit rechnen. Ein Wert, der
+> kein gültiges Datum im Format `YYYY-MM-DD` ist, wird verworfen.
+
 
 ### Konfigurationsparameter (PEP-Basis)
 
@@ -259,18 +252,6 @@ Dekodiertes Beispiel für ein Versicherten-Token (mit `birthdate`):
     * Pflichtfeld: Nein (aber siehe Beschreibung)
     * Context: `http`
     * Standardwert: nicht gesetzt
-* `pep_user_info_birthdate`
-    * Typ: string (Datum im Format `YYYY-MM-DD`)
-    * Beschreibung: Wert, den der PEP im Feld `birthdate` des
-      `ZETA-User-Info`-Headers ausliefert (A_27558, siehe
-      [Inhalt des `ZETA-User-Info`-Headers](#inhalt-des-zeta-user-info-headers)).
-      Interimslösung, solange der Authorization Server keinen `birthdate`-Claim
-      liefert: Das Feld ist stets gesetzt, enthält aber kein echtes
-      Geburtsdatum. Einen leeren oder nicht als ISO-8601-Datum interpretierbaren
-      Wert lehnt der PEP beim Start ab.
-    * Pflichtfeld: Nein
-    * Context: `http`
-    * Standardwert: `1900-01-01`
 * `pep_http_client_connect_timeout`, `pep_http_client_timeout`
     * Typ: integer
     * Beschreibung: Konfigurationen für den pep-spezifischen HTTP client. Dieser
@@ -349,7 +330,9 @@ Dekodiertes Beispiel für ein Versicherten-Token (mit `birthdate`):
       Access-Token und die Client-IP des Aufrufers übereinstimmen.
     * Pflichtfeld: Nein
     * Context: `http`
-    * Standardwert: `off`
+    * Standardwert: `off` (das Helm-Chart setzt `on`, siehe
+      `pepproxy.nginxConf.noTravel` in der
+      [Referenz des Helm-Charts](Referenz_des_Helm_Charts.md))
 * `pep_forward_client_data`
     * Typ: `on` | `off`
     * Beschreibung: Steuert, ob der `ZETA-Client-Data`-Header (Base64-URL-kodierte
@@ -370,7 +353,9 @@ Dekodiertes Beispiel für ein Versicherten-Token (mit `birthdate`):
       weitergereicht.
       Fehlt der `PoPP`-Header, obwohl er verlangt wird, antwortet der PEP mit
       `HTTP 400 Bad Request`. Ist die Signatur ungültig oder schlägt eine der
-      anderen Prüfungen fehl, antwortet der PEP mit `HTTP 403 Forbidden`.
+      anderen Prüfungen fehl, antwortet der PEP mit `HTTP 403 Forbidden`. Beide
+      Antworten tragen gemäß A_29850 keinen `zeta-error-origin`-Header, damit der
+      ZETA-Client sie an den Aufrufer durchreicht, statt sich neu zu authentifizieren.
       Der Issuer des PoPP-Servers wird global über `pep_popp_issuer` konfiguriert.
     * Pflichtfeld: Nein
     * Context: `http`, `server`, `location`

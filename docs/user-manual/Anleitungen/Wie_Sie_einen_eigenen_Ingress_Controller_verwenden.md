@@ -189,14 +189,24 @@ Ein fremder Controller ignoriert diese Annotation. Die erzeugten Ressourcen
 bleiben trotzdem gültige Ingresses mit Host, TLS und Pfaden — in vielen
 Umgebungen genügt das. Wo es nicht genügt, ist `ingressEnabled: false` zu setzen
 und eine eigene Ingress-Definition zu pflegen, die dieselben Pfade auf dieselben
-Services routet:
+Services routet. Auf dem Haupthostnamen (`authserver.hostname`):
 
-| Pfad            | Service         | Anmerkung                                       |
-|-----------------|-----------------|-------------------------------------------------|
-| `/auth`         | `authserver`    | Realm-Endpunkte (Token, Well-Known, Login)      |
-| `/auth/admin`   | `pep-proxy-svc` | nur wenn `authserver.adminHostname` gesetzt ist |
-| `/`             | `pep-proxy-svc` | alle Fachdienst-Pfade und die ASL-Endpunkte     |
-| WebSocket-Pfade | `pep-proxy-svc` | aus `proxyLocations` mit `websocket: true`      |
+| Pfad                  | Service         | Anmerkung                                       |
+|-----------------------|-----------------|-------------------------------------------------|
+| `/auth`               | `authserver`    | Realm-Endpunkte (Token, Well-Known, Login)      |
+| `/auth/admin`         | `pep-proxy-svc` | nur wenn `authserver.adminHostname` gesetzt ist |
+| `/auth/realms/master` | `pep-proxy-svc` | nur wenn `authserver.adminHostname` gesetzt ist |
+| `/`                   | `pep-proxy-svc` | alle Fachdienst-Pfade und die ASL-Endpunkte     |
+| WebSocket-Pfade       | `pep-proxy-svc` | aus `proxyLocations` mit `websocket: true`      |
+
+Ist `authserver.adminHostname` gesetzt, kommt ein zweiter Hostname hinzu. Sein
+Ingress routet `/auth` **ohne** den PEP direkt an den Authserver — nur so
+bleiben Admin-Konsole und Admin-REST-API erreichbar, während `/auth/admin` auf
+dem Haupthostnamen mit `403` gesperrt ist:
+
+| Pfad    | Service      | Anmerkung                                                     |
+|---------|--------------|---------------------------------------------------------------|
+| `/auth` | `authserver` | einschließlich `/auth/admin`; von Terraform und CI/CD genutzt |
 
 Ebenfalls nur mit dem mitgelieferten NIC nutzbar ist `nginxIngressHsm: true`:
 Der Value unterdrückt `spec.tls` der Master-Ressource, damit TLS stattdessen
@@ -209,12 +219,15 @@ Controllers.
 
 Nicht nachzubilden sind Absicherungen, die bewusst nicht am Ingress hängen:
 
-* **Sperre der Admin-REST-API und -Konsole auf dem öffentlichen Hostnamen.**
-  Ist `authserver.adminHostname` gesetzt, routet das Chart `/auth/admin` auf den
-  PEP, der mit `403` antwortet. Das funktioniert mit jedem Ingress-Controller,
-  weil es nur Pfad-Routing benötigt. Ohne Admin-Hostnamen bleiben Admin-API und
-  -Konsole auf dem öffentlichen Hostnamen erreichbar — sonst gäbe es keinen Weg
-  zu ihnen.
+* **Sperre der Admin-REST-API, der Konsole und des `master`-Realms auf dem
+  öffentlichen Hostnamen.**
+  Ist `authserver.adminHostname` gesetzt, routet das Chart `/auth/admin` und
+  `/auth/realms/master` auf den PEP, der mit `403` antwortet. Der `master`-Realm
+  gehört dazu, weil dort das Admin-Access-Token ausgestellt wird; der
+  `zeta-guard`-Realm bleibt unberührt. Das funktioniert mit jedem
+  Ingress-Controller, weil es nur Pfad-Routing benötigt. Ohne Admin-Hostnamen
+  bleiben Admin-API, Konsole und `master`-Realm auf dem öffentlichen Hostnamen
+  erreichbar — sonst gäbe es keinen Weg zu ihnen.
 * **Header-Behandlung an der Upstream-Grenze.** Die `ZETA-*`-Header setzt
   ausschließlich der PEP; vom Client mitgeschickte Kopien verwirft er. Siehe
   [Header-Behandlung und `proxy_headers.conf`](../Referenzen/Konfiguration_des_PEP_Http_Proxy.md#header-behandlung-und-proxy_headersconf).
@@ -234,12 +247,14 @@ Beim Umstieg auf einen eigenen Ingress-Controller:
 5. Eingehende Forwarding- und Client-Adress-Header verwerfen.
 6. `^/auth/realms/[^/]+/zeta-guard-revocation` auf allen öffentlichen Hostnamen
    sperren.
-7. TLS-Parameter und HSTS gemäß der Tabelle unter
+7. Ist `authserver.adminHostname` gesetzt: einen eigenen Ingress für diesen
+   Hostnamen anlegen, der `/auth` direkt auf `authserver` routet.
+8. TLS-Parameter und HSTS gemäß der Tabelle unter
    [Absicherung und AFO-Nachweis](#absicherung-und-afo-nachweis) setzen.
-8. Rate Limit einrichten (siehe
+9. Rate Limit einrichten (siehe
    [Rate Limit einrichten](Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md#rate-limit-einrichten)).
-9. Prüfen, ob die Ingress-Ressourcen des Charts genügen; andernfalls
-   `ingressEnabled: false` und eigene Ressourcen nach der Pfadtabelle oben.
+10. Prüfen, ob die Ingress-Ressourcen des Charts genügen; andernfalls
+    `ingressEnabled: false` und eigene Ressourcen nach den Pfadtabellen oben.
 
 Die Liste der ingressseitig getragenen Funktionen kann sich mit neuen Releases
 ändern. Die [Release Notes](../ReleaseNotes.md) weisen solche Änderungen aus.

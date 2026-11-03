@@ -1,7 +1,8 @@
 # Informationen für Primärsystem-Hersteller
 
 Primärsystem-Hersteller binden das ZETA-SDK in ihre Primärsystemanwendungen
-ein, um Dienste der TI 2.0 aufzurufen.
+ein, um Dienste der TI 2.0 aufzurufen. Dieses Dokument beschreibt den Stand des
+ZETA-SDK 2.0.0.
 
 Hinweis: Die Nutzung eines mobilen Clients ist aktuell nur als Vorschau
 vorhanden – siehe dazu auch das entsprechende
@@ -69,6 +70,10 @@ Produktversion ist:
 #### Build-Time
 
 * Maven-Repository für die Nutzung der dort abgelegten Module (Java, Kotlin)
+* NuGet-Feed für die C#-Pakete `Zeta.Sdk.Linux`, `Zeta.Sdk.Windows` bzw.
+  `Zeta.Sdk.MacOS` (je ein Paket pro Plattform)
+* Für C++ sowie für selbst gebaute C#-Pakete: der Quellcode des SDK-Repositorys,
+  aus dem die native Bibliothek gebaut wird
 
 #### Test und Betrieb
 
@@ -90,7 +95,8 @@ Produktversion ist:
 
 * anbietereigene Dienste (abhängig vom Fachdienst, ab Umsetzungsstufe 2)
     * Clientsystem-Notification-Service(s) – Apple Push Notifications, Firebase;
-      SDK-seitig als Vorschau verfügbar, siehe
+      SDK-seitig als Vorschau und nur für mobile Clients unter Android und iOS
+      verfügbar, siehe
       [Wie Sie das SDK-Notifications-Modul verwenden](Anleitungen/Wie_Sie_das_SDK_Notifications-Modul_verwenden.md)
     * E-Mail-Confirmation-Code – Mail-Empfang
 
@@ -101,11 +107,19 @@ der Client bzw. das Primärsystem dem SDK mehrere Funktionen bereit:
 
 1. Eine Implementierung für sicheres Speichern von sensitiven Daten wie
    Access-Tokens
-2. Eine Konnektor-Anbindung
+2. Eine Konnektor-Anbindung für das SMC-B-basierte Subject-Token. Das SDK
+   enthält keine eigene Konnektor-Anbindung; das Primärsystem bindet seine
+   bestehende Anbindung über eine schmale Schnittstelle mit zwei Aufrufen
+   (Zertifikat lesen, Challenge signieren) ein
 3. Eine Möglichkeit der Log-Ausgabe
 
-Hinweis: Die aktuell mitgelieferten Komponenten für diese Funktionalitäten
-dienen nur der Demonstration und dem Test und sind nicht produktionsgeeignet.
+Hinweis: Die mitgelieferten Beispiel- und Test-Komponenten für diese
+Funktionalitäten – etwa der SM-B-Provider für PKCS#12-Dateien oder die
+`InMemoryStorage` – dienen nur der Demonstration und dem Test und sind nicht
+produktionsgeeignet. Ob der verschlüsselte Standard-Speicher des SDK die
+Anforderungen des Primärsystems erfüllt, ist je Plattform zu prüfen; wie er je
+Plattform arbeitet, beschreibt
+[Wie Sie das ZETA-SDK integrieren](Anleitungen/Wie_Sie_das_ZETA_SDK_integrieren.md#storage).
 
 ### Infrastruktur
 
@@ -115,15 +129,18 @@ voraus.
 
 ### Tooling
 
-Die Anforderungen an das Tooling unterscheiden sich je Plattform; durchgehend
-vorausgesetzt sind aber Gradle und damit Java als Build-Tool.
+Die Anforderungen an das Tooling unterscheiden sich je Plattform. Wer das SDK
+aus dem Quellcode baut, benötigt durchgehend Gradle und damit Java als
+Build-Tool. Das Repository bringt den Gradle-Wrapper mit (Gradle 9.7); gebaut
+wird mit einer JDK-21-Toolchain.
 
 #### Java, Kotlin
 
 Bei beiden Zielplattformen wird Java als Build-Tool sowie als Laufzeitumgebung
 verwendet.
 
-* Java
+* Java (Laufzeitumgebung ab Java 21; die JVM-Artefakte des SDK werden für
+  Java 21 kompiliert)
 * Gradle als Build-Tool
 
 #### C++
@@ -133,33 +150,42 @@ Java und Gradle als Build-Tool. Dies ist im Ordner `zeta-client-cpp` gezeigt.
 Zum anderen als reiner `Makefile`-Build.
 
 Beide Varianten benötigen Java sowie einen C++-Compiler. Die zweite Variante
-benötigt zusätzlich `make` als Build-Tool.
+benötigt zusätzlich `make` als Build-Tool. Für Linux lässt sich der Gradle-Build
+auch in einem Docker-Container ausführen (`Dockerfile.cpp-dev` im
+SDK-Repository).
+
+Die SDK-Bibliothek selbst wird in beiden Fällen mit Gradle gebaut; nur der
+Client lässt sich wahlweise ohne Gradle bauen.
 
 ##### C++ auf Windows
 
-* Java (für Gradle als Build-Tool) nur für den Gradle-basierten C++-Client
+* Java (für Gradle als Build-Tool) für den Bau der SDK-Bibliothek und des
+  Gradle-basierten C++-Clients
 * MinGW (`g++`, `mingw32-make`) für den nativen C++-Client ohne Gradle
 
 ##### C++ auf Apple
 
-* Java (für Gradle als Build-Tool) nur für den Gradle-basierten C++-Client
+* Java (für Gradle als Build-Tool) für den Bau der SDK-Bibliothek und des
+  Gradle-basierten C++-Clients
 * `clang++`, `make` für den nativen C++-Client ohne Gradle
 
 ##### C++ auf Linux
 
-* Java (für Gradle als Build-Tool) nur für den Gradle-basierten C++-Client
-  (zeta-client-cpp)
-* alternativ Make für einen nativen Build (zeta-nativeclient-cpp)
+* Java (für Gradle als Build-Tool) für den Bau der SDK-Bibliothek und des
+  Gradle-basierten C++-Clients (zeta-client-cpp)
+* alternativ Make für einen nativen Build des Clients (zeta-nativeclient-cpp)
 * `gcc/g++` oder `clang/clang++`, `make` für den nativen C++-Client ohne Gradle
 
 #### C#
 
 Der C#-Client ist ein Wrapper um die Kotlin-Bibliothek und nutzt deren C-ABI.
-Daher werden die Voraussetzungen für den C++-Build auf der jeweiligen Plattform
-benötigt, zusätzlich die .NET-spezifischen Voraussetzungen.
+Er wird als NuGet-Paket je Plattform bereitgestellt, das die passende native
+Bibliothek bereits enthält: `Zeta.Sdk.Linux` (Linux x64), `Zeta.Sdk.Windows`
+(Windows x64) und `Zeta.Sdk.MacOS` (macOS ARM64).
 
-* die Voraussetzungen für den jeweiligen C++-Build
 * .NET 10.0
+* nur wenn Sie die native Bibliothek bzw. das Paket selbst bauen: die
+  Voraussetzungen für den jeweiligen C++-Build
 
 ## Sicherheitsleistungen
 
@@ -176,6 +202,11 @@ Die relevanten Anleitungen und Referenzen sind hier verlinkt:
 
 * Für das Integrieren des ZETA-Client-SDK:
   [Wie Sie das ZETA-SDK integrieren](Anleitungen/Wie_Sie_das_ZETA_SDK_integrieren.md)
+* Welche Module das SDK-Repository enthält und welche Funktionen auf welcher
+  Plattform bzw. in welcher Sprach-Anbindung verfügbar sind:
+  [SDK-Übersicht](Referenzen/SDK-Uebersicht.md)
+* Für das Bauen und Ausführen des Demo-Clients aus dem SDK-Repository:
+  [Wie Sie den ZETA-Demo-Client ausführen](Anleitungen/Wie_Sie_den_ZETA_Demo_client_ausführen.md)
 
 * Wie die dynamische Client-Registrierung (DCR) am ZETA-Guard abläuft und was
   das SDK dabei automatisch übernimmt:
@@ -215,31 +246,58 @@ geführt.
 
 ### Known Issues
 
-* Die Abrufe der OCSP-Responses und der CRL erfolgen mit einem
-  Standard-HTTP(S)-Client. Daher werden nur die dem Betriebssystem bekannten CAs
-  berücksichtigt. D. h. die dem SDK zusätzlich hinzugefügten CAs werden aktuell
-  nicht berücksichtigt. In solchen Fällen sind die zusätzlich notwendigen CAs
-  dem Betriebssystem bekannt zu machen. Betroffen sind alle Plattformen (Linux,
-  Windows, Mac, Mobile).
+* Das SDK unterstützt keine Pfad-Anteile in der URL des
+  AS-Well-Known-Dokuments; die Authserver-URLs werden daher ohne Pfad definiert
+  (WONTFIX, siehe [Known Issues](README.md#known-issues)).
 
-* Die Strukturierung der Ablage von gespeicherten Tokens etc. wurde geändert. Es
-  hatte sich gezeigt, dass die Index-Schlüssel zu lang wurden. Daher wurden diese
-  durch ein neues Verfahren ersetzt. Als Konsequenz werden sich die mobilen
-  Clients bei erstmaliger Nutzung der Version 1.3.0 neu beim Guard registrieren.
+* Die C-API und damit die C++- und C#-Anbindungen setzen die
+  `platformProductId` derzeit fest je Betriebssystem; sie lässt sich dort nicht
+  konfigurieren. Ebenso bieten diese Anbindungen keine Konfiguration der
+  Attestierung (unter Linux und Windows gilt die Software-Attestierung). Welche
+  Funktionen je Sprache verfügbar sind, zeigt die
+  [Plattform- und Feature-Matrix](Referenzen/SDK-Uebersicht.md#plattform--und-feature-matrix).
+
+* Die synchronen PUT- und PATCH-Aufrufe der C-API (`ZetaHttpClient_put`,
+  `ZetaHttpClient_patch`) und damit `Put` und `Patch` des synchronen C#-Clients
+  übertragen derzeit keinen Body. Für PUT und PATCH mit Body sind die
+  asynchronen Varianten zu nutzen.
+
+* Der HTTP-Client des SDK für Fachdienst-Aufrufe verwaltet derzeit nur ein
+  Cookie: Er speichert den Wert jedes empfangenen Cookies als `zeta_route`-Cookie
+  für die Sticky Session am ZETA-Guard. Setzt der Fachdienst eigene Cookies,
+  werden diese nicht unter ihrem Namen zurückgesendet und überschreiben das
+  `zeta_route`-Cookie.
+
+* `ZetaSdk_getLastError()` (bzw. `GetLastError()` in C#) liefert die Meldung der
+  letzten an der Sprachgrenze abgefangenen Ausnahme und setzt sie nicht zurück.
+  Schlagen Discovery, Registrierung oder Authentifizierung fehl, steht der
+  Grund nur im Log. `OpenWebSocket` in C# meldet deshalb nach einem früheren
+  Fehler auch bei Erfolg `-1`.
+
+* Die Strukturierung der Ablage von gespeicherten Tokens etc. wurde mit Version
+  1.3.0 geändert. Es hatte sich gezeigt, dass die Index-Schlüssel zu lang wurden.
+  Daher wurden diese durch ein neues Verfahren ersetzt. Als Konsequenz
+  registrieren sich mobile Clients beim Update von einer Version vor 1.3.0 bei
+  der erstmaligen Nutzung neu beim Guard.
+
+Behoben ist seit Version 1.3.2 die frühere Einschränkung, dass OCSP-Responses
+und CRLs mit einem Standard-HTTP(S)-Client abgerufen wurden: Die Abrufe nutzen
+jetzt den HTTP-Client des SDK mit dessen Konfiguration (u. a. Proxy und
+Timeouts).
 
 ### Known Issues Mobile Devices
 
 Hinweis: Die Nutzung mit mobilen Geräten ist noch als Vorschau zu bewerten und
 nicht produktiv nutzbar.
 
-* Mit Android-API-Versionen < 37 kann die gestapelte OCSP-Response nicht
-  extrahiert werden und wird damit aktuell nicht geprüft. In zukünftigen
-  Versionen wird eine zusätzliche Bibliothek eingesetzt, die diese
-  Funktionalität ermöglicht.
-
 * Unter iOS nutzen wir noch die betriebssystemseitige TLS-Verifikation. Die
-  gematik-spezifischen Prüfungen sind daher noch nicht umgesetzt. Im nächsten
-  Release wird dies durch den ktor-curl-client ersetzt.
+  gematik-spezifischen Prüfungen sind daher noch nicht umgesetzt. Geplant ist,
+  dies durch den ktor-curl-client zu ersetzen.
+
+Weitere Einschränkungen für mobile Clients, etwa beim Speicher unter iOS,
+beschreibt das [ReadMe für Hersteller mobiler Clients](ReadMeMobileClientHersteller.md#known-issues-mobile-devices).
+Die gestapelte OCSP-Response wird seit Version 1.3.2 auch auf Android-Versionen
+mit API-Level < 37 extrahiert und geprüft.
 
 ### Weitere Hinweise
 

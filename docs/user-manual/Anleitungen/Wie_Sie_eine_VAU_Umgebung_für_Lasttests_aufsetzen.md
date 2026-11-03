@@ -160,7 +160,7 @@ Vor dem Deployment im Namespace anlegen:
   `authserver.hsm.dbEnc.keyId`) — er erzeugt das Secret also nicht. Anlegen des
   Secrets und die Verdrahtung der drei zusammengehörigen Values siehe
   [Wie Sie ZETA-Guard in Kubernetes konfigurieren, Abschnitt 10 —
-  Keychain-Secret bereitstellen](Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md#keychain-secret-bereitstellen).
+  Keychain-Secrets bereitstellen](Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md#keychain-secrets-bereitstellen).
 - **Truststore-Passwort** (`pdp-truststores-pw`) und optional **`opa-bearer`**
   für OPA-Bundle-Pulls.
 

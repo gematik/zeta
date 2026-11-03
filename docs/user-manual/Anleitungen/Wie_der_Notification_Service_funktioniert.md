@@ -54,7 +54,10 @@ Konfigurationsreferenz steht in
 5. **Asynchrone Zustellung über das Push Gateway:** Ein Worker arbeitet die
    prozesslokale Warteschlange (Kapazität standardmäßig 10 000) ab und ruft
    das Push Gateway unter der in den Pusher-Daten hinterlegten, gegen die
-   Allowlist geprüften Basis-URL auf (`POST <base-url>notify/batch`).
+   Allowlist geprüften Basis-URL auf (`POST <base-url>notify/batch`; bei
+   `notificationService.env.encryptionEnabled: true` ausschließlich
+   `notifyEncrypted/batch`, siehe
+   [Datenschutz: Sealing, HSM und verschlüsselter Push](../Referenzen/Konfiguration_des_Notification_Service.md#datenschutz-sealing-hsm-und-verschlüsselter-push)).
    Transiente Fehler (5xx, 429) werden mit exponentiellem Backoff wiederholt
    (standardmäßig 3 Versuche ab 1 s); vom Push Gateway als `rejected`
    gemeldete Pushkeys führen zur Löschung des betroffenen Pushers. Die
@@ -67,7 +70,10 @@ Konfigurationsreferenz steht in
    abrufen (Scope `notification.history.read`, erscheint nur bei aktivierter
    Historie im Well-Known-Dokument und muss zusätzlich per Terraform in
    Keycloak angelegt werden). Bei deaktivierter Historie wird nichts
-   persistiert (A_29974).
+   persistiert (A_29974). Die Historie eines Geräts wird als Ganzes gelöscht,
+   sobald `notificationService.historyRetention` nach ihrem ersten Eintrag
+   verstrichen ist (Standard 30 Tage), und ebenso, sobald der Nutzer den
+   Pushkey nicht mehr hält.
 
 ## Endpunkte und Scopes im Überblick
 
@@ -87,7 +93,8 @@ Dienstes ab und verlangt je Route einen Scope:
 Alle übrigen Pfade unter `/push/v1/` beantwortet der PEP mit `403`. Die
 History-Route existiert im PEP immer; ohne aktivierte Historie wird der
 zugehörige Scope jedoch nicht ausgestellt, sodass Zugriffe bereits am PEP
-scheitern.
+mit `403` scheitern. Der Dienst selbst antwortet in diesem Fall mit
+`404 HISTORY_DISABLED`.
 
 Die Fachdienst-Seite (RS-API) wird nicht über den PEP geroutet, sondern
 clusterintern direkt am Service `notification-service-rs` aufgerufen:
@@ -110,10 +117,13 @@ Die beiden APIs des Dienstes sind unterschiedlich abgesichert:
   Operation ist an dieses Subjekt gebunden — ein Gerät sieht und ändert nur
   die Daten des eigenen Nutzers.
 - **RS-Seite (Fachdienst):** Die Spezifikation verlangt einen per mTLS
-  authentifizierten technischen Nutzer. Der Dienst terminiert dieses mTLS
-  nicht selbst; die Absicherung erfolgt vorgelagert (Service Mesh bzw. ein
-  mTLS-terminierender Endpunkt innerhalb der Vertrauensgrenze). Die RS-API
-  wird nicht über den PEP geroutet.
+  authentifizierten technischen Nutzer (A_29980). Der Dienst verlangt auf der
+  RS-API ein Client-Zertifikat aus seinem Truststore und antwortet sonst mit
+  `401`; abschaltbar über `notificationService.rs.mtls.enabled`, wenn die
+  Absicherung vorgelagert erfolgt. Was das Chart dafür bereitstellt, beschreibt
+  [Konfiguration des Notification Service](../Referenzen/Konfiguration_des_Notification_Service.md#übersicht-split-deployment-und-datenbank).
+  Die RS-API wird nicht über den PEP geroutet und ist am öffentlichen Ingress
+  gesperrt.
 
 ## Datenhaltung und Löschung
 
@@ -123,11 +133,18 @@ PostgreSQL-Datenbank (im Standardmodus als dediziertes CNPG-Cluster
 Benachrichtigungen und Idempotenz-Belege — verfallen nach der
 Aufbewahrungsfrist `NOTIFICATION_PERSISTENCE_RETENTION` (Standard 24 Stunden,
 A_29988); ein Purge-Job löscht abgelaufene Datensätze standardmäßig alle
-5 Minuten und ist über einen Postgres-Advisory-Lock mehrinstanzsicher. Die
+5 Minuten und ist über eine per Compare-and-Set vergebene Lease
+mehrinstanzsicher. Die
 Kanal-Registry selbst ist statische Konfiguration; Pusher und ihre
 Kanalzustände bleiben ohne Verfallsdatum gespeichert, bis der Client sie
 löscht (`kind: null`) oder das Push Gateway den Pushkey als ungültig
-zurückmeldet. Historien-Daten entstehen nur bei aktivierter Historie.
+zurückmeldet; mit dem Pusher werden auch sein Schlüsselmaterial (A_29989) und
+die Historie des Geräts gelöscht, sobald der Nutzer den Pushkey unter keiner
+App-ID mehr hält. Historien-Daten entstehen nur bei aktivierter Historie. Sie
+sind von der Frist der Verarbeitungsdaten ausgenommen; ihre Aufbewahrung
+richtet sich nach der Betreiber-Konfiguration (A_29988): Die Historie eines
+Geräts wird als Ganzes gelöscht, sobald `NOTIFICATION_HISTORY_RETENTION` nach
+ihrem ersten Eintrag verstrichen ist (Standard 30 Tage).
 
 ## Betriebsvoraussetzungen
 
@@ -153,22 +170,24 @@ zurückmeldet. Historien-Daten entstehen nur bei aktivierter Historie.
 
 ## Aktueller Stand und Einschränkungen
 
-- **Sealing/Pseudonymisierung sind Stubs:** Das HSM-gestützte Sealing der
-  gespeicherten Daten (`persistenceSealingEnabled`) ist nicht implementiert —
-  Nutzerkennungen und Payloads liegen bis auf DB-/Storage-Ebene
-  unverschlüsselt vor, und das Aktivieren des Schalters führt zu
-  Laufzeitfehlern. Details und Warnung siehe
-  [Konfiguration des Notification Service](../Referenzen/Konfiguration_des_Notification_Service.md#umgebungsvariablen-des-dienstes).
+- **Sealing nur in einer VAU:** Das HSM-gestützte Sealing der gespeicherten
+  Daten (`notificationService.sealing.enabled`) ist nach A_29957 nur innerhalb
+  einer VAU zulässig. Ohne Sealing liegen Nutzerkennungen und Payloads bis auf
+  DB-/Storage-Ebene unverschlüsselt vor. Details siehe
+  [Konfiguration des Notification Service](../Referenzen/Konfiguration_des_Notification_Service.md#datenschutz-sealing-hsm-und-verschlüsselter-push).
 - **Die Zustellwarteschlange ist prozesslokal (In-Memory):** Beim Stopp einer
   Instanz gehen angenommene, noch nicht zugestellte Benachrichtigungen
   verloren; die Queue wird nicht zwischen Instanzen geteilt.
-- **SDK-seitig sind Historie und Entschlüsselung nicht implementiert:**
-  `decryptPushNotification`, `getNotification` und `getNotifications` des
-  SDK-Notifications-Moduls werfen derzeit Fehler; nutzbar sind Pusher- und
-  Kanalverwaltung.
+- **SDK-seitig:** Seit ZETA-SDK 2.0.0 entschlüsselt das
+  SDK-Notifications-Modul empfangene Push-Nachrichten
+  (`decryptPushNotification`) und liest die Historie (`getNotification`,
+  `getNotifications`); siehe
+  [Wie Sie das SDK-Notifications-Modul verwenden](Wie_Sie_das_SDK_Notifications-Modul_verwenden.md).
+  Das Modul steht nur auf Android und iOS zur Verfügung.
 - **Demo-Client:** Der mitgelieferte Demo-Client bringt eine
-  FCM-(Firebase-)Integration für Android mit; eine APNs-Integration für iOS
-  existiert noch nicht.
+  FCM-(Firebase-)Integration für Android und eine APNs-Integration für iOS mit.
+  Unter iOS entschlüsselt er Push-Nachrichten nur, solange die App im
+  Vordergrund ist.
 
 Weitere Einschränkungen der jeweiligen Schnittstellen sind in der
 [Konfigurationsreferenz](../Referenzen/Konfiguration_des_Notification_Service.md#aktueller-stand-und-einschränkungen)

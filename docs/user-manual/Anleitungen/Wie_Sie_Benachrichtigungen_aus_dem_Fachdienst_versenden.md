@@ -40,7 +40,9 @@ Zielgruppe: Fachdienst-Hersteller
   `-fdv`-Deployment für die Client-SDKs). Alle Aufrufe werden über einen
   technischen Nutzer mit **mutual TLS (mTLS)** authentifiziert; die API selbst
   führt keine Token-Prüfung durch. Client- und Server-Zertifikate werden von den
-  jeweiligen Betreibern ausgestellt und verwaltet.
+  jeweiligen Betreibern ausgestellt und verwaltet (A_29981). Wie die
+  Client-Zertifikatsprüfung im Chart gesteuert wird, beschreibt
+  [Konfiguration des Notification Service](../Referenzen/Konfiguration_des_Notification_Service.md#übersicht-split-deployment-und-datenbank).
 - **Erlaubte Kanäle konfiguriert:** Die Kanal-Registry ist statisch und wird per
   Konfiguration gesetzt (`notification.channels.allowed`). Ohne mindestens einen
   erlaubten Kanal startet der Dienst nicht. Ebenso muss die Allow-Liste der
@@ -114,7 +116,8 @@ Verschlüsselungsanweisungen enthalten; ob die Payload verschlüsselt wird,
 bestimmt allein die Konfiguration der Notification-Service-Instanz. Bei
 verschlüsselter Zustellung gilt zusätzlich die Vorgabe des
 gem-push-notifications-Konzepts von exakt 1024 Bytes Klartextblock — die
-serialisierte Payload muss dann in dieses Limit passen.
+serialisierte Payload darf dann höchstens 1018 Bytes groß sein, sonst lautet
+die Antwort `413 PAYLOAD_TOO_LARGE`.
 
 **Idempotency-Key:** Für sichere Wiederholungen (z. B. nach einem Timeout)
 sollte der Fachdienst den Header `Idempotency-Key` senden (A_29992): ein
@@ -203,9 +206,9 @@ und [Konfiguration des Notification Service](../Referenzen/Konfiguration_des_Not
 - **Die Dispatch-Queue ist prozesslokal:** Angenommene, aber noch nicht
   zugestellte Benachrichtigungen gehen beim Stopp der Instanz verloren; die
   Queue wird nicht zwischen Instanzen geteilt. Eine volle Queue führt zu `503`.
-- **Storage Sealing ist nicht implementiert** — eingelieferte Daten liegen
-  bis auf DB-Ebene unverschlüsselt vor (siehe
-  [Warnung in der Konfigurationsreferenz](../Referenzen/Konfiguration_des_Notification_Service.md#umgebungsvariablen-des-dienstes)).
+- **Storage Sealing nur in einer VAU** — ohne Sealing liegen eingelieferte
+  Daten bis auf DB-Ebene unverschlüsselt vor (siehe
+  [Datenschutz in der Konfigurationsreferenz](../Referenzen/Konfiguration_des_Notification_Service.md#datenschutz-sealing-hsm-und-verschlüsselter-push)).
 - **`reference` wird auf dem unverschlüsselten Versandpfad derzeit persistiert,
   aber nicht an das Push Gateway weitergegeben.**
 - Die **Nachrichten-Historie** (`/history/*`) ist ein Feature der FdV-seitigen

@@ -20,6 +20,7 @@ Verwandte Dokumente:
 - [Personenbezogene Daten in Logs und Telemetrie](#personenbezogene-daten-in-logs-und-telemetrie)
 - [Log-Beispiele](#log-beispiele)
 - [Fehlerbehandlung gegenüber Clients](#fehlerbehandlung-gegenüber-clients)
+- [Datenbank nicht erreichbar / Authserver antwortet nicht](#datenbank-nicht-erreichbar--authserver-antwortet-nicht)
 - [Debugging: Log-Level erhöhen](#debugging-log-level-erhöhen)
 - [Aufbewahrung und Rotation](#aufbewahrung-und-rotation)
 - [Alarmierung bei kritischen Fehlern](#alarmierung-bei-kritischen-fehlern)
@@ -107,13 +108,13 @@ für das Abfragen der Metrik-Endpunkte durch das Gateway. „Container-Logs“ i
 keine Komponente, sondern steht für den Kubernetes-Log-Mechanismus, dessen
 Sammlung und Speicherung der Betreiber verantwortet.
 
-| Komponente (Workload)                                            | Logs                                                                                                                                                                                                     | Log-Level-Konfiguration                                                                                                                                               | Metriken                                                                                                                                               |
-|------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Authorization Server (`authserver`, Keycloak)                    | `stdout`, JSON-Format (Helm-Value `authServerLogConsoleOutput`)                                                                                                                                          | Helm-Value `authserver.log.level` (Default `INFO`), wird als `KC_LOG_LEVEL` gesetzt                                                                                   | Management-Port `9000`, Pfad `/auth-mgmt/metrics` (Prometheus-Format)                                                                                  |
-| HTTP Proxy (`pep-proxy`, nginx)                                  | nginx-Access- und -Error-Log auf `stdout`, beide zusätzlich per Syslog an das Telemetry-Gateway; Modul-Logs auf `stdout` und per OTLP an das Telemetry-Gateway                                           | Derzeit kein Helm-Value; Modul-Logs (stdout und OTLP) filtern über die Umgebungsvariable `RUST_LOG` (Default `info`), siehe [Debugging](#debugging-log-level-erhöhen) | Optionaler `nginx-prometheus-exporter`-Sidecar auf Port `9113` (Helm-Value `pepproxyMetricsEnabled`); Modul-Metriken per OTLP an das Telemetry-Gateway |
-| Policy Engine (`opa`)                                            | `stdout`/`stderr` (Server-Log); Decision-Logs und Status-Updates an das Telemetry-Gateway, im Konsolen-Log nur je nach `opa.logDecisions` (Default `false`) bzw. `opa.logStatusUpdates` (Default `false`) | Helm-Values `opa.logLevel` (`debug`/`info`/`warn`/`error`), `opa.logDecisions`, `opa.logStatusUpdates`                                                                | OPA-API auf Port `8181` (`/metrics`); Status-/Bundle-Metriken über Helm-Value `opaStatusPrometheus`                                                    |
-| Telemetry-Gateway (`telemetry-gateway`, OpenTelemetry Collector) | `stdout`/`stderr`                                                                                                                                                                                        | Über die Collector-Konfiguration (Helm-Values unter `telemetry-gateway`)                                                                                              | Eigenmetriken auf Port `8888`                                                                                                                          |
-| Datenbank (`keycloak-db`, CloudNativePG/PostgreSQL)              | `stdout` (vom CloudNativePG-Operator verwaltet)                                                                                                                                                          | PostgreSQL-Parameter über die CloudNativePG-Konfiguration                                                                                                             | Optional PodMonitor über Helm-Value `cloudnativePg.monitoring` (erfordert Prometheus-Operator)                                                         |
+| Komponente (Workload)                                            | Logs                                                                                                                                                                                                      | Log-Level-Konfiguration                                                                                                                                               | Metriken                                                                                                                                                                        |
+|------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Authorization Server (`authserver`, Keycloak)                    | `stdout`, JSON-Format (Helm-Value `authServerLogConsoleOutput`)                                                                                                                                           | Helm-Value `authserver.log.level` (Default `INFO`), wird als `KC_LOG_LEVEL` gesetzt                                                                                   | Management-Port `9000`, Pfad `/auth-mgmt/metrics` (Prometheus-Format)                                                                                                           |
+| HTTP Proxy (`pep-proxy`, nginx)                                  | nginx-Access- und -Error-Log auf `stdout`, beide zusätzlich per Syslog an das Telemetry-Gateway; Modul-Logs auf `stdout` und per OTLP an das Telemetry-Gateway                                            | Derzeit kein Helm-Value; Modul-Logs (stdout und OTLP) filtern über die Umgebungsvariable `RUST_LOG` (Default `info`), siehe [Debugging](#debugging-log-level-erhöhen) | Optionaler `nginx-prometheus-exporter`-Sidecar auf Port `9113` (Helm-Value `pepproxyMetricsEnabled`); Modul-Metriken per OTLP an das Telemetry-Gateway                          |
+| Policy Engine (`opa`)                                            | `stdout`/`stderr` (Server-Log); Decision-Logs und Status-Updates an das Telemetry-Gateway, im Konsolen-Log nur je nach `opa.logDecisions` (Default `false`) bzw. `opa.logStatusUpdates` (Default `false`) | Helm-Values `opa.logLevel` (`debug`/`info`/`warn`/`error`), `opa.logDecisions`, `opa.logStatusUpdates`                                                                | OPA-API auf Port `8181` (`/metrics`); Status-/Bundle-Metriken über Helm-Value `opaStatusPrometheus`                                                                             |
+| Telemetry-Gateway (`telemetry-gateway`, OpenTelemetry Collector) | `stdout`/`stderr`                                                                                                                                                                                         | Über die Collector-Konfiguration (Helm-Values unter `telemetry-gateway`)                                                                                              | Eigenmetriken auf Port `8888`                                                                                                                                                   |
+| Datenbank (`keycloak-db`, CloudNativePG/PostgreSQL)              | `stdout` (vom CloudNativePG-Operator verwaltet)                                                                                                                                                           | PostgreSQL-Parameter über die CloudNativePG-Konfiguration                                                                                                             | Optional PodMonitor über Helm-Value `cloudnativePg.monitoring` (erfordert Prometheus-Operator); den Zustand des Verbindungspools zeigen die `agroal_*`-Metriken des Authservers |
 
 Die genannten Metrik-Endpunkte werden bereits vom Telemetry-Gateway intern
 abgefragt (Prometheus-Receiver) und stehen dort in den Metrik-Pipelines zur
@@ -140,9 +141,17 @@ Der Authorization Server stellt auf dem Management-Port `9000` die Endpunkte
 zusätzliche Container-Ports sind nicht erforderlich. Für die reine
 Verfügbarkeitsüberwachung genügt es in der Regel, den Pod-/Containerstatus über
 die Kubernetes-API abzufragen — die Liveness-/Readiness-Probes werten diese
-Endpunkte bereits aus. Der HTTP Proxy hat keinen eigenen Health-Endpunkt; seine
-Kubernetes-Probes nutzen den nginx-`stub_status`-Endpunkt (`GET /status` auf
-dem Status-Port `8080`). Die OPA-API (Port `8181`), der Status-Port des HTTP
+Endpunkte bereits aus. Zu beachten ist dabei der Unterschied: `/health/ready`
+spiegelt die Erreichbarkeit der Datenbank wider, `/health/live` greift gar nicht
+auf sie zu. Die Liveness-Probe ist bewusst auf `/health/live` gerichtet und
+bleibt damit unabhängig von der Datenbank: eine datenbankabhängige
+Liveness-Probe würde bei einem Datenbankausfall auf *allen* Authserver-Pods
+gleichzeitig fehlschlagen und sie sämtlich neu starten lassen. Die Erholung
+einer blockierten Verbindung übernimmt der Verbindungspool selbst (siehe
+[Datenbank nicht erreichbar](#datenbank-nicht-erreichbar--authserver-antwortet-nicht)).
+Der HTTP Proxy hat keinen eigenen Health-Endpunkt; seine Kubernetes-Probes
+nutzen den nginx-`stub_status`-Endpunkt (`GET /status` auf dem Status-Port
+`8080`). Die OPA-API (Port `8181`), der Status-Port des HTTP
 Proxy sowie die Metrik-Endpunkte sind nur clusterintern erreichbar.
 
 ## Geloggte Ereignisse
@@ -226,6 +235,15 @@ Auf den Standard-Log-Leveln (INFO und höher) enthalten Logs und Telemetrie
   (z. B. der SMC-B) im Log erscheinen.
 
 Die Metriken tragen bewusst keine client-identifizierenden Attribute.
+
+Unabhängig von Logging und seiner Konfiguration speichert der Authorization
+Server je Client-Instanz die Eingabedaten der Policy Engine der letzten
+erfolgreichen Anmeldung in der Keycloak-Datenbank (Spalte `ZETA_CLIENT_DATA.SESSION_DATA`,
+A_26586-01). Sie enthalten unter anderem Client-IP und vorherige Client-IP,
+Telematik-ID bzw. KVNR und Professions-OID. Zugriffsschutz und Backups der
+Datenbank sollten das berücksichtigen. Die Daten werden mit der Registrierung
+gelöscht (siehe
+[Wie der Client-Lebenszyklus verwaltet wird](Wie_der_Client-Lebenszyklus_verwaltet_wird.md#gespeicherte-client--und-sitzungsdaten)).
 
 Access-Token, Refresh-Token und die Telematik-ID werden von den
 ZETA-Guard-Komponenten auf INFO/WARN/ERROR nicht geloggt. Auf DEBUG-Level
@@ -344,6 +362,15 @@ Problem-JSON-Antwort (`application/json`) mit den Feldern `error`
 | 403         | `PoPP`, `PoPPInvalidActor`                                      |
 | 500         | `Proxy`, `ProxyHeadersMissing`, `Internal`                      |
 
+Diese Fehlerantworten tragen den Header `zeta-error-origin: pep` (A_29850).
+Daran erkennt der ZETA-Client, dass ein 401 oder 403 vom HTTP Proxy stammt und
+nicht vom Fachdienst, und stößt eine erneute Authentifizierung an. Der Header
+wird nur gesetzt, wenn der ZETA-Client der Adressat des Fehlers ist. Bei
+PoPP-Fehlern (`PoPPMissing`, `PoPP`, `PoPPInvalidActor`) fehlt er deshalb: Das
+PoPP-Token liefert der Aufrufer, eine neue Authentifizierung würde daran nichts
+ändern. Der ZETA-Client reicht diese Antworten unverändert an den Aufrufer durch.
+Ein fehlender Header bedeutet also nicht, dass der Fehler vom Fachdienst stammt.
+
 Hinweise zur Fehleranalyse:
 
 * Abgelehnte Requests (401/403) erzeugen im HTTP Proxy in der Regel **keinen**
@@ -356,6 +383,78 @@ Hinweise zur Fehleranalyse:
 * Fehler des Authorization Servers (Token-Exchange, Client-Registrierung)
   werden als OAuth-Fehlerantworten zurückgegeben und zusätzlich als
   Keycloak-Fehler-Event (WARN) geloggt.
+
+## Datenbank nicht erreichbar / Authserver antwortet nicht
+
+**Der Authserver liefert Timeouts oder gar keine Antwort, der Pod ist aber
+`Running`, und ein manueller Neustart behebt das Problem.** Ursache ist fast
+immer ein Wechsel oder Neuaufbau des Datenbank-Primaries. Wird der Primary-Pod
+gelöscht, verschwindet sein Netzwerk-Namespace, während die ClusterIP
+`keycloak-db-rw` gültig bleibt: die bestehenden conntrack-Einträge von kube-proxy
+zeigen weiter auf eine Pod-IP, die nicht mehr antwortet, und es wird **kein
+TCP-Reset** gesendet. Die Pakete werden verworfen. Für jede Schicht oberhalb des
+Sockets sieht das nicht nach einem Fehler aus, sondern nach einer Antwort, die
+noch unterwegs ist. Genau deshalb erholt sich ein regulärer Datenbank-*Neustart*
+von selbst — dort werden die Sockets geschlossen —, ein *Pod-Neuaufbau* aber
+nicht.
+
+**Was ab Release 1.3.2 automatisch passiert.** Der Authserver begrenzt Lesezugriffe
+auf der Datenbankverbindung und prüft Pool-Verbindungen mit einem eigenen Timeout.
+Tote Verbindungen werden dadurch erkannt, verworfen und ersetzt; die Erholung
+erfolgt ohne Eingriff, sobald die Datenbank wieder antwortet. Ein manueller
+Neustart sollte damit nicht mehr nötig sein. Solange der Pod nicht bereit ist,
+nimmt Kubernetes ihn aus den Service-Endpunkten; neu gestartet wird er dabei
+nicht — die Liveness-Probe ist bewusst datenbankunabhängig, damit ein
+Datenbankausfall nicht sämtliche Authserver-Pods gleichzeitig neu startet.
+
+**Diagnose.** Die Verbindungspool-Zähler auf dem Management-Port `9000`
+(`/auth-mgmt/metrics`) zeigen, was der Pool tut:
+
+| Metrik                   | Bedeutung                                       |
+|--------------------------|-------------------------------------------------|
+| `agroal_invalid_count`   | Verbindungen, die die Validierung verworfen hat |
+| `agroal_destroy_count`   | Aus dem Pool entfernte Verbindungen             |
+| `agroal_creation_count`  | Neu aufgebaute Verbindungen                     |
+| `agroal_available_count` | Aktuell im Pool verfügbare Verbindungen         |
+
+Während eines Ausfalls müssen `agroal_invalid_count` und `agroal_destroy_count`
+steigen — dann hat der Pool die toten Verbindungen erkannt und verworfen. Nach
+Rückkehr der Datenbank muss `agroal_creation_count` steigen; der Pool baut dann
+neue Verbindungen auf, statt die alten weiterzuverwenden. Ergänzend:
+`/auth-mgmt/health/ready` muss während des Ausfalls fehlschlagen (und nicht
+hängen), `/auth-mgmt/health/live` bleibt unauffällig — es greift nicht auf die
+Datenbank zu. Den Zustand des Datenbank-Clusters selbst liefert
+`kubectl get cluster keycloak-db`.
+
+**Stillschweigende Nebenwirkung.** Keycloak führt *alle* geplanten Aufgaben
+(Session-Aufräumen, Ablauf von Client-Registrierungen, Revocation-Cleanup) auf
+einem einzigen Timer-Thread aus. Blockiert dieser an einer toten
+Datenbankverbindung, stehen sämtliche Hintergrundjobs dauerhaft still, ohne dass
+eine Fehlermeldung erscheint — es gibt für sie keinen Wiederholungspfad. Prüfen
+Sie nach einem Datenbankausfall, ob die entsprechenden Log-Einträge wieder
+erscheinen.
+
+**Authserver startet nicht: Liquibase-Sperre.** Das Socket-Timeout gilt für jedes
+Statement, auch für die DDL-Anweisungen der Schema-Migration. Wird eine Migration
+dadurch abgebrochen, bleibt die Sperre in `DATABASECHANGELOGLOCK` gehalten; der
+nächste Start wartet 30 Minuten darauf und scheitert dann. Sperre lösen:
+
+```sql
+UPDATE databasechangeloglock SET locked = false, lockgranted = NULL, lockedby = NULL;
+```
+
+Steht eine aufwendige Migration bevor, erhöhen Sie das Timeout für dieses Release
+über `authserver.db.urlProperties.socketTimeout` (siehe
+[Referenz des Helm-Charts](../Referenzen/Referenz_des_Helm_Charts.md#cloudnativepg-datenbankverbindung)).
+
+**Authserver in CrashLoopBackOff nach einem Cluster-Patch.** Startet der
+Authserver vor der Datenbank, bricht Keycloak den Start ab
+(`Failed to obtain JDBC connection`) — es läuft nicht unbereit weiter, sondern
+beendet sich. Das ist erwartet und heilt sich selbst: ein Fehlversuch dauert rund
+47 s, dazwischen wartet Kubernetes 10 s, 20 s, 40 s … Der Authserver ist damit in
+der Regel etwa eine halbe Minute nach der Datenbank verfügbar. Bleibt der Zustand
+bestehen, obwohl die Datenbank erreichbar ist, liegt die Ursache woanders — dann
+zeigen die Container-Logs die eigentliche Fehlermeldung.
 
 ## Debugging: Log-Level erhöhen
 
@@ -420,6 +519,12 @@ Betreiber-SIEM dienen können. Als Ausgangspunkt empfehlen sich:
     * OPA-Status-Metriken (`opaStatusPrometheus`) — fehlgeschlagene
       Bundle-Updates bedeuten veraltete Policies.
     * Health-Endpunkte des Authorization Servers (`/auth-mgmt/health/ready`).
+    * Neustarts des Authserver-Pods (`kube_pod_container_status_restarts_total`)
+      — die Liveness-Probe ist datenbankunabhängig, ein Neustart weist also auf
+      eine nicht mehr reagierende JVM hin, nicht auf einen Datenbankausfall.
+      Anhaltende Nicht-Bereitschaft ohne Neustart zeigt dagegen
+      `kube_pod_status_ready`. Siehe
+      [Datenbank nicht erreichbar](#datenbank-nicht-erreichbar--authserver-antwortet-nicht).
 
 ## Doppelte Logdaten vermeiden
 

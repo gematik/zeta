@@ -234,6 +234,8 @@ Als Einstieg eignen sich folgende Dokumente besonders gut:
 * Wann und warum die Well-Known-Pfade angepasst werden müssen und wie doppelte
   Well-Knowns vermieden werden:
   [Konfiguration der Well-Known-Endpunkte](Referenzen/Konfiguration_der_Well-Known_Endpunkte.md)
+* Performanceergebnisse zur Skalierung der Infrastruktur
+  [Performanceauswertung](Performance.md)
 
 Für den produktiven Betrieb des ZETA-Guard empfehlen sich zusätzlich folgende
 Dokumente:
@@ -269,6 +271,9 @@ Dokumente:
     * Failover-Verhalten und Redundanz:
       [Deployment-Szenarien](Referenzen/Deploymentszenarien.md) (Active-Active,
       Skalierungsdomänen)
+    * Verhalten bei Ausfall oder Wechsel der PDP-Datenbank, Diagnose über die
+      Verbindungspool-Metriken:
+      [Datenbank nicht erreichbar / Authserver antwortet nicht](Anleitungen/Troubleshooting_und_Debugging.md#datenbank-nicht-erreichbar--authserver-antwortet-nicht)
 
 ## Known Issues und Fehleranalysen
 
@@ -279,7 +284,10 @@ Stand. Prüfen Sie diesen Abschnitt vor jeder Installation und jedem Upgrade.
 
 Für die Analyse konkreter Fehlersituationen (typische Fehlerbilder,
 Diagnosepfade, Fundorte und Interpretation von Logs) siehe
-[Troubleshooting & Debugging](Anleitungen/Troubleshooting_und_Debugging.md).
+[Troubleshooting & Debugging](Anleitungen/Troubleshooting_und_Debugging.md) —
+darin insbesondere
+[Datenbank nicht erreichbar / Authserver antwortet nicht](Anleitungen/Troubleshooting_und_Debugging.md#datenbank-nicht-erreichbar--authserver-antwortet-nicht)
+für Ausfälle der PDP-Datenbank.
 
 ## Wartung
 

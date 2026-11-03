@@ -28,10 +28,14 @@ Die Umsetzung auf Client-Seite beschreibt
    ermittelt die PAR-, Authorization- und Token-Endpunkte aus dem Entity Statement
    des SekIDP, prüft die Vertrauenskette über den Federation Master und leitet den
    Nutzer per PAR (PKCE S256, Nonce, `acr_values=gematik-ehealth-loa-high`) weiter.
+   Angefordert werden die Scopes `urn:telematik:display_name`,
+   `urn:telematik:versicherter`, `urn:telematik:geburtsdatum` und `openid`.
    Das verschlüsselte ID-Token (ECDH-ES/A256GCM) wird mit dem ENC-Schlüssel des
    Realms entschlüsselt; die ES256-Signatur wird immer gegen die `signed_jwks_uri`
-   des IDP geprüft (A_22861). Der Benutzername ist ein Hash der KVNR mit geheimem
-   Pepper (`SMCB_HASHING_PEPPER`, siehe
+   des IDP geprüft (A_22861). Welche Claims der Guard daraus übernimmt, zeigt
+   [Nutzerdaten aus dem ID-Token](#nutzerdaten-aus-dem-id-token-a_26973-03). Der
+   Benutzername ist ein Hash der KVNR mit geheimem Pepper
+   (`SMCB_HASHING_PEPPER`, siehe
    [Konfiguration des PDP Services](../Referenzen/Konfiguration_des_PDP_Services.md)).
 3. **Token-Ausstellung (A_29672):** Der `authorization_code`-Grant prüft den
    Registrierungsstatus des Clients:
@@ -41,7 +45,9 @@ Die Umsetzung auf Client-Seite beschreibt
      `zeta:email-verify`. Die Token-Antwort enthält `binding_mode`
      (`collect_email` oder `verify_otp`) und bei `verify_otp` einen `email_hint`;
      in diesem Fall wird sofort ein OTP an die bereits gebundene Adresse gemailt.
-4. **E-Mail-Bindung:** Mit dem reduzierten Token ruft die App auf:
+4. **E-Mail-Bindung:** Mit dem reduzierten Token ruft die App über den PEP auf
+   (unveränderter Pfad; der PEP prüft Token, DPoP und Scope und reicht den
+   Aufrufer als `zeta-client-data` weiter):
    - `POST /realms/{realm}/zeta/identity/bind-email` (Scope `zeta:email-binding`,
      Formfeld `email`) — speichert die Adresse und verschickt ein sechsstelliges
      OTP mit 300 s Gültigkeit,
@@ -54,14 +60,62 @@ Die Umsetzung auf Client-Seite beschreibt
    die ursprünglich per PAR angeforderten Scopes werden wiederhergestellt und die
    OPA-Autorisierung läuft erneut.
 
+## Nutzerdaten aus dem ID-Token (A_26973-03)
+
+Der Guard übernimmt folgende Claims aus dem ID-Token des SekIDP in die
+Nutzer-Daten der Session. Von dort gelangen sie ins Access-Token und über den
+PEP in den Header `ZETA-User-Info` (siehe
+[Inhalt des `ZETA-User-Info`-Headers](../Referenzen/Konfiguration_des_PEP_Http_Proxy.md#inhalt-des-zeta-user-info-headers)).
+
+| ID-Token-Claim                      | Access-Token-Claim   | `ZETA-User-Info`   | Fehlt der Claim                       |
+|-------------------------------------|----------------------|--------------------|---------------------------------------|
+| `urn:telematik:claims:id` (KVNR)    | `sub`                | `identifier`       | Anmeldung wird abgelehnt              |
+| `urn:telematik:claims:profession`   | `profession_oid`     | `professionOID`    | Claim entfällt                        |
+| `urn:telematik:claims:organization` | `organization_name`  | `organizationName` | Claim entfällt                        |
+| `urn:telematik:claims:display_name` | `common_name`        | `commonName`       | Anmeldung wird abgelehnt              |
+| `birthdate`                         | `birthdate`          | `birthdate`        | Claim entfällt — kein Fehler          |
+
+- `commonName` ist der vollständige Anzeigename des Versicherten inklusive Titel
+  und Namenszusätzen, nicht mehr die KVNR. Denselben Wert erhält die
+  OPA-Policy als `user_info.commonName`.
+- `birthdate` (Format `YYYY-MM-DD`) gibt der SekIDP nur frei, wenn der Nutzer
+  eingewilligt hat. Ein Wert, der kein gültiges Datum in diesem Format ist,
+  wird mit einer Warnung verworfen, statt die Anmeldung abzubrechen.
+
+### Speicherung am Nutzer (A_26973-02)
+
+Zusätzlich zur Session speichert der Guard KVNR, Anzeigename, Geburtsdatum,
+Profession-OID und Organisation dauerhaft als Attribute am Keycloak-Nutzer
+(`zetaguard.mobileuser.kvnr`, `.display_name`, `.birthdate`, `.profession_oid`,
+`.organization`). `acr` und `amr` beschreiben nur die einzelne Anmeldung und
+bleiben in der Session.
+
+- Der Guard gleicht die Attribute bei jeder Anmeldung mit dem ID-Token ab:
+  Geänderte Werte werden aktualisiert, fehlende entfernt. Zieht der Nutzer etwa
+  seine Einwilligung zum Geburtsdatum zurück, verschwindet es mit der nächsten
+  Anmeldung auch aus der Datenbank.
+- Ist der [Spree Integrity Provider](../Referenzen/Konfiguration_VAU.md)
+  aktiviert, liegen die Werte verschlüsselt in der Datenbank — er verschlüsselt
+  die Werte aller Nutzer-Attribute. Solange er aktiviert, aber noch nicht
+  betriebsbereit ist, lehnt der Guard die Anmeldung mit HTTP 503
+  (`server_error`) ab, damit keine Nutzerdaten unverschlüsselt gespeichert
+  werden.
+
 ## Entity Statement des Guards
 
 Unter `GET /realms/{realm}/.well-known/openid-federation` liefert der Guard sein
 eigenes Entity Statement (Compact JWS, `typ: entity-statement+jwt`, ES256,
 Gültigkeit 3600 s) gemäß A_23034-02. Die RP-Metadaten weisen ausschließlich PAR
 und `self_signed_tls_client_auth` aus, enthalten die Schlüssel für die
-ID-Token-Verschlüsselung sowie die zulässigen PAR-Scopes (A_29660); die
-Redirect-URIs der Clients des Realms werden gemäß A_25656 gelistet.
+ID-Token-Verschlüsselung sowie die zulässigen PAR-Scopes (A_29660). Als
+Redirect-URIs (A_25656) listet der Guard die der SekIDP-Clients des Realms. Ist
+`authserver.config.entityStatement.redirectUris` gesetzt, ersetzt diese feste
+Liste die Redirect-URIs der SekIDP-Clients vollständig: Die Redirect-URI eines
+später registrierten Clients fehlt dann im Entity Statement, und der SekIDP lehnt
+dessen Anfragen ab. Die wirksame Liste steht beim Start im Log des Authservers
+(`Entity statement config: … redirect_uris=…`). Daneben tragen die
+`federation_entity`-Metadaten `name` und `organization_name` (gemSpec_IDP_Sek,
+Tab. 28).
 
 ## OPA-Autorisierung und Token-Inhalte
 
@@ -69,8 +123,11 @@ Redirect-URIs der Clients des Realms werden gemäß A_25656 gelistet.
   Policy-Entscheidung (Token-Lebensdauern und Eingaben) wird an der Session
   gespeichert, beim `refresh_token`-Grant erneut an OPA gegeben und vom
   Access-Token-Mapper für die vom PDP vorgegebenen Lebensdauern gelesen (A_28527).
-- Bei mobilen Sessions ist die **KVNR** das Token-Subject; die Produkt-Claims
-  stammen aus dem bei der Registrierung hinterlegten Client Statement.
+- Bei mobilen Sessions ist die **KVNR** das Token-Subject, `common_name` der
+  Anzeigename und `birthdate` das freigegebene Geburtsdatum (siehe
+  [Nutzerdaten aus dem ID-Token](#nutzerdaten-aus-dem-id-token-a_26973-03)); die
+  Produkt-Claims stammen aus dem bei der Registrierung hinterlegten Client
+  Statement.
   Refresh-Tokens bleiben DPoP-gebunden (A_25663).
 - Die Professions-Liste der OPA-Daten enthält zusätzlich `1.2.276.0.76.4.49`
   (Versicherte).
@@ -81,18 +138,42 @@ Wie Registrierungen insgesamt ablaufen, verdrängt und widerrufen werden,
 beschreibt
 [Wie der Client-Lebenszyklus verwaltet wird](Wie_der_Client-Lebenszyklus_verwaltet_wird.md).
 
-- `POST /realms/{realm}/zeta/identity/email` — identitätsweite E-Mail-Änderung
-  (A_29912). Autorisiert **ohne Bearer-Token** über den Header `Client-Assertion`:
-  ein mit dem registrierten Instanzschlüssel (F2) signiertes JWS mit
-  `iss`=`sub`=Client-ID, `aud`=Realm-Issuer, Bindung an Methode und URI über
-  `htm`/`htu`, maximal 60 s Lebensdauer und einmalig verwendbarer `jti`
-  (A_30101, A_29911, A_25338-01). Nur ein registrierter, bestätigter mobiler
-  Client der Identität darf den Aufruf ausführen (A_29909). Die bisherige Adresse
-  wird über die Änderung benachrichtigt (A_25750); parallele Registrierungen der
-  Identität mit offener OTP-Challenge werden entfernt. Die Änderung erzeugt das
-  Security-Event `authn_email_change`
+Die Endpunkte zur Verwaltung der Clients und der E-Mail-Adresse einer Identität
+liegen hinter dem PEP. Der PEP prüft Access-Token, DPoP-Bindung, den Scope
+`zeta:client-management` (bei der Registrierung als Default-Scope vergeben),
+No-Travel und Sperrliste, aber kein PoPP-Token. Der Authserver übernimmt den
+Aufrufer aus dem vom PEP gesetzten Header `zeta-client-data` und prüft selbst
+kein Token; Fehler beantwortet er als `application/problem+json`. Die Routen
+gibt es nur bei `authserver.config.oidcFlowEnabled: true`. Die
+Authserver-Pfade `/auth/realms/zeta-guard/zeta/clients` und
+`…/zeta/identity/email` sind von außen gesperrt und antworten mit 404.
+
+- `GET /zeta/clients` — listet die Clients (Geräte) der Identität mit
+  `client_id` und `name`.
+- `DELETE /zeta/clients/{client_id}` — entfernt einen Client, z. B. ein
+  verlorenes Gerät. Keycloak-Client und ZETA-Daten werden gelöscht, seine
+  Sessions beendet und deren Session-IDs über die Sperrliste an die PEPs
+  gemeldet; verbleibende Access-Tokens des Geräts werden dadurch abgelehnt.
+- `POST /zeta/identity/email` — identitätsweite E-Mail-Änderung (A_29912),
+  Body `{"new_email": …}`. Die neue Adresse wird nur vorgemerkt, an sie geht ein
+  Einmalcode; Antwort `202` mit `status: pending` und `email_hint`. Die bisherige
+  Adresse bleibt bis zur Bestätigung gültig. Mit `POST /zeta/identity/email/verify`
+  (Formfeld `code`) wird die Änderung abgeschlossen, `POST …/email/resend`
+  verschickt den Code erneut. Nach der Bestätigung wird die bisherige Adresse
+  benachrichtigt (A_25750), parallele Registrierungen der Identität mit offener
+  OTP-Challenge werden entfernt, und es entsteht das Security-Event
+  `authn_email_change`
   (siehe [Security-Events](../Referenzen/Security-Events.md)).
-- `GET /realms/{realm}/zeta/userinfo/email?id=…` — **Stub**, siehe unten.
+- `GET /realms/{realm}/zeta/userinfo/email?id=<KVNR>` — gibt einem Resource
+  Server die **verifizierte** E-Mail-Adresse des Versicherten heraus
+  (`{"email": "…"}`). Der Resource Server authentisiert sich per mTLS. Seine
+  Zertifikatskette muss zu einem Zertifikat des Resource-Server-Truststores
+  führen; ohne eigenen Truststore gilt Keycloaks HTTPS-Truststore (siehe
+  [Konfiguration des PDP Services](../Referenzen/Konfiguration_des_PDP_Services.md)).
+  Fehlt das Zertifikat oder ist es nicht vertrauenswürdig, lautet die Antwort 401.
+  Fehlt die Kennung, ist sie keine KVNR (ein Großbuchstabe und neun Ziffern),
+  ist der Nutzer unbekannt oder die Adresse noch nicht bestätigt, lautet sie
+  einheitlich 404. Beide Antworten haben keinen Body.
 
 ## Optionales mTLS zum SekIDP (A_23183)
 
@@ -112,6 +193,27 @@ dort ablegen). Unvollständige Konfiguration bricht den Start ab (fail closed).
 - `ZETA_OIDC_FLOW_ENABLED=true` sowohl am Keycloak-Container als auch am
   Konfigurations-Container; die zugehörigen Setup-Skripte überspringen sich
   selbst, wenn der Schalter aus ist.
+- Den Identity Provider `zeta-sekidp-oidc` legt die PDP-Konfiguration an
+  (Terraform-Variablen `enable_sekidp` und `sekidp_client_id`, siehe
+  [Terraform-Konfiguration (PDP)](../Referenzen/Referenz_des_Helm_Charts.md#terraform-konfiguration-pdp)).
+  Als `client_id` sendet der IDP den öffentlichen Issuer des Realms; der SekIDP
+  lädt darüber das Entity Statement des Guards. Zeigt `keycloak_url` auf den
+  Admin-Hostnamen, setzen Sie `sekidp_client_id` auf den öffentlichen Issuer
+  (`https://<host>/auth/realms/zeta-guard`), sonst kann der SekIDP das Entity
+  Statement nicht abrufen.
+- Die URL des Federation Masters liest Keycloak aus `federation-master.json`
+  (`FEDERATION_MASTER_LOCATION`, A_29737), die der Provisioning Processor aus
+  dem Provisioning-Container erzeugt. Im Helm-Betrieb dafür
+  `provisioningProcessor.federationMaster.enabled` und `.environment` setzen,
+  siehe
+  [Federation Master für den mobilen Client-Flow](../Referenzen/Referenz_des_Helm_Charts.md#federation-master-für-den-mobilen-client-flow);
+  fehlt die Datei, startet Keycloak nicht.
+- Beim Federation Master muss der Guard als Relying Party mit allen
+  angeforderten Scopes registriert sein (siehe [Ablauf](#ablauf), Schritt 2),
+  sonst lehnt der SekIDP den PAR mit `invalid_scope` ab.
+- Keycloak ruft Federation Master und SekIDP selbst per HTTPS auf. Deren
+  Zertifikate müssen vertrauenswürdig sein; eine eigene CA hinterlegen Sie über
+  [`authserver.additionalTrustedCAs`](../Referenzen/Referenz_des_Helm_Charts.md#mobiler-client-flow-oidc).
 - SMTP muss im Realm konfiguriert sein, sonst schlägt `bind-email` beim
   OTP-Versand fehl.
 - Der Realm benötigt die Schlüsselprovider `ecdsa-generated` (P-256, signiert das
@@ -133,19 +235,19 @@ dort ablegen). Unvollständige Konfiguration bricht den Start ab (fail closed).
   Produkt- und Posture-Eingaben an OPA für mobile Clients stammen aus diesem
   Mock. `ZETA_OIDC_FLOW_ENABLED` sollte in produktiven Umgebungen deaktiviert
   bleiben, bis die echte Attestierungsprüfung umgesetzt ist.
-- **`GET /zeta/userinfo/email` ist ein unauthentifizierter Stub**, der für jede
-  Kennung eine statische Adresse zurückgibt.
-- **Die E-Mail-Änderung ist derzeit einfaktorig:** `idp_step_up` wird
-  entgegengenommen, aber nicht ausgewertet (A_29911), und die alte Bindung wird
-  nicht bis zur Bestätigung der neuen gehalten (A_29912). Das Antwortformat
-  ändert sich, sobald die OTP-Challenge ergänzt wird (angekündigter Breaking
-  Change).
-- Für `bind-email/verify` und `resend` gibt es noch **keine
-  Versuchsbegrenzung** (Rate Limiting).
+- `GET /zeta/userinfo/email` prüft die Zertifikatskette des Resource Servers
+  **ohne Sperrprüfung** (kein OCSP). Darüber hinaus gibt es keine Einschränkung
+  auf bestimmte Resource Server: Wem vertraut wird, legt allein der Inhalt des
+  Truststores fest.
+- Bei der E-Mail-Änderung wird `idp_step_up` entgegengenommen, aber nicht
+  ausgewertet (A_29911).
+- Für `verify` und `resend` (E-Mail-Bindung und E-Mail-Änderung) gibt es noch
+  **keine Versuchsbegrenzung** (Rate Limiting).
 - OTP- und Benachrichtigungs-Mails sind fest hinterlegte englische Texte
   (keine Templates, keine Internationalisierung).
 - `require_pushed_authorization_requests: true` wird ausgewiesen, aber noch
   nicht pro Client erzwungen.
-- Die ausgelieferte IDP-Konfiguration zielt auf die lokale Mock-Föderation
-  (`fedmasterUrl` über HTTP); produktive Umgebungen benötigen HTTPS und echte
-  Föderations-Endpunkte.
+- Für Testumgebungen mit eigener Föderation lässt sich die URL des Federation
+  Masters über `provisioningProcessor.federationMaster.devModeUrl` überschreiben,
+  auch mit `http://`; produktive Umgebungen beziehen sie aus dem
+  Provisioning-Container.

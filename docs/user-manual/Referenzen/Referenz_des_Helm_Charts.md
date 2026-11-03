@@ -1,8 +1,11 @@
 # Referenz des ZETA-Guard-Helm-Charts
 
 Hier folgt eine Referenzdokumentation der wichtigsten Values des Helm-Charts.
-Als vollständige Vorlage mit Standardwerten dient die
-[values-demo.yaml](https://github.com/gematik/zeta-guard-helm/blob/main/charts/zeta-guard/values-demo.yaml).
+Sie können sie vollständige Standardkonfiguration aus dem Chart auslesen:
+
+```shell
+helm show values oci://europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-helm/zeta-guard:{TAG}
+```
 
 ## Inhaltsverzeichnis
 
@@ -228,38 +231,76 @@ authserver:
 
 ### Security Contexts
 
-Pod- und Container-Security-Contexts sind konfigurierbar:
+Pod- und Container-Security-Contexts sind konfigurierbar. Alle Komponenten bauen auf
+zwei chartweiten Defaults auf, `defaultPodSecurityContext` und
+[`defaultContainerSecurityContext`](#chartweiter-default-defaultcontainersecuritycontext).
+Pro Komponente steht nur, was davon abweicht:
 
 ```yaml
+defaultPodSecurityContext:
+    seccompProfile:
+        type: RuntimeDefault
 authserver:
-    podSecurityContext:
-        seccompProfile:
-            type: RuntimeDefault
+    podSecurityContext: {}
     container:
-        containerSecurityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-            capabilities:
-                drop: [ "ALL" ]
+        containerSecurityContext: {}
     initContainer:
-        containerSecurityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-            capabilities:
-                drop: [ "ALL" ]
+        containerSecurityContext: {}
 ```
 
-Hinweis: `runAsUser` wird für diese Komponenten standardmäßig **nicht** gesetzt, da
-OpenShift feste User-IDs nicht unterstützt (die SCC vergibt sie pro Namespace).
+`defaultPodSecurityContext` gilt für alle Pods des Charts und wird wie der
+Container-Default pro Key gemischt (der PEP ergänzt z. B. nur seine `sysctls`). Das
+Seccomp-Profil sitzt bewusst auf Pod-Ebene, damit es auch für Container gilt, die
+das Chart nicht selbst rendert (injizierte Sidecars, Debug-Container). `runAsUser`
+bleibt dagegen auf Container-Ebene und wird so nicht an einen injizierten
+`istio-proxy` vererbt.
 
-**Ausnahme Telemetry-Gateway:** Dort setzt das Chart `securityContext.runAsUser: 1000`
-und `podSecurityContext.fsGroup: 1000`, weil der Collector eine bekannte
+#### Chartweiter Default: `defaultContainerSecurityContext`
+
+`defaultContainerSecurityContext` ist die zentrale Stelle für alle
+Container-Security-Contexts des Charts (PSS `restricted`). Jeder Key daraus wird
+übernommen, sofern der `containerSecurityContext` der Komponente ihn nicht selbst
+setzt. Komponenten mit beschreibbarem Root-Dateisystem (Provisioning-Processor,
+keychain-generator, CronJobs, Zertifikats-Adoptions-Job) setzen dort nur
+`readOnlyRootFilesystem: false`.
+
+```yaml
+defaultContainerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 1000
+    capabilities:
+        drop: [ "ALL" ]
+```
+
+Gemischt wird pro Key der obersten Ebene: Setzt eine Komponente `capabilities`,
+ersetzt sie die ganze Map — beim Hinzufügen einer Capability also
+`drop: [ "ALL" ]` mit angeben.
+
+Die numerische UID ist nötig, weil mehrere Images einen nicht-numerischen User
+(Authserver, PEP) oder gar keinen (`google/cloud-sdk`, `python`) deklarieren. Das
+Kubelet kann `runAsNonRoot: true` dann nicht prüfen und startet den Container
+nicht. Auf OpenShift `defaultContainerSecurityContext.runAsUser` **explizit auf
+`null`** setzen, damit die SCC die UID vergibt.
+
+**Ausnahme Telemetry-Gateway:** Als Subchart liest es
+`defaultContainerSecurityContext` nicht. Das Chart setzt dort eigens
+`securityContext.runAsUser: 1000` und `podSecurityContext.fsGroup: 1000`, weil der
+Collector eine bekannte
 Non-Root-Identität braucht, die auf den PersistentVolumeClaim der Sending-Queue
 schreiben kann. Auf OpenShift müssen beide Werte **explizit auf `null`** gesetzt
 werden — ein Weglassen der Keys genügt nicht, da Helm Maps merged und die `1000`
 dann aus den Chart-Defaults erhalten bleibt. Siehe
+[Wie Sie ZETA-Guard auf OpenShift betreiben](../Anleitungen/ZETA_OpenShift_Kompatibilität.md).
+
+**Ausnahme KPI-Prometheus** (`kpiPrometheus`, nur bei
+`kpiMetricsPersistence.enabled`): Auch dieser Subchart liest die chartweiten
+Defaults nicht. Die PSS-`restricted`-Werte stehen deshalb eigens unter
+`kpiPrometheus.server.securityContext` (Pod), `kpiPrometheus.server.containerSecurityContext`
+und `kpiPrometheus.configmapReload.prometheus.containerSecurityContext`. Die IDs
+(`runAsUser`, `runAsGroup`, `fsGroup`: `65534`) bringt der Subchart selbst mit; auf
+OpenShift müssen sie **explizit auf `null`** gesetzt werden, siehe
 [Wie Sie ZETA-Guard auf OpenShift betreiben](../Anleitungen/ZETA_OpenShift_Kompatibilität.md).
 
 ### Probes
@@ -271,34 +312,74 @@ authserver:
     probes:
         liveness:
             initialDelaySeconds: 0
-            periodSeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
             failureThreshold: 5
         readiness:
-            initialDelaySeconds: 30
+            initialDelaySeconds: 0
             periodSeconds: 10
-            failureThreshold: 5
+            timeoutSeconds: 5
+            failureThreshold: 3
         startup:
-            initialDelaySeconds: 30
-            periodSeconds: 10
-            failureThreshold: 20
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 60
 ```
+
+| Value                           | Beschreibung                                                                                                               | Standard                |
+|---------------------------------|----------------------------------------------------------------------------------------------------------------------------|-------------------------|
+| `authserver.probes.liveness.*`  | Liveness-Probe auf `/auth-mgmt/health/live/`: `initialDelaySeconds`, `periodSeconds`, `timeoutSeconds`, `failureThreshold` | `0` / `10` / `5` / `5`  |
+| `authserver.probes.readiness.*` | Readiness-Probe auf `/auth-mgmt/health/ready/`, gleiche Felder                                                             | `0` / `10` / `5` / `3`  |
+| `authserver.probes.startup.*`   | Startup-Probe auf `/auth-mgmt/health/ready/`, gleiche Felder                                                               | `10` / `5` / `5` / `60` |
+
+> **Hinweis:** Der Endpunkt der Liveness-Probe ist nicht konfigurierbar. Sie
+> zielt fest auf `/health/live`, das in Keycloak nicht auf die Datenbank
+> zugreift, und bleibt damit bewusst datenbankunabhängig: Eine
+> datenbankabhängige Liveness-Probe würde bei einem Datenbankausfall *alle*
+> Authserver-Pods gleichzeitig neu starten und einen behebbaren Vorfall in eine
+> Neustart-Kaskade verwandeln. `failureThreshold: 5` bezieht sich deshalb auf
+> eine nicht mehr reagierende JVM, nicht auf die Verfügbarkeit der Datenbank.
+> Eine blockierte Verbindung behebt der Verbindungspool selbst — siehe
+> [Connection Pooling (Keycloak)](#connection-pooling-keycloak) und
+> [Datenbank nicht erreichbar / Authserver antwortet nicht](../Anleitungen/Troubleshooting_und_Debugging.md#datenbank-nicht-erreichbar--authserver-antwortet-nicht).
+
+> **Hinweis:** `timeoutSeconds` sollte nicht ungesetzt bleiben — Kubernetes
+> nimmt sonst **1 s** an, was hier zu knapp ist. Der Agroal-Zähler
+> `invalidCount` wird nie zurückgesetzt; sobald die Verbindungsvalidierung die
+> erste tote Verbindung verworfen hat, führt Keycloak bei **jeder**
+> Readiness-Probe eine echte Datenbankprüfung durch, statt aus den Pool-Metriken
+> zu antworten. Die Obergrenze ist Agroals Acquisition-Timeout (`PT20S`).
 
 ### Admin-API-Absicherung
 
 Die Keycloak-Admin-REST-API und die Admin Console (`/auth/admin/*`) dürfen nicht
-über den öffentlichen Hostnamen zugänglich sein. Das Helm-Chart unterstützt eine
-integrierte Absicherung über einen separaten Admin-Hostnamen.
+über den öffentlichen Hostnamen zugänglich sein — und ebenso wenig der
+`master`-Realm (`/auth/realms/master/*`): Dort wird das Admin-Access-Token
+ausgestellt (`client_id=admin-cli`, Direct Grant), sodass ein öffentlich
+erreichbarer `master`-Realm genau die Angriffsfläche wieder öffnet, die das
+Sperren von `/auth/admin` schließen soll. Der `master`-Realm trägt keinen
+ZETA-Verkehr; der läuft vollständig über den `zeta-guard`-Realm. Das Helm-Chart
+unterstützt eine integrierte Absicherung über einen separaten Admin-Hostnamen.
 
 Wenn `authserver.adminHostname` gesetzt ist, aktiviert das Chart zwei
 Schutzschichten:
 
-1. **`/auth/admin` wird an den PEP-Proxy geroutet, der es sperrt** — der Ingress
-   `zeta-guard-pep` erhält einen zusätzlichen Pfad `/auth/admin` auf
-   `pep-proxy-svc`. Dort gibt ein `location ~ ^/auth/admin`-Block
-   `403 Forbidden` zurück, bevor die Anfrage Keycloak erreicht. Alle anderen
-   `/auth/*`-Pfade (Token-Exchange, Nonce, Client-Registration,
-   Well-Known-Endpunkte) werden über den Ingress `zeta-guard-auth` **direkt** an
-   den Authserver geroutet und erreichen den PEP nie.
+1. **`/auth/admin` und `/auth/realms/master` werden an den PEP-Proxy geroutet,
+   der sie sperrt** — der Ingress `zeta-guard-pep` erhält zusätzliche Pfade
+   `/auth/admin` und `/auth/realms/master` auf `pep-proxy-svc`. Dort gibt ein
+   `location ~ ^/auth/(admin|realms/master)(/|$)`-Block `403 Forbidden` zurück,
+   bevor die Anfrage Keycloak erreicht. Das Suffix `(/|$)` hält das `403` auf
+   Segmentgrenzen — passend zum `pathType: Prefix` des Ingress —, sodass ein
+   Realm, dessen Name lediglich mit `master` beginnt, nicht gesperrt wird. Er
+   erreicht dennoch den PEP, weil der Controller aus dem Ingress-Pfad eine
+   einfache NGINX-Prefix-Location macht, die Segmentgrenzen nicht kennt, und
+   erhält dort mangels Token ein `401` — genau wie `/auth/admin` sich seit jeher
+   etwa gegenüber `/auth/administration` verhält.
+   Alle anderen `/auth/*`-Pfade (Token-Exchange, Nonce, Client-Registration,
+   Well-Known-Endpunkte und der gesamte `zeta-guard`-Realm) werden über den
+   Ingress `zeta-guard-auth` **direkt** an den Authserver geroutet und erreichen
+   den PEP nie.
 2. **Separater Admin-Ingress** — für den Admin-Hostnamen werden zwei zusätzliche
    Ingress-Ressourcen erzeugt, die `/auth` direkt an den Authserver routen
    (unter Umgehung des PEP-Proxy-Blocks). Terraform und CI/CD-Runner verwenden
@@ -307,7 +388,21 @@ Schutzschichten:
 Die Aufteilung funktioniert, weil überlappende Pfad-Prefixe nach dem längsten
 Treffer aufgelöst werden — unabhängig von der Reihenfolge, in der sie deklariert
 sind. Das garantieren sowohl NGINX als auch die Kubernetes-Ingress-Spezifikation,
-`/auth/admin` gewinnt also gegen `/auth`.
+`/auth/admin` und `/auth/realms/master` gewinnen also gegen `/auth`.
+
+Hinzu kommt ein dritter, von Terraform gesetzter Baustein: Die
+Authserver-Konfiguration heftet beim nächsten `terraform apply` die
+**Frontend-URL des `master`-Realms** an den Admin-Hostnamen. Die Admin
+Console ist ein OIDC-Client des `master`-Realms und leitet ihre `authServerUrl`
+aus dessen Frontend-URL ab, die sonst Keycloaks `--hostname` — also dem
+öffentlichen Hostnamen — folgt. Ohne diese Bindung liefe der Login-Redirect der
+Console auf den nun gesperrten Pfad
+`/auth/realms/master/protocol/openid-connect/auth` und der Browser-Login bräche.
+Der Wert wird automatisch aus `keycloak_url` abgeleitet, sobald `audience`
+gesetzt ist; mit der Terraform-Variable `master_realm_frontend_url` lässt er sich
+überschreiben. Betroffen ist ausschließlich der `master`-Realm — der
+`zeta-guard`-Realm behält den öffentlichen `issuer`, den jedes Access-Token
+trägt.
 
 Die Absicherung ist ingress-controller-unabhängig und funktioniert mit F5 NIC,
 Standard-nginx-Ingress, OpenShift Routes, GKE Ingress und anderen Controllern,
@@ -319,9 +414,9 @@ Annotationen.
 authserver:
     hostname: "zeta.example.com"
     # Separater Hostname für den Keycloak-Admin-Zugriff.
-    # Wenn gesetzt, wird /auth/admin auf dem Haupthostnamen an den PEP-Proxy
-    # geroutet und dort mit 403 gesperrt; zusätzlich wird ein dedizierter
-    # Admin-Ingress für diesen Hostnamen erzeugt.
+    # Wenn gesetzt, werden /auth/admin und /auth/realms/master auf dem
+    # Haupthostnamen an den PEP-Proxy geroutet und dort mit 403 gesperrt;
+    # zusätzlich wird ein dedizierter Admin-Ingress für diesen Hostnamen erzeugt.
     adminHostname: "admin.zeta.example.com"
 ```
 
@@ -334,30 +429,35 @@ authserver:
 ```
 
 Um die Funktion zu deaktivieren, entfernen Sie `adminHostname` (oder setzen Sie
-es auf `""`) und führen Sie `helm upgrade` aus. Der Admin-Ingress, der
-`/auth/admin`-Ingress-Pfad und der PEP-Proxy-Location-Block werden automatisch
-entfernt — `/auth/admin` ist danach wieder über den Haupthostnamen erreichbar,
-da es sonst keinen Zugang mehr gäbe.
+es auf `""`) und führen Sie `helm upgrade` aus. Der Admin-Ingress, die
+Ingress-Pfade `/auth/admin` und `/auth/realms/master` sowie der
+PEP-Proxy-Location-Block werden automatisch entfernt — beide sind danach wieder
+über den Haupthostnamen erreichbar, da es sonst keinen Zugang mehr gäbe. Die
+Frontend-URL des `master`-Realms bleibt dabei stehen; setzen Sie sie bei Bedarf
+über `master_realm_frontend_url` zurück.
 
-> **Einschränkung:** Wenn `routeViaTigerProxy: true` gesetzt ist, wird der
-> `/auth/admin`-Ingress-Pfad **nicht** erzeugt: Tiger-Proxy leitet `/auth` intern
+> **Einschränkung:** Wenn `routeViaTigerProxy: true` gesetzt ist, werden die
+> Ingress-Pfade `/auth/admin` und `/auth/realms/master` **nicht** erzeugt:
+> Tiger-Proxy leitet `/auth` intern
 > direkt an den Authserver weiter und umgeht den PEP vollständig, ein Routing
 > dorthin würde also nichts sperren. Mit F5 NIC greift in diesem Fall noch die
 > `location-snippets`-Annotation auf `zeta-guard-auth` und antwortet mit `404`;
-> mit jedem anderen Ingress-Controller bleibt `/auth/admin` auf dem
+> mit jedem anderen Ingress-Controller bleiben beide Pfade auf dem
 > Haupthostnamen erreichbar. Tiger-Proxy ist ausschließlich ein Testwerkzeug und
 > wird in Produktionsdeployments nicht eingesetzt.
 
-> **Der Browser eines Administrators benötigt *beide* Hostnamen.** Die Admin
-> Console ist eine Browser-Anwendung, die vom Admin-Hostnamen ausgeliefert wird,
-> sich aber gegen den **öffentlichen** Hostnamen authentifiziert: Keycloak gibt
-> der Console eine aus `--hostname` abgeleitete `serverBaseUrl`, der
-> Login-Redirect geht daher auf
-> `https://<haupthost>/auth/realms/master/protocol/openid-connect/auth` und erst
-> danach zurück auf den Admin-Hostnamen. Die Admin-REST-Aufrufe und alle
-> statischen Ressourcen bleiben dagegen auf dem Admin-Hostnamen
-> (`/auth/admin/...`) — deshalb steht die `403`-Sperre auf dem Haupthostnamen der
-> Admin-UI nicht im Weg.
+> **Der Browser eines Administrators kommt mit dem Admin-Hostnamen aus — sofern
+> die Authserver-Konfiguration angewendet wurde.** Die Admin Console ist eine Browser-Anwendung, die
+> vom Admin-Hostnamen ausgeliefert wird. Ohne weiteres Zutun authentifiziert sie
+> sich jedoch gegen den **öffentlichen** Hostnamen: Keycloak leitet ihre
+> `authServerUrl` aus `--hostname` ab, der Login-Redirect ginge daher auf
+> `https://<haupthost>/auth/realms/master/protocol/openid-connect/auth` — einen
+> Pfad, den die `403`-Sperre nun abweist. Genau deshalb heftet Terraform die
+> Frontend-URL des `master`-Realms an den Admin-Hostnamen (siehe oben); danach
+> laufen Login-Redirect, Admin-REST-Aufrufe und statische Ressourcen vollständig
+> über den Admin-Hostnamen. Wird das Chart mit `adminHostname` ausgerollt, ohne
+> dass anschließend die Authserver-Konfiguration angewendet wird, bleibt der
+> Browser-Login der Console blockiert.
 >
 > Folge für den Netzentwurf: Den Admin-Hostnamen auf ein internes Netz zu
 > beschränken ist unproblematisch, aber ein Arbeitsplatz, der *ausschließlich*
@@ -365,10 +465,167 @@ da es sonst keinen Zugang mehr gäbe.
 > CI/CD-Runner sind davon nicht betroffen — sie nutzen die Admin-REST-API direkt
 > über `admin-cli` und durchlaufen keinen Browser-Flow.
 
-> **IP-basierte Zugriffsbeschränkung** für den Admin-Hostnamen muss auf
-> Infrastrukturebene konfiguriert werden: Cloud Armor (GKE),
-> NetworkPolicy/Route-Annotation (OpenShift) oder Firewall-Regeln. Das Chart
-> erzwingt keine IP-basierte Zugriffsbeschränkung.
+> **Vollständig nutzbar erst ab Chart 1.3.0.** Bis einschließlich Chart 1.2.4
+> übergab das Chart `--hostname-admin` ohne den Kontextpfad `/auth`. Keycloak
+> läuft mit `KC_HTTP_RELATIVE_PATH=/auth`, liefert die Admin Console also unter
+> `/auth/admin/`, leitete aber auf `/admin/` um — auf einen Pfad, den weder
+> Keycloak noch der Admin-Ingress beantwortet. Der Aufruf von
+> `https://<haupthost>/auth` endet dadurch auf `https://<adminhost>/admin`, und
+> der Admin-Hostname wirkt nicht erreichbar.
+>
+> Entfernen Sie in diesem Fall **nicht** die Hostname-Parameter: Ohne beide
+> leitet Keycloak den `issuer` aus dem `Host`-Header ab und weist im Well-Known
+> die clusterinterne Adresse `https://authserver/…` aus; nur mit `--hostname`
+> scheitert der 3rd-Party-Cookie-Check der Admin-UI. Bis zum Update auf 1.3.0
+> oder neuer hilft ein Deployment-Patch, der `--hostname-admin` auf
+> `https://<adminhost>/auth` setzt — denselben Wert, den das Chart ab 1.3.0
+> rendert.
+
+#### Womit die Admin-API abgesichert ist
+
+Die Absicherung beruht auf **Trennung nach Hostnamen**, nicht auf einer
+Authentisierungsschicht vor der API. Das Chart entzieht dem Haupthostnamen die
+administrativen Pfade und bietet sie ausschließlich auf dem Admin-Hostnamen an.
+Was dort ankommt, prüft Keycloak selbst: Jeder Aufruf der Admin-REST-API
+verlangt ein Admin-Access-Token, das im `master`-Realm per `admin-cli`
+ausgestellt wird.
+
+Daraus folgt die Aufgabenteilung:
+
+| Schutzziel                                                | abgedeckt durch                                              |
+|-----------------------------------------------------------|--------------------------------------------------------------|
+| Admin-Pfade auf dem Haupthostnamen nicht erreichbar       | Chart (PEP-Sperre `403`, bei F5 NIC zusätzlich `404`)        |
+| Admin-Pfade nur über den Admin-Hostnamen erreichbar       | Chart (eigener Ingress)                                      |
+| Aufruf der Admin-REST-API nur mit gültigem Token          | Keycloak                                                     |
+| Login der Admin Console auf dem Admin-Hostnamen           | Authserver-Konfiguration (Frontend-URL des `master`-Realms)  |
+| **Wer den Admin-Hostnamen überhaupt erreichen darf**      | **Betreiber** — das Chart schränkt nichts ein                |
+| **Begrenzung von Rateversuchen auf Admin-Zugangsdaten**   | **Betreiber** — standardmäßig nicht aktiv                    |
+| **Wer die Admin-Zugangsdaten lesen darf**                 | **Betreiber** (Kubernetes-RBAC auf das Secret)               |
+
+Der Admin-Hostname selbst ist durch nichts als TLS geschützt. Ist er öffentlich
+auflösbar und nicht weiter eingeschränkt, steht die Admin Console im Netz — die
+Hostnamen-Trennung verlagert den Zugang, sie verschließt ihn nicht.
+
+#### Was der Betreiber zusätzlich leisten muss
+
+1. **Zugriff auf den Admin-Hostnamen einschränken.** Das Chart erzwingt keine
+   IP-basierte Beschränkung. Je nach Plattform: Cloud Armor (GKE),
+   NetworkPolicy oder Route-Annotation (OpenShift), Firewall-Regeln, oder den
+   Admin-Hostnamen gar nicht erst öffentlich auflösen lassen.
+2. **Brute-Force-Erkennung im `master`-Realm aktivieren.** Keycloak liefert sie
+   abgeschaltet aus, und der `master`-Realm wird weder vom Chart noch von der
+   Authserver-Konfiguration verwaltet — ohne diesen Schritt sind Rateversuche
+   auf das Admin-Passwort unbegrenzt.
+3. **Leserecht auf das Secret `authserver-admin` begrenzen.** Wer es im
+   Namespace lesen darf, besitzt die Admin-Zugangsdaten. Dasselbe gilt für
+   Umgebungen, in denen sie als Variablen hinterlegt sind (CI/CD-Runner).
+4. **Admin-Passwort stark wählen und rotieren.** Es ist der einzige Faktor vor
+   der Admin-REST-API.
+5. **Nach jedem Upgrade die Authserver-Konfiguration anwenden.** Sie heftet die
+   Frontend-URL des `master`-Realms an den Admin-Hostnamen; ohne sie ist der
+   Browser-Login der Console blockiert (siehe unten).
+6. **Den Netzentwurf auf die Admin-Arbeitsplätze abstimmen.** Der
+   Admin-Hostname muss von ihnen erreichbar sein, und das TLS-Zertifikat muss
+   ihn abdecken — bei gemeinsamer Nutzung des Haupt-Zertifikats über dessen
+   SAN-Liste, sonst über ein eigenes Secret (`adminTlsSecretName`).
+
+#### Unterschiede vor und nach Chart 1.3.3
+
+Bis einschließlich Chart 1.3.3 sperrte das Chart ausschließlich `/auth/admin`;
+der `master`-Realm blieb auf dem Haupthostnamen offen. Das wirkt sich auf drei
+Dinge aus: auf den Weg zur Login-Maske, auf die Angriffsfläche der Admin-API und
+darauf, wer den Authserver konfigurieren kann.
+
+##### Zugang zur Login-Maske
+
+Die Admin Console wird in beiden Ständen vom Admin-Hostnamen ausgeliefert. Der
+Unterschied liegt darin, wo der Login-Dialog selbst gerendert wird.
+
+| Schritt                    | bis einschließlich 1.3.3                                  | nach 1.3.3                                      |
+|----------------------------|-----------------------------------------------------------|-------------------------------------------------|
+| Console aufrufen           | `https://<adminhost>/auth/admin/master/console/`          | unverändert                                     |
+| Login-Dialog erscheint auf | **Haupthostname**                                         | **Admin-Hostname**                              |
+| Browser benötigt           | **beide** Hostnamen                                       | nur den Admin-Hostnamen                         |
+| Vorbedingung               | `adminHostname` gesetzt, TLS-Zertifikat deckt beide Namen | zusätzlich: Authserver-Konfiguration angewendet |
+
+Bis einschließlich 1.3.3 leitet die Console auf
+`https://<haupthost>/auth/realms/master/protocol/openid-connect/auth` um. Dieser
+Pfad ist dort nicht gesperrt, der Login gelingt — aber nur, wenn der Arbeitsplatz
+den Haupthostnamen erreicht.
+
+Danach ist derselbe Pfad mit `403` belegt. Damit der Login weiterhin
+funktioniert, heftet die Authserver-Konfiguration die Frontend-URL des
+`master`-Realms an den Admin-Hostnamen. **Ohne diesen Schritt ist der
+Browser-Login nicht möglich**: Die Console verweist dann weiterhin auf den
+gesperrten Pfad. Prüfen lässt sich der Zustand an der Console-Konfiguration:
+
+```bash
+curl -sk https://<adminhost>/auth/admin/master/console/ | grep -o 'authServerUrl[^,}]*'
+```
+
+Der ausgewiesene Wert muss der Admin-Hostname sein.
+
+##### Absicherung der Admin-API
+
+| Schutzebene                                    | bis einschließlich 1.3.3 | nach 1.3.3                      |
+|------------------------------------------------|--------------------------|---------------------------------|
+| `/auth/admin/*` auf dem Haupthostnamen         | gesperrt (`403`/`404`)   | unverändert                     |
+| `/auth/realms/master/*` auf dem Haupthostnamen | **offen**                | gesperrt (`403`/`404`)          |
+| Admin-Token per `admin-cli` vom Haupthostnamen | **möglich**              | nicht möglich                   |
+| Admin-Hostname selbst                          | nur TLS                  | unverändert: nur TLS            |
+| Brute-Force-Schutz im `master`-Realm           | nicht konfiguriert       | unverändert: nicht konfiguriert |
+| IP-Beschränkung                                | Sache des Betreibers     | unverändert                     |
+
+Der sicherheitsrelevante Unterschied ist die dritte Zeile. Bis einschließlich
+1.3.3 war `/auth/realms/master/protocol/openid-connect/token` von außen
+erreichbar, sodass sich Admin-Zugangsdaten über den Haupthostnamen erproben
+ließen — ohne Ratenbegrenzung, solange die Brute-Force-Erkennung nicht aktiviert
+wurde (Punkt 2 der Betreiberpflichten). Ein erratenes Passwort allein hätte noch
+keine Konfigurationsänderung erlaubt, da die Admin-REST-Aufrufe weiterhin den
+Admin-Hostnamen verlangen; ein gültiges Admin-Token ist aber eine Vorstufe, die
+sich vermeiden lässt.
+
+Die beiden letzten Zeilen bleiben unverändert: Sie liegen in der Verantwortung
+des Betreibers, nicht des Charts.
+
+##### Wer den Authserver konfigurieren kann
+
+Erforderlich sind stets **beide** Voraussetzungen: Zugangsdaten und Netzzugang
+zum Admin-Endpunkt.
+
+| Voraussetzung                                  | bis einschließlich 1.3.3                                  | nach 1.3.3                   |
+|------------------------------------------------|-----------------------------------------------------------|------------------------------|
+| Zugangsdaten aus dem Secret `authserver-admin` | wer sie im Namespace lesen darf                           | unverändert                  |
+| Zugangsdaten als Umgebungsvariablen            | wer sie kennt                                             | unverändert                  |
+| Admin-Token beziehen                           | über **beide** Hostnamen                                  | nur über den Admin-Hostnamen |
+| `/auth/admin/realms/…` aufrufen                | nur über den Admin-Hostnamen                              | unverändert                  |
+| **effektiv konfigurieren**                     | wer Zugangsdaten hat **und** den Admin-Hostnamen erreicht | unverändert                  |
+
+Der Kreis der tatsächlich Berechtigten ändert sich also nicht; es entfällt
+lediglich die Möglichkeit, Zugangsdaten vom Haupthostnamen aus zu erproben. Wer
+diesen Kreis enger ziehen will, tut das über die Punkte 1 und 3 der
+Betreiberpflichten — nicht über das Chart.
+
+Drei Punkte gehören zum Konfigurationszugang dazu:
+
+- `keycloak_url` muss auf den Admin-Hostnamen zeigen — das galt bereits bis
+  einschließlich 1.3.3, da die Admin-REST-Aufrufe dort liegen — und `audience`
+  muss explizit gesetzt sein. Andernfalls leitet sich der Audience-Wert vom
+  Admin-Hostnamen ab und passt nicht zu den ausgestellten Tokens.
+- Ist der [mobile Client-Flow](../Anleitungen/Wie_der_mobile_Client-Flow_funktioniert.md)
+  aktiv (`enable_sekidp = true`), muss zusätzlich `sekidp_client_id` auf den
+  öffentlichen Issuer des `zeta-guard`-Realms gesetzt sein, z. B.
+  `https://zeta.example.com/auth/realms/zeta-guard`. Andernfalls leitet sich die
+  `client_id` des IDP `zeta-sekidp-oidc` ebenfalls vom Admin-Hostnamen ab. Der
+  sektorale IDP lädt über diese URL das Entity Statement des Guards — den
+  Admin-Hostnamen erreicht er nicht (und soll es nach Punkt 1 der
+  Betreiberpflichten auch nicht), die Anmeldung von Versicherten scheitert dann
+  bereits beim Pushed Authorization Request.
+- Manuelle Eingriffe per `curl`, etwa aus
+  [Wie Sie ZETA Guard aktualisieren](../Anleitungen/Wie_Sie_ZETA_Guard_aktualisieren.md),
+  beziehen ihr Admin-Token über `<KC_URL>/realms/master/…`. Bis einschließlich
+  1.3.3 funktionierte das auch mit dem Haupthostnamen; danach muss `KC_URL` der
+  Admin-Hostname sein.
 
 ---
 
@@ -418,6 +675,52 @@ Die Standardwerte verweisen auf den vom CloudNativePG-Operator erzeugten Service
 und das zugehörige Secret. Passen Sie diese an, wenn Sie eine abweichende
 Datenbankinstanz verwenden.
 
+Zusätzliche JDBC-Parameter werden über `authserver.db.urlProperties` an diese URL
+angehängt (identisch für `databaseMode: external` und `authserverDb.kcDbUrl`):
+
+```yaml
+authserver:
+    db:
+        urlProperties:
+            socketTimeout: 600
+```
+
+| Value                         | Beschreibung                                                   | Standard                                   |
+|-------------------------------|----------------------------------------------------------------|--------------------------------------------|
+| `authserver.db.urlProperties` | pgjdbc-Parameter, als Query-Parameter an `KC_DB_URL` angehängt | `socketTimeout: 120`, `tcpKeepAlive: true` |
+
+Treiber-Einstellungen gehören hierher und nicht in
+`QUARKUS_DATASOURCE_JDBC_ADDITIONAL_JDBC_PROPERTIES_*`: das ist eine Map, und ein
+Umgebungsvariablenname kann den CamelCase-Schlüssel nicht transportieren — aus
+`socketTimeout` würde `sockettimeout`, das pgjdbc stillschweigend ignoriert. In der
+URL bleibt die Schreibweise erhalten, und pgjdbc wertet URL-Parameter ohnehin
+vorrangig aus. Für ein Release mit aufwendiger Schema-Migration lässt sich
+`socketTimeout` hier vorübergehend anheben.
+
+> **Hinweis:** `connectTimeout` und `targetServerType` sind hier **nicht
+> zulässig**; das Chart bricht das Rendern mit einer Fehlermeldung ab. Keycloak
+> setzt beide selbst (`db-connect-timeout` = `10s`,
+> `db-postgres-target-server-type` = `primary`), überspringt diese Injektion aber,
+> sobald einer der beiden Namen bereits in der URL vorkommt — wer einen davon
+> setzt, verliert damit still den anderen. Aus demselben Grund ist
+> `KC_DB_URL_PROPERTIES` wirkungslos: Keycloak ignoriert diese Option, sobald
+> `db-url` gesetzt ist, was im Chart immer der Fall ist.
+
+Die Anzahl der Datenbankinstanzen bestimmt, was bei einem Ausfall des Primaries
+passiert:
+
+| Value                     | Beschreibung                                             | Standard |
+|---------------------------|----------------------------------------------------------|----------|
+| `cloudnativePg.instances` | Anzahl der PostgreSQL-Instanzen im CloudNativePG-Cluster | `1`      |
+
+> **Hinweis:** `instances: 1` ist nur für Entwicklungs- und Testumgebungen
+> geeignet — jeder Ersatz des Primaries ist dann ein vollständiger Ausfall. Ab
+> `instances: 3` führt CloudNativePG ein automatisches Failover durch. Damit wird
+> ein Primary-Wechsel allerdings zum Regelfall statt zur Ausnahme; die
+> Verbindungsresilienz des Authservers (siehe Abschnitt *Connection Pooling*) ist
+> deshalb die **Voraussetzung** dafür, dass mehr Instanzen tatsächlich
+> Verfügbarkeit bringen.
+
 Tuning-Parameter, die direkt an die PostgreSQL-Konfiguration des
 CloudNativePG-Clusters durchgereicht werden, sind unter
 `cloudnativePg.parameters` konfigurierbar:
@@ -434,7 +737,7 @@ cloudnativePg:
 | `cloudnativePg.parameters.sharedBuffers`  | PostgreSQL `shared_buffers`  | `512MB`  |
 | `cloudnativePg.parameters.maxConnections` | PostgreSQL `max_connections` | `250`    |
 
-> **Hinweis:** Die mitgelieferte `values-demo.yaml` verwendet kleinere Werte
+> **Hinweis:** Die `values-demo.yaml` im Chart verwendet kleinere Werte
 > (`sharedBuffers: 24MB`, `maxConnections: 100`) für ressourcenarme
 > Test-Cluster. `maxConnections` muss zu den Keycloak-Pool-Größen (siehe unten)
 > passen.
@@ -449,23 +752,54 @@ authserver:
     dbPool:
         minSize: 10
         maxSize: 100
+        maxLifetime: PT30M
     httpPool:
         maxThreads: 300
 ```
 
-| Value                            | Beschreibung                                     | Standard |
-|----------------------------------|--------------------------------------------------|----------|
-| `authserver.dbPool.minSize`      | Minimale Größe des JDBC-Connection-Pools         | `10`     |
-| `authserver.dbPool.maxSize`      | Maximale Größe des JDBC-Connection-Pools         | `100`    |
-| `authserver.httpPool.maxThreads` | Maximale Anzahl der Keycloak-HTTP-Worker-Threads | `300`    |
+| Value                            | Beschreibung                                                          | Standard |
+|----------------------------------|-----------------------------------------------------------------------|----------|
+| `authserver.dbPool.minSize`      | Minimale Größe des JDBC-Connection-Pools                              | `10`     |
+| `authserver.dbPool.maxSize`      | Maximale Größe des JDBC-Connection-Pools                              | `100`    |
+| `authserver.dbPool.maxLifetime`  | Lebensdauer einer Pool-Verbindung (ISO-8601), danach wird sie ersetzt | `PT30M`  |
+| `authserver.httpPool.maxThreads` | Maximale Anzahl der Keycloak-HTTP-Worker-Threads                      | `300`    |
 
 > **Hinweis:** `replicaCount × dbPool.maxSize` muss (zzgl. Reserve) unter
-> `cloudnativePg.parameters.maxConnections` bleiben; das Chart prüft dies beim
-> Rendern.
+> `cloudnativePg.parameters.maxConnections` bleiben, sonst weist PostgreSQL
+> Verbindungen ab; das Chart prüft dies beim Rendern und bricht mit einer
+> Fehlermeldung ab.
 
-> **Hinweis:** `dbPool.maxSize` (pro Authserver-Replica) muss zusammen mit der
-> Replica-Anzahl unter `cloudnativePg.parameters.maxConnections` der Datenbank
-> passen, sonst weist PostgreSQL Verbindungen ab.
+#### Verhalten bei Datenbankausfall
+
+Der Verlust des Datenbank-Primaries ist kein sauberer Verbindungsabbruch. Wird
+der Primary-**Pod** gelöscht, verschwindet sein Netzwerk-Namespace, während die
+ClusterIP `keycloak-db-rw` gültig bleibt — die bestehenden conntrack-Einträge von
+kube-proxy zeigen weiter auf eine Pod-IP, die nicht mehr antwortet. Es wird kein
+TCP-Reset gesendet, die Pakete werden verworfen. Deshalb erholt sich ein
+regulärer Datenbank-*Neustart* von selbst, während ein *Pod-Neuaufbau* den
+Authserver früher bis zu einem manuellen Neustart blockierte.
+
+Die Gegenmaßnahmen liefert das Chart:
+
+| Value                                            | Standard | Bedeutung                                                                                                                               |
+|--------------------------------------------------|----------|-----------------------------------------------------------------------------------------------------------------------------------------|
+| `authserver.db.urlProperties.socketTimeout`      | `120`    | Sekunden. Einzige Schranke für einen blockierenden Lesevorgang — und die einzige für den Aufbau einer *Ersatz*verbindung.               |
+| `authserver.db.urlProperties.tcpKeepAlive`       | `true`   | Erkennt manche toten Gegenstellen früher, nicht aber einen eingefrorenen Server.                                                        |
+| `authserver.dbPool.validationQueryTimeout`       | `2S`     | Ohne diesen Wert validiert der Pool mit `isValid(0)` — ohne Socket-Timeout — und hängt an genau dem toten Socket, den er erkennen soll. |
+| `authserver.dbPool.foregroundValidationInterval` | `5S`     | Prüfung beim Ausleihen, wenn die Verbindung länger als das ungenutzt war. Ohne Vorgabe deaktiviert.                                     |
+| `authserver.dbPool.backgroundValidationInterval` | `15S`    | Turnus der Hintergrundprüfung ungenutzter Verbindungen.                                                                                 |
+| `authserver.dbPool.idleRemovalInterval`          | `1M`     | Abbau ungenutzter Verbindungen; unterschreitet `dbPool.minSize` nie.                                                                    |
+
+Ergänzt wird das durch `authserver.dbPool.maxLifetime` (oben).
+
+> **Hinweis:** Das Socket-Timeout gilt für **jedes** Statement, auch für
+> Liquibase-DDL bei der Schema-Migration. Eine dadurch abgebrochene Migration
+> hinterlässt eine gehaltene Sperre in `DATABASECHANGELOGLOCK`; der nächste Start
+> wartet dann 30 Minuten und scheitert anschließend. Erwarten Sie eine aufwendige
+> Migration, erhöhen Sie den Wert für dieses Release über
+> `authserver.db.urlProperties.socketTimeout`. Das Lösen der Sperre ist unter
+> [Troubleshooting & Debugging](../Anleitungen/Troubleshooting_und_Debugging.md#datenbank-nicht-erreichbar--authserver-antwortet-nicht)
+> beschrieben.
 
 ### HSM-Konfiguration
 
@@ -494,6 +828,7 @@ authserver:
 | `authserver.hsm.tokenSigning.enabled`    | Token-Signierung via HSM (setzt `HSM_PROXY_TOKEN_KEY_ID`)                                                                                                                                                                                                                | `false`  |
 | `authserver.hsm.tokenSigning.keyId`      | Schlüssel-ID für Token-Signierung im HSM                                                                                                                                                                                                                                 | `""`     |
 | `authserver.hsm.tokenSigning.failClosed` | Bei `true` verweigert der `HsmTokenSigningKeyProviderFactory` jeden Software-Key-Fallback, solange das HSM nicht erreichbar ist, statt Keycloak still einen Software-Signaturschlüssel erzeugen zu lassen. Nur für kontrollierte HSM-Wartungsfenster auf `false` setzen. | `true`   |
+| `authserver.hsm.dbEnc.keyId`             | Schlüssel-ID des KEK für die Keychain der VAU-Datenbank; nur für den Spree Integrity Provider, siehe [Spree Integrity Provider (VAU)](#spree-integrity-provider-vau)                                                                                                     | `""`     |
 
 > **Hinweis:** Die Helm-Values aktivieren die HSM-Proxy-Verbindung im
 > Authorization Service (Keycloak). Die Registrierung des HSM-KeyProviders
@@ -548,54 +883,217 @@ Integritätsprüfungen):
 authserver:
     dbEnc:
         enabled: false
-        columnEncryptionEnabled: false
-        integrityChecksEnabled: false
-        integrityRowChecksEnabled: false
-        integrityTableChecksEnabled: false
+        columnEncryptionEnabled: true
+        integrityChecksEnabled: true
+        integrityRowChecksEnabled: true
+        integrityTableChecksEnabled: true
         periodicRowChecksEnabled: false
         lockdownOnError: false
         shutdownOnError: false
+        automaticCryptoUpdatesEnabled: false
         bootstrapInterval: "PT30S"
         bootstrapAttempts: 15
         keychainFileName: ""
+        futureKeychainFileName: ""
+        previousKeychainFileName: ""
         keychainGenerator:
             extraVolumeMounts: []
+    hsm:
+        dbEnc:
+            keyId: ""
 ```
 
-| Value                                                  | Beschreibung                                                                                                                                   | Standard |
-|--------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|----------|
-| `authserver.dbEnc.enabled`                             | Aktivierung des Spree integrity providers                                                                                                      | `false`  |
-| `authserver.dbEnc.integrityChecksEnabled`              | Aktivierung von Integritätsprüfungen und Verschlüsselung global                                                                                | `false`  |
-| `authserver.dbEnc.columnEncryptionEnabled`             | Aktivierung der Spaltenverschlüsselung gemäß Konfiguration auf Entitätsebene                                                                   | `false`  |
-| `authserver.dbEnc.integrityRowChecksEnabled`           | Aktivierung von Integritätsprüfungen auf Datenbank-Zeilenebene                                                                                 | `false`  |
-| `authserver.dbEnc.integrityTableChecksEnabled`         | Aktivierung von Integritätsprüfungen auf Tabellenebene                                                                                         | `false`  |
-| `authserver.dbEnc.periodicRowChecksEnabled`            | Aktivierung der periodischen Integritätsprüfung auf Datenbank-Zeilenebene; bei Deaktivierung wird weiterhin bei jedem direkten Zugriff geprüft | `false`  |
-| `authserver.dbEnc.lockdownOnError`                     | Aktivierung eines internen Fehlerstates, in dem der Authserver weitere Anfragen abweist                                                        | `false`  |
-| `authserver.dbEnc.shutdownOnError`                     | Automatisches Herunterfahren des Authservers, wenn Integritätsprüfungen fehlschlagen                                                           | `false`  |
-| `authserver.dbEnc.bootstrapAttempts`                   | Anzahl der Versuche das System zu initialisieren                                                                                               | `15`     |
-| `authserver.dbEnc.bootstrapInterval`                   | Intervall zwischen den Initialisierungsversuchen                                                                                               | `PT30S`  |
-| `authserver.dbEnc.keychainFileName`                    | Pfad zur Keychain-Datei im Container                                                                                                           | `""`     |
-| `authserver.dbEnc.keychainGenerator.extraVolumeMounts` | Zusätzliche Volume-Mounts für den Keychain-Generator (Einhängen der Keychain-Datei)                                                            | `[]`     |
+| Value                                                  | Beschreibung                                                                                                                                                                                                   | Standard |
+|--------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
+| `authserver.dbEnc.enabled`                             | Aktivierung des Spree Integrity Providers                                                                                                                                                                      | `false`  |
+| `authserver.dbEnc.integrityChecksEnabled`              | Aktivierung von Integritätsprüfungen und Verschlüsselung global                                                                                                                                                | `true`   |
+| `authserver.dbEnc.columnEncryptionEnabled`             | Aktivierung der Spaltenverschlüsselung gemäß Konfiguration auf Entitätsebene                                                                                                                                   | `true`   |
+| `authserver.dbEnc.integrityRowChecksEnabled`           | Aktivierung von Integritätsprüfungen auf Datenbank-Zeilenebene                                                                                                                                                 | `true`   |
+| `authserver.dbEnc.integrityTableChecksEnabled`         | Aktivierung von Integritätsprüfungen auf Tabellenebene                                                                                                                                                         | `true`   |
+| `authserver.dbEnc.periodicRowChecksEnabled`            | Aktivierung der periodischen Integritätsprüfung auf Datenbank-Zeilenebene; bei Deaktivierung wird weiterhin bei jedem direkten Zugriff geprüft                                                                 | `false`  |
+| `authserver.dbEnc.lockdownOnError`                     | Aktivierung eines internen Fehlerstates, in dem der Authserver weitere Anfragen abweist                                                                                                                        | `false`  |
+| `authserver.dbEnc.shutdownOnError`                     | Automatisches Herunterfahren des Authservers, wenn Integritätsprüfungen fehlschlagen                                                                                                                           | `false`  |
+| `authserver.dbEnc.automaticCryptoUpdatesEnabled`       | Automatischer Start der Umschlüsselung, sobald der Authserver einen Wechsel der aktiven Keychain erkennt; erfordert `previousKeychainFileName`. Bei `false` starten Sie die Umschlüsselung über die Admin-API. | `false`  |
+| `authserver.dbEnc.bootstrapAttempts`                   | Anzahl der Versuche das System zu initialisieren                                                                                                                                                               | `15`     |
+| `authserver.dbEnc.bootstrapInterval`                   | Intervall zwischen den Initialisierungsversuchen                                                                                                                                                               | `PT30S`  |
+| `authserver.dbEnc.keychainFileName`                    | Pfad zur aktiven Keychain-Datei im Container                                                                                                                                                                   | `""`     |
+| `authserver.dbEnc.futureKeychainFileName`              | Pfad zur angekündigten Keychain-Datei; nur während einer Schlüsselrotation gesetzt                                                                                                                             | `""`     |
+| `authserver.dbEnc.previousKeychainFileName`            | Pfad zur abgelösten Keychain-Datei; nur während einer Schlüsselrotation gesetzt, bis die Umschlüsselung abgeschlossen ist                                                                                      | `""`     |
+| `authserver.dbEnc.keychainGenerator.extraVolumeMounts` | Zusätzliche Volume-Mounts für den Keychain-Generator (Einhängen der Keychain-Datei)                                                                                                                            | `[]`     |
+| `authserver.hsm.dbEnc.keyId`                           | ID des KEK im HSM. Der Keychain-Generator benötigt sie; im Authserver gilt sie für Keychain-Dateien ohne eigene KEK-ID.                                                                                        | `""`     |
 
-Die Keychain-Datei wird über `authserver.extraVolumes` aus einem Secret
-bereitgestellt. Ein vollständiges Beispiel siehe
+Die Keychain-Dateien werden über `authserver.extraVolumes` aus einem Secret
+bereitgestellt und über `authserver.container.extraVolumeMounts` in den
+Authserver-Container eingehängt. Ein vollständiges Beispiel siehe
 [Wie Sie ZETA-Guard in Kubernetes konfigurieren, Abschnitt 10](../Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md#10-besonderheiten-vau-und-keycloak-datenbank).
+Wie Sie `futureKeychainFileName` und `previousKeychainFileName` für einen
+Schlüsselwechsel verwenden, beschreibt
+[Wie Sie die Schlüssel der VAU-Datenbank rotieren](../Anleitungen/Wie_Sie_die_Schlüssel_der_VAU-Datenbank_rotieren.md).
 
 ### Mobiler Client-Flow (OIDC)
 
 ```yaml
 authserver:
     config:
-        oidcFlowEnabled: false
+        oidcFlowEnabled: true
+        entityStatement:
+            clientName: "zeta-guard"
+            organizationName: "<Betreiber>"
+            contactEmail: "<kontakt@betreiber.example>"
+            # optional; leer = Redirect-URIs der SekIDP-Clients des Realms
+            redirectUris:
+                - "https://<app.betreiber.example>/cb/oidc"
+    additionalTrustedCAs:
+        - secretName: <secret-mit-ca>
+          secretKey: ca.crt
 ```
 
-| Value                               | Beschreibung                                                                                                                                                             | Standard |
-|-------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
-| `authserver.config.oidcFlowEnabled` | Schaltet den [mobilen Client-Flow](../Anleitungen/Wie_der_mobile_Client-Flow_funktioniert.md) frei (setzt die Umgebungsvariable `ZETA_OIDC_FLOW_ENABLED` am Authserver). | `false`  |
+| Value                                                | Beschreibung                                                                                                                                                                                                                                                                       | Standard |
+|------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
+| `authserver.config.oidcFlowEnabled`                  | Schaltet den [mobilen Client-Flow](../Anleitungen/Wie_der_mobile_Client-Flow_funktioniert.md) frei (setzt die Umgebungsvariable `ZETA_OIDC_FLOW_ENABLED` am Authserver).                                                                                                           | `false`  |
+| `authserver.config.entityStatement.clientName`       | `client_name` in den `openid_relying_party`-Metadaten (A_23034-02) und `name` in den `federation_entity`-Metadaten (gemSpec_IDP_Sek, Tab. 28) des Entity Statements des Guards. Erforderlich bei `oidcFlowEnabled: true`.                                                          | —        |
+| `authserver.config.entityStatement.organizationName` | `organization_name` in den `openid_relying_party`- und `federation_entity`-Metadaten (gemSpec_IDP_Sek, Tab. 28) des Entity Statements des Guards. Erforderlich bei `oidcFlowEnabled: true`.                                                                                        | —        |
+| `authserver.config.entityStatement.contactEmail`     | Kontaktadresse im Entity Statement des Guards. Erforderlich bei `oidcFlowEnabled: true`.                                                                                                                                                                                           | —        |
+| `authserver.config.entityStatement.redirectUris`     | Feste Liste der `redirect_uris` in den `openid_relying_party`-Metadaten des Entity Statements (A_25656, setzt `ENTITY_STATEMENT_REDIRECT_URIS`). Leer = die Redirect-URIs der SekIDP-Clients des Realms.                                                                           | `[]`     |
+| `authserver.additionalTrustedCAs`                    | CA-Zertifikate, denen Keycloak für eigene ausgehende HTTPS-Aufrufe vertraut, etwa zu Federation Master und SekIDP. Je Eintrag entweder `secretName` + `secretKey` (vorhandenes Secret) oder `cert` (PEM inline, das Chart legt das Secret an). Leer = Standard-Truststore der JVM. | `[]`     |
 
-Für den OTP-Versand der E-Mail-Bindung muss zusätzlich SMTP im Realm
-konfiguriert sein — siehe die SMTP-Variablen unter
-[Terraform-Konfiguration (PDP)](#terraform-konfiguration-pdp).
+Den Identity Provider `zeta-sekidp-oidc` legt die PDP-Konfiguration an —
+siehe `enable_sekidp` und `sekidp_client_id` unter
+[Terraform-Konfiguration (PDP)](#terraform-konfiguration-pdp). Die URL des
+Federation Masters kommt aus dem Provisioning Processor, siehe
+[Federation Master für den mobilen Client-Flow](#federation-master-für-den-mobilen-client-flow). Für den
+OTP-Versand der E-Mail-Bindung muss zusätzlich SMTP im Realm konfiguriert sein
+(SMTP-Variablen ebendort).
+
+#### mTLS für Resource Server (`userinfo/email`)
+
+```yaml
+authserver:
+    resourceServerMtls:
+        enabled: false
+        truststore:
+            secretName: ""
+            secretKey: ca.pem
+        truststorePassword:
+            secretName: ""
+            secretKey: ""
+        verifyDepth: 3
+```
+
+Ein Resource Server ruft die verifizierte E-Mail-Adresse eines Versicherten über
+`GET /auth/realms/<realm>/zeta/userinfo/email?id=<KVNR>` ab und authentisiert
+sich dabei mit einem TLS-Client-Zertifikat. Ist die Option aktiv, fordert der
+Ingress auf `authserver.hostname` von jedem Client optional ein Zertifikat an
+(`ssl_verify_client optional_no_ca`). Er prüft es nicht selbst, sondern reicht es
+im Header `ssl-client-cert` an den Authserver weiter. Der Authserver prüft die
+Zertifikatskette gegen den Resource-Server-Truststore.
+
+| Value                                                 | Beschreibung                                                                                                                                                                                                                                                                      | Standard |
+|-------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
+| `authserver.resourceServerMtls.enabled`               | Client-Zertifikate von Resource Servern anfordern und weiterreichen. Setzt `authserver.config.oidcFlowEnabled: true` voraus.                                                                                                                                                      | `false`  |
+| `authserver.resourceServerMtls.truststore.secretName` | Bestehendes Secret mit dem eigenen Truststore für Resource Server. Jedes enthaltene Zertifikat ist ein Vertrauensanker. Leer: Es gilt Keycloaks HTTPS-Truststore (`KC_HTTPS_TRUST_STORE_FILE`). Ist keiner von beiden gesetzt, beantwortet `userinfo/email` jede Anfrage mit 401. | `""`     |
+| `authserver.resourceServerMtls.truststore.secretKey`  | Schlüssel im Secret. Die Endung bestimmt das Format: `.p12`/`.pfx` (PKCS12), `.jks`, alles andere ist ein PEM-Bundle.                                                                                                                                                             | `ca.pem` |
+| `authserver.resourceServerMtls.truststorePassword.*`  | Secret mit dem Truststore-Passwort, nur für PKCS12 und JKS.                                                                                                                                                                                                                       | `""`     |
+| `authserver.resourceServerMtls.verifyDepth`           | `ssl_verify_depth` des Ingress: die längste Zertifikatskette, die ein Resource Server vorlegen darf.                                                                                                                                                                              | `3`      |
+
+##### Eigenen Truststore verwenden
+
+Ohne `truststore.secretName` prüft der Authserver gegen Keycloaks
+HTTPS-Truststore. Einen eigenen Truststore für Resource Server legen Sie als
+Secret im Namespace des Authservers an und verweisen in den Values darauf.
+
+**PEM-Bundle** (ein oder mehrere Zertifikate in einer Datei, kein Passwort):
+
+```bash
+kubectl -n <namespace> create secret generic resource-server-truststore \
+  --from-file=ca.pem=resource-server-cas.pem
+```
+
+```yaml
+authserver:
+    resourceServerMtls:
+        enabled: true
+        truststore:
+            secretName: resource-server-truststore
+            secretKey: ca.pem
+```
+
+**PKCS12** (zusätzlich ein Secret mit dem Passwort). Die Endung von `secretKey`
+muss `.p12` oder `.pfx` lauten, sonst wird die Datei als PEM gelesen:
+
+```bash
+kubectl -n <namespace> create secret generic resource-server-truststore \
+  --from-file=truststore.p12=resource-server-cas.p12
+kubectl -n <namespace> create secret generic resource-server-truststore-pw \
+  --from-file=password=resource-server-cas.pw
+```
+
+```yaml
+authserver:
+    resourceServerMtls:
+        enabled: true
+        truststore:
+            secretName: resource-server-truststore
+            secretKey: truststore.p12
+        truststorePassword:
+            secretName: resource-server-truststore-pw
+            secretKey: password
+```
+
+Ein JKS-Truststore funktioniert genauso, mit der Endung `.jks`.
+
+Der Authserver liest den Truststore nur beim Start. Nach einer Änderung des
+Secrets starten Sie ihn neu (`kubectl -n <namespace> rollout restart
+deployment/authserver`). Welcher Truststore aktiv ist, steht im Log des
+Authservers:
+
+```text
+Resource server truststore »/opt/keycloak/conf/resource-server-truststore/ca.pem« (resourceServerTruststoreFile) loaded with 1 certificates
+```
+
+In Klammern steht `resourceServerTruststoreFile` für den eigenen Truststore und
+`https-trust-store-file`, wenn der Default greift. Ist keiner von beiden
+gesetzt, erscheint stattdessen die Warnung `No resource server truststore
+configured, userinfo/email rejects every request`. Ist der eigene Truststore
+gesetzt, aber nicht lesbar (falsches Passwort, keine Zertifikate), bricht der
+Start ab.
+
+> **Hinweis:** Legen Sie die Resource-Server-CA **nicht** über
+> `authserver.additionalTrustedCAs` ab. Alles dort gilt auch für ausgehende
+> Verbindungen des Authservers.
+
+> **Hinweis zu Log-Meldungen:** Das Chart setzt am Authserver den
+> `x509cert-lookup`-Provider `nginx` mit `trust-proxy-verification=false`. Bei
+> `true` würde Keycloak zusätzlich den Header `ssl-client-verify: SUCCESS`
+> verlangen. Den sendet ein Ingress mit `optional_no_ca` nie, und jede Anfrage
+> würde mit 401 abgelehnt. Mit `false` versucht Keycloak, die Zertifikatskette
+> aus seinem eigenen Truststore neu aufzubauen. Für die Resource-Server-CA
+> scheitert das. Deshalb erzeugt `NginxProxySslClientCertificateLookup` bei
+> jedem Aufruf mit Client-Zertifikat zwei Meldungen: `WARN` „No issuer
+> certificate for certificate in certification path found.“ und `INFO`
+> „Impossible to rebuild end user cert chain : client certificate
+> authentication will fail.“ Beide sind erwartet und harmlos. Die zweite trifft
+> hier nicht zu: Das Zertifikat wird trotzdem weitergereicht und gegen den
+> Resource-Server-Truststore geprüft.
+>
+> Das Authserver-Image stuft genau diese beiden Meldungen dieses einen Loggers
+> auf `DEBUG` herab; alle anderen Meldungen und `ERROR` generell bleiben
+> unverändert. Um sie wieder zu sehen, ergänzen Sie `authserver.log.level` um
+> `org.keycloak.services.x509.NginxProxySslClientCertificateLookup:debug`, zum
+> Beispiel `INFO,org.keycloak.services.x509.NginxProxySslClientCertificateLookup:debug`.
+
+`ssl_verify_client optional_no_ca` gilt für den gesamten Host. Browser, auf denen
+Client-Zertifikate installiert sind, können deshalb einen Auswahldialog zeigen.
+Bestehende `nginx.org/server-snippets` aus `ingressMasterAnnotations` bleiben
+erhalten; das Chart stellt seine Direktiven davor.
+
+Den Header `ssl-client-cert` setzt der Ingress bei jeder Anfrage an `/auth`
+selbst, auch wenn die Option aus ist. Er überschreibt damit einen vom Client
+mitgeschickten Header. Der mitgelieferte NGINX Ingress Controller entfernt den
+Header zusätzlich über `more_clear_input_headers`. Setzen Sie einen eigenen
+Ingress Controller ein, müssen Sie dasselbe sicherstellen. Außerdem darf den
+Authserver nichts unter Umgehung des Ingress mit einem gefälschten Header
+erreichen (NetworkPolicies, `proxy-trusted-addresses`).
 
 ## PEP-Proxy
 
@@ -743,7 +1241,8 @@ werden.
 |---------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------|
 | `pepproxy.nginxConf.generateConfigMap`            | Wenn `true`, generiert das Chart die nginx-ConfigMap aus den untenstehenden Values. Bei `false` muss eine ConfigMap mit dem Namen `configMapName` extern bereitgestellt werden; alle weiteren `nginxConf.*`-Values werden dann ignoriert.                                                                                                                                                      | `false`                                    |
 | `pepproxy.nginxConf.configMapName`                | Name der ConfigMap, die in den PEP-Pod gemountet wird — unabhängig davon, ob das Chart sie generiert oder sie extern existiert.                                                                                                                                                                                                                                                                | `pep-nginx-conf`                           |
-| `pepproxy.nginxConf.pepIssuer`                    | Öffentlicher OIDC-Issuer des Authorization Servers. Immer der `iss`, den der PEP in Access-Tokens erwartet (`pep_pdp_issuer`). Dient zugleich als Basis-URL für OIDC-Discovery und JWKS-Abruf.                                                                                                                                                | `""`                                       |
+| `pepproxy.nginxConf.pepIssuer`                    | Öffentlicher OIDC-Issuer des Authorization Servers. Immer der `iss`, den der PEP in Access-Tokens erwartet (`pep_pdp_issuer`). Solange `pepInternalUrl` nicht gesetzt ist, dient er zusätzlich als Basis-URL für OIDC-Discovery und JWKS-Abruf.                                                                                                                                                | `""`                                       |
+| `pepproxy.nginxConf.pepInternalUrl`               | Clusterinterne Adresse des Authservers, ausschließlich für OIDC-Discovery und JWKS-Abruf (`pep_pdp_url`). Standardmäßig leer: Beide Abrufe laufen über den öffentlichen `pepIssuer` und damit durch die vorgelagerte Infrastruktur. Empfohlen ist `http://authserver/auth/realms/zeta-guard` (PEP-Image ab 2.0.0). Muss die Pfadstruktur des Issuers spiegeln.                                 | `""`                                       |
 | `pepproxy.nginxConf.requiredAudience`             | Audience, die ein gültiges Access-Token enthalten muss (`pep_require_aud`).                                                                                                                                                                                                                                                                                                                    | `""`                                       |
 | `pepproxy.nginxConf.requiredScopes`               | Liste der geforderten Scopes (`pep_require_scope`).                                                                                                                                                                                                                                                                                                                                            | `[]`                                       |
 | `pepproxy.nginxConf.proxyLocations`               | Strukturierte Definition der Fachdienst-Pfade (siehe unten). Kann nicht zusammen mit `locations` verwendet werden.                                                                                                                                                                                                                                                                             | `[]`                                       |
@@ -751,10 +1250,12 @@ werden.
 | `pepproxy.nginxConf.fachdienstUrl`                | **Deprecated.** Optionale Hilfsvariable, die im `locations`-Template referenziert werden kann.                                                                                                                                                                                                                                                                                                 | `""`                                       |
 | `pepproxy.nginxConf.httpClientAcceptInvalidCerts` | Akzeptiert ungültige TLS-Zertifikate bei internen HTTP-Verbindungen des PEP (JWKS, OIDC Discovery). **Nur für Testumgebungen.**                                                                                                                                                                                                                                                                | `false`                                    |
 | `pepproxy.nginxConf.aslTestmode`                  | Aktiviert den ASL-Testmodus (deaktiviert Verschlüsselung). **Niemals in Produktion setzen.**                                                                                                                                                                                                                                                                                                   | `false`                                    |
-| `pepproxy.nginxConf.noTravel`                     | Aktiviert (`true`) oder deaktiviert (`false`) die No-Travel-Prüfung (IP-Bindung).                                                                                                                                                                                                                                                                                                              | `false`                                    |
+| `pepproxy.nginxConf.noTravel`                     | Aktiviert (`true`) oder deaktiviert (`false`) die No-Travel-Prüfung (IP-Bindung).                                                                                                                                                                                                                                                                                                              | `true`                                     |
 
-> **Hinweis zu `noTravel`:** Die IP-Bindung ist nur so verlässlich wie die
-> Ermittlung der Client-IP-Adresse an der Außengrenze — siehe
+> **Hinweis zu `noTravel`:** Das Chart schaltet die Prüfung standardmäßig ein;
+> eine Session ist damit an die IP-Adresse gebunden, mit der das Token
+> ausgestellt wurde. Die IP-Bindung ist nur so verlässlich wie die Ermittlung
+> der Client-IP-Adresse an der Außengrenze — siehe
 > [Client-IP-Ermittlung und Forwarding-Header](#client-ip-ermittlung-und-forwarding-header).
 
 #### ASL-Values
@@ -825,6 +1326,86 @@ Details zu den vom PEP gesetzten nginx-Direktiven (`pep on`, `pep_require_aud`,
 [PEP-Konfiguration](Konfiguration_des_PEP_Http_Proxy.md).
 Für vollständige Konfigurationsbeispiele inkl. mTLS siehe
 [Wie Sie ZETA-Guard in Kubernetes konfigurieren](../Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md#7-policy-enforcement-point-nginx-konfigurieren).
+
+### Clusterinterne Kommunikation mit dem Authserver
+
+Der PEP validiert Access-Tokens gegen das JWKS des Authservers. Er findet dieses
+JWKS, indem er `<pepIssuer>/.well-known/openid-configuration` abruft und
+anschließend der dort ausgewiesenen `jwks_uri` folgt.
+
+`pepIssuer` **muss** der öffentliche Issuer sein — es ist der `iss`, den der PEP
+in jedem Access-Token erwartet. Ohne weitere Konfiguration laufen deshalb beide
+Abrufe über den öffentlichen Hostnamen, verlassen den Cluster und kommen über
+Load Balancer und Ingress wieder herein, obwohl der Authserver direkt neben dem
+PEP läuft. In Multi-Cluster-Umgebungen kann das sogar zwischen Standorten
+erfolgen.
+
+`pepInternalUrl` hält diesen Verkehr im Cluster:
+
+```yaml
+pepproxy:
+  nginxConf:
+    # öffentlich — bleibt der erwartete `iss` der Access-Tokens
+    pepIssuer: "https://<public-host>/auth/realms/zeta-guard"
+    # intern — standardmäßig leer (aus); empfohlener Wert:
+    pepInternalUrl: "http://authserver/auth/realms/zeta-guard"
+```
+
+Das Chart rendert daraus die nginx-Direktive `pep_pdp_url`. Die Discovery wird
+dann über den clusterinternen Service abgerufen, und die vom Authserver
+ausgewiesene `jwks_uri` wird vom öffentlichen Issuer-Präfix auf `pepInternalUrl`
+umgeschrieben.
+
+Hinweise:
+
+- `pepInternalUrl` muss die **Pfadstruktur** des Issuers spiegeln, da nur das
+  Issuer-Präfix ersetzt wird. Liegt die ausgewiesene `jwks_uri` nicht unterhalb
+  von `pepIssuer`, ruft der PEP sie unverändert ab und protokolliert eine Warnung.
+- Die Token-Validierung ändert sich nicht, und die Issuer-Prüfung bleibt scharf.
+  Über den internen Service würde Keycloak das Schema sonst aus dem Request
+  ableiten und `http://…` ausweisen, wo der PEP `https://…` erwartet. Der PEP
+  sendet bei diesen beiden Abrufen deshalb die Origin des öffentlichen Issuers
+  (`Host`, `X-Forwarded-Proto`, `X-Forwarded-Host`), sodass der Authserver seine
+  Frontend-URLs genau wie bei öffentlichem Verkehr rendert.
+- Der interne Hop kann unverschlüsseltes HTTP zum Service `authserver` sein; ein
+  für den öffentlichen Hostnamen gültiges Zertifikat wird nicht benötigt.
+- Der Kurzname `authserver` genügt, auch unter OpenShift. PEP und Authserver
+  rollt das Chart immer gemeinsam in denselben Namespace aus, und Kubernetes löst
+  Kurznamen innerhalb des Namespace über die Suchdomänen in `/etc/resolv.conf`
+  auf. Der voll qualifizierte Name (`authserver.<namespace>.svc.cluster.local`)
+  wird erst nötig, wenn der Authserver in einem anderen Namespace läuft. Dieselbe
+  Adresse nutzt `pep_revocation_url` bereits unverändert in allen Umgebungen.
+- Ältere PEP-Images kennen die Direktive nicht: Sie starten nicht und geben
+  `unknown directive "pep_pdp_url"` aus. Nötig ist ein Image ab 2.0.0 — bei einem
+  älteren Image (`pepproxy.image.tag` oder `pepproxy.image.digest` gepinnt)
+  `pepInternalUrl` leer lassen.
+- Bei aktivierten NetworkPolicies ist der nötige Egress (PEP → Authserver-Pod,
+  Port 8080) bereits Teil von `pep-proxy-egress`.
+
+#### Alternative: hostAliases
+
+Lässt sich der interne Endpunkt nicht über den Service-Namen adressieren, kann
+der Hostname stattdessen im PEP-Pod aufgelöst werden:
+
+| Value                  | Beschreibung                                                                                                                                                                       | Standard |
+|------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
+| `pepproxy.hostAliases` | Zusätzliche `/etc/hosts`-Einträge für den PEP-Pod in nativer Kubernetes-Notation (`[{ip, hostnames: []}]`). Wird mit den Einträgen aus `global.enableDNSRedirect` zusammengeführt. | `[]`     |
+
+```yaml
+pepproxy:
+  hostAliases:
+    - ip: 10.96.1.23          # ClusterIP des *Ingress-Controllers*
+      hostnames:
+        - <public-host>
+```
+
+Dabei die ClusterIP des Ingress-Controllers eintragen, nicht die des Authservers:
+Der PEP spricht weiterhin HTTPS mit dem öffentlichen Hostnamen, und nur der
+Ingress-Controller liefert ein für diesen Namen gültiges Zertifikat.
+
+`pepInternalUrl` ist vorzuziehen — es kommt ohne IP-Adresse aus (ClusterIPs sind
+clusterspezifisch und ändern sich, wenn ein Service neu angelegt wird) und
+vermeidet die TLS-Frage vollständig.
 
 ### HSM-Konfiguration (TLS)
 
@@ -1076,14 +1657,14 @@ opa:
     replicaCount: 2
     image:
         repository: opa
-        tag: 1.19.1-static
+        tag: 1.21.3-static
 ```
 
 | Value                                | Beschreibung                                                                                          | Standard         |
 |--------------------------------------|-------------------------------------------------------------------------------------------------------|------------------|
 | `opa.replicaCount`                   | Anzahl der OPA-Replicas. OPA ist zustandslos und horizontal skalierbar.                               | `1`              |
 | `opa.image.repository`               | Image-Repository                                                                                      | `opa`            |
-| `opa.image.tag`                      | Image-Tag                                                                                             | `1.19.1-static`  |
+| `opa.image.tag`                      | Image-Tag                                                                                             | `1.21.3-static`  |
 | `opa.image.registry`                 | Registry-Präfix. Nicht vorbelegt — ohne Angabe aus `global.registry_host` + `registry_name` gebildet. | —                |
 | `opa.image.digest`                   | Digest-Pinning. Nicht vorbelegt; wird als `@<digest>` hinter den Tag gehängt.                         | —                |
 | `opa.imagePullPolicy`                | Pull-Policy des OPA-Images                                                                            | `IfNotPresent`   |
@@ -1096,26 +1677,25 @@ opa:
 | `opa.podAnnotations`                 | Zusätzliche Annotationen am OPA-Pod                                                                   | `{}`             |
 | `opa.affinity`                       | Affinity-Regeln des OPA-Pods                                                                          | `{}`             |
 | `opa.tolerations`                    | Tolerations des OPA-Pods                                                                              | `[]`             |
-| `opa.containerSecurityContext`       | Security Context des OPA-Containers (auch für `opa-simulation`)                                       | PSS `restricted` |
-| `opa.cronjobSecurityContext`         | Security Context der Token-Renewer-CronJobs                                                           | s. u.            |
+| `opa.containerSecurityContext`       | Abweichungen von `defaultContainerSecurityContext` für den OPA-Container (auch für `opa-simulation`)  | `{}`             |
+| `opa.cronjobSecurityContext`         | Abweichungen von `defaultContainerSecurityContext` für die Token-Renewer-CronJobs                     | s. u.            |
 
 Standardressourcen: `limits.memory: 1Gi`, `requests.cpu: 100m`,
 `requests.memory: 200Mi`.
 
-> **Hinweis zu `cronjobSecurityContext`:** Hier wird bewusst **kein** `runAsUser`
-> gesetzt. Umgebungen, die für
-> `opa.workloadIdentityFederation.worker.image` das Standard-Image
-> `google/cloud-sdk` verwenden (läuft als root), müssen `runAsUser` in ihren
-> eigenen Stage-Values überschreiben. `readOnlyRootFilesystem` ist hier — anders
-> als beim OPA-Container — `false`.
+> **Hinweis zu `cronjobSecurityContext`:** Setzt nur `readOnlyRootFilesystem: false`,
+> alles Übrige kommt aus
+> [`defaultContainerSecurityContext`](#chartweiter-default-defaultcontainersecuritycontext) —
+> auch `runAsUser`, das für das Standard-Image `google/cloud-sdk` von
+> `opa.workloadIdentityFederation.worker.image` (läuft als root) nötig ist.
 
 ### Logging und Telemetrie
 
-| Value                  | Beschreibung                                                        | Standard |
-|------------------------|---------------------------------------------------------------------|----------|
-| `opa.logLevel`         | Log-Level des OPA-Servers: `debug`, `info`, `warn` oder `error`     | `info`   |
+| Value                  | Beschreibung                                                                                                            | Standard |
+|------------------------|-------------------------------------------------------------------------------------------------------------------------|----------|
+| `opa.logLevel`         | Log-Level des OPA-Servers: `debug`, `info`, `warn` oder `error`                                                         | `info`   |
 | `opa.logDecisions`     | Policy-Entscheidungen zusätzlich als Decision Logs auf die Konsole schreiben (an das Telemetry-Gateway gehen sie immer) | `false`  |
-| `opa.logStatusUpdates` | Status-Updates (u. a. Bundle-Aktivierung) auf die Konsole schreiben | `false`  |
+| `opa.logStatusUpdates` | Status-Updates (u. a. Bundle-Aktivierung) auf die Konsole schreiben                                                     | `false`  |
 
 Die beiden folgenden Values liegen **nicht** unter `opa`, sondern auf der
 Ebene des `zeta-guard`-Charts:
@@ -1168,7 +1748,7 @@ Betrieb beobachten, bevor sie aktiv geschaltet wird.
 |--------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
 | `opa.simulation.enabled`             | Simulation-Instanz deployen                                                                                                                          | `true`   |
 | `opa.simulation.replicaCount`        | Anzahl der Replicas der Simulation-Instanz                                                                                                           | `1`      |
-| `opa.simulation.bundle.resource`     | Eigene Bundle-Referenz für die Simulation. Leer = wird aus `opa.bundle.resource` abgeleitet.                                                         | `""`     |
+| `opa.simulation.bundle.resource`     | Bundle-Referenz der Simulation (Pfad je Umgebung siehe OPA-Anleitung). Pflicht bei Bundle-Modus mit Simulation, wird nicht abgeleitet.               | `""`     |
 | `opa.simulation.bundle.verification` | Eigene Signaturprüfung für das Simulation-Bundle (gleiche Schlüssel wie `opa.bundle.verification`). Leer = `opa.bundle.verification` gilt auch hier. | `{}`     |
 
 ### Workload Identity Federation (GAR-Zugriff)
@@ -1239,12 +1819,9 @@ provisioningProcessor:
         requests:
             cpu: "100m"
             memory: "100Mi"
+    # übrige Keys aus defaultContainerSecurityContext
     containerSecurityContext:
-        allowPrivilegeEscalation: false
         readOnlyRootFilesystem: false
-        runAsNonRoot: true
-        capabilities:
-            drop: [ "ALL" ]
 ```
 
 ### Provisioning-Container je Umgebung
@@ -1267,6 +1844,30 @@ Registry-Spiegelung konfiguriert werden:
 provisioningProcessor:
     provisioningContainer: "my.registry.corp.internal/zetaguard-provisioning:latest"
 ```
+
+### Federation Master für den mobilen Client-Flow
+
+Im [mobilen Client-Flow](../Anleitungen/Wie_der_mobile_Client-Flow_funktioniert.md)
+liest der Authserver die URL des Federation Masters aus der Datei
+`/var/trust-data/federation-master.json` (`FEDERATION_MASTER_LOCATION`,
+A_29737). Diese Datei erzeugt der Provisioning Processor aus der
+Federation-Master-YAML des Provisioning-Containers. Bei
+`authserver.config.oidcFlowEnabled: true` muss
+`provisioningProcessor.federationMaster.enabled` gesetzt sein, sonst startet
+der Authserver nicht.
+
+```yaml
+provisioningProcessor:
+    federationMaster:
+        enabled: true
+        environment: "test"
+```
+
+| Value                                                 | Beschreibung                                                                                                                                                     | Standard |
+|-------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
+| `provisioningProcessor.federationMaster.enabled`      | Federation-Master-URL extrahieren und als `federation-master.json` ablegen. Die Startup-Probe des Authservers wartet dann auch auf diese Datei.                   | `false`  |
+| `provisioningProcessor.federationMaster.environment`  | Umgebung, deren URL aus der YAML gelesen wird (z. B. `production`, `test`); muss genau einem Eintrag entsprechen. Pflicht, wenn `enabled: true`.                 | `""`     |
+| `provisioningProcessor.federationMaster.devModeUrl`   | Überschreibt die extrahierte URL, auch mit `http://`. Nur für Testumgebungen mit eigener Föderation (z. B. gsi-fedmaster).                                      | `""`     |
 
 ### Zeitgesteuerte Aktualisierung der Vertrauensanker
 
@@ -1458,8 +2059,8 @@ kubectl create secret generic my-image-signer \
 Die Zertifikatskette ist von der gematik zu beziehen. Für Testumgebungen enthält
 das Helm-Chart im Verzeichnis `templates/` ein vorgefertigtes Secret
 `gematik-image-signer-test` mit den Testzertifikaten GEM.KOMP-CA61 und GEM.RCA7
-(jeweils TEST-ONLY). Der Standardwert in `values-demo.yaml` verweist auf dieses
-Test-Secret.
+(jeweils TEST-ONLY). Der Standardwert in `values-demo.yaml` im Chart verweist
+auf dieses Test-Secret.
 
 > **Wichtig:** Das Test-Secret `gematik-image-signer-test` enthält
 > Testzertifikate und darf **nicht** in Produktivumgebungen verwendet werden.
@@ -1547,38 +2148,55 @@ sind **erforderlich**; ein Apply ohne sie schlägt fehl. Eine kommentierte
 Vorlage mit allen Variablen liegt unter
 [demo.tfvars](https://github.com/gematik/zeta-guard-helm/blob/main/terraform/authserver/environments/demo.tfvars).
 
-| Variable                                    | Standard                  | Beschreibung                                                                                                                                                                     |
-|---------------------------------------------|---------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `keycloak_url`                              | —                         | Externe URL des Keycloak-Servers (bei Admin-API-Absicherung: URL des Admin-Hostnamens)                                                                                           |
-| `keycloak_namespace`                        | —                         | Kubernetes-Namespace des Authservers                                                                                                                                             |
-| `audience_scope_name`                       | —                         | Name des Audience-Scopes — trägt die Pflicht-Claims des Access-Tokens (siehe Hinweis unter der Tabelle)                                                                          |
-| `use_kubernetes`                            | `true`                    | Terraform-Betriebsmodus (`true` = K8s-Backend, `false` = lokal)                                                                                                                  |
-| `config_path`                               | `"~/.kube/config"`        | Pfad zur kubeconfig; nur bei `use_kubernetes = true` verwendet                                                                                                                   |
-| `keycloak_admin_secret`                     | `"authserver-admin"`      | Name des Secrets mit den Keycloak-Admin-Zugangsdaten. Terraform liest es nicht selbst; die mitgelieferten Skripte lösen die Zugangsdaten daraus zur Laufzeit auf.                |
-| `keycloak_username`                         | `""`                      | Keycloak-Admin-Benutzer. In **beiden** Modi erforderlich, `ephemeral`. Ausschließlich über `TF_VAR_keycloak_username` setzen — nicht in einer tfvars-Datei.                      |
-| `keycloak_password`                         | `""`                      | Keycloak-Admin-Passwort. In **beiden** Modi erforderlich, `ephemeral`. Ausschließlich über `TF_VAR_keycloak_password` setzen — nicht in einer tfvars-Datei.                      |
-| `insecure_tls`                              | `false`                   | Selbst signierte Zertifikate zulassen                                                                                                                                            |
-| `skip_external_resources`                   | `false`                   | Überspringt die externen Skripte, die sonst bereits bei `terraform plan` laufen                                                                                                  |
-| `audience`                                  | `""`                      | Expliziter Audience-Wert im Access-Token. Erforderlich, wenn `keycloak_url` auf einen Admin-Hostnamen zeigt (siehe unten). Leer = aus `keycloak_url` abgeleitet.                 |
-| `pdp_scopes`                                | `[]`                      | Zusätzliche PDP-Scopes, als optionale Realm-Scopes angelegt. Sie tragen **keinen** Claim-Mapper und können den Audience-Scope daher nicht ersetzen.                              |
-| `smc_b_client_secret`                       | `"**********"`            | Client-Secret des SMC-B-Identity-Providers. `ephemeral` und über ein write-only-Argument gesetzt — landet nicht im Terraform-State.                                              |
-| `smc_b_client_secret_version`               | `1`                       | Hochzählen, wenn `smc_b_client_secret` geändert wird. Ein write-only-Argument ist für Terraform nach dem Apply unsichtbar, ein geändertes Secret allein erzeugt also kein Diff.  |
-| `enable_sekidp`                             | `false`                   | Registriert den IDP `zeta-sekidp-oidc`, die mobilen Browser-/First-Login-Flows, die Entity-Statement-Schlüssel und die E-Mail-Binding-Scopes                                     |
-| `sekidp_fedmaster_url`                      | `""`                      | Fedmaster-URL für die Föderations-Vertrauensauflösung. Muss die extern erreichbare Ingress-URL sein (z. B. `https://<host>/sekidp-fedmaster`), nicht die Service-URL im Cluster. |
-| `use_fake_sekidp_testrealm`                 | `false`                   | **Nie in Produktion verwenden.** Legt einen minimalen Fake-SekIDP-Realm für lokale Tests an.                                                                                     |
-| `dummy_client_for_fake_sekidp_clientsecret` | `""`                      | **Nie in Produktion verwenden.** Client-Secret des Dummy-Testclients                                                                                                             |
-| `dummy_user_for_fake_sekidp_password`       | `""`                      | **Nie in Produktion verwenden.** Passwort des Dummy-Testbenutzers                                                                                                                |
-| `smtp_host`                                 | `""`                      | SMTP-Server für den Realm (OTP-Versand der E-Mail-Bindung im mobilen Client-Flow). Leer lässt den `smtp_server`-Block des Realms komplett weg.                                   |
-| `smtp_port`                                 | `"25"`                    | SMTP-Port                                                                                                                                                                        |
-| `smtp_from`                                 | `""`                      | Absenderadresse der Realm-Mails — von Keycloak verlangt, sobald `smtp_host` gesetzt ist                                                                                          |
-| `notification_history_enabled`              | `false`                   | Legt den Keycloak-Scope `notification.history.read` an (A_29974). Manuell synchron zu `notificationService.historyEnabled` halten — nicht automatisch gekoppelt.                 |
-| `notification_service_resource_suffix`      | `"/notification-service"` | Resource-Suffix des Notification Service für den Audience-Mapper der Notification-Scopes. Manuell synchron zu `notificationService.wellKnownResourceSuffix` halten.              |
-| `hsm_token_signing_enabled`                 | `false`                   | Registriert einen HSM-gestützten ES256-KeyProvider im Realm `zeta-guard`                                                                                                         |
-| `hsm_token_signing_endpoint`                | `""`                      | gRPC-Endpunkt des HSM-Proxy (z. B. `hsm-sim:50051`)                                                                                                                              |
-| `hsm_token_signing_key_id`                  | `""`                      | Kennung des Signaturschlüssels im HSM                                                                                                                                            |
-| `hsm_token_signing_priority`                | `"200"`                   | Priorität des Providers; höher gewinnt (Software-Schlüssel liegen bei `100`)                                                                                                     |
-| `hsm_token_signing_remove_software_keys`    | `true`                    | Entfernt die Software-Signaturschlüssel nach der HSM-Registrierung                                                                                                               |
-| `use_vau_db_enc`                            | `false`                   | Clientseitige Verschlüsselung des Realms. Nur empfohlen beim Betrieb in einer vertrauenswürdigen Ausführungsumgebung (VAU).                                                      |
+| Variable                                 | Standard                  | Beschreibung                                                                                                                                                                                                                                                                                                                                           |
+|------------------------------------------|---------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `keycloak_url`                           | —                         | Externe URL des Keycloak-Servers (bei Admin-API-Absicherung: URL des Admin-Hostnamens)                                                                                                                                                                                                                                                                 |
+| `master_realm_frontend_url`              | `""`                      | Browser-URL des `master`-Realms, wenn Terraform Keycloak über einen anderen Endpunkt erreicht als die Administratoren (z. B. Tunnel). Muss auf `/auth` enden; leer = aus `keycloak_url` abgeleitet, sobald `audience` gesetzt ist (siehe [Wann `master_realm_frontend_url` gesetzt werden muss](#wann-master_realm_frontend_url-gesetzt-werden-muss)). |
+| `keycloak_namespace`                     | `""`                      | Kubernetes-Namespace des Authservers — erforderlich bei `use_kubernetes = true`, im lokalen Modus ohne Wirkung                                                                                                                                                                                                                                         |
+| `audience_scope_name`                    | —                         | Name des Audience-Scopes — trägt die Pflicht-Claims des Access-Tokens (siehe Hinweis unter der Tabelle)                                                                                                                                                                                                                                                |
+| `use_kubernetes`                         | `true`                    | Terraform-Betriebsmodus (`true` = K8s-Backend, `false` = lokal)                                                                                                                                                                                                                                                                                        |
+| `keycloak_admin_secret`                  | `"authserver-admin"`      | Name des Secrets mit den Keycloak-Admin-Zugangsdaten. Terraform liest es nicht selbst; die mitgelieferten Skripte lösen die Zugangsdaten daraus zur Laufzeit auf.                                                                                                                                                                                      |
+| `keycloak_username`                      | `""`                      | Keycloak-Admin-Benutzer. In **beiden** Modi erforderlich, `ephemeral`. Ausschließlich über `TF_VAR_keycloak_username` setzen — nicht in einer tfvars-Datei.                                                                                                                                                                                            |
+| `keycloak_password`                      | `""`                      | Keycloak-Admin-Passwort. In **beiden** Modi erforderlich, `ephemeral`. Ausschließlich über `TF_VAR_keycloak_password` setzen — nicht in einer tfvars-Datei.                                                                                                                                                                                            |
+| `insecure_tls`                           | `false`                   | Selbst signierte Zertifikate zulassen                                                                                                                                                                                                                                                                                                                  |
+| `skip_external_resources`                | `false`                   | Überspringt die externen Skripte, die sonst bereits bei `terraform plan` laufen                                                                                                                                                                                                                                                                        |
+| `audience`                               | `""`                      | Expliziter Audience-Wert im Access-Token. Erforderlich, wenn `keycloak_url` auf einen Admin-Hostnamen zeigt (siehe unten). Leer = aus `keycloak_url` abgeleitet.                                                                                                                                                                                       |
+| `pdp_scopes`                             | `[]`                      | Zusätzliche PDP-Scopes, als optionale Realm-Scopes angelegt. Sie tragen **keinen** Claim-Mapper und können den Audience-Scope daher nicht ersetzen.                                                                                                                                                                                                    |
+| `smc_b_client_secret`                    | `"**********"`            | Client-Secret des SMC-B-Identity-Providers. `ephemeral` und über ein write-only-Argument gesetzt — landet nicht im Terraform-State.                                                                                                                                                                                                                    |
+| `smc_b_client_secret_version`            | `1`                       | Hochzählen, wenn `smc_b_client_secret` geändert wird. Ein write-only-Argument ist für Terraform nach dem Apply unsichtbar, ein geändertes Secret allein erzeugt also kein Diff.                                                                                                                                                                        |
+| `enable_sekidp`                          | `false`                   | Registriert den IDP `zeta-sekidp-oidc`, die mobilen Browser-/First-Login-Flows, die Entity-Statement-Schlüssel und die E-Mail-Binding-Scopes. Läuft in beiden Betriebsmodi (siehe Hinweis unter der Tabelle).                                                                                                                                          |
+| `sekidp_client_id`                       | `""`                      | `client_id` des IDP `zeta-sekidp-oidc`, also der öffentliche Issuer des Realms (z. B. `https://<host>/auth/realms/zeta-guard`). Der SekIDP lädt darüber das Entity Statement des Guards. Leer = `<keycloak_url>/realms/zeta-guard`; **setzen, wenn `keycloak_url` auf den Admin-Hostnamen zeigt**, den der SekIDP nicht erreicht.                      |
+| `smtp_host`                              | `""`                      | SMTP-Server für den Realm (OTP-Versand der E-Mail-Bindung im mobilen Client-Flow). Leer lässt den `smtp_server`-Block des Realms komplett weg.                                                                                                                                                                                                         |
+| `smtp_port`                              | `"25"`                    | SMTP-Port                                                                                                                                                                                                                                                                                                                                              |
+| `smtp_from`                              | `""`                      | Absenderadresse der Realm-Mails — von Keycloak verlangt, sobald `smtp_host` gesetzt ist                                                                                                                                                                                                                                                                |
+| `smtp_starttls`                          | `false`                   | Bestimmt ob StartTLS verwendet werden soll. Beachte, ein ggf. notwendiges CA Zertifikat kann über den Helm Value `authserver.additionalTrustedCAs` bereit gestellt werden.                                                                                                                                                                             |
+| `smtp_ssl`                               | `false`                   | Bestimmt ob TLS verwendet werden soll. Beachte, ein ggf. notwendiges CA Zertifikat kann über den Helm Value `authserver.additionalTrustedCAs` bereit gestellt werden.                                                                                                                                                                                  |
+| `smtp_auth_username`                     | `""`                      | Nutzername am SMTP Severver, sofern Anmeldung notwendig ist.                                                                                                                                                                                                                                                                                           |
+| `smtp_auth_password`                     | `""`                      | Passwort am SMTP Severver, sofern Anmeldung notwendig ist.                                                                                                                                                                                                                                                                                             |
+| `notification_history_enabled`           | `false`                   | Legt den Keycloak-Scope `notification.history.read` an (A_29974). Manuell synchron zu `notificationService.historyEnabled` halten — nicht automatisch gekoppelt.                                                                                                                                                                                       |
+| `notification_service_resource_suffix`   | `"/notification-service"` | Resource-Suffix des Notification Service für den Audience-Mapper der Notification-Scopes. Manuell synchron zu `notificationService.wellKnownResourceSuffix` halten.                                                                                                                                                                                    |
+| `hsm_token_signing_enabled`              | `false`                   | Registriert einen HSM-gestützten ES256-KeyProvider im Realm `zeta-guard`                                                                                                                                                                                                                                                                               |
+| `hsm_token_signing_endpoint`             | `""`                      | gRPC-Endpunkt des HSM-Proxy (z. B. `hsm-sim:50051`)                                                                                                                                                                                                                                                                                                    |
+| `hsm_token_signing_key_id`               | `""`                      | Kennung des Signaturschlüssels im HSM                                                                                                                                                                                                                                                                                                                  |
+| `hsm_token_signing_priority`             | `"200"`                   | Priorität des Providers; höher gewinnt (Software-Schlüssel liegen bei `100`)                                                                                                                                                                                                                                                                           |
+| `hsm_token_signing_remove_software_keys` | `true`                    | Entfernt die Software-Signaturschlüssel nach der HSM-Registrierung                                                                                                                                                                                                                                                                                     |
+| `use_vau_db_enc`                         | `false`                   | Clientseitige Verschlüsselung des Realms. Nur empfohlen beim Betrieb in einer vertrauenswürdigen Ausführungsumgebung (VAU).                                                                                                                                                                                                                            |
+| `sso_session_idle_timeout`               | `"24h"`                   | Leerlauf-Timeout der Realm-SSO-Session (Go-Dauer). Mindestens so groß wie die längste Refresh-Token-TTL der Policy, sonst endet die Session vor dem Refresh-Token.                                                                                                                                                                                     |
+| `sso_session_max_lifespan`               | `"24h"`                   | Maximale Lebensdauer der Realm-SSO-Session (Go-Dauer). Mindestens so groß wie die längste Refresh-Token-TTL der Policy.                                                                                                                                                                                                                                |
+
+> **Hinweis zu `enable_sekidp`:** Die Registrierung des SekIDP-Brokers
+> funktioniert in beiden Betriebsmodi, also auch mit `use_kubernetes = false`
+> und lokalem State, und braucht keinen Cluster-Zugriff. Der IDP fordert die
+> Scopes `urn:telematik:display_name`, `urn:telematik:versicherter`,
+> `urn:telematik:geburtsdatum` und `openid` an; beim Federation Master muss der
+> Guard als Relying Party mit genau diesen Scopes registriert sein, sonst lehnt
+> der SekIDP den PAR mit `invalid_scope` ab. Sein Entity Statement
+> veröffentlicht der Guard selbst unter
+> `<sekidp_client_id>/.well-known/openid-federation` — diese URL und die dort
+> enthaltenen Schlüssel hinterlegen Sie beim Federation Master. Legen Sie den
+> Realm neu an, erzeugt Keycloak neue Schlüssel, die Sie dann erneut
+> hinterlegen. Für Tests ohne echten Federation Master siehe das
+> `sekidp`-Subchart im Helm-Repository (`How_to_configure_sekidp.md`).
 
 > **Hinweis zu SMTP in Testumgebungen:** Für Test- und Demo-Stages bringt das
 > Helm-Repository ein `mailcatcher`-Subchart mit (SMTP-Port `1025`, Web-UI
@@ -1606,6 +2224,81 @@ nicht mit dem überein, was die Access-Tokens tragen:
 keycloak_url = "https://admin.zeta.example.com/auth"
 audience     = "https://zeta.example.com"
 ```
+
+Ein gesetztes `audience` ist zugleich das Signal, dass `keycloak_url` der
+Admin-Hostname ist. Daraus leitet die Authserver-Konfiguration die Frontend-URL
+des `master`-Realms ab und heftet sie an diesen Hostnamen — der Schritt, ohne den
+der Browser-Login der Admin Console auf dem gesperrten Pfad landet (siehe
+[Admin-API-Absicherung](#admin-api-absicherung)). In aller Regel ist dafür kein
+eigener Eintrag nötig.
+
+##### Wann `master_realm_frontend_url` gesetzt werden muss
+
+Die Ableitung setzt zwei Dinge gleich, die nur üblicherweise identisch sind: die
+URL, mit der **Terraform** spricht, und die URL, die **Administratoren im
+Browser** öffnen. Fallen sie auseinander, ist die Variable zu setzen.
+
+Vier Fälle, ausgehend von `authserver.hostname: zeta.example.com` und
+`authserver.adminHostname: admin.zeta.example.com`:
+
+| Fall | `keycloak_url`                        | `audience`                 | `master_realm_frontend_url`           | Frontend-URL des `master`-Realms      | Browser-Login der Console |
+|------|---------------------------------------|----------------------------|---------------------------------------|---------------------------------------|---------------------------|
+| 1    | `https://zeta.example.com/auth`       | nicht gesetzt              | nicht gesetzt                         | nicht gesetzt (kein Admin-Hostname)   | über den Haupthostnamen   |
+| 2    | `https://admin.zeta.example.com/auth` | `https://zeta.example.com` | nicht gesetzt                         | `https://admin.zeta.example.com/auth` | funktioniert              |
+| 3    | `http://localhost:8080/auth`          | `https://zeta.example.com` | nicht gesetzt                         | `http://localhost:8080/auth`          | **scheitert**             |
+| 4    | `http://localhost:8080/auth`          | `https://zeta.example.com` | `https://admin.zeta.example.com/auth` | `https://admin.zeta.example.com/auth` | funktioniert              |
+
+**Fall 1** ist der Auslieferungszustand ohne Admin-Hostnamen: `audience` ist
+leer, die Ableitung greift nicht, der `master`-Realm behält die aus `--hostname`
+gebildete Frontend-URL.
+
+**Fall 2** ist der Regelfall mit Admin-Hostnamen. Terraform und Browser nutzen
+dieselbe URL, die Ableitung trifft sie korrekt — ein eigener Eintrag ist
+überflüssig.
+
+**Fall 3** entsteht aus der Absicherung selbst: Ein Admin-Hostname, der bewusst
+nicht öffentlich auflöst (siehe
+[Was der Betreiber zusätzlich leisten muss](#was-der-betreiber-zusätzlich-leisten-muss)),
+zwingt Terraform über einen Tunnel oder eine Portweiterleitung, etwa
+`kubectl port-forward`. Die Ableitung trägt dann diesen Tunnel ein. Die Console
+weist ihn anschließend als `authServerUrl` aus — erreichbar nur für den, der den
+Tunnel offen hält, für jeden anderen Browser ist sie tot.
+
+**Fall 4** ist die Korrektur: Die Variable entkoppelt die Browser-URL von der
+Terraform-URL.
+
+```hcl
+keycloak_url              = "http://localhost:8080/auth"
+audience                  = "https://zeta.example.com"
+master_realm_frontend_url = "https://admin.zeta.example.com/auth"
+```
+
+Prüfen lässt sich das Ergebnis in allen Fällen an der Console-Konfiguration; der
+ausgewiesene Wert muss die URL sein, die Administratoren tatsächlich öffnen:
+
+```bash
+curl -sk https://admin.zeta.example.com/auth/admin/master/console/ \
+  | grep -o 'authServerUrl[^,}]*'
+```
+
+##### Wofür die Variable nicht taugt
+
+**Sie verlegt oder verbirgt die Admin-UI nicht.** Der Wert ist eine Deklaration,
+keine Weiterleitung: Keycloak bildet daraus ausschließlich die URLs, die es
+*ausweist* — den `issuer`, die Realm-Endpunkte und die `authServerUrl` der
+Console. Wo die UI tatsächlich antwortet, entscheiden der Ingress und
+`--hostname-admin`.
+
+Ein Wert, der auf einen Hostnamen oder Pfad ohne Route zum Authserver zeigt,
+verschiebt die Console deshalb nicht, sondern macht sie unbrauchbar — und
+verbirgt sie auch nicht, denn unter ihrer tatsächlichen Adresse bleibt sie
+erreichbar. Als Zugriffsschutz ist die Variable ungeeignet.
+
+Der Wert muss auf `/auth` enden: Keycloak hängt den Realm-Pfad unverändert an und
+ergänzt den Kontextpfad **nicht**. Bei einem abweichenden Pfad weist die Admin
+Console Endpunkte aus, die sie selbst nicht erreicht, und der Browser-Login
+scheitert mit `404`. Eine Validierung weist solche Werte bereits beim Planen
+zurück; ohne sie zeigte sich der Fehler erst im Browser.
 
 Details zu den Terraform-Betriebsmodi finden sich im
 [Quickstart](../Anleitungen/ZETA_Guard_Quickstart.md#2-pdp-konfigurieren).

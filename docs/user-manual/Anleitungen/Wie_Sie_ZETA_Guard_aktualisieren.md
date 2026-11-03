@@ -16,11 +16,12 @@ der bei einem intakten Realm eine ganze Reihe von `409 Conflict`- und
 
 - [Was Terraform verwaltet — und was nicht](#was-terraform-verwaltet--und-was-nicht)
 - [Der unterstützte Update-Weg](#der-unterstützte-update-weg)
-  - [Ohne Makefile](#ohne-makefile)
+  - [Realm-Konfiguration mit Terraform anwenden](#realm-konfiguration-mit-terraform-anwenden)
 - [Der Terraform-State muss das Update überleben](#der-terraform-state-muss-das-update-überleben)
 - [Vorgehen bei verlorenem State](#vorgehen-bei-verlorenem-state)
 - [Pflichtschritt: Update von 1.3.0/1.3.1 auf 1.3.2](#pflichtschritt-update-von-130131-auf-132)
 - [Besonderheiten beim Update auf 1.3.x](#besonderheiten-beim-update-auf-13x)
+- [Besonderheiten beim Update auf 2.0.x](#besonderheiten-beim-update-auf-20x)
 - [Fehlerbilder](#fehlerbilder)
 
 ## Was Terraform verwaltet — und was nicht
@@ -51,11 +52,15 @@ Bestandteil eines Updates — führen Sie es nicht aus.
 
 ```shell
 # 1. Chart
-helm upgrade --install zeta-guard oci://<registry>/zeta-guard:<version> \
+helm upgrade --install zeta-guard \
+  oci://europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-helm/zeta-guard:{TAG} \
   -f values.yaml -n <namespace> --rollback-on-failure --timeout 15m
 
-# 2. Realm-Konfiguration — beliebig wiederholbar und idempotent
-make config stage=<stage>
+# 2. Realm-Konfiguration — beliebig wiederholbar und idempotent,
+#    aus terraform/authserver (Vorbereitung siehe unten)
+eval "$(bash scripts/kc-admin-env.sh <namespace>)"
+terraform apply -parallelism=1 \
+  -var-file=../../<values-dir>/<stage>.tfvars -auto-approve
 ```
 
 Schritt 2 ist nur nötig, wenn das Release die Terraform-Dateien geändert hat
@@ -64,23 +69,14 @@ Release Notes des Helm-Charts weisen solche Änderungen aus; ein zusätzlicher L
 schadet nicht. Details dazu, wann die PDP-Konfiguration laufen muss, finden Sie
 im [Quickstart](ZETA_Guard_Quickstart.md#wann-und-wie-oft-die-pdp-konfiguration-laufen-muss).
 
-### Ohne Makefile
+### Realm-Konfiguration mit Terraform anwenden
 
-Das Makefile ist eine Bequemlichkeitshilfe, keine Voraussetzung — jeder Schritt
-dieser Anleitung lässt sich mit reinem `terraform` ausführen. Die verwendeten
-Targets entsprechen den folgenden Befehlen, alle **aus dem Verzeichnis
-`terraform/authserver` heraus** ausgeführt:
+Alle Befehle dieser Anleitung werden **aus dem Verzeichnis
+`terraform/authserver`** des Helm-Chart-Repositorys heraus ausgeführt.
 
-| Target               | Entsprechung                                                                                                                            |
-|----------------------|-----------------------------------------------------------------------------------------------------------------------------------------|
-| `make config-init`   | der Generator (siehe unten), danach `terraform init -backend-config=environments/<stage>.backend.hcl -reconfigure`                      |
-| `make config`        | `terraform apply -parallelism=1 -var-file=../../<values-dir>/<stage>.tfvars -auto-approve`                                              |
-| `make config-plan`   | `terraform plan -var-file=../../<values-dir>/<stage>.tfvars -var="skip_external_resources=true"`                                        |
-| `make config-import` | `terraform import -var-file=../../<values-dir>/<stage>.tfvars -var="skip_external_resources=true" keycloak_realm.zeta_realm zeta-guard` |
-
-`main.tf`, `providers.tf`, `mode-assert.tf` (im Kubernetes-Modus zusätzlich
-`sekidp-secret.tf`) und die Backend-Konfiguration werden **generiert** und sind gitignoriert — ohne sie läuft Terraform nicht. Erzeugen
-Sie sie zuerst, dann initialisieren:
+`main.tf`, `providers.tf`, `mode-assert.tf` und die Backend-Konfiguration
+werden **generiert** und sind gitignoriert; ohne sie läuft Terraform nicht.
+Erzeugen Sie sie zuerst, dann initialisieren:
 
 ```shell
 cd terraform/authserver
@@ -92,20 +88,46 @@ STAGE=<stage> NAMESPACE=<namespace> \
 terraform init -backend-config=environments/<stage>.backend.hcl -reconfigure
 ```
 
-Drei Details, die das Makefile andernfalls für Sie übernimmt:
+`TF_VAR_use_kubernetes` muss zum Wert von `use_kubernetes` in der tfvars-Datei
+der Stage passen: Der Generator wählt danach das State-Backend, Terraform liest
+den Wert aus der tfvars-Datei. Weichen beide voneinander ab, bricht Terraform
+mit dem Check aus `mode-assert.tf` ab.
+
+Anschließend die Admin-Zugangsdaten bereitstellen und die Konfiguration
+anwenden:
+
+```shell
+eval "$(bash scripts/kc-admin-env.sh <namespace>)"
+
+for i in 1 2 3 4 5; do
+  terraform apply -parallelism=1 \
+    -var-file=../../<values-dir>/<stage>.tfvars -auto-approve && break
+  echo "terraform apply fehlgeschlagen (Versuch $i/5)"
+done
+```
+
+`scripts/kc-admin-env.sh` liest die Zugangsdaten aus dem Secret
+`authserver-admin` (oder aus `KC_USERNAME`/`KC_PASSWORD` bzw.
+`TF_VAR_keycloak_username`/`TF_VAR_keycloak_password`, falls gesetzt) und
+exportiert sie als `TF_VAR_keycloak_username`/`TF_VAR_keycloak_password`, ohne
+dass sie in der Prozessliste, der Shell-History oder im Terraform-State
+erscheinen.
+
+Drei Details, auf die Sie achten müssen:
 
 - **`-parallelism=1` bei jedem Apply.** Parallele Schreibzugriffe auf Keycloak
   laufen in Konflikte und scheitern mit einer Hibernate-
   `StaleObjectStateException` (HTTP 500).
 - **Apply wiederholen.** Direkt nach einem Deployment bedient der Authserver die
-  Admin-API möglicherweise noch nicht; `make config` versucht es bis zu fünfmal.
+  Admin-API möglicherweise noch nicht; die Schleife oben versucht es deshalb bis
+  zu fünfmal.
 - **`-var="skip_external_resources=true"` bei Plan und Import.** Ohne diese
   Variable läuft das externe Policy-Management-Skript mit, was bei einem Plan
   nicht passieren soll.
 
 `<values-dir>` ist das Verzeichnis mit den tfvars-Dateien Ihrer Stage — im
-veröffentlichten Repository `local-test/`. `<namespace>` ist standardmäßig
-`zeta-<stage>`. Im lokalen Modus setzen Sie `TF_VAR_use_kubernetes=false` und
+veröffentlichten Repository `local-test/`. `<namespace>` ist der Namespace Ihrer
+Installation. Im lokalen Modus setzen Sie `TF_VAR_use_kubernetes=false` und
 übergeben die Admin-Zugangsdaten explizit über `TF_VAR_keycloak_username` und
 `TF_VAR_keycloak_password`.
 
@@ -115,19 +137,19 @@ Im Kubernetes-Modus liegt der State im Secret `tfstate-default-state` im
 Namespace der Stage. Es wird vom Kubernetes-Backend von Terraform angelegt, nicht
 von Helm, und trägt keine Helm-Ownership-Metadaten:
 
-| Aktion           | State-Secret | Realm-Daten                                        |
-|------------------|--------------|----------------------------------------------------|
-| `helm upgrade`   | bleibt       | bleiben                                            |
-| `helm uninstall` | bleibt       | **gelöscht** (CNPG-`Cluster` ist Helm-verwaltet, s. u.) |
-| `make uninstall` | **gelöscht** | **gelöscht** (CNPG-Cluster inkl. PVCs)             |
+| Aktion                      | State-Secret | Realm-Daten                                             |
+|-----------------------------|--------------|---------------------------------------------------------|
+| `helm upgrade`              | bleibt       | bleiben                                                 |
+| `helm uninstall`            | bleibt       | **gelöscht** (CNPG-`Cluster` ist Helm-verwaltet, s. u.) |
+| vollständiger Abbau (s. u.) | **gelöscht** | **gelöscht** (CNPG-Cluster inkl. PVCs)                  |
 
-`make uninstall` ist ein Entwicklungs-Target. Es löscht State **und** Datenbank
-gemeinsam und hält beide damit konsistent — auf einer produktiven Stage ist es
-aber nie das richtige Kommando. Es ist keine Terraform-Operation: Die
+Der vollständige Abbau einer Entwicklungsumgebung löscht State **und**
+Datenbank gemeinsam und hält beide damit konsistent — auf einer produktiven
+Stage ist er aber nie das Richtige. Er ist keine Terraform-Operation: Die
 zerstörenden Kommandos sind `kubectl delete secret tfstate-default-state`,
-`kubectl delete cluster keycloak-db` und das Löschen der zugehörigen PVCs.
-Vermeiden Sie diese drei auf einer Stage, die Sie behalten wollen — unabhängig
-davon, womit Sie Ihr Deployment steuern.
+`kubectl delete cluster keycloak-db` und das Löschen der zugehörigen PVCs
+(`kubectl delete pvc -l cnpg.io/cluster=keycloak-db`). Vermeiden Sie diese drei
+auf einer Stage, die Sie behalten wollen.
 
 Sichern Sie den State vor jedem Update:
 
@@ -147,10 +169,10 @@ Zurückspielen können Sie diese Datei mit `kubectl apply -f`.
 Im **lokalen Modus** (`use_kubernetes = false`) liegt der State in der Datei
 `terraform/authserver/terraform.tfstate`. Sie ist gitignoriert und existiert nur
 auf dem Rechner, der das letzte Apply ausgeführt hat — sichern Sie sie selbst.
-Beachten Sie, dass `make clean` sie löscht, zusammen mit `.terraform/`, der
-Lock-Datei und den generierten Dateien `main.tf`, `providers.tf`,
-`mode-assert.tf` und `sekidp-secret.tf`; führen Sie es (oder ein entsprechendes `rm`) nicht zwischen
-zwei Applies aus. Wer das Update ausführt, braucht denselben State wie derjenige,
+Löschen Sie sie nicht, wenn Sie `.terraform/`, die Lock-Datei, die generierte
+Backend-Konfiguration oder die generierten Dateien `main.tf`, `providers.tf` und
+`mode-assert.tf` aufräumen — erst recht nicht zwischen
+zwei Applies. Wer das Update ausführt, braucht denselben State wie derjenige,
 der das vorige Apply ausgeführt hat.
 
 ## Vorgehen bei verlorenem State
@@ -179,8 +201,10 @@ Die vollständige Befehlsliste mit allen Import-Adressen und ID-Formaten steht i
 im Helm-Chart-Repository. Der Ablauf in Kurzform:
 
 1. **Voraussetzungen.** `terraform`, `curl` und `jq`; ein generiertes `main.tf`
-   und ein initialisiertes Backend über `make config-init stage=<stage>` — oder
-   Generator und `terraform init` aus [Ohne Makefile](#ohne-makefile); ein
+   und ein initialisiertes Backend (Generator und `terraform init` aus
+   [Realm-Konfiguration mit Terraform anwenden](#realm-konfiguration-mit-terraform-anwenden));
+   die exportierten Admin-Zugangsdaten
+   (`eval "$(bash scripts/kc-admin-env.sh <namespace>)"`) für Terraform und ein
    Admin-Token für die Admin-API-Aufrufe (Zugangsdaten im Kubernetes-Modus aus
    dem Secret `authserver-admin`).
 
@@ -221,12 +245,11 @@ im Helm-Chart-Repository. Der Ablauf in Kurzform:
    Import-ID einfach ihr Name ist:
 
    ```shell
-   make config-import stage=<stage>
-
-   # ohne Makefile, aus terraform/authserver:
-   terraform import -var-file=../../<values-dir>/<stage>.tfvars \
-     -var="skip_external_resources=true" \
-     keycloak_realm.zeta_realm zeta-guard
+   # aus terraform/authserver; entfällt, wenn der Realm bereits im State ist:
+   terraform state list | grep -qx 'keycloak_realm.zeta_realm' || \
+     terraform import -var-file=../../<values-dir>/<stage>.tfvars \
+       -var="skip_external_resources=true" \
+       keycloak_realm.zeta_realm zeta-guard
    ```
 
    Danach folgen Scopes, Mapper, der Identity-Provider, die optionale
@@ -237,9 +260,7 @@ im Helm-Chart-Repository. Der Ablauf in Kurzform:
 5. **Plan prüfen, bevor Sie anwenden.**
 
    ```shell
-   make config-plan stage=<stage>
-
-   # ohne Makefile, aus terraform/authserver:
+   # aus terraform/authserver:
    terraform plan -var-file=../../<values-dir>/<stage>.tfvars \
      -var="skip_external_resources=true"
    ```
@@ -263,9 +284,7 @@ Ist der Plan sauber, wenden Sie ihn an und prüfen Sie mit einem
 authentifizierten Request über den PEP, dass Tokens weiterhin validiert werden:
 
 ```shell
-make config stage=<stage>
-
-# ohne Makefile, aus terraform/authserver — -parallelism=1 beibehalten:
+# aus terraform/authserver — -parallelism=1 beibehalten:
 terraform apply -parallelism=1 \
   -var-file=../../<values-dir>/<stage>.tfvars -auto-approve
 ```
@@ -314,7 +333,7 @@ Führen Sie deshalb **vor** dem `helm upgrade` auf 1.3.2 einmalig aus:
    beiden Anweisungen mit einem Werkzeug Ihrer Wahl gegen die Keycloak-Datenbank
    aus.
 
-3. Update wie gewohnt durchführen (`helm upgrade`, danach `make config`, siehe
+3. Update wie gewohnt durchführen (`helm upgrade`, danach `terraform apply`, siehe
    [Der unterstützte Update-Weg](#der-unterstützte-update-weg)). Beim Start
    führt der Authserver die Migration erneut aus und legt beide Tabellen neu an.
 
@@ -348,6 +367,62 @@ Tabellen vorgesehen ist.
   JGroups-Protokollversion mitbringt. Siehe den Migrationshinweis zu Release
   1.2.0 in den [Release Notes](../ReleaseNotes/ZetaGuard/ReleaseNotes.md).
 
+## Besonderheiten beim Update auf 2.0.x
+
+Die vollständige Liste der Breaking Changes steht in den
+[Release Notes der Komponenten](../ReleaseNotes/ZetaGuard/ReleaseNotes.md).
+Für den Betrieb wichtig:
+
+- **Terraform-Provider `keycloak/keycloak` ab 5.9.0.** Die generierte
+  `main.tf` verlangt diese Version. Eine vorhandene `.terraform.lock.hcl` hält
+  eine ältere Version fest; der Lauf scheitert dann mit
+  `The attribute client_secret is required`. Löschen Sie die Lock-Datei und
+  führen Sie `terraform init` erneut aus.
+- **Values des Notification Service umgezogen:**
+  `notificationService.env.persistenceSealingEnabled` heißt jetzt
+  `notificationService.sealing.enabled`; ist der alte Pfad gesetzt, bricht das
+  Chart-Rendering ab. Siehe
+  [Datenschutz: Sealing, HSM und verschlüsselter Push](../Referenzen/Konfiguration_des_Notification_Service.md#datenschutz-sealing-hsm-und-verschlüsselter-push).
+- **Sealing des Notification Service mit Keychain (ab 2.0.2):**
+  `notificationService.hsm.kek.dekKeyId`, `.hsm.kek.pseudonymKeyId` und
+  `.sealing.dekCacheSize` entfallen; ist einer davon gesetzt, bricht das
+  Chart-Rendering ab. Bei aktiviertem Sealing verlangt das Chart
+  `notificationService.sealing.keychainGenerator.kekId`; die Keychain stellen
+  Sie über ein eigenes Volume bereit. Datensätze, die ein früherer Build
+  versiegelt hat, lassen sich nicht mehr öffnen: Starten Sie mit einer leeren
+  Datenbank. Siehe
+  [Keychain](../Referenzen/Konfiguration_des_Notification_Service.md#keychain).
+- **Nicht genutzte Keycloak-Features deaktiviert (ab 2.0.2):** Das
+  Authserver-Image schaltet u. a. Account-Konsole und Account-API, Device Flow,
+  CIBA, Impersonation und `.well-known/uma2-configuration` ab. Die zugehörigen
+  Endpunkte (z. B. `/realms/{realm}/account`) antworten mit `404`, ihre Grant
+  Types werden mit `unsupported_grant_type` abgelehnt. Die vollständige Liste
+  steht in den
+  [Release Notes der Komponenten](../ReleaseNotes/ZetaGuard/ReleaseNotes.md#keycloak-authserver-zeta-pdp).
+- **RS-API des Notification Service verlangt ein Client-Zertifikat**
+  (`notificationService.rs.mtls.enabled: true`). Das Chart stellt dafür kein
+  TLS bereit, RS-Aufrufe enden ohne Anpassung mit `401`, siehe
+  [Konfiguration des Notification Service](../Referenzen/Konfiguration_des_Notification_Service.md#übersicht-split-deployment-und-datenbank).
+- **Mobiler Client-Flow:** `provisioningProcessor.federationMaster` muss
+  aktiviert sein, sonst startet der Authserver nicht; die Terraform-Variable
+  `sekidp_fedmaster_url` entfällt und gehört aus den tfvars entfernt. Siehe
+  [Federation Master für den mobilen Client-Flow](../Referenzen/Referenz_des_Helm_Charts.md#federation-master-für-den-mobilen-client-flow).
+  Der IDP fordert zusätzlich den Scope `urn:telematik:geburtsdatum` an; der
+  Guard muss beim Federation Master mit diesem Scope registriert sein.
+- **Client-Management und E-Mail-Bindung laufen über den PEP.** Die dafür
+  nötigen Scope-Mapper legt die PDP-Konfiguration an; wenden Sie sie wie im
+  [Update-Weg](#der-unterstützte-update-weg) direkt nach dem `helm upgrade` an.
+  Siehe
+  [Client-Management-Endpunkte](Wie_der_mobile_Client-Flow_funktioniert.md#client-management-endpunkte).
+- **No-Travel-Prüfung standardmäßig aktiv** (`pepproxy.nginxConf.noTravel:
+  true`): Eine Session ist an die IP-Adresse gebunden, mit der das Token
+  ausgestellt wurde. Setzen Sie den Wert bewusst, wenn Ihre Clients die Adresse
+  wechseln.
+- **Standard-Rate-Limit am Ingress** (A_26668-02): Das Chart setzt über
+  `ingressMinionAnnotations` 20 Anfragen pro Sekunde je Client-IP. Passen Sie
+  die Werte an Ihre Installation an, siehe
+  [Rate Limit einrichten](Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md#rate-limit-einrichten).
+
 ## Fehlerbilder
 
 **Authserver 1.3.2 startet nicht; das Log enthält `Validation Failed` mit
@@ -374,6 +449,24 @@ Entfernen Sie ihn mit `terraform state rm '<adresse>'` und importieren Sie erneu
 
 **`Error: Resource already managed by Terraform`.** Diese Adresse steht bereits
 im State — überspringen Sie sie.
+
+**Der Authserver startet nicht und wartet auf eine Liquibase-Sperre.** Eine
+Schema-Migration wurde mitten im Lauf abgebrochen — das Socket-Timeout der
+Datenbankverbindung gilt auch für DDL-Anweisungen — und die Sperre in
+`DATABASECHANGELOGLOCK` ist noch gehalten. Der nächste Start wartet 30 Minuten
+darauf und scheitert anschließend. Lösen Sie die Sperre mit
+`UPDATE databasechangeloglock SET locked = false, lockgranted = NULL, lockedby = NULL;`.
+Steht eine aufwendige Migration bevor, erhöhen Sie das Timeout für dieses Release
+vorab über `authserver.db.urlProperties.socketTimeout`.
+
+**Der Authserver ist nach einem Cluster-Patch kurzzeitig in `CrashLoopBackOff`.**
+Er wurde vor der Datenbank gestartet; Keycloak bricht den Start dann ab
+(`Failed to obtain JDBC connection`), statt unbereit weiterzulaufen. Das ist
+erwartet und heilt sich selbst: ein Fehlversuch dauert rund 47 s, Kubernetes
+wartet dazwischen 10 s, 20 s, 40 s … — in der Praxis ist der Authserver damit
+etwa eine halbe Minute nach der Datenbank oben. Eingreifen müssen Sie nur, wenn
+der Zustand bestehen bleibt, nachdem die Datenbank nachweislich erreichbar ist —
+dann liegt die Ursache nicht in der Startreihenfolge.
 
 ## Weiterführende Dokumentation
 

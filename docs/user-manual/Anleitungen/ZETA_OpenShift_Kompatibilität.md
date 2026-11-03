@@ -40,18 +40,26 @@ Um ZETA-Guard auf OpenShift 4.x zu betreiben, sind folgende Konfigurationsänder
 
 3. **Feste User-IDs aus Security Contexts entfernen:**
    OpenShift weist User- und Gruppen-IDs dynamisch pro Namespace/Projekt zu (Security
-   Context Constraints, SCC). Fest vorgegebene IDs werden abgelehnt. Dabei sind zwei
-   Fälle zu unterscheiden:
+   Context Constraints, SCC). Fest vorgegebene IDs werden abgelehnt. Dabei sind drei
+   Stellen zu unterscheiden:
 
-   **a) Alle Komponenten außer dem Telemetry-Gateway** (Authserver, OPA, PEP,
-   Provisioning-Processor): Das Chart setzt dort von sich aus **kein** `runAsUser`.
-   Sie müssen lediglich darauf achten, in Ihren eigenen Values kein `runAsUser: 1000`
-   in `securityContext`, `containerSecurityContext` oder
-   `initContainerSecurityContext` zu setzen — bereits vorhandene Angaben entfernen.
+   **a) Alle Container des Charts außer den Subcharts** (Authserver, PEP,
+   OPA, Notification Service, Provisioning-Processor, CronJobs) erhalten ihre UID
+   zentral aus `defaultContainerSecurityContext.runAsUser` (Default `1000`). Der
+   Grund: Mehrere Images deklarieren einen nicht-numerischen User oder laufen als
+   root, und ohne numerische UID kann das Kubelet `runAsNonRoot: true` nicht
+   prüfen. Auf OpenShift **explizit auf `null`** setzen und in den einzelnen
+   `containerSecurityContext`-Blöcken Ihrer Values kein `runAsUser` angeben:
 
-   **b) Das Telemetry-Gateway** ist die einzige Komponente, für die das Chart
+   ```yaml
+   defaultContainerSecurityContext:
+     runAsUser: null      # UID wird von der SCC vergeben
+   ```
+
+   **b) Das Telemetry-Gateway** ist ein Subchart und liest
+   `defaultContainerSecurityContext` nicht. Es bringt eigens
    `securityContext.runAsUser: 1000` und `podSecurityContext.fsGroup: 1000` als
-   Default mitbringt. Der Grund: Der Collector braucht eine bekannte Non-Root-Identität,
+   Default mit. Der Grund: Der Collector braucht eine bekannte Non-Root-Identität,
    die auf den PersistentVolumeClaim der Sending-Queue schreiben kann. Beide Werte
    müssen hier **explizit auf `null`** gesetzt werden:
 
@@ -64,7 +72,22 @@ Um ZETA-Guard auf OpenShift 4.x zu betreiben, sind folgende Konfigurationsänder
        runAsUser: null    # UID wird von der SCC vergeben
    ```
 
-   > **Wichtig:** Ein bloßes **Weglassen** der Keys genügt hier nicht. Helm **merged**
+   **c) Der KPI-Prometheus** (`kpiPrometheus`, nur bei
+   `kpiMetricsPersistence.enabled: true`) ist ebenfalls ein Subchart. Er bringt aus
+   seinen eigenen Defaults `runAsUser`, `runAsGroup` und `fsGroup` mit festem Wert
+   `65534` auf Pod-Ebene mit. Alle drei Werte müssen **explizit auf `null`** gesetzt
+   werden; Seccomp-Profil und `runAsNonRoot` bleiben erhalten:
+
+   ```yaml
+   kpiPrometheus:
+     server:
+       securityContext:   # Pod-Ebene (Namensgebung des Prometheus-Charts)
+         runAsUser: null  # UID wird von der SCC vergeben
+         runAsGroup: null
+         fsGroup: null    # GID wird von der SCC vergeben
+   ```
+
+   > **Wichtig (a bis c):** Ein bloßes **Weglassen** der Keys genügt nicht. Helm **merged**
    > Maps, das heißt eine Values-Datei, die `runAsUser` einfach nicht erwähnt, erbt
    > weiterhin die `1000` aus den Chart-Defaults — der Pod wird dann genauso abgelehnt
    > wie vorher. Ein explizites `null` löscht den Key ebenfalls nicht (das täte nur
@@ -76,7 +99,8 @@ Um ZETA-Guard auf OpenShift 4.x zu betreiben, sind folgende Konfigurationsänder
    zuweist und das Volume damit für die vergebene UID gruppenschreibbar bleibt. Auf
    einem Cluster ohne diesen Admission-Mechanismus muss `fsGroup` gesetzt bleiben —
    ohne den Wert wird das Volume `root:root` gemountet und der Collector kann seine
-   Queue nicht schreiben.
+   Queue nicht schreiben. Dasselbe gilt für den PersistentVolumeClaim des
+   KPI-Prometheus.
 
 4. **StorageClass für den Telemetry-Gateway-PVC setzen:**
    Der PersistentVolumeClaim der Sending-Queue verwendet ohne weitere Angabe die
