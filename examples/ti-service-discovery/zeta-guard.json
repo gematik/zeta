@@ -8,7 +8,6 @@
                 "GEM.KOMP-CA8": {
                     "type": "root-ca",
                     "pem": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----",
-                    "hash": "",
                     "mirror": {
                         "type": "tsl",
                         "url": "https://download.tsl.ti-dienste.de/ECC/ECC-RSA_TSL.xml"
@@ -17,7 +16,6 @@
                 "GEM.KOMP-CA9": {
                     "type": "root-ca",
                     "pem": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----",
-                    "hash": "",
                     "mirror": {
                         "type": "tsl",
                         "url": "https://download.tsl.ti-dienste.de/ECC/ECC-RSA_TSL.xml"
@@ -30,7 +28,6 @@
                 "GEM.KOMP-CA10": {
                     "type": "ca-chain",
                     "pem": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE----------BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----",
-                    "hash": "",
                     "mirror": {
                         "type": "tsl",
                         "url": "https://download.tsl.ti-dienste.de/ECC/ECC-RSA_TSL.xml"
@@ -39,7 +36,6 @@
                 "GEM.KOMP-CA11": {
                     "type": "ca-chain",
                     "pem": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE----------BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----",
-                    "hash": "",
                     "mirror": {
                         "type": "tsl",
                         "url": "https://download.tsl.ti-dienste.de/ECC/ECC-RSA_TSL.xml"

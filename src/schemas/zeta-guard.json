@@ -70,10 +70,6 @@
           "minLength": 1,
           "description": "PEM encoded certificate."
         },
-        "hash": {
-          "type": "string",
-          "description": "SHA256 Hash of the certificate."
-        },
         "mirror": {
           "$ref": "#/definitions/mirror",
           "description": "Additional source to acquire or to verify the certificate."
@@ -82,7 +78,6 @@
       "required": [
         "type",
         "pem",
-        "hash",
         "mirror"
       ],
       "additionalProperties": false
