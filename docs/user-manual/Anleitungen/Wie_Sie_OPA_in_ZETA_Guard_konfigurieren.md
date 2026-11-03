@@ -55,10 +55,23 @@ Schema-Validierungen, Verifikation/Tests und Troubleshooting.
   gedacht und für den Betrieb nicht zulässig.
 - Simulation ist standardmäßig aktiv: `opa.simulation.enabled: true`; Anzahl
   der Replicas über `opa.simulation.replicaCount` (Standard: 1).
-- Die Simulations-Instanz kann ein eigenes Bundle nutzen:
-  `opa.simulation.bundle.resource`; sonst wird automatisch
-  `<opa.bundle.resource>-sim` verwendet (Suffix am Tag, z. B.
-  `…:latest` → `…:latest-sim`).
+- Im Bundle-Modus ist das Bundle der Simulations-Instanz **verpflichtend**
+  anzugeben: `opa.simulation.bundle.resource`. Ist der Wert leer, bricht das
+  Rendern ab. Das Chart leitet ihn nicht aus `opa.bundle.resource` ab, denn die
+  gematik benennt die Simulations-Bundles je Umgebung unterschiedlich, z. B.:
+  - TU: `…/zeta-policies-tu/vsdm-policy:latest` →
+    `…/zeta-policies-tu/vsdm-policy-sim:latest`
+  - PU: `…/gematik-pt-zeta-prod/zeta-policies/vsdm-policy:latest` →
+    `…/gematik-pt-zeta-prod/zeta-policies-sim/vsdm-policy:latest`
+
+  Die gültigen Pfade beider Bundles je Produkttyp und Umgebung entnehmen Sie der
+  [Liste der ZETA-Guard-URLs](https://wiki.gematik.de/spaces/TI2AUSTAUSCH/pages/764644216/ZETA+Guard+-+URL+s)
+  (Zugang ggf. login-pflichtig).
+- Wo die gematik ein Simulations-Bundle bereitstellt, gehört dieses in
+  `opa.simulation.bundle.resource` — **nicht** die Produktions-Policies, sonst
+  besteht das Risiko fehlerhafter Policies. Gibt es für Ihren Produkttyp kein
+  Simulations-Bundle, verweisen Sie auf das aktive Bundle oder deaktivieren die
+  Simulation (`opa.simulation.enabled: false`).
 - Die Simulations-Instanz kann eine eigene Signaturprüfung verwenden:
   `opa.simulation.bundle.verification` (gleiche Felder wie
   `opa.bundle.verification`; leer = die gemeinsame Konfiguration gilt).
@@ -89,16 +102,21 @@ opa:
         backoffLimit: 5         # Standard
         resources:              # Standard
             limits:
-                memory: "64Mi"
+                memory: "256Mi"
             requests:
                 cpu: "10m"
-                memory: "32Mi"
+                memory: "64Mi"
 ```
 
 Wichtige Details:
 
 - Die Zeitzone ist fest auf `Europe/Berlin` gesetzt (`spec.timeZone` im
   CronJob), unabhängig von der Standardzeitzone des Clusters.
+- Läufe überlappen nie (`concurrencyPolicy: Forbid`) und sind auf 5 Minuten
+  begrenzt (`activeDeadlineSeconds`); API-Aufrufe von `kubectl` brechen nach
+  60 Sekunden ab. Ein Lauf, der fällig wird, solange der vorherige noch aktiv
+  ist, entfällt. Das Speicherlimit von `256Mi` (ab Chart-Version 2.0.2, vorher
+  `64Mi`) ist für `kubectl` nötig.
 - Alternativ kann ein bereits vorhandener ServiceAccount genutzt werden:
   `opa.rolloutRestart.serviceAccountName: <name>`. Ist dieser Wert gesetzt,
   legt das Chart weder ServiceAccount noch RBAC selbst an — der angegebene
@@ -149,6 +167,10 @@ opa:
         verification:
             enabled: true
             keyId: signer
+    simulation:
+        bundle:
+            # verpflichtend, siehe Aktivieren
+            resource: <registry-host>/<pfad>/<simulations-bundle>:latest
 ```
 
 Die Beispiele in dieser Anleitung zeigen Values des zeta-guard-Charts. Wird der
@@ -217,9 +239,8 @@ opa:
 
 > **`resource` immer per Tag referenzieren (z. B. `:latest`), nicht per
 > Digest.** Ein Digest-Pin (`@sha256:…`) friert den Policy-Stand ein und
-> widerspricht dem Update-Polling; außerdem leitet das Chart daraus die
-> Simulations-Referenz per Suffix ab — aus `@sha256:…` würde die ungültige
-> Referenz `@sha256:…-sim`.
+> widerspricht dem Update-Polling. Das gilt ebenso für
+> `opa.simulation.bundle.resource`.
 
 ## Zugriffsvariante B: Eigene Registry als Pull-Through-Proxy
 
@@ -232,8 +253,10 @@ Wichtige Randbedingungen:
 - Die [Signaturprüfung](#signaturprüfung-bundles) bleibt aktiviert. Die
   Signaturen sind Bestandteil des Bundle-Artefakts und bleiben beim Proxying
   unverändert erhalten.
-- Auch das Simulations-Bundle (`<resource>-sim`) muss über den Proxy erreichbar
-  sein.
+- Auch das Simulations-Bundle wird über die eigene Registry bezogen:
+  `opa.simulation.bundle.resource` zeigt wie `opa.bundle.resource` auf die
+  eigene Registry, und diese muss den Upstream-Pfad des Simulations-Bundles
+  ebenfalls durchreichen.
 - Verwendet die Registry ein TLS-Zertifikat einer eigenen, nicht öffentlich
   vertrauenswürdigen CA, wird diese über
   `provisioningProcessor.provisioningContainerCaSecretRef` (alternativ
@@ -244,7 +267,7 @@ Wichtige Randbedingungen:
   Registries verschieden vertrauenswürdig sind, siehe
   [Wie Sie eine eigene OCI-Registry verwenden](Wie_Sie_eine_eigene_OCI_Registry_verwenden.md).
 - Bei aktivierten Egress-NetworkPolicies zeigt
-  `networkPolicy.egress.pip.ipBlocks` dann auf den Proxy statt auf die
+  `networkPolicy.egress.pip.ipBlocks` dann auf die eigene Registry statt auf die
   gematik-Registry (siehe
   [Wie Sie Egress-NetworkPolicies konfigurieren](Wie_Sie_Egress_NetworkPolicies_konfigurieren.md)).
 
@@ -342,6 +365,9 @@ Abwägung für den Betrieb:
 
 - `opa.bundle.enabled=true` → `serviceName` und `resource` sind erforderlich
   (nicht leer).
+- `opa.bundle.enabled=true` und `opa.simulation.enabled=true` →
+  `opa.simulation.bundle.resource` ist erforderlich (nicht leer); das Rendern
+  bricht sonst mit einem entsprechenden Hinweis ab.
 - `opa.workloadIdentityFederation.enabled=true` →
   `opa.bundle.credentials.secretRef.name` darf nicht gesetzt sein
   (workloadIdentityFederation und Basic sind exklusiv).

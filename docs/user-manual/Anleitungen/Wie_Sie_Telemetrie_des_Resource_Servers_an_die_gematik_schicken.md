@@ -218,8 +218,8 @@ alternativ über Ihren gematik-Ansprechpartner). Nachdem Sie Ihren ZETA-Cluster
 registriert haben, müssen Sie ZETA-Guard für die Authentifizierung gegen die
 gematik konfigurieren. Im Rahmen dieser Registrierung erhalten Sie von der
 gematik die Audiences und Service-Accounts zur Tokenerstellung für TI-SIEM und
-TI-SIM sowie die Werte für die Workload-Identity-Federation (Pool, Projektnummer,
-Provider). Die Values für den ZETA-Guard-Chart sehen so aus:
+TI-SIM sowie die Werte für die Workload-Identity-Federation (Pool,
+Projektnummer, Provider). Die Values für den ZETA-Guard-Chart sehen so aus:
 
 ```yaml
 global:
@@ -249,3 +249,37 @@ opa:
 > gegenüber der gematik. Der Chart-Standard ist der Platzhalter `"REPLACE ME"`:
 > Bleibt er stehen, meldet sich Ihr Dienst bei der gematik mit dieser
 > Platzhalter-Kennung.
+
+## Wie Sie das optionale Sampling für TI-SIM aktivieren
+
+Sie können das Sampling der Telemetriedatenlieferung des Produktes an die
+gematik Telemetriedatencloud einschalten, indem Sie den Prozessor
+`tail_sampling/ti_sim` nach den `filter`-Prozessoren in die Pipeline
+`traces/ti_sim` einfügen.
+
+Konfigurationsbeispiel:
+
+```yaml
+telemetry-gateway:
+    config:
+        service:
+            pipelines:
+                traces/ti_sim:
+                    processors:
+                        - memory_limiter
+                        - filter/ti_sim
+                        - tail_sampling/ti_sim
+                        - attributes/semantic_conventions_migration
+                        - transform/siem_and_sim
+                        - redaction/zeta_guard
+                        - batch
+```
+
+Kopieren Sie nicht das Konfigurationsbeispiel, sondern rekonstruieren Sie die
+Konfiguration auf Basis Ihrer effektiven Konfiguration.
+Siehe [Wie Sie die effektive Konfiguration eines Telemetry-Gateways finden](Wie_Sie_die_effektive_Konfiguration_eines_Telemetry-Gateways_finden.md).
+
+Beachten Sie, dass ggf. Metriken aus der Telemetrie erzeugt werden, und
+Sampling diese Metriken verfälscht. Außerdem raten wir davon ab, Änderungen an
+Telemetrie-Prozessoren in ZETA-Guard vorzunehmen. Jede Änderung an
+Telemetrie-Prozessoren muss mit der gematik koordiniert werden.

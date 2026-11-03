@@ -1,6 +1,148 @@
 # Release Notes ZETA Guard Komponenten
 
+## Inhaltsverzeichnis
+
+- [Keycloak Authserver (ZETA PDP)](#keycloak-authserver-zeta-pdp)
+- [PEP Proxy (ZETA PEP)](#pep-proxy-zeta-pep)
+- [Notification Service](#notification-service)
+- [Provisioning Processor](#provisioning-processor)
+- [ZETA Guard Helm Charts](#zeta-guard-helm-charts)
+
 ## Keycloak Authserver (ZETA PDP)
+
+### Release 2.0.1
+
+#### added:
+- The entity statement at `.well-known/openid-federation` carries `metadata.federation_entity` with `name` and
+  `organization_name` (gemSpec_IDP_Sek, Tab. 28), taken from `ENTITY_STATEMENT_CLIENT_NAME` and
+  `ENTITY_STATEMENT_ORGANIZATION_NAME`
+- `ENTITY_STATEMENT_REDIRECT_URIS` configures the entity statement's `openid_relying_party.redirect_uris` statically as a
+  comma-separated list. Unset, they are still derived from the realm's SekIDP clients
+
+#### changed:
+- **BREAKING** Hardening: Keycloak features not used by 𝝵-Guard are disabled in the image (`KC_FEATURES_DISABLED`):
+  `account`, `account-api`, `ciba`, `device-flow`, `jwt-authorization-grant`, `authorization`,
+  `admin-fine-grained-authz`, `impersonation`, `workflows`, `identity-brokering-api`, `twitter-broker`, and the
+  `.well-known/uma2-configuration` endpoint. Their endpoints (e.g. `/realms/{realm}/account`, device and CIBA
+  endpoints) return 404, their grant types are rejected with `unsupported_grant_type`
+
+### Release 2.0.0
+
+#### changed:
+- **BREAKING** The SekIDP federation master URL is no longer read from the identity provider config map (`fedmasterUrl`).
+  It is now resolved from a provisioned `federation-master.json` file pointed to by the new environment variable
+  `FEDERATION_MASTER_LOCATION` (A_29737). Deployments with `ZETA_OIDC_FLOW_ENABLED=true` must set this variable and
+  provide the file; otherwise Keycloak will fail to start.
+- E-mails sent by the authserver (verification code, notice to the previous address after an e-mail change) are in German
+- Updated dependency of VAU Integrity Provider to 2.0.10, for better performance and improved security. If the
+  provider is enabled for a VAU deployment: **no rolling update**, make sure to shut down all cluster nodes running
+  older software releases before starting the first node with the current release!
+- OPA input `client_registration_data.registration_timestamp` (and `client_registration.datetime` of the security event
+  `authn_token_created`) is now the time of the initial client registration instead of the client's last access, as
+  defined by `policy-engine-client-data.yaml`. It is now also converted to epoch seconds in the server's time zone; before,
+  it was off by the UTC offset (e.g. two hours in the future with `Europe/Berlin`)
+- **BREAKING** `GET /realms/{realm}/zeta/userinfo/email?id=<KVNR>` is no longer a stub: it returns the user's email,
+  and only once it is verified. The calling resource server must authenticate with an mTLS client certificate trusted
+  by the resource server truststore, otherwise it gets 401. A missing or malformed KVNR in `id`, an unknown user or an
+  unverified email all get the same 404. See [Konfiguration des PDP Services](../../Referenzen/Konfiguration_des_PDP_Services.md).
+- the two log lines Keycloak's `nginx` x509cert-lookup writes for every resource server call ("No issuer certificate
+  …" and the misleading "Impossible to rebuild end user cert chain …") are demoted to DEBUG via a Quarkus log filter
+  in `conf/quarkus.properties`. Only these two messages of `NginxProxySslClientCertificateLookup` are affected; add
+  `org.keycloak.services.x509.NginxProxySslClientCertificateLookup:debug` to `KC_LOG_LEVEL` to see them again.
+- bump version of spree-integrity-provider (SIP) to 2.0.9, with better support for composite keys; includes DB migration
+- **BREAKING** no longer accept dpop-tokens without nonce. Nonce value has to be the same as in the rest of the requests.
+  Client-SDK is already compliant.
+- JWTs with `crit` or `cty` header parameters are now rejected across token exchange (subject token + client assertion),
+  email change und SekIDP federation (A_27802-03)
+- MariaDB JDBC driver for Keycloak bumped to version 3.5.9 via override of Jar-Files in the OCI image (CVE-2026-55856, CVE-2026-55857, CVE-2026-55858)
+- Netty dependencies for Keycloak bumped to version 4.1.139 via override of Jar-Files in the OCI image
+- BouncyCastle dependencies for Keycloak bumped to version 1.86 via override of Jar-Files in the OCI image
+- **BREAKING** SekIDP login (A_26973-03): `common_name` in the access token of an insured person is now the display name from
+  the ID-token claim `urn:telematik:claims:display_name` instead of the KVNR; an ID token without this claim is rejected. The
+  OPA input `user_info.commonName` carries the same value. The identity provider's `defaultScope` must additionally contain
+  `urn:telematik:geburtsdatum` (`urn:telematik:display_name urn:telematik:versicherter urn:telematik:geburtsdatum openid`).
+- the Apple and Google (Android Key Attestation) truststores and the Google certificate status list
+  (`GOOGLE_CERTIFICATE_STATUS_LOCATION`) are now reloaded like the SMC-B, TPM and OCSP truststores: checked every
+  `TRUSTSTORE_RELOAD_INTERVAL` and adopted without a restart when a file changed (switched off by
+  `TRUSTSTORE_RELOAD_ENABLED=false`). All truststores are loaded once by the new SPI `zeta-guard-trust-material`
+  (plugin jar `zeta-commons-plugins.jar`) and shared by token exchange and client registration; a missing or
+  unparsable file still fails the startup.
+- **BREAKING** `POST .../zeta/identity/email` no longer accepts a `Client-Assertion`; it is reachable only through the PEP
+  (see added). The e-mail binding of the registration (`identity/bind-email`, `/resend`, `/verify`) is served behind the PEP
+  as well: the binding token carries the Guard audience and ZETA claims via mappers on `zeta:email-verify`, the authserver
+  takes the caller from `zeta-client-data`. Deploy the chart (PEP routes, Terraform mappers) before this image.
+- Session revocation: reporting a token now also ends an offline session with the same session id, not only the online
+  one. Otherwise the offline session could keep refreshing tokens after the block expired.
+- PKCS#12 truststores without any entries with friendly names (aliases) are now rejected at startup instead of failing
+  later when a certificate is looked up
+- Jackson dependencies (`jackson-core`, `jackson-databind`) for Keycloak bumped to version 2.21.7 via override of Jar-Files in the OCI image (CVE-2026-68494, CVE-2026-68497, CVE-2026-89425, CVE-2026-91776, CVE-2026-91777, CVE-2026-89407, CVE-2026-19032, CVE-2026-77310, CVE-2026-83557)
+- Jackson dependencies for Keycloak bumped to version 2.21.7 via override of Jar-Files in the OCI image
+
+#### added:
+- Client data according to `policy-engine-client-data.yaml` is stored in `ZETA_CLIENT_DATA` (A_26585-02): platform,
+  product id and version, device info (os, os version, device model) and the attestation timestamp, taken from the client
+  statement of the last successful authentication
+- Session data is stored in the PDP database (A_26586-01): `ZETA_CLIENT_DATA.SESSION_DATA` holds the policy engine input
+  (`policy-engine-input.yaml`) of the client's last successful authentication or refresh. It is deleted together with the
+  client. Both use new nullable columns, added by an additive Liquibase migration
+- OPA input `client_registration_data.attestation_timestamp` from the client statement
+- Implemented Apple App Attestation for client registration (DCR), mostly following [Apple Guide](https://developer.apple.com/documentation/devicecheck/attestation-object-validation-guide)
+- **BREAKING:** New required Environment variables `APPLE_KEYSTORE_LOCATION` and `APPLE_KEYSTORE_PASSWORD` (PKCS#12 truststore containing the
+    Apple App Attest root CA). See Helm chart documentation for details.
+- Implemented Android Key Attestation for client registration (DCR), following [Android Guide](https://developer.android.com/privacy-and-security/security-key-attestation#verifying):
+  certificate chain, attestation challenge, hardware-backed key (TEE/StrongBox), locked bootloader and verified boot state
+- **BREAKING:** New required Environment variables `GOOGLE_KEYSTORE_LOCATION`, `GOOGLE_CERTIFICATE_STATUS_LOCATION` and `GOOGLE_KEYSTORE_PASSWORD` (PKCS#12 truststore containing the
+    Google Hardware Attestation root CAs). See Helm chart documentation for details.
+- **BREAKING** Implemented software attestation for client registration (DCR) (gemSpec_ZETA 5.3.2.3.3): the client data
+  signature `signed_hash_puk_client_sig` is verified, and a valid server nonce is mandatory.
+- Client management for mobile clients, served behind the PEP with the scope `zeta:client-management` (assigned as a
+  default scope at registration), used by the ZETA SDK: `GET /realms/{realm}/zeta/clients` lists the identity's devices
+  (`client_id`, `name`), `DELETE .../clients/{client_id}` removes one, e.g. a lost device (the Keycloak client and the
+  ZETA data are deleted; its sessions are ended, and once the deletion has committed, their session ids are blocked on
+  the revocation stream so that enforcement points reject the device's remaining access tokens), `POST .../identity/email` with
+  `/verify` and `/resend` changes the identity's e-mail address, confirmed by a one-time code sent to the new address.
+  The authserver takes the caller from the PEP header `zeta-client-data` and checks no token itself; errors are problem+json.
+- Client management notifications by e-mail: N1 `client_added` when another client is bound to an identity
+  with a verified address, N3 `client_removed` when a client is deleted by the user or removed by ZETA Guard (expiration,
+  maximum number of clients, pending clients after an e-mail change), N5 `email_changed` to the previous address. They are
+  fired as ZETA-marked Keycloak events (`CLIENT_REGISTER`, `REVOKE_GRANT`, `UPDATE_EMAIL` with detail `zeta_event`) and
+  sent once the change has committed
+  **The realm must list the new event listener `zeta-guard-notifications` in `eventsListeners`**, otherwise no
+  notifications are sent; the existing notice of the previous address after an e-mail change now depends on it too.
+- The security event `authn_client_deleted` is now also logged when the user deletes a client (`user_request`), for
+  expired clients (`expired`) and for clients removed after an e-mail change (`email_change_pending`), not only when the
+  maximum number of clients is exceeded. See [Security-Events](../../Referenzen/Security-Events.md).
+- Client management calls are logged as admin events: deleting a client (`DELETE` on `CLIENT`), the
+  e-mail change (`UPDATE` on `USER`) and binding another client to an existing identity (`CREATE` on `CLIENT`), with the
+  end user and the calling client as actor and the detail `zeta_event`; `zeta_user` names the identity by its ZETA user id (the Keycloak username).
+  They reach the event store if admin events are enabled, and the realm's event listeners, i.e. the admin event log of the PDP database (`zeta-guard-admin-events`).
+- Client policy executor `zeta-outer-par` (A_29660): the outer PAR request of the SekIDP flow must carry all required values
+- New plugin `mobile-authorization-endpoint` and authenticator `SekIdpDirectRedirectAuthenticator`: in
+  the `zeta-mobile` browser flow the user is redirected directly to the sectoral IDP, without Keycloak's
+  intermediate redirects relying on cookies.
+- API Version 2.0.0 listed in authserver well-known
+- Configuration `KC_SPI_REALM_RESTAPI_EXTENSION__ZETA__RESOURCE_SERVER_TRUSTSTORE_FILE` / `_PASSWORD`: truststore
+  dedicated to resource servers calling `userinfo/email`. It defaults to Keycloak's HTTPS truststore
+  (`KC_HTTPS_TRUST_STORE_FILE` / `_PASSWORD`). The client certificate is read via Keycloak's `x509cert-lookup` SPI
+  (TLS connection or an ingress header).
+- SekIDP login (A_26973-03): the consent-dependent ID-token claim `birthdate` (YYYY-MM-DD) is passed into the access
+  token as `birthdate`, from where the PEP writes it into `ZETA-User-Info`. A missing claim is no error; a value that is
+  no valid YYYY-MM-DD date is dropped with a warning.
+- SekIDP login (A_26973-02): the user data of the ID token — KVNR, display name, birthdate, profession OID and organization —
+  is now stored at the user as attributes `zetaguard.mobileuser.*`, encrypted by the integrity provider when it is enabled.
+  It is synchronised on every login: a claim the ID token no longer carries, e.g. the birthdate after a withdrawn consent,
+  is removed. While the enabled integrity provider is not yet running, the login is refused with HTTP 503.
+
+#### fixed:
+- the refresh token's `exp` (and `refresh_expires_in`) no longer outlives the user session behind it: it is capped at
+  the realm's SSO session limits, so a refresh before `exp` no longer fails with "Session not active".
+  Rotation no longer extends it either — the session ends with the first refresh token's `exp` after full
+  authentication (A_25662). Realm session limits must be at least the policy's refresh-token TTL.
+- the maximum number of clients per user (`SMCB_USER_MAX_CLIENTS`, A_25748-02) now also holds for concurrent token
+  exchanges, across all Keycloak instances. Previously, concurrent requests of the same user could exceed the limit,
+  or, with the limit reached, all but one of them were rejected with "Too many clients" instead of evicting the oldest
+  client. Binding a new client now locks the user's row in `ZETA_USER_DATA`, so such requests are serialized, and a
+  user who already exceeds the limit is brought back to it with the next new client.
 
 ### Release 1.3.2
 
@@ -299,10 +441,77 @@
 
 ## PEP Proxy (ZETA PEP)
 
+### Release 2.0.0
+
+#### fixed
+
+- **BREAKING** `ZETA-User-Info.birthdate` is taken from the access token's `birthdate` claim
+  (A_26973-03), which the authorization server forwards from the sectoral IDP's id_token when
+  the insured person consented. Without the claim the field is absent; a value that is no
+  `YYYY-MM-DD` date is dropped with a warning. The interim fixed date (ANFTI2-922) and its
+  directive `pep_user_info_birthdate` are removed — nginx no longer starts with a
+  configuration that still sets it.
+- ASL: don't panic on short M3
+- purl and load_dispenser add nonce in dpop-token for token exchange
+- in `pep_require_popp off` locations, `popp` headers are now also verfied and forwaded
+  as `ZETA-PoPP-Token-Content` if present, given a `pep_popp_issuer` is configured.
+- `pep_forward_client_data` set at `http`/`server` level is now inherited by locations
+- ASL: session requests shorter than the session overhead are rejected (`BadFormat`)
+  instead of underflowing
+- ASL: redirects on inner responses are never followed
+
+#### changed
+
+- A_25669-01: sensitive headers (authorization, dpop, popp) are no longer forwarded to
+  upstreams. This can be disabled, by setting corresponding variables either globally in
+  the server block, or on a per-location basis (before `include proxy_headers.conf;`):
+  before :
+  ```nginx.conf
+    http {
+        server {
+            set $zeta_strip_authorization 0;
+            set $zeta_strip_dpop 0;
+            set $zeta_strip_popp 0;
+
+            location / {
+                set $zeta_strip_authorization 0;
+                set $zeta_strip_dpop 0;
+                set $zeta_strip_popp 0;
+
+                include proxy_headers.conf;
+
+                proxy_pass "http://…/";
+            }
+        }
+    }
+  ```
+
+- A_29850: PoPP errors (`PoPPMissing` 400, `PoPP` and `PoPPInvalidActor` 403) no longer carry
+  the header `zeta-error-origin: pep`. They are addressed to the caller, who supplies the PoPP
+  token, so the ZETA-Client hands them on instead of re-authenticating.
+- ASL: an expired session returns the distinct error `AslSessionExpired`, so the client can
+  re-handshake and retry
+- Bumps nginx version to 1.31.7
+- Bumps nginx-ingress version to 5.7.0
+- Bumps rust version to 1.99.1
+
+#### added
+
+- A_25669-01: optional `ZETA-Access-Token-Content` upstream header with the full,
+  Base64-URL encoded JSON payload of the validated access token
+  (`pep_forward_access_token_content on|off`, default off).
+- `pep_pdp_url`: optional internal base URL for OIDC discovery and the JWKS fetch.
+  `pep_pdp_issuer` stays the trust identity (the expected `iss`), so the PDP can be
+  reached over an in-cluster address while tokens keep carrying the public issuer.
+  The `jwks_uri` advertised by discovery is rewritten from the issuer prefix onto
+  `pep_pdp_url`; a `jwks_uri` outside the issuer is fetched as advertised and logged.
+  Unset (default) keeps the previous behaviour.
+
 ### Release 1.3.3
 
 #### fixed
-- bugfix
+- harden ASL subrequest target URL handling
+  (with thanks to Machine Spirits UG)
 
 ### Release 1.3.2
 
@@ -579,6 +788,130 @@
 
 ## Notification Service
 
+### Release 2.0.1
+
+#### added
+- With sealing on, records are sealed and their storage ids derived with the keys of a keychain the
+  operator supplies HSM-wrapped in the new `notification.persistence.sealing.keychain` (JSON; from a
+  Kubernetes secret as `NOTIFICATION_PERSISTENCE_SEALING_KEYCHAIN`, or as a file named by
+  `notification.persistence.sealing.keychain-file`). Each entry wraps a DEK and a pseudonymization key
+  together under its KEK. Each instance unwraps the entries once, on first use, so reads and writes no
+  longer call the HSM. Every seal derives its own key from the DEK and a random salt from the pinned
+  DRBG (HKDF-Expand); the service no longer generates or wraps keys itself. See README "Record keys".
+- Keychain generator image `$CI_REGISTRY_IMAGE/keychain-generator`: draws a DEK and a pseudonymization
+  key, has the HSM proxy wrap them and writes the keychain with the entry appended. Configured by
+  environment only: `KEYCHAIN_OUTPUT_FILE` is required, and `HSM_PROXY_KEK_ID` for a new keychain
+  (extending one, it defaults to the KEK of the newest entry). `HSM_PROXY_ENDPOINT`,
+  `KEYCHAIN_INPUT_FILE`, `KEYCHAIN_ENTRY_ID` (defaults to `…-v1` for a new keychain and to the next
+  version otherwise) and `KEYCHAIN_EMERGENCY` are optional, and `KEYCHAIN_ACTIVE_FROM`
+  defaults to now for a new keychain but is required when extending one. An existing output file is left
+  alone and the run ends successfully, so the image can run as an init container.
+- Key rotation (A_29963, A_29960): a new keychain entry takes over the writes at its `activeFrom`, and a
+  rotation job moves the records of older entries to it, with new storage ids and sealed under the new
+  DEK, one minute after boot and then every `notification.persistence.sealing.rotation-interval`
+  (default `1h`). Records with a retention period expire under their entry, unless the new entry is an
+  emergency entry (`KEYCHAIN_EMERGENCY=true`): then they move too and keep their expiry. A record that
+  fails is logged and retried on the next run; ten failures in a row stop the run. The job logs the live
+  records per entry as its progress. See the runbook in README "Key rotation".
+
+#### changed
+- **Breaking, with sealing on:** records sealed by an earlier build no longer open, and their storage
+  ids no longer match; start from an empty database. Migration `V4` drops `sealed_key`, renames
+  `storage_record.kek_id` to `keychain_id` (the entry a record is under) and drops the unused
+  `storage_record.dek`. `hsm-proxy.kek.dek-key-id`, `hsm-proxy.kek.pseudonym-key-id` and
+  `notification.persistence.sealing.dek-cache-size` are gone.
+- With sealing on, readiness reports whether the keychain is unwrapped and holds the entry of every live
+  record, instead of whether the HSM proxy answers: a broken keychain, or an old entry removed while
+  records are still under it, stops a rollout at its first instance, and an HSM proxy outage no longer
+  takes instances that hold their keys out of service.
+  The readiness check is now named `keychain` instead of `hsm-proxy`.
+
+### Release 2.0.0
+
+#### added
+- `notification.history.retention` (default `P30D`): a device's message history expires that long
+  after its first entry and is purged with the other expired records (A_29988).
+- Optional rate limit on the RS endpoints (A_29987), off by default: `QUARKUS_FAULT_TOLERANCE_GLOBAL_RATE_LIMIT_ENABLED`,
+  `_VALUE` (default `1000`), `_WINDOW`, `_WINDOW_UNIT` (default one second). Over the limit the answer is
+  `429 RATE_LIMITED` with `Retry-After`.
+- Every `503 SERVICE_UNAVAILABLE` carries `Retry-After: 5` (A_29987).
+
+#### changed
+- **Breaking:** the RS paths require an mTLS client certificate (A_29980); see README "Authentication".
+- A plain (unencrypted) notification payload above 3072 serialized bytes is now rejected with
+  `413 PAYLOAD_TOO_LARGE` (A_29987); before, plain mode had no limit beyond the HTTP body size.
+- Disabled access log and tracing to prevent logging and tracing of KVNRs and Telematik-IDs. (A_29990)
+
+#### fixed
+- The native image boots with an unencrypted EC or RSA client key for the Push Gateway mTLS
+  (A_29982); it used to fail with `no such algorithm: EC for provider BC`.
+
+### Release 2.0.0-rc1
+
+#### added
+- Each dispatch logs its outcome once: `dispatched` when every device was reached, `failed` when
+  none was, `partially_rejected` in between. Not persisted yet; the writeback to the stored
+  notification is deferred to a follow-up ticket.
+- `push-gateway.batch.max-count` (MAX_BATCH_COUNT, default `100`) and `push-gateway.batch.max-time`
+  (MAX_BATCH_TIME, default `PT1S`) for the encrypted batches, gemF_PushNotification A_28212 to
+  A_28217. A value above `100` or `PT10S` fails the boot.
+- Set up export of logs, metrics, and traces using OTLP. (A_27492-02, A_26988)
+
+#### changed
+- The Push Gateway client picks the JVM proxy by the target's scheme: `https://` targets read
+  `https.proxyHost`, `https.proxyPort` and `https.nonProxyHosts` (not the JDK's shared
+  `http.nonProxyHosts`), `http://` targets the `http.*` ones. Before, an `https://` target without
+  `push-gateway.trusted-ca-paths` or mTLS used the `http.*` ones. The released native image does not
+  translate `HTTPS_PROXY` / `HTTP_PROXY`: pass the properties as `-D` arguments to `./application`,
+  or set `QUARKUS_PROXY_HOST`, `QUARKUS_PROXY_PORT` and `QUARKUS_PROXY_NON_PROXY_HOSTS`, which apply
+  to both schemes.
+- TLS towards the Push Gateway is pinned for gemSpec_Krypt (A_29991): the client offers only TLS 1.2
+  and 1.3, the ECDHE-GCM suites (ECDSA first) plus TLS 1.3 AES-GCM, and only the secp256r1 and
+  secp384r1 groups. The gateway's leaf RSA key must have at least 3000 bits, so **a Push Gateway with
+  an RSA-2048 certificate now fails the handshake**.
+- DEKs, the pseudonymization key and the GCM IVs come from a pinned SP 800-90A DRBG (256-bit)
+  instead of the platform's default `SecureRandom` (GS-A_4367 / GS-A_4368).
+- `push-gateway.retry.max-attempts` changes its meaning: it now caps how often an item a Push
+  Gateway response reports `failed` is sent (default `3`); such items are retried without their
+  rejected devices. A value below `1` fails the boot instead of being raised to `1`. Transport errors
+  (5xx, 429, connection failures) no longer count against it: they are retried with exponential
+  back-off until the new `push-gateway.retry.give-up-after` has passed (default `PT1H`, shorter than
+  `notification.persistence.retention` or the boot fails), with the wait capped by the new
+  `push-gateway.retry.max-delay` (default `PT5M`) (A_27166).
+- The batches for one Push Gateway are sent concurrently, so a later batch no longer waits for the
+  answer to an earlier one.
+- A pushkey the Push Gateway rejects is now removed from **every** pusher of the notified user,
+  whatever app id registered it and whichever dispatch the answer belongs to (A_27374), instead of
+  only from the devices of the batch that was just sent.
+- Two contract questions are answered in the README under "Current limitations" instead of being
+  carried as open gaps: why `reference` is not forwarded on the plain dispatch path
+  (`PlainNotification` has no `identifier` field, gemF_PushNotification A_27532), and why the
+  dispatch queue stays in-process rather than buffering until delivery (A_27166).
+- `POST /pushers/set` now honours `append`. Without it (the contract's default `append: false`),
+  registering an app ID and pushkey removes that pusher from every other user who had registered it,
+  so a device that changes accounts stops receiving the previous account's notifications.
+  `append: true` keeps the other users' registrations, as before. Pushers registered before this
+  release are not yet known to the lookup that finds other users, and are removed only after their
+  owner registers them again.
+- While `notification.history.enabled` is off, both `/history/*` endpoints answer
+  `404 HISTORY_DISABLED` (A_29974). `GET /history/{notification_id}` used to answer
+  `404 NOTIFICATION_NOT_FOUND`, `GET /history/device/{pushkey}` `200` with no messages. Behind the
+  ZETA Guard PEP a client still gets `403`, since the `notification.history.read` scope is not
+  issued while the history is off; see "Current limitations" in the README.
+- The RS API checks `id_type` against the value: a KVNR-shaped value declared as `telematik-id`, or
+  the reverse, is answered with `400 M_INVALID_PARAM` (A_29967). Neither that answer nor
+  `404 USER_NOT_FOUND` echoes the identifier any more.
+- Deregistering a pusher, a pushkey the Push Gateway rejects, and a pusher taken over by another
+  user without `append` now delete the device's message history once the user holds that pushkey
+  under no other app ID; registering a pushkey the user does not hold yet starts with an empty
+  history (A_29989).
+- Added trace information to logs. (A_28796)
+- Redacted decrypted notifications in error logs. (A_29990)
+
+#### fixed
+- A password-protected mTLS client key (`push-gateway.mtls.client-key-password`) made the service
+  fail to start with `UnrecoverableKeyException`.
+
 ### Release 1.3.2
 
 #### added
@@ -652,6 +985,19 @@ Initial release of the ZETA Notification Service.
 
 ## Provisioning Processor
 
+### Release 2.0.0
+
+#### added:
+
+- Processor for FederationMasterUrl
+- Processor for Apple attestation roots.
+- Processor for Android attestation roots.
+
+#### fixed:
+
+- SMC-B, TPM and Apple trust stores are written with `-jdktrust anyExtendedKeyUsage` and a CA
+  name per certificate, so Java reads them as trusted certificate entries.
+
 ### Release 1.3.2
 
 #### fixed:
@@ -709,11 +1055,340 @@ Initial release of the ZETA Notification Service.
 
 ## ZETA Guard Helm Charts
 
+### Release 2.0.2
+
+#### added:
+
+- `authserver.config.entityStatement.redirectUris` (optional) sets the
+  `redirect_uris` of the authserver's entity
+  statement statically (env `ENTITY_STATEMENT_REDIRECT_URIS`, A_25656). Empty,
+  they are still derived from the realm's
+  SekIDP clients
+- the authserver's entity statement carries `metadata.federation_entity`
+  (gemSpec_IDP_Sek, Tab. 28) with `name` and
+  `organization_name` from `authserver.config.entityStatement.clientName` and
+  `.organizationName`
+- `notificationService.sealing.*` for the keychain of the notification-service:
+  `keychainFileName` (default `/keychain/keychain.json`), `rotationInterval`, the init container
+  hooks `initContainerProvideKeys` and `initContainerStoreKeys`, and the `keychainGenerator` init
+  container (`enabled`, `kekId` required while it runs, `extraVolumeMounts`, image
+  `notification-keychain-generator`). Plus `notificationService.extraVolumes` and
+  `notificationService.extraVolumeMounts`, which carry the keychain, e.g. from a Secret. See "HSM-backed sealing" in
+  [How to configure the notification service](https://github.com/gematik/zeta-guard-helm/blob/main/docs/how-to_guides/How_to_configure_notification_service.md).
+
+#### changed:
+
+- **Breaking:** `notificationService.hsm.kek.dekKeyId`, `notificationService.hsm.kek.pseudonymKeyId` and
+  `notificationService.sealing.dekCacheSize` are removed; the chart fails the render when they are
+  still set. With sealing on, the chart needs a notification-service build with the keychain, and
+  records sealed by an earlier build no longer open: start from an empty database.
+- `opa-rollout-restart-cronjob`: memory limit 256Mi (was 64Mi, too small for
+  kubectl), `concurrencyPolicy: Forbid`, 5-minute `activeDeadlineSeconds`,
+  kubectl `--request-timeout`
+- token-renewer CronJobs (`opa-`, `ti-siem-`, `ti-sim-`): `concurrencyPolicy:
+  Forbid` and `activeDeadlineSeconds`, so stuck runs no longer pile up
+
+### Release 2.0.1
+
+#### added:
+
+- `notificationService.rs.mtls.enabled` (default `true`) switches the RS
+  client-certificate check; `/notification-service-rs` is blocked on the public ingress.
+
+#### changed:
+
+- updates testdriver-smcb, testdriver-oidc, nativedriver and androiddriver to 2.0.1
+
+#### fixed:
+
+- mailcatcher keeps only the newest 1000 messages (`messagesLimit`)
+
+### Release 2.0.0
+
+#### added:
+
+- authserver adds `zeta-guard-admin-events` and `zeta-guard-notifications` (new)
+  listeners. They report client management-related events to the log and notify
+  users, respectively
+- Client management of mobile users (`/zeta/clients`, `/zeta/identity/email`) is served through the
+  PEP (scope `zeta:client-management`, DPoP, no PoPP) when `authserver.config.oidcFlowEnabled` is set;
+  tiger-proxy route included. The corresponding authserver paths under `/auth/realms/zeta-guard/zeta/`
+  are closed (Ingress / tiger-proxy → PEP → `404`). The registration's `bind-email/*` endpoints are served
+  through the PEP too (reduced binding token with scope `zeta:email-verify`), on their unchanged path.
+- New terraform vars to configure TLS, STARTTLS and auth for SMTP server.
+  Resolves ANFTI2-1040.
+- `notificationService.historyRetention` (default unset -> the service's
+  `P30D`, `NOTIFICATION_HISTORY_RETENTION`): after the first recorded
+  notification, a device's complete message history is erased once this
+  duration has passed; the next notification restarts it. Needs a
+  notification-service build with the history retention; older builds ignore
+  it.
+- Set up telemetry export from notification-service to telemetry-gateway.
+  (A_27492-02)
+- Disabled access log of notification-service to prevent logging of KVNRs and
+  Telematik-IDs. (A_29990)
+- ability to retain {authorization,dpop,popp} headers during forwarding via
+  `pepproxy.nginxConf.proxyLocations.*.retain.{authorization,dpop,popp}` (boolean), e.g.:
+
+  ```yaml
+  - path: /
+    upstream: http://fachdienst:8080
+    upstreamPath: /
+    retain:
+      authorization: true
+  ```
+- `authserver.dbEnc.automaticCryptoUpdatesEnabled` (default `false`):
+  if enabled, automatically starts a key rotation of the VAU DB if
+  chnages to the keychain configuration are detected. Requires
+  `integrityChecksEnabled`.
+- `authserver.dbEnc.{futureKeychainFileName, previousKeychainFileName}`:
+  specify the future keychain to use and the previously used keychain during a
+  VAU DB key rotation.
+- Terraform variable `sekidp_client_id` (default empty): the `client_id` of the
+  `zeta-sekidp-oidc` IdP, i.e. the realm's public issuer. It used to be derived
+  from `keycloak_url` only, which is the admin hostname wherever Terraform goes
+  through it — gsi-server then could not fetch the realm's entity statement.
+  Set it in that case; empty keeps the previous derivation.
+  See [How to configure the SEK-IDP / Fedmaster test chart](https://github.com/gematik/zeta-guard-helm/blob/main/docs/how-to_guides/How_to_configure_sekidp.md#the-idps-client_id-sekidp_client_id).
+- `mailcatcher.ingressEnabled` (default `false`): optional direct Ingress for the
+  MailCatcher web UI at `httpPath`, for stages without tiger-proxy.
+- SBOM: every chart tarball now ships a CycloneDX 1.6 inventory of its container
+  images (name, tag, digest, registry) as `sbom.cdx.json`; the umbrella tarball is
+  published as well. Structure and properties: see the user manual,
+  "SBOM der ZETA-Guard-Lieferung".
+- `authserver.dbPool.maxLifetime` (default `PT30M`): recycles every pooled JDBC
+  connection after this long, so a socket orphaned by a CloudNativePG switchover
+  cannot sit in the pool indefinitely. Keycloak's own default for PostgreSQL is
+  unlimited.
+- `authserver.db.urlProperties` (default `{ socketTimeout: 120, tcpKeepAlive:
+  true }`): pgjdbc parameters appended to `KC_DB_URL` as query parameters. Raise
+  `socketTimeout` for a release with a heavy schema migration — it bounds every
+  statement, Liquibase DDL included. `connectTimeout` and `targetServerType` are
+  rejected at render time: naming either in the URL makes Keycloak stop
+  injecting its own default for the other.
+- `timeoutSeconds` on all three `authserver.probes` (default `5`), and
+  `values.schema.json` now requires it. Left unset, Kubernetes applies its own
+  default of **1 s**. That is too tight for the readiness probe: Agroal's
+  `invalidCount` never resets, so from the first evicted connection onwards
+  Keycloak answers every readiness probe with a real database round-trip instead
+  of from pool metrics — and a 1 s budget flaps under load. The upper bound is
+  Agroal's acquisition timeout (`PT20S`).
+  See [How to configure the authserver](https://github.com/gematik/zeta-guard-helm/blob/main/docs/how-to_guides/How_to_configure_authserver.md#probes).
+- `authserver.dbPool.{validationQueryTimeout,backgroundValidationInterval,
+  foregroundValidationInterval,idleRemovalInterval}` and defaults for
+  `authserver.db.urlProperties` (`socketTimeout: 120`, `tcpKeepAlive: true`).
+  Together these are what makes the authserver survive a database failover.
+  See [How to configure the authserver](https://github.com/gematik/zeta-guard-helm/blob/main/docs/how-to_guides/How_to_configure_authserver.md#connection-resilience-and-database-failover).
+- `pepproxy.nginxConf.pepInternalUrl`: cluster-internal address of the
+  authserver, used only for OIDC discovery and the JWKS fetch. Previously both
+  followed the public `pepIssuer` and left the cluster through the ingress.
+  `pepIssuer` stays the expected `iss`, tokens are unaffected. **Off by
+  default**; set it e.g. to the `authserver` Service,
+  `http://authserver/auth/realms/zeta-guard`.
+  See [How to configure the authserver](https://github.com/gematik/zeta-guard-helm/blob/main/docs/how-to_guides/How_to_configure_authserver.md).
+- `pepproxy.nginxConf.pepRevocationUrl`: session revocation endpoint of the
+  authserver, previously hardcoded. Defaults to `pepInternalUrl` (or the
+  `authserver` Service) plus `/zeta-guard-revocation`.
+- `pepproxy.hostAliases`: extra `/etc/hosts` entries for the PEP pod in native
+  Kubernetes form, merged with the `global.enableDNSRedirect` entries. Supported
+  replacement for driving PEP name resolution through `global.dns.redirects`,
+  which is scoped to tiger-proxy/OCSP test routing.
+- `notificationService.hsm.*`: HSM Proxy wiring for the notification-service — All
+  optional; unset values keep the service defaults, but are only relevant if sealing is enabled.
+  Needs a notification-service build that implements the `hsm-proxy.*` properties — 1.3.0 and 1.3.2
+  ignore them, current `main` builds and future version implement them.
+- `notificationService.sealing.dekCacheSize`: how many unpacked DEKs are kept
+  in memory (`NOTIFICATION_PERSISTENCE_SEALING_DEK_CACHE_SIZE`), unset -> the
+  service default, must be 1 or larger. `sealing.enabled: true` now requires
+  `notificationService.hsm.endpoint`.
+- `notificationService.env.encryptionEnabled`: toggles encryption of push
+  notification payloads when the notification-service dispatches them.
+- Added default configuration for optional `tail_sampling` processor for TI-SIM.
+- Added disclaimers regarding the chart-development-only `Makefile`.
+- `authserver.resourceServerMtls` (default off): mTLS for resource servers
+  calling `GET /auth/realms/<realm>/zeta/userinfo/email`, which now releases the
+  verified email of a mobile user. When enabled, the master ingress requests an
+  optional client certificate on `authserver.hostname`
+  (`ssl_verify_client optional_no_ca`, prepended to any
+  `ingressMasterAnnotations."nginx.org/server-snippets"`). The authserver then
+  validates the chain against `resourceServerMtls.truststore`, or against
+  Keycloak's HTTPS truststore if that is left empty. Requires
+  `authserver.config.oidcFlowEnabled: true`. Browsers with client certificates
+  installed may show a certificate picker on that host.
+
+#### changed:
+
+- **BREAKING** With `authserver.config.oidcFlowEnabled`, `provisioningProcessor.federationMaster`
+  must be enabled (with `environment`); the authserver reads the Fedmaster URL from the
+  provisioned `federation-master.json`. Terraform `sekidp_fedmaster_url` is removed.
+- updates nginx/nginx-prometheus-exporter to 1.5.3
+- updates OPA-Image to 1.21.3-static
+- Enabled `pepproxy.nginxConf.noTravel` by default as required per spec.
+  This basically fixes a session to an ip address.
+- *Action required* only relevent to users of nginx ingress: To sufficiently
+  comply with A_26668-02, we had to set a default rate limit. If you have not
+  configured your own rate limit yet, you will probably need to set values that
+  fit your installation. See
+  `ingressMinionAnnotations.nginx.org/limit-req-rate`,
+  `ingressMinionAnnotations.nginx.org/limit-req-key` and
+  `ingressMinionAnnotations.nginx.org/limit-req-zone-size`.
+- updates nginx-ingress chart to 2.8.0 (NIC 5.7.0)
+- updates keycloak-zeta, ngx_pep, nginx-ingress, provisioning-processor and notification-service to 2.0.0
+- updates keychain-generator to 2.0.10
+- updates testdriver-smcb, testdriver-oidc, nativedriver and androiddriver to 2.0.0
+- updates testfachdienst and zeta-tls-test-tool-service to 2.0.0, tiger-proxy to fork-2.0.0
+- **BREAKING** sekidp (A_26973-03): the `zeta-sekidp-oidc` IdP additionally
+  requests `urn:telematik:geburtsdatum`, so the sectoral IDP releases the
+  insured
+  person's consent-dependent `birthdate`. Re-issue
+  `sekidp.gsiServer.entityStatementAboutRp` with that scope — gsi-server rejects
+  the PAR otherwise (`invalid_scope`, "exceeds scopes found in entity
+  statement").
+  See [How to configure the SEK-IDP / Fedmaster test chart](https://github.com/gematik/zeta-guard-helm/blob/main/docs/how-to_guides/How_to_configure_sekidp.md).
+- sekidp: `gsi-server` and `gsi-fedmaster` use a `startupProbe` instead of a
+  fixed 45 s `initialDelaySeconds`, configurable via `sekidp.<component>.probes`.
+  Each pod was ready ~50 s after its container started, the two in sequence;
+  now as soon as actuator answers.
+- Authserver init container `keycloak-build` is now `keycloak-copy`: it only
+  copies `/opt/keycloak` into the pod volume, the `kc.sh build` that `startup.sh`
+  runs anyway before `start --optimized` is no longer done twice (~30 s less per
+  start). Default `authserver.initContainer.resources` shrank accordingly.
+- The `/auth` ingress always sets `ssl-client-cert` to the TLS client
+  certificate (`$ssl_client_escaped_cert`), so a client can no longer send that
+  header itself. The bundled NIC also strips it in `more_clear_input_headers`.
+
+- ⚠️ `opa.simulation.bundle.resource` is now required with bundle mode and
+  simulation enabled. The `-sim` tag suffix appended to `opa.bundle.resource` is
+  gone:
+  gematik names simulation bundles differently per environment, so the derived
+  reference 404ed. See [OPA](https://github.com/gematik/zeta-guard-helm/blob/main/docs/reference/OPA.md#simulation-settings).
+- `notificationService.env.persistenceSealingEnabled` moved to
+  `notificationService.sealing.enabled`, next to the new
+  `sealing.dekCacheSize`. The chart fails the render with a pointer when the
+  old path is still set.
+- The `/authorize` response redirects to the
+  SekIDP directly instead of redirecting through the cookie-bound
+  `/broker/zeta-sekidp-oidc/login`.
+- SekIDP flow: The IdP's `first_broker_login_flow_alias` is removed. Keycloak's
+  `SekIDPIdentityProvider` provisions user and Federated Identity itself on
+  first login.
+- PEP proxy access log: with `pepproxyTracingEnabled: true`, each line now ends
+  with `trace_id=<id> span_id=<id>` (OpenTelemetry trace context). Untraced
+  requests log empty IDs. With tracing disabled the format is unchanged. The
+  telemetry gateway copies them into the OTLP log record's `TraceId`/`SpanId`.
+- tiger-proxy image pinned in the umbrella and chart defaults instead of `latest`;
+  per-stage overrides dropped.
+- The Terraform variable `keycloak_namespace` is only required when
+  `use_kubernetes = true`. Local mode reads it nowhere, yet it still made
+  `terraform plan` fail with `The argument "keycloak_namespace" is required`.
+  See
+  [How to configure the authserver](https://github.com/gematik/zeta-guard-helm/blob/main/docs/how-to_guides/How_to_configure_authserver.md).
+- `enable_sekidp = true` no longer requires `use_kubernetes = true`.
+  See [How to configure the SEK-IDP / Fedmaster test chart](https://github.com/gematik/zeta-guard-helm/blob/main/docs/how-to_guides/How_to_configure_sekidp.md).
+- gsi-server/gsi-fedmaster bumped to 8.5.1: `gsi-server` now validates authserver via a locally mounted entity
+  statement (`sekidp.gsiServer.entityStatementAboutRp`).
+  See [How to configure the SEK-IDP / Fedmaster test chart](https://github.com/gematik/zeta-guard-helm/blob/main/docs/how-to_guides/How_to_configure_sekidp.md).
+- Terraform no longer writes the `sekidp-rp01-pubkey` Secret (gsi-server 8.5.1
+  gets the entity statement mounted directly, see above). The Kubernetes
+  provider and the Terraform variable `config_path` are removed with it.
+  (`sekidp-removed.tf`) drops the Secret from the state on the next
+  `make config` without touching the cluster.
+- new opt-in `keycloak-db.enabled` to provision `keycloak-db` via the upstream
+  `cloudnative-pg/cluster` chart instead of the hand-rolled template. Disabled by
+  default. Switching it on an already-running, populated cluster triggers a short
+  (~3 min on a local test), controlled database restart — no data loss, but plan a
+  maintenance window for the switch on a production stage.
+- Span attributes from outdated versions of OpenTelemetry's sematic conventions
+  will be migrated to their new attribute names across **all** trace
+  pipelines – not just the TI-SIEM- and TI-SIM-pipelines.
+- Strip embedded metrics from policy engine (OPA) logs before export to TI-SIEM.
+- updates zeta-telemetry-gateway to v0.157.0
+- `testdriver` was split into `testdriver-smcb` and `testdriver-oidc` with dedicated, prefix ingress routes (`/td-smcb` and `/td-oidc`),
+  both variant now only support their respective authentication flows which allows for testing SMCB and OIDC auth with the need to redeploy.
+- BREAKING: during testdriver split the `/oidc` route was migrated to `/td-oidc/oidc` of the `testdriver-oidc` and does not longer exists on
+  the ingress of the `testdriver-smcb`
+- Resolves part of ANFTI2-902. Default values for VAU DB encryption are now fine
+  and can be used without further adjustments. **Action required** remove all
+  overrides of the following values if you have any:
+    - `authserver.dbEnc.columnEncryptionEnabled`
+    - `authserver.dbEnc.integrityChecksEnabled`
+    - `authserver.dbEnc.integrityRowChecksEnabled`
+    - `authserver.dbEnc.integrityTableChecksEnabled`
+    - `authserver.dbEnc.periodicRowChecksEnabled`
+    - `authserver.dbEnc.lockdownOnError`
+    - `authserver.dbEnc.shutdownOnError`
+
+  Only do this on a fresh database or one already converted with these features.
+  A database converted while they were `false` (plaintext rows, conversion
+  state `DONE`) is never re-converted: the authserver fails with
+  `Decryption failed` and crash-loops. Such stages must either keep the
+  `false` overrides or wipe the database before switching.
+
+#### fixed:
+
+- `local-test/values.local.yaml`: `sekidp.gsiServer.entityStatementAboutRp`
+  re-issued with the `urn:telematik:geburtsdatum` scope and the additional
+  redirect URI `de.gematik.zeta://oidc`; the previous statement made gsi-server
+  reject the PAR with `invalid_scope`.
+- sekidp Ingress: with `sekidp.routeViaTigerProxy: false` the `/sekidp` and
+  `/sekidp-fedmaster` prefixes reached gsi-server/gsi-fedmaster unchanged, which
+  only serve at `/` — every external request (entity statements, PAR, the
+  authserver's federation lookup) answered `404`. The direct route now strips
+  the prefix like the tiger-proxy route always did. Stages routing via
+  tiger-proxy are unaffected.
+- Terraform: keycloak provider constraint raised to `>= 5.9.0`; older
+  providers fail with `The attribute client_secret is required`. A stale
+  `.terraform.lock.hcl` keeps the old version pinned — delete it and re-run
+  `terraform init`.
+- **The authserver's liveness probe now targets `/auth-mgmt/health/ready/`.**
+  `/health/live` never touches the database, so it could not observe a wedged
+  datasource — the pod stayed `Running` and needed a manual restart
+  (ANFTI2-881). The liveness probe deliberately stays on the DB-independent
+  `/health/live`: making it database-aware would fail it on every authserver pod
+  at once during an outage and restart them all, which is why the pool
+  recovering
+  on its own is the fix rather than a kubelet restart.
+- Probe defaults retuned and `timeoutSeconds: 5` set on all three. Leaving it
+  unset meant Kubernetes' **1s** default, which flaps: Agroal's `invalidCount`
+  never resets, so after the first evicted connection Keycloak performs a real
+  database check on every readiness probe instead of answering from pool
+  metrics.
+  `startup.failureThreshold` raised to 60 (300s) — the previous 100s was tight
+  for a cold database plus Liquibase.
+- with `networkPolicy.enabled: true`, egress NetworkPolicies for OPA, PEP
+  proxy, authserver, opa-simulation and the kpi-metrics-helper CronJob never
+  matched telemetry-gateway's pods, silently blocking all telemetry egress to
+  it — the podSelector used the vendored chart's literal name
+  `opentelemetry-collector`, but telemetry-gateway's Chart.yaml `alias:`
+  renders its actual pod label as `telemetry-gateway`. Selectors now match on
+  the correct label via a shared `telemetryGateway.selectorLabels` helper.
+- the three sekidp entity-statement scripts sent the Keycloak admin credentials
+  with plain `-d`, so a password containing `&`, `=`, `+`, `%` or a space failed
+  to authenticate. They now use `--data-urlencode`, like every other script in
+  `terraform/authserver/scripts/`.
+- `data.external.manage_policies` referenced `scripts/managePolicies.sh` without
+  the `${path.module}/` prefix, so it only resolved while terraform ran from
+  inside `terraform/authserver`. Now module-relative, as every other script
+  reference in the module already was.
+- When using a HSM for ASL, it is not required to provide a TLS cert for PEP
+  anymore. Fixes ANFTI2-959
+- New Terraform variables `sso_session_idle_timeout` and
+  `sso_session_max_lifespan` (default `24h`, previously Keycloak's 30m/10h) keep
+  the authserver session alive for the policy's refresh-token TTL; refreshing an
+  idle client no longer returns `400 invalid_grant` "Session not active".
+  See [How to configure the authserver](https://github.com/gematik/zeta-guard-helm/blob/main/docs/how-to_guides/How_to_configure_authserver.md#session-lifetime).
+
+### Release 1.3.4
+
+#### changed:
+
+- bumped authserver version to `1.3.3` to include important security hotfix.
+
 ### Release 1.3.3
 
 #### changed:
 
-- pepproxy image `1.3.3`
+- pepproxy image `1.3.3` (hardened ASL subrequest target URL handling)
 
 ### Release 1.3.2
 
@@ -1087,11 +1762,18 @@ Initial release of the ZETA Notification Service.
   `…gar.host` from schema/examples — never read by any template; the schema now rejects
   unknown `sts` keys.
 
+### Release 1.2.5
+
+#### fixed:
+
+- bumped authserver version to 1.2.4 to include important security hotfix.
+
 ### Release 1.2.4
 
-#### changed:
+#### fixed:
 
-- pepproxy image `1.2.1`
+- bumped pep version to include important security hotfix. (with thanks to
+  Machine Spirits UG)
 
 ### Release 1.2.3
 

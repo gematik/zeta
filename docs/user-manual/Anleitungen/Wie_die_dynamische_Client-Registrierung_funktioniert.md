@@ -38,13 +38,22 @@ SMC-B-Maschinenclient eingerichtet.
      authentifiziert sich später am Token-Endpunkt mit einem selbst signierten
      JWT statt mit einem Client Secret.
    - `jwks`: der öffentliche **Client-Instanzschlüssel**. Das ZETA-SDK erzeugt
-     ihn im Hardware-Schlüsselspeicher der Plattform (TPM, Secure
-     Enclave/Secure Element bzw. als Software-Fallback) und exportiert nur den
-     öffentlichen Teil.
-   - `grant_types`: das SDK registriert `authorization_code`,
+     ihn auf Android im Android Keystore (StrongBox bzw. TEE) und auf iOS in
+     der Secure Enclave, sofern das Gerät die hardwarebasierte Attestierung
+     unterstützt; auf den übrigen Plattformen bzw. als Fallback erzeugt es
+     einen Software-Schlüssel. Exportiert wird nur der öffentliche Teil.
+   - `grant_types`: das SDK registriert für mobile Clients
+     `authorization_code`, `urn:ietf:params:oauth:grant-type:token-exchange`
+     und `refresh_token`, für SMC-B-Maschinenclients nur
      `urn:ietf:params:oauth:grant-type:token-exchange` und `refresh_token`.
    - `redirect_uris`: nur bei mobilen Clients (siehe Schritt 3).
    - `client_name`: frei wählbarer Anzeigename.
+   - Attestierungsnachweis (`attestation_type`): Das ZETA-SDK sendet je nach
+     Plattform `software` (mit einer Nonce vom `nonce_endpoint` und dem
+     Besitznachweis `signed_hash_puk_client_sig`), `android` (Zertifikatskette
+     der Android Key Attestation, optional ein Play-Integrity-Token), `apple`
+     (App-Attest-Attestierungsobjekt) oder `zeta_attestation_token` (erneute
+     Registrierung mit einem zuvor ausgestellten ZETA-Attestierungs-Token).
 
    Beispiel (Maschinenclient, gekürzt):
 
@@ -141,9 +150,13 @@ gelöschter Schlüsselspeicher), **registriert es sich schlicht neu** und erhäl
 eine neue `client_id`. Die alte Registrierung bleibt serverseitig liegen, bis
 sie über die Idle-TTL oder die Verdrängung beim Client-Limit abgeräumt wird.
 
-Schlägt die Registrierung fehl, versucht das SDK sie bis zu **3-mal** mit
-steigender Wartezeit (1 s, 2 s) erneut. Bei `403` (abgelehnt) und `409`
-(bereits registriert) bricht es sofort ab, ohne erneut zu versuchen.
+Lehnt der Guard die Registrierung ab, unternimmt das SDK insgesamt bis zu
+**drei Versuche**, also bis zu zwei Wiederholungen mit steigender Wartezeit
+(1 s, 2 s). Bei `202`, `403` (abgelehnt) und `409`
+(bereits registriert) bricht es sofort ab, ohne erneut zu versuchen; bei einer
+hardwarebasiert attestierten Registrierung zusätzlich bei `400` und `401`. Für
+jeden Versuch einer Software-Registrierung holt es eine neue Nonce, da der Guard
+eine Nonce auch bei einer abgelehnten Anfrage verbraucht.
 
 ## Zusammenspiel mit der Token-Ausstellung
 

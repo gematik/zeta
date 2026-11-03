@@ -86,7 +86,8 @@ in der [Anleitung, einen ZETA-Guard im Kubernetes zu konfigurieren](Anleitungen/
 ### Tooling
 
 * Kubernetes – kubectl
-* Terraform
+* Terraform, **Version 1.11 oder neuer** (siehe
+  [Quickstart – Voraussetzungen](Anleitungen/ZETA_Guard_Quickstart.md#voraussetzungen))
 * Helm 4
 
 ### Konfiguration, Keys

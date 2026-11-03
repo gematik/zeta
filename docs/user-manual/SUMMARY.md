@@ -31,6 +31,7 @@
   * [Wie Sie ein Observability-Backend anschließen](Anleitungen/Wie_Sie_ein_Observability-Backend_an_ZETA-Guard_anschließen.md)
   * [Wie Sie einen Ende-zu-Ende-Integrationstest ausführen](Anleitungen/Wie_Sie_einen_Ende_zu_Ende_Integrationstest_ausführen.md)
   * [Wie Sie eine VAU-Umgebung für Lasttests aufsetzen](Anleitungen/Wie_Sie_eine_VAU_Umgebung_für_Lasttests_aufsetzen.md)
+  * [Wie Sie die Schlüssel der VAU-Datenbank rotieren](Anleitungen/Wie_Sie_die_Schlüssel_der_VAU-Datenbank_rotieren.md)
   * [Wie Sie einen Forward Proxy konfigurieren](Anleitungen/Wie_Sie_einen_Forward_Proxy_konfigurieren.md)
   * [Wie der mobile Client-Flow funktioniert](Anleitungen/Wie_der_mobile_Client-Flow_funktioniert.md)
   * [Wie Sie den mobilen Client-Flow mit dem ZETA-SDK umsetzen](Anleitungen/Wie_Sie_den_mobilen_Client-Flow_mit_dem_ZETA_SDK_umsetzen.md)
@@ -58,3 +59,5 @@
   * [SDK-Übersicht](Referenzen/SDK-Uebersicht.md)
   * [Telemetrie-Attribute von ZETA-Guard](Referenzen/Telemetrie-Attribute.md)
   * [Security-Events von ZETA-Guard](Referenzen/Security-Events.md)
+  * [SBOM der ZETA-Guard-Lieferung](Referenzen/SBOM.md)
+  * [Performanceergebnisse](Performance.md)

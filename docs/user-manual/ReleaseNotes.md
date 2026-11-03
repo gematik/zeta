@@ -1,14 +1,360 @@
 <img align="right" width="250" height="47" src="assets/images/Gematik_Logo_Flag.png"/> <br/>
 
-# Release Notes ZETA SDK und ZETA Guard Helm Charts
+# Release Notes des Produkthandbuchs
+
+## Release 2.0.2
+
+### added
+
+- [Keychain des Notification Service](Referenzen/Konfiguration_des_Notification_Service.md#keychain):
+  Sealing bezieht DEK und Pseudonymisierungsschlüssel aus einer HSM-gekapselten
+  Keychain. Neue Values `notificationService.sealing.keychainFileName`,
+  `.rotationInterval`, `.initContainerProvideKeys`, `.initContainerStoreKeys`,
+  `.keychainGenerator.*` sowie `notificationService.extraVolumes` und
+  `.extraVolumeMounts`; Schlüsselrotation (A_29963, A_29960) und
+  Readiness-Prüfung `keychain` beschrieben.
+- [Entity Statement des Guards](Anleitungen/Wie_der_mobile_Client-Flow_funktioniert.md#entity-statement-des-guards):
+  `metadata.federation_entity` mit `name` und `organization_name`
+  (gemSpec_IDP_Sek, Tab. 28) aus `authserver.config.entityStatement.clientName`
+  und `.organizationName`. Die `redirect_uris` lassen sich über
+  `authserver.config.entityStatement.redirectUris` fest vorgeben (A_25656). Die
+  feste Liste ersetzt die Redirect-URIs der SekIDP-Clients des Realms; ohne
+  Angabe werden sie weiterhin aus diesen abgeleitet.
+
+### changed
+
+- **BREAKING** [Notification Service](Referenzen/Konfiguration_des_Notification_Service.md#datenschutz-sealing-hsm-und-verschlüsselter-push):
+  `notificationService.hsm.kek.dekKeyId`, `.hsm.kek.pseudonymKeyId` und
+  `.sealing.dekCacheSize` entfallen. Bei aktiviertem Sealing lassen sich
+  Datensätze früherer Builds nicht mehr öffnen; Start mit leerer Datenbank.
+  Umgebungsvariablen entsprechend aktualisiert.
+- **BREAKING** [Besonderheiten beim Update auf 2.0.x](Anleitungen/Wie_Sie_ZETA_Guard_aktualisieren.md#besonderheiten-beim-update-auf-20x):
+  Hinweise zu den im Authserver-Image deaktivierten Keycloak-Features (u. a.
+  Account-Konsole, Device Flow, CIBA; ihre Endpunkte antworten mit `404`) und
+  zum Umstieg auf die Keychain des Notification Service ergänzt.
+- [Geplanter Neustart von OPA](Anleitungen/Wie_Sie_OPA_in_ZETA_Guard_konfigurieren.md#geplanter-neustart-rollout-restart):
+  Speicherlimit des CronJobs `256Mi` (vorher `64Mi`), `concurrencyPolicy:
+  Forbid` und Laufzeitbegrenzung auf 5 Minuten.
+
+## Release 2.0.1
+
+### added
+
+- Komponenten-Release-Notes um Keycloak Authserver, PEP Proxy, Notification
+  Service und Provisioning Processor 2.0.0 sowie Helm-Chart 2.0.0 und 2.0.1
+  ergänzt, mit den Breaking Changes beim Update von 1.3.x
+  ([Release Notes ZETA Guard Komponenten](ReleaseNotes/ZetaGuard/ReleaseNotes.md)).
+- [Besonderheiten beim Update auf 2.0.x](Anleitungen/Wie_Sie_ZETA_Guard_aktualisieren.md#besonderheiten-beim-update-auf-20x):
+  Breaking Changes für den Betrieb an einer Stelle, u. a. Terraform-Provider
+  `keycloak/keycloak` ab 5.9.0.
+- [Federation Master für den mobilen Client-Flow](Referenzen/Referenz_des_Helm_Charts.md#federation-master-für-den-mobilen-client-flow):
+  `provisioningProcessor.federationMaster.*` (A_29737).
+- [Datenschutz: Sealing, HSM und verschlüsselter Push](Referenzen/Konfiguration_des_Notification_Service.md#datenschutz-sealing-hsm-und-verschlüsselter-push):
+  `notificationService.sealing.*`, `.hsm.*` und `.env.encryptionEnabled`.
+- `notificationService.rs.mtls.enabled` in der
+  [Konfiguration des Notification Service](Referenzen/Konfiguration_des_Notification_Service.md#übersicht-split-deployment-und-datenbank)
+  (A_29980).
+- [Speicherung am Nutzer](Anleitungen/Wie_der_mobile_Client-Flow_funktioniert.md#speicherung-am-nutzer-a_26973-02)
+  (A_26973-02): KVNR, Anzeigename, Geburtsdatum, Profession-OID und
+  Organisation aus dem ID-Token des SekIDP werden bei jeder Anmeldung als
+  Attribute am Nutzer gespeichert und abgeglichen, bei aktiviertem Spree
+  Integrity Provider verschlüsselt. Ist dieser aktiviert, aber noch nicht
+  betriebsbereit, wird die Anmeldung mit HTTP 503 abgelehnt.
+- [Mobiler Client-Flow](Anleitungen/Wie_der_mobile_Client-Flow_funktioniert.md):
+  `GET /realms/{realm}/zeta/userinfo/email?id=<KVNR>` ist kein Stub mehr. Der
+  Endpunkt gibt einem Resource Server die verifizierte E-Mail-Adresse des
+  Versicherten heraus. Der Resource Server authentisiert sich per mTLS gegen
+  einen eigenen Resource-Server-Truststore, ohne diesen gegen Keycloaks
+  HTTPS-Truststore. Neue Umgebungsvariablen in der
+  [Konfiguration des PDP Services](Referenzen/Konfiguration_des_PDP_Services.md),
+  neuer Helm-Abschnitt
+  [mTLS für Resource Server](Referenzen/Referenz_des_Helm_Charts.md#mtls-für-resource-server-userinfoemail)
+  (`authserver.resourceServerMtls`).
+- [Wie der mobile Client-Flow funktioniert](Anleitungen/Wie_der_mobile_Client-Flow_funktioniert.md#nutzerdaten-aus-dem-id-token-a_26973-03):
+  neuer Abschnitt, welche Claims des SekIDP-ID-Tokens der Guard übernimmt und
+  wohin sie gelangen (A_26973-03), dazu die Betriebsvoraussetzungen für den
+  Identity Provider (`sekidp_client_id`, Scopes beim Federation Master,
+  vertrauenswürdige Zertifikate).
+- Terraform-Variable `sekidp_client_id` in der
+  [Terraform-Konfiguration (PDP)](Referenzen/Referenz_des_Helm_Charts.md#terraform-konfiguration-pdp)
+  dokumentiert: der öffentliche Issuer des Realms, den der IDP
+  `zeta-sekidp-oidc` als `client_id` sendet. Setzen, wenn `keycloak_url` auf
+  den Admin-Hostnamen zeigt — der SekIDP kann das Entity Statement sonst nicht
+  abrufen. Ebenfalls neu in der Tabelle: `master_realm_frontend_url`,
+  `sso_session_idle_timeout` und `sso_session_max_lifespan`. Die
+  [Admin-API-Absicherung](Referenzen/Referenz_des_Helm_Charts.md#wer-den-authserver-konfigurieren-kann)
+  und [Wie Sie ZETA Guard in Kubernetes konfigurieren](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md#admin-api-absichern)
+  nennen `sekidp_client_id` jetzt neben `audience` als Variable, die bei
+  einem Admin-Hostnamen explizit zu setzen ist.
+- [Mobiler Client-Flow (OIDC)](Referenzen/Referenz_des_Helm_Charts.md#mobiler-client-flow-oidc)
+  in der Helm-Chart-Referenz: `authserver.config.entityStatement.*` und
+  `authserver.additionalTrustedCAs` dokumentiert.
+- Neuer Abschnitt
+  [Datenbank nicht erreichbar / Authserver antwortet nicht](Anleitungen/Troubleshooting_und_Debugging.md#datenbank-nicht-erreichbar--authserver-antwortet-nicht):
+  warum ein Neuaufbau des Datenbank-Primary-Pods für den Authserver anders
+  aussieht als ein regulärer Datenbank-Neustart (die ClusterIP bleibt gültig,
+  die Pakete laufen ins Leere, es kommt kein TCP-Reset), was der Authserver seit
+  Release 1.3.2 selbsttätig dagegen tut, wie Sie das über die
+  `agroal_*`-Verbindungspool-Metriken diagnostizieren und wie Sie eine nach
+  einer abgebrochenen Migration gehaltene Liquibase-Sperre lösen.
+- Neuer Referenzabschnitt
+  [Clusterinterne Kommunikation mit dem Authserver](Referenzen/Referenz_des_Helm_Charts.md#clusterinterne-kommunikation-mit-dem-authserver)
+  in der Helm-Chart-Referenz: warum OIDC-Discovery und JWKS-Abruf des PEP bisher
+  über den öffentlichen `pepIssuer` liefen und den Cluster verließen, und wie
+  `pepproxy.nginxConf.pepInternalUrl` sie im Cluster hält, ohne die
+  Token-Validierung zu verändern. Mit
+  [Alternative: hostAliases](Referenzen/Referenz_des_Helm_Charts.md#alternative-hostaliases)
+  für Umgebungen, in denen der interne Endpunkt nicht per Service-Namen
+  adressierbar ist.
+- Neue Values in der Helm-Chart-Referenz dokumentiert:
+  `pepproxy.nginxConf.pepInternalUrl` und `pepproxy.hostAliases`.
+- Neue Referenzseite [SBOM der ZETA-Guard-Lieferung](Referenzen/SBOM.md):
+  jedes Chart-Tarball enthält eine CycloneDX-SBOM der ausgebrachten
+  Container-Images (`sbom.cdx.json`). Die Seite beschreibt Zugriff, Aufbau,
+  `purl`-Schema und die `zeta:`-Properties.
+- [Referenz_des_Helm_Charts.md](Referenzen/Referenz_des_Helm_Charts.md)
+  Neue Terraform Variablen zur Konfiguration von Mailservern (u.a. für TLS
+  und Authentisierung). Betrifft ANFTI2-1040.
+- SDK-Dokumentation auf den Stand des ZETA-SDK 2.0.0 gebracht; die
+  [Release Notes des ZETA-SDK](ReleaseNotes/ZetaSDK/ReleaseNotes.md) enthalten
+  jetzt die Version 2.0.0.
+- [Wie Sie das ZETA-SDK integrieren](Anleitungen/Wie_Sie_das_ZETA_SDK_integrieren.md):
+  neue Abschnitte
+  [Änderungen in Version 2.0.0](Anleitungen/Wie_Sie_das_ZETA_SDK_integrieren.md#änderungen-in-version-200),
+  [Attestierung](Anleitungen/Wie_Sie_das_ZETA_SDK_integrieren.md#attestierung)
+  (hardwarebasierte Attestierung mit Android Key Attestation, Play Integrity
+  und Apple App Attest; `AttestationConfig`),
+  [Android und iOS](Anleitungen/Wie_Sie_das_ZETA_SDK_integrieren.md#android-und-ios)
+  (`ZetaInit.initAndroid`, Manifest-Einträge, Network Security Configuration
+  für OCSP/CRL, App-Attest-Capability) und
+  [Automatisches Verhalten des SDK](Anleitungen/Wie_Sie_das_ZETA_SDK_integrieren.md#automatisches-verhalten-des-sdk)
+  (Umgang mit `401`/`403`/`404` des PEP, Wiederholungen, ASL-Neuaufbau).
+  Ergänzt sind außerdem `ZetaSdk.getVersion()`, die optionale `ZetaClock`,
+  `changeEmail()` und `notifications()` in der API-Übersicht, die
+  Java-Helfer `ZetaSdkClientExtension`, die Funktionsübersicht und
+  Fehlerbehandlung der C-API (`ZetaSdk_getLastError`) sowie die NuGet-Pakete
+  `Zeta.Sdk.Linux`, `Zeta.Sdk.Windows` und `Zeta.Sdk.MacOS` für C#.
+- [Wie Sie das SDK-Notifications-Modul verwenden](Anleitungen/Wie_Sie_das_SDK_Notifications-Modul_verwenden.md):
+  Entschlüsselung von Push-Nachrichten (`decryptPushNotification`) mit
+  dauerhaft gespeichertem, monatlich rotierendem Schlüsselmaterial,
+  Benachrichtigungs-Historie (`getNotifications`, `getNotification`),
+  APNs-Integration der iOS-Demo-App und Übersicht der Exceptions.
+- [Wie Sie den mobilen Client-Flow mit dem ZETA-SDK umsetzen](Anleitungen/Wie_Sie_den_mobilen_Client-Flow_mit_dem_ZETA_SDK_umsetzen.md):
+  Implementierung des `AuthorizationLauncher`, Launcher der Demo-App je
+  Plattform und Migrationshinweise von Version 1.3.x.
+- [ReadMe für Hersteller mobiler Clients](ReadMeMobileClientHersteller.md):
+  neuer Abschnitt „Integration in die App“ mit den Voraussetzungen für Android
+  und iOS.
+- [Wie Sie den ZETA-Demo-Client ausführen](Anleitungen/Wie_Sie_den_ZETA_Demo_client_ausführen.md):
+  Abschnitt zu den mobilen Demo-Apps (Konfiguration über `zeta.env`,
+  Play Integrity, FCM, APNs).
+- [Wie Sie den Testdriver nutzen](Anleitungen/Wie_Sie_den_Testdriver_nutzen.md)
+  und [Wie Sie den Testdriver bauen](Anleitungen/Wie_Sie_den_Testdriver_bauen.md):
+  Endpunkte für Konfiguration, Notifications und den OIDC-Flow, Load-Driver,
+  nativer Testdriver und Android-Testdriver.
+- [Wie Sie Probleme im SDK analysieren](Anleitungen/Wie_Sie_Probleme_im_SDK_analysieren.md):
+  Log-Level und Request-Logs je Sprache, Fehlermeldungen der nativen API,
+  Logs der Sperrprüfung.
+
+### changed
+
+- **BREAKING** [Client-Management-Endpunkte](Anleitungen/Wie_der_mobile_Client-Flow_funktioniert.md#client-management-endpunkte):
+  `/zeta/clients` und `/zeta/identity/email` laufen über den PEP (Scope
+  `zeta:client-management`, DPoP), nicht mehr per `Client-Assertion`.
+- **BREAKING** Terraform-Variable `sekidp_fedmaster_url` entfernt; die URL des
+  Federation Masters kommt aus dem Provisioning Processor.
+- **BREAKING** `notificationService.env.persistenceSealingEnabled` heißt
+  `notificationService.sealing.enabled`.
+- [Notification Service](Referenzen/Konfiguration_des_Notification_Service.md):
+  Sealing und verschlüsselter Push sind keine Stubs mehr; RS-API prüft das
+  Client-Zertifikat selbst.
+- `pepproxy.nginxConf.noTravel`: Standardwert in der
+  [Helm-Chart-Referenz](Referenzen/Referenz_des_Helm_Charts.md) auf `true` korrigiert.
+- **BREAKING (ZETA-SDK 2.0.0)**
+  [Mobiler Client-Flow](Anleitungen/Wie_Sie_den_mobilen_Client-Flow_mit_dem_ZETA_SDK_umsetzen.md):
+  `OidcConfig` erwartet statt `requestUri` die Felder `redirectUri` und
+  `oidcRedirectUri` sowie statt des optionalen `authenticationCallback` den
+  verpflichtenden `authorizationLauncher`. `BrowserLauncher` und
+  `SystemBrowserAuthenticator` der Demo-App sind entfallen.
+- [Wie Sie das ZETA-SDK integrieren](Anleitungen/Wie_Sie_das_ZETA_SDK_integrieren.md):
+  `BuildConfig` ohne Authentifizierungs-Callback, dafür mit
+  `notificationConfig`; Prüfung von `productId`/`productVersion` nach
+  A_25338-01; Standard-Speicher je Plattform (unter iOS nur im
+  Arbeitsspeicher, unter Android durch den Android Keystore geschützt);
+  Default des Request-Log-Levels ist `NONE`, der Revocation-Cache ist
+  konfigurierbar (mindestens 3600 s); `close()` löscht auch das
+  `zeta_route`-Cookie. Korrigiert sind das Kotlin-Beispiel (benannte
+  Parameter der `AuthConfig`), das C++-Beispiel (Feldreihenfolge von
+  `ZetaSdk_AuthConfig`, neue `ZetaSdk_NetworkConfig`) und das C#-Beispiel
+  (ohne die entfallene `ZetaSmcbConfig`, mit `Network` und
+  `RevocationCacheDurationSeconds`). Hinweise auf die mit 1.2.2 entfernte
+  SMC-B-Konnektor-Anbindung des SDK entfernt.
+- [ReadMe für Primärsystem-Hersteller](ReadMePrimaersystemHersteller.md):
+  Zugänge um den NuGet-Feed ergänzt, Tooling aktualisiert (Laufzeit ab
+  Java 21, C# über NuGet-Pakete), Known Issues aktualisiert: Die Einschränkungen
+  beim Abruf von OCSP-Responses/CRLs und bei gestapelten OCSP-Responses unter
+  Android < API 37 sind seit 1.3.2 behoben; neu sind Hinweise auf die fest
+  vorgegebene `platformProductId` der C-API, auf synchrone PUT-/PATCH-Aufrufe
+  der C-API ohne Body, auf die Cookie-Verwaltung für Fachdienst-Aufrufe und auf
+  `ZetaSdk_getLastError()`.
+- [ReadMe für Hersteller mobiler Clients](ReadMeMobileClientHersteller.md):
+  Toolchain auf AGP 9.3.2, Kotlin 2.4.10, Gradle 9.7.1 und SKIE 0.10.14
+  aktualisiert; eigene Client-Komponenten um Browser-Anbindung, OTP-Oberfläche
+  und Push-Empfang ergänzt; neue Known Issues (Speicher, CAs und Proxy unter
+  iOS, Entschlüsselung im Hintergrund unter iOS, app-weit geteilte
+  Hardware-Schlüssel, Browser-Anmeldung für das Token des Notification Service
+  im OIDC-Flow, einmalige Neuregistrierung unter Android nach dem Update auf
+  2.0.0).
+- [SDK-Übersicht](Referenzen/SDK-Uebersicht.md): Verzeichnisse und
+  Plattform- und Feature-Matrix um hardwarebasierte Attestierung,
+  Push-Entschlüsselung und Historie sowie die neuen Test-Clients ergänzt.
+- [Wie Sie den ZETA-Demo-Client ausführen](Anleitungen/Wie_Sie_den_ZETA_Demo_client_ausführen.md)
+  und [Wie Sie den Testdriver nutzen](Anleitungen/Wie_Sie_den_Testdriver_nutzen.md):
+  Konfigurationswerte aktualisiert (`STORAGE_AES_KEY`, `REQUIRED_ROLE_OID`,
+  `ASL_PROD`, `AUTH_MODE`, `OIDC_*`); die entfallenen `SMCB_*`-Variablen sind
+  entfernt.
+- [Wie die dynamische Client-Registrierung funktioniert](Anleitungen/Wie_die_dynamische_Client-Registrierung_funktioniert.md)
+  und [Wie der Client-Lebenszyklus verwaltet wird](Anleitungen/Wie_der_Client-Lebenszyklus_verwaltet_wird.md):
+  SDK-Verhalten präzisiert (Grant-Typen je Client-Typ, Attestierungsnachweis
+  bei der Registrierung, Wiederholungsregeln, Wirkung von `logout()`,
+  `clearRegistration()` und `forget()`).
+- [Wie der Notification Service funktioniert](Anleitungen/Wie_der_Notification_Service_funktioniert.md):
+  Einschränkungen zu SDK-Entschlüsselung, Historie und APNs-Demo aktualisiert.
+- [Sicherheitsanforderungen an den Client-Hersteller](SicherheitsanforderungenClientHersteller.md):
+  Ablage des Client-Instanzschlüssels im Hardware-Schlüsselspeicher unter
+  Android und iOS berücksichtigt.
+- **BREAKING** [Mobiler Client-Flow](Anleitungen/Wie_der_mobile_Client-Flow_funktioniert.md)
+  (A_26973-03): `commonName` bzw. `common_name` enthält bei Versicherten den
+  Anzeigenamen aus `urn:telematik:claims:display_name`; ein ID-Token ohne diesen
+  Claim wird abgelehnt. Der IDP fordert zusätzlich den Scope
+  `urn:telematik:geburtsdatum` an — beim Federation Master muss der Guard mit
+  diesem Scope registriert sein.
+- [Terraform-Konfiguration (PDP)](Referenzen/Referenz_des_Helm_Charts.md#terraform-konfiguration-pdp):
+  `config_path` und `sekidp_manage_incluster_fedmaster` sowie die Ausgaben
+  `authserver_entity_statement_pubkey_pem`/`authserver_entity_statement_kid`
+  entfernt, die es seit dem Wechsel auf gsi-server 8.5.1 nicht mehr gibt.
+  Quickstart und Update-Anleitung erwähnen die nicht mehr erzeugte
+  `sekidp-secret.tf` nicht mehr; die PDP-Konfiguration benötigt in keinem
+  Modus den Provider `hashicorp/kubernetes`.
+- [Inhalt des `ZETA-User-Info`-Headers](Referenzen/Konfiguration_des_PEP_Http_Proxy.md#inhalt-des-zeta-user-info-headers):
+  **BREAKING** `birthdate` stammt jetzt aus dem einwilligungsabhängigen
+  `birthdate`-Claim des sektoralen IDP (A_26973-03) und entfällt ohne Freigabe
+  des Nutzers. Die Interimslösung mit festem Datum `1900-01-01` und die Direktive
+  `pep_user_info_birthdate` sind entfernt — eine Konfiguration, die sie noch
+  setzt, verhindert den Start des PEP. `commonName` enthält bei Versicherten den
+  vollständigen Anzeigenamen statt der KVNR.
+- [Wie Sie OPA in ZETA Guard konfigurieren](Anleitungen/Wie_Sie_OPA_in_ZETA_Guard_konfigurieren.md#aktivieren):
+  `opa.simulation.bundle.resource` ist im Bundle-Modus mit Simulation jetzt
+  Pflicht. Das Chart hängt kein `-sim` mehr an `opa.bundle.resource` an, da die
+  gematik Simulations-Bundles je Umgebung unterschiedlich benennt.
+- [Wie Sie ZETA Guard in Kubernetes konfigurieren](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md#7-policy-enforcement-point-nginx-konfigurieren):
+  Abschnitt 7 um die clusterinterne Authserver-Adresse ergänzt und die
+  Beschreibung von `pepproxy.nginxConf.pepIssuer` geschärft — der Wert muss der
+  öffentliche Issuer bleiben, da er der von jedem Access-Token erwartete `iss`
+  ist.
+- [Wie Sie Egress NetworkPolicies konfigurieren](Anleitungen/Wie_Sie_Egress_NetworkPolicies_konfigurieren.md):
+  Hinweis ergänzt, dass die IP des Ingress in
+  `networkPolicy.egress.providerInternal.resourceServers.ipBlocks` für den
+  JWK-Abruf des PEP nicht benötigt wird, wenn `pepproxy.nginxConf.pepInternalUrl`
+  gesetzt ist.
+- Admin-API-Absicherung erweitert: Bei gesetztem `authserver.adminHostname` wird
+  neben `/auth/admin` nun auch `/auth/realms/master` auf dem Haupthostnamen mit
+  `403` gesperrt — dort wird das Admin-Access-Token ausgestellt. Die
+  Authserver-Konfiguration heftet zugleich die Frontend-URL des `master`-Realms
+  an den Admin-Hostnamen, damit der Browser-Login der Admin Console nicht auf den
+  gesperrten Pfad läuft;
+  die neue Terraform-Variable `master_realm_frontend_url` überschreibt den
+  abgeleiteten Wert. Der `zeta-guard`-Realm bleibt unverändert. Betrifft
+  [Helm-Chart-Referenz](Referenzen/Referenz_des_Helm_Charts.md#admin-api-absicherung)
+  und [Wie Sie ZETA Guard in Kubernetes konfigurieren](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md).
+- Neue Referenzabschnitte zur Admin-API:
+  [Womit die Admin-API abgesichert ist](Referenzen/Referenz_des_Helm_Charts.md#womit-die-admin-api-abgesichert-ist)
+  trennt, was das Chart leistet und was Keycloak beiträgt;
+  [Was der Betreiber zusätzlich leisten muss](Referenzen/Referenz_des_Helm_Charts.md#was-der-betreiber-zusätzlich-leisten-muss)
+  listet die sechs verbleibenden Pflichten, darunter Zugriffsbeschränkung auf den
+  Admin-Hostnamen und Brute-Force-Erkennung im `master`-Realm.
+  [Unterschiede vor und nach Chart 1.3.3](Referenzen/Referenz_des_Helm_Charts.md#unterschiede-vor-und-nach-chart-133)
+  stellt Login-Weg, Angriffsfläche und Konfigurationsberechtigung gegenüber.
+- [Helm-Chart-Referenz – Admin-API-Absicherung](Referenzen/Referenz_des_Helm_Charts.md#admin-api-absicherung):
+  Versionsgrenze ergänzt. Bis einschließlich Chart 1.2.4 fehlte
+  `--hostname-admin` der Kontextpfad `/auth`, wodurch die Admin-Konsole über
+  den Admin-Hostnamen nicht erreichbar war; ab 1.3.0 behoben, inklusive
+  Workaround für ältere Stände.
+- [Wie Sie einen eigenen Ingress-Controller verwenden](Anleitungen/Wie_Sie_einen_eigenen_Ingress_Controller_verwenden.md):
+  Die Pfadtabelle nennt jetzt auch den zweiten Ingress für
+  `authserver.adminHostname` (`/auth` ohne PEP direkt an den Authserver), die
+  Checkliste den zugehörigen Schritt.
+- Die Terraform-Variable `keycloak_namespace` wird nur noch im
+  Kubernetes-Modus benötigt. Im lokalen Modus (`use_kubernetes = false`)
+  verlangte Terraform sie bisher, obwohl sie dort nirgends ausgewertet wird.
+  Siehe
+  [Quickstart – Betriebsmodi](Anleitungen/ZETA_Guard_Quickstart.md#betriebsmodi).
+- [Referenz des Helm-Charts](Referenzen/Referenz_des_Helm_Charts.md#probes): die
+  dokumentierten Probe-Werte sind korrigiert; `timeoutSeconds` ist jetzt
+  dokumentiert, inklusive der Begründung, warum der Kubernetes-Standard von 1 s
+  hier zu knapp ist und warum die Liveness-Probe bewusst datenbankunabhängig
+  bleibt.
+- [Referenz des Helm-Charts](Referenzen/Referenz_des_Helm_Charts.md#connection-pooling-keycloak):
+  `authserver.dbPool.maxLifetime` und `authserver.db.urlProperties` ergänzt,
+  dazu ein neuer Unterabschnitt zum Verhalten bei Datenbankausfall.
+- [Wie Sie ZETA Guard in Kubernetes konfigurieren](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md):
+  Verhalten bei Primary-Wechsel ergänzt; bei der `authserverDb`-Tabelle steht
+  jetzt, dass `KC_DB_URL_PROPERTIES` bei gesetztem `KC_DB_URL` wirkungslos ist —
+  eine echte Falle im Modus `external`.
+- [Wie Sie ZETA Guard aktualisieren](Anleitungen/Wie_Sie_ZETA_Guard_aktualisieren.md#fehlerbilder):
+  zwei Fehlerbilder ergänzt (gehaltene Liquibase-Sperre, `CrashLoopBackOff` nach
+  einem Cluster-Patch). Die Startreihenfolge von Datenbank und Authserver ist
+  nicht mehr relevant.
+- [Deployment-Szenarien](Referenzen/Deploymentszenarien.md):
+  ergänzt, was `cloudnativePg.instances: 1` für die Verfügbarkeit bedeutet.
+- Für den VAU Betrieb mit externer DB wurde die Konfiguration vereinfacht. Fixt
+  Teile von ANFTI2-902. Siehe
+  [Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md)
+  **Änderung notwendig**: Bitte alle eventuellen eigenen Werte auf folgenden
+  Helm Values entfernen, sodass die Defaults wirksam werden:
+  - `authserver.dbEnc.columnEncryptionEnabled`
+  - `authserver.dbEnc.integrityChecksEnabled`
+  - `authserver.dbEnc.integrityRowChecksEnabled`
+  - `authserver.dbEnc.integrityTableChecksEnabled`
+  - `authserver.dbEnc.periodicRowChecksEnabled`
+  - `authserver.dbEnc.lockdownOnError`
+  - `authserver.dbEnc.shutdownOnError`
+- Einheitliche Security Contexts: Ohne eigene Values laufen jetzt alle Container
+  des Charts PSS-restricted, auch PEP (nginx, Metrics-Sidecar), keychain-generator
+  und der Job zur Zertifikatsübernahme. Grundlage sind die neuen chartweiten
+  Defaults `defaultContainerSecurityContext` (inkl. `runAsUser: 1000`) und
+  `defaultPodSecurityContext` (Seccomp `RuntimeDefault`); die Security-Context-Values
+  der Komponenten enthalten nur noch Abweichungen davon, siehe
+  [Referenz](Referenzen/Referenz_des_Helm_Charts.md#chartweiter-default-defaultcontainersecuritycontext).
+  **Änderung notwendig auf OpenShift:**
+  `defaultContainerSecurityContext.runAsUser: null` setzen, mit
+  `kpiMetricsPersistence.enabled` zusätzlich die festen IDs des KPI-Prometheus, siehe
+  [OpenShift-Kompatibilität](Anleitungen/ZETA_OpenShift_Kompatibilität.md).
+- Adresse des Helm-Charts in Helm-Kommandos aktualisiert.
+- Referenzen zur – implizit aktuellsten – `values-demo.yaml` durch Referenzen zur `values-demo.yaml` aus dem verwendeten Chart ersetzt.
+- `make`-Aufrufe durch die zugrunde liegenden `helm`-, `kubectl`- und
+  `terraform`-Befehle ersetzt, das Makefile des Helm-Chart-Repositorys wird
+  nicht mehr benötigt:
+  [Wie Sie ZETA Guard aktualisieren](Anleitungen/Wie_Sie_ZETA_Guard_aktualisieren.md#realm-konfiguration-mit-terraform-anwenden),
+  [Wie Sie den Cluster lokal mit KIND aufsetzen](Anleitungen/Wie_Sie_den_Cluster_lokal_mit_KIND_aufsetzen.md),
+  [Wie Sie ZETA Guard in Kubernetes konfigurieren](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md).
+- [Fehlerbehandlung gegenüber Clients](Anleitungen/Troubleshooting_und_Debugging.md#fehlerbehandlung-gegenüber-clients)
+  und [`pep_require_popp`](Referenzen/Konfiguration_des_PEP_Http_Proxy.md):
+  Header `zeta-error-origin: pep` dokumentiert (A_29850). Ausnahme: Bei
+  PoPP-Fehlern (`PoPPMissing`, `PoPP`, `PoPPInvalidActor`) setzt der HTTP Proxy
+  den Header nicht mehr, und der ZETA-Client reicht die Antwort an den Aufrufer
+  durch.
 
 ## Release 1.3.3
 
 ### changed
 
 - Hotfix-Release: Komponenten-Release-Notes um PEP Proxy 1.3.3 und ZETA Guard
-  Helm Chart 1.3.3 ergänzt
+  Helm-Chart 1.3.3 ergänzt
   ([Release Notes ZETA Guard Komponenten](ReleaseNotes/ZetaGuard/ReleaseNotes.md)).
+  Der PEP 1.3.3 härtet die Validierung der Ziel-URL bei ASL-Subrequests; das
+  Chart 1.3.3 ist bis auf das PEP-Image identisch mit 1.3.2. Alle übrigen
+  Inhalte des Handbuchs sind unverändert gegenüber 1.3.2.
 
 ## Release 1.3.2
 
@@ -95,7 +441,7 @@
   Direktive abgelehnt.
 - `opa.logDecisions` ist standardmäßig `false`: Decision-Logs gehen nur noch an
   das Telemetry-Gateway, nicht mehr in das Konsolen-Log der OPA-Pods. Angepasst
-  in [Referenz des Helm Charts](Referenzen/Referenz_des_Helm_Charts.md#opa-policy-engine)
+  in [Referenz des Helm-Charts](Referenzen/Referenz_des_Helm_Charts.md#opa-policy-engine)
   und [Troubleshooting](Anleitungen/Troubleshooting_und_Debugging.md).
 - Die `*/dienst_hersteller`-Pipelines des Telemetry-Gateways liefern keine rein
   sicherheitsbezogenen Signale mehr (Attack-Detection-Events, `authn_*`-Events,
@@ -104,7 +450,7 @@
   [Wie der Telemetrie-Daten Service funktioniert](Erklärungen/Wie_der_Telemetrie-Daten_Service_funktioniert.md).
 - `authserver.provider.smcB.ocspFailClosed` wirkt erst ab Chart 1.3.2 — in
   1.3.0/1.3.1 wurde der Wert nicht an den Authserver durchgereicht. Hinweis in
-  der [Referenz des Helm Charts](Referenzen/Referenz_des_Helm_Charts.md).
+  der [Referenz des Helm-Charts](Referenzen/Referenz_des_Helm_Charts.md).
 - `global.noProxy`: ein führender Punkt am **ersten** Eintrag wurde bis Chart
   1.3.1 nicht in das `http.nonProxyHosts`-Format konvertiert. Hinweis mit
   Workaround für ältere Charts in
@@ -119,7 +465,7 @@
   einfach wegzulassen — das Chart setzt dort `runAsUser: 1000` und `fsGroup: 1000` als
   Default, und Helm merged Maps. Beide Werte müssen explizit auf `null` gesetzt
   werden. Neuer Schritt 4 zur StorageClass des Sending-Queue-PVC ergänzt.
-- [Referenz des Helm Charts](Referenzen/Referenz_des_Helm_Charts.md#security-contexts):
+- [Referenz des Helm-Charts](Referenzen/Referenz_des_Helm_Charts.md#security-contexts):
   Die pauschale Aussage, `runAsUser` werde standardmäßig nicht gesetzt, gilt nicht
   für das Telemetry-Gateway — Ausnahme dokumentiert.
 - Telemetrie-Anleitung: Hinweis auf ggf. login-pflichtigen Zugang zum
@@ -139,7 +485,20 @@
   Dokumentation angepasst in
   [Quickstart](Anleitungen/ZETA_Guard_Quickstart.md#2-pdp-konfigurieren) und
   [Wie Sie ZETA Guard in Kubernetes konfigurieren](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md).
-- `enable_sekidp = true` setzt jetzt `use_kubernetes = true` voraus.
+- `enable_sekidp = true` funktioniert in beiden Betriebsmodi, also auch mit
+  `use_kubernetes = false`. Cluster-Zugriff benötigt allein der Schlüsselabgleich
+  mit dem mitgelieferten Test-Fedmaster; die neuen Ausgaben
+  `authserver_entity_statement_pubkey_pem` und `authserver_entity_statement_kid` liefern
+  den Schlüssel für jeden anderen Fedmaster. Im Kubernetes-Modus überspringt die
+  neue Variable `sekidp_manage_incluster_fedmaster = false` den Abgleich dafür.
+  Siehe
+  [Terraform-Konfiguration (PDP)](Referenzen/Referenz_des_Helm_Charts.md#terraform-konfiguration-pdp).
+- Der Fake-SekIDP-Testrealm ist entfallen, zusammen mit den Terraform-Variablen
+  `use_fake_sekidp_testrealm`, `dummy_client_for_fake_sekidp_clientsecret` und
+  `dummy_user_for_fake_sekidp_password`. Für Tests ohne echten sektoralen IDP
+  dient das `sekidp`-Subchart. Die nächste PDP-Konfiguration entfernt den Realm;
+  seine Client-Policy nahm `authorization_code`-Clients von der DPoP-Bindung
+  aus, diese Ausnahme entfällt damit ebenfalls.
 - Für die PDP-Konfiguration wird jetzt **Terraform 1.11 oder neuer** benötigt.
   Die Keycloak-Admin-Zugangsdaten landen nicht mehr im Terraform-State: sie sind
   als `ephemeral` deklariert, in beiden Betriebsmodi erforderlich und müssen bei
@@ -361,7 +720,7 @@
   `TPM_KEYSTORE_LOCATION` und `TPM_KEYSTORE_PASSWORD` sind Pflicht — fehlt eine
   davon, startet der Authentication Service nicht
   (`Missing environment variable »<NAME>«`).
-- Das Helm Chart setzt `kubeVersion: ">=1.32.0-0"` — die unterstützte
+- Das Helm-Chart setzt `kubeVersion: ">=1.32.0-0"` — die unterstützte
   Plattform-Untergrenze, entsprechend OpenShift 4.19 oder neuer. Ältere Cluster
   lehnt Helm bei der Installation ab.
 - Admin-API-Absicherung präzisiert: Bei gesetztem `authserver.adminHostname`

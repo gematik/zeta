@@ -1,7 +1,7 @@
 
 # RELEASE NOTES ZETA-SDK
 
-## Version: v1.3.2
+## Version: v2.0.0
 
 This version implements the ZETA protocol for the ZETA client SDK.
 
@@ -60,6 +60,41 @@ runtime environments.
 - TLS validation is not fully implemented on iOS
 - The SDK does not fully handle paths parts in the AS well-known URL. The AS well-known is defined
   as on the root path, so this is WONTFIX.
+
+
+## Changes in 2.0.0 (from 1.3.2)
+
+### Breaking Changes
+
+- `OidcConfig`: `requestUri` has been replaced by two explicit fields. Previously both redirect URIs were derived from `requestUri` (`{requestUri}/app` and `{requestUri}/oidc`):
+  - `redirectUri`: final app redirect where Keycloak returns the authorization code.
+  - `oidcRedirectUri`: intermediate redirect where the SekIDP returns its `code` and `state`, which are relayed to the Keycloak broker.
+
+  Both must be registered as redirect URIs during client registration.
+- `OidcConfig`: the optional `authenticationCallback` has been replaced by the required `authorizationLauncher: AuthorizationLauncher`. The application implements `open(request)`, which shows the login in the system browser, relays the SekIDP `code`/`state` to the broker endpoint in the same browser, and returns the final redirect URL.
+The SDK handles PKCE, `state`, PAR, validation and the token exchange. See the README section "AuthorizationLauncher".
+
+### New Features
+
+- Hardware-based device attestation for Android and iOS
+- Push notifications, including key persistence, notification history
+- Authentication at token exchange according to A_25338-01
+- C# SDK on NuGet: the C# SDK is now packaged for release via NuGet
+- Android TestDriver: test driver app for running the automated SDK tests on Android devices
+
+### Behavioural Changes
+
+- ANFTI2-997: The SDK now calls the authorization endpoint after the PAR request, fixing an incompatibility in the OIDC flow between ZETA versions. This requires changes to `OidcConfig` (see Breaking Changes).
+- When the ASL session has expired on the server, the SDK now automatically re-does the ASL handshake
+- Discovery, client registration and authentication are now serialized in the Java client, so parallel requests (e.g. parallel WebSocket connections) no longer trigger them concurrently
+- Server certificate validation falls back to the Common Name (CN) when the certificate has no Subject Alternative Name
+
+### Bug Fixes
+
+- ANFTI2-708: An expired refresh token no longer results in a 400 error
+- ANFTI2-753: ASL responses now return the inner decrypted response status and headers instead of the outer ASL ones
+- ANFTI2-928: Build: `jvmCommonTest` dependencies are now guarded
+- TestDriver adjustments for the OIDC no-cookie flow
 
 
 ## Changes in 1.3.2 (from 1.3.0)
@@ -165,7 +200,7 @@ Other new features are:
 - ANFTI-697: websocket fragmentation
 - ANFTI-651: C# Exception Handling
 - ANFTI2-735: rework Access Token storage to reduce key size (was too big) and include ability for scope-specific access tokens for the same resource (DiPag)
-- Removal of SMCB Subject Token provider as it was a test tool and never meant for production (see  [README](README.md))
+- Removal of SMCB Subject Token provider as it was a test tool and never meant for production (see [README](https://github.com/gematik/zeta-sdk/blob/main/README.md))
 - Netty CVE finding in testdriver
 
 ## Changes in 1.2.0 (from 1.0.2)

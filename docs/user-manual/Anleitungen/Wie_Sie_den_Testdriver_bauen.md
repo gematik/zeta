@@ -13,6 +13,8 @@ Status: Entwurf
 
 Zielgruppe: Tester und Entwickler
 
+Stand: ZETA-SDK 2.0.0
+
 ---
 
 ## Inhaltsverzeichnis
@@ -22,6 +24,7 @@ Zielgruppe: Tester und Entwickler
 - [Vorgehen](#vorgehen)
   - [Bau der Bibliotheken](#bau-der-bibliotheken)
   - [Bau des Containers](#bau-des-containers)
+- [Weitere Testdriver-Varianten](#weitere-testdriver-varianten)
 
 ## Überblick
 
@@ -61,7 +64,36 @@ bauen. Die notwendigen Artefakte finden sich dann in
 
 ### Bau des Containers
 
-Dann lässt sich der Container mithilfe des Dockerfiles bauen:
+Dann lässt sich der Container mithilfe des Dockerfiles bauen (Basis-Image
+`eclipse-temurin:21-jre`, der Testdriver lauscht auf Port 8080):
 ````
 docker build -f zeta-testdriver/Dockerfile .
 ````
+
+Bevorzugt wird der Bau des Container-Images in einer automatisierten
+CI/CD-Pipeline; die Datei `.gitlab-ci.yml` im SDK-Repository zeigt, wie das
+geht.
+
+## Weitere Testdriver-Varianten
+
+Neben dem Testdriver auf Basis der JVM enthält das SDK-Repository zwei weitere
+Varianten:
+
+* **Native Testdriver** (`zeta-nativetestdriver`): nutzt die native Laufzeit
+  des SDK (Kotlin/Native) und lauscht auf Port 8091.
+
+  ````
+  ./gradlew :zeta-nativetestdriver:linkReleaseExecutableLinuxX64
+  docker build -f zeta-nativetestdriver/Dockerfile .
+  ````
+
+* **Android-Testdriver** (`zeta-android-testdriver`): betreibt das SDK in einer
+  Android-App, die in einem Android-Emulator im Container läuft (siehe
+  [Wie Sie den Testdriver nutzen](Wie_Sie_den_Testdriver_nutzen.md#android-testdriver)).
+  Das Image baut auf einem Emulator-Image auf (`Dockerfile.android-emulator`)
+  und benötigt die zuvor gebaute App:
+
+  ````
+  ./gradlew :zeta-android-testdriver:assembleDebug
+  docker build --build-arg BASE_IMAGE=<emulator-image> -f Dockerfile.android-testdriver .
+  ````

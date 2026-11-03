@@ -17,9 +17,10 @@ administrative Eingriffe nachvollziehen lassen.
 Der Guard kennt eine Client-Instanz vor ihrer Registrierung nicht — es gibt
 kein vorab verteiltes Geheimnis pro Instanz. Das Vertrauen entsteht bei der
 Erstregistrierung (Trust On First Use): Die Instanz erzeugt ihren
-Instanzschlüssel im Hardware-Schlüsselspeicher, registriert den öffentlichen
-Teil und weist bei jeder späteren Nutzung den Besitz des privaten Schlüssels
-nach (`private_key_jwt`, DPoP).
+Instanzschlüssel – soweit die Plattform es unterstützt, im
+Hardware-Schlüsselspeicher –, registriert den öffentlichen Teil und weist bei
+jeder späteren Nutzung den Besitz des privaten Schlüssels nach
+(`private_key_jwt`, DPoP).
 
 Die eigentliche Attestierung — also der Nachweis, dass es sich um eine
 legitime, unveränderte Client-Software handelt — erfolgt je nach Client-Typ:
@@ -28,8 +29,11 @@ legitime, unveränderte Client-Software handelt — erfolgt je nach Client-Typ:
   SMC-B-signiertes Client Statement; erst danach gilt die Registrierung als
   attestiert und der `refresh_token`-Grant wird freigeschaltet.
 - **Mobile Clients** sollen ihre Plattform-Attestierung bereits bei der
-  Registrierung nachweisen. Diese Prüfung ist derzeit **gemockt**: Jede
-  Registrierung mit Redirect-URIs wird akzeptiert (siehe
+  Registrierung nachweisen; das ZETA-SDK sendet dafür ab Version 2.0.0 auf
+  Android und iOS einen hardwarebasierten Attestierungsnachweis (siehe
+  [Wie die dynamische Client-Registrierung funktioniert](Wie_die_dynamische_Client-Registrierung_funktioniert.md)).
+  Die Prüfung im Guard ist derzeit **gemockt**: Jede Registrierung mit
+  Redirect-URIs wird akzeptiert (siehe
   [Aktueller Stand](#aktueller-stand-und-einschränkungen)).
 
 ## Client-Limits und automatische Löschung
@@ -66,6 +70,24 @@ Wartungsfenster lässt sich der Job über das Realm-Attribut `zeta-guard.realm.c
 vorübergehend aussetzen. Alle Variablen sind in der
 [Konfiguration des PDP Services](../Referenzen/Konfiguration_des_PDP_Services.md)
 beschrieben.
+
+## Gespeicherte Client- und Sitzungsdaten
+
+Zu jeder Client-Instanz hält der Guard in der Tabelle `ZETA_CLIENT_DATA` in der
+Keycloak-Datenbank neben Attestierungsstatus und Zeitstempeln:
+
+- **Client-Daten** gemäß `policy-engine-client-data.yaml` (A_26585-02):
+  Plattform, Produkt-ID und -Version, Geräteinformationen (Betriebssystem,
+  Version, Gerätemodell) sowie den Zeitpunkt der letzten Attestierung. Sie
+  stammen aus dem Client Statement der letzten erfolgreichen Anmeldung.
+- **Sitzungsdaten** (A_26586-01): die vollständigen Eingabedaten der Policy
+  Engine (`policy-engine-input.yaml`) der letzten erfolgreichen Anmeldung bzw.
+  des letzten Token-Refreshes dieses Clients, samt Zeitpunkt.
+
+Beide Datensätze werden bei jeder erfolgreichen Anmeldung überschrieben und
+zusammen mit der Registrierung gelöscht — durch den Idle-Ablauf, die
+Verdrängung beim Erreichen des Client-Limits oder das Entfernen des Nutzers.
+Eine eigene Aufbewahrungsfrist gibt es nicht.
 
 ## E-Mail-Bindung und -Änderung
 
@@ -148,17 +170,29 @@ sind ohne Kenntnis des Seeds nicht reparierbar. Zum Setzen des Seeds siehe die
 Das ZETA-SDK bietet zwei Stufen, eine Client-Instanz lokal zurückzusetzen
 (siehe [Wie Sie das ZETA-SDK integrieren](Wie_Sie_das_ZETA_SDK_integrieren.md)):
 
-- **`clearRegistration()`** löscht Registrierung, Tokens, DPoP-Schlüssel und
-  ASL-Session, behält aber den Instanzschlüssel. Beim nächsten Zugriff
+- **`clearRegistration()`** löscht Registrierung, Discovery-Daten, Tokens,
+  DPoP-Schlüssel, ASL-Session und das `zeta_route`-Cookie, behält aber den
+  Instanzschlüssel und den Attestierungszustand. Beim nächsten Zugriff
   registriert sich das SDK neu.
-- **`forget()`** löscht zusätzlich den Instanzschlüssel und alle gespeicherten
-  Daten zum Guard — der nächste Zugriff verhält sich wie eine Erstinstallation.
+- **`forget()`** löscht zusätzlich den Instanzschlüssel, den
+  Attestierungszustand (auf Android auch den Attestierungsschlüssel), den
+  Cache der Sperrprüfung sowie den lokal registrierten Pusher samt
+  Schlüsselmaterial für Push-Nachrichten — der nächste Zugriff verhält sich wie
+  eine Erstinstallation. Die Schlüssel im Hardware-Schlüsselspeicher von
+  Android und iOS teilen sich alle SDK-Instanzen einer App; `forget()` löscht
+  sie daher für alle Instanzen.
 
-Beide wirken nur lokal: Das SDK ruft keinen serverseitigen Löschendpunkt auf
+Daneben löscht **`logout()`** nur die Tokens, die DPoP-Schlüssel und das
+`zeta_route`-Cookie; die Registrierung bleibt bestehen.
+
+Alle drei wirken nur lokal: Das SDK ruft keinen serverseitigen Löschendpunkt auf
 (es nutzt kein RFC 7592, siehe
 [dynamische Client-Registrierung](Wie_die_dynamische_Client-Registrierung_funktioniert.md)).
-Die zurückgelassene Registrierung verschwindet serverseitig erst über die
-Idle-TTL oder die LRU-Verdrängung.
+Die nach `clearRegistration()` oder `forget()` zurückgelassene Registrierung
+verschwindet serverseitig erst über die Idle-TTL oder die LRU-Verdrängung. Ebenso bleibt ein beim Notification Service
+registrierter Pusher bestehen; soll das Gerät keine Push-Nachrichten mehr
+erhalten, meldet die App ihn vorher mit `deletePusher` ab (siehe
+[Wie Sie das SDK-Notifications-Modul verwenden](Wie_Sie_das_SDK_Notifications-Modul_verwenden.md)).
 
 ## Aktueller Stand und Einschränkungen
 

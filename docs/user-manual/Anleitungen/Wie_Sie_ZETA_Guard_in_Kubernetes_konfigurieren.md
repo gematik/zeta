@@ -237,8 +237,8 @@ ingressMinionAnnotations:
     nginx.org/limit-req-zone-size: "10m"
 ```
 
-Da dies stark anwendungsabhängig ist, ist standardmäßig kein RateLimit
-konfiguriert.
+Dies ist stark anwendungsabhängig. Deshalb müssen die standardmäßig
+konfigurierten Werte vermutlich auf die konkrete Installation angepasst werden.
 
 ### 2. Egress konfigurieren
 
@@ -420,8 +420,15 @@ notificationService:
 
 Die optionale Nachrichten-Historie (`notificationService.historyEnabled`)
 erfordert zusätzlich die Terraform-Variable `notification_history_enabled` —
-die beiden Schalter sind nicht gekoppelt (siehe
+die beiden Schalter sind nicht gekoppelt. Ihre Aufbewahrungsfrist legt
+`notificationService.historyRetention` fest (Standard 30 Tage, siehe
 [Konfiguration des Notification Service](../Referenzen/Konfiguration_des_Notification_Service.md#nachrichten-historie-historyenabled)).
+
+Die Ende-zu-Ende-Verschlüsselung der Push-Payload zum Push Gateway
+(`notificationService.env.encryptionEnabled`, Standard `false`) ist eine
+Betreiber-Entscheidung pro Instanz (A_29968) und für ePA- und
+E-Rezept-Instanzen Pflicht, siehe
+[Datenschutz: Sealing, HSM und verschlüsselter Push](../Referenzen/Konfiguration_des_Notification_Service.md#datenschutz-sealing-hsm-und-verschlüsselter-push).
 
 Alle weiteren Werte (Datenbankmodus, mTLS und Truststore zum Push Gateway,
 Well-Known-Dokument, Ressourcen, Einschränkungen des aktuellen Stands) sind
@@ -455,6 +462,15 @@ Installieren Sie stattdessen genau einen Operator clusterweit.
 Die Datenbank wird als Active-Passive eingesetzt. Durch den gut abgestimmten
 Einsatz eines verteilten Second-Level-Datenbankcaches im PDP skaliert dies
 trotzdem gut.
+
+Ein Wechsel oder Neuaufbau des Primaries ist für den Authserver kein
+Verbindungsabbruch mit Fehlermeldung: die ClusterIP `keycloak-db-rw` bleibt
+gültig, während die Weiterleitung auf eine nicht mehr existierende Pod-IP zeigt,
+und es wird kein TCP-Reset gesendet. Die Verbindungen laufen also ins Leere,
+statt zu scheitern. Das Chart fängt das ab — über ein begrenztes Socket-Timeout
+und begrenzte Verbindungsvalidierung, die tote Verbindungen erkennen, verwerfen
+und ersetzen. Details und Diagnose:
+[Datenbank nicht erreichbar / Authserver antwortet nicht](Troubleshooting_und_Debugging.md#datenbank-nicht-erreichbar--authserver-antwortet-nicht).
 
 #### 6.2 Policy Engine (OPA) konfigurieren
 
@@ -555,7 +571,7 @@ an, darunter `rsa-generated` (RS256-Signatur) und `rsa-enc-generated`
 (RSA-OAEP-Verschlüsselung). Diese erscheinen im JWKS-Endpunkt. Betroffen sind
 sowohl der `zeta-guard`-Realm als auch der `master`-Realm.
 
-Die Terraform-Konfiguration (`make config` bzw. `terraform apply`) stellt daher
+Die Terraform-Konfiguration (`terraform apply`) stellt daher
 nach jeder Ausführung für **beide** Realms sicher:
 
 1. ein ES256-Schlüsselprovider (ECDSA, P-256) ist vorhanden,
@@ -581,6 +597,11 @@ curl -sk https://<hostname>/auth/realms/master/protocol/openid-connect/certs \
 ```
 
 Erwartetes Ergebnis: ausschließlich `"EC"`-Einträge, kein `"RSA"`.
+
+> Ist `authserver.adminHostname` gesetzt, verwenden Sie für die zweite Abfrage
+> den **Admin-Hostnamen**: Auf dem Haupthostnamen ist `/auth/realms/master`
+> gesperrt und antwortet mit `403` (siehe
+> [Admin-API-Absicherung](../Referenzen/Referenz_des_Helm_Charts.md#admin-api-absicherung)).
 
 ###### HSM-basierte Token-Signierung
 
@@ -655,6 +676,24 @@ Keycloak-Admin-Konsole ist der Provider unter
 | `hsm_token_signing_priority`             | Provider-Priorität (höher gewinnt)                          | `"200"`  |
 | `hsm_token_signing_remove_software_keys` | Software-Signaturschlüssel nach HSM-Registrierung entfernen | `true`   |
 
+###### Session-Laufzeit und Refresh-Token
+
+Hinter jedem Refresh-Token steht eine Keycloak-Session. Die Gültigkeitsdauer des
+Refresh-Tokens gibt die Policy Decision vor (`ttl.refresh_token`, A_28527). Die
+Session endet spätestens mit Ablauf des ersten Refresh-Tokens nach der vollständigen
+Authentifizierung; eine Rotation verlängert sie nicht (A_25662). Der Authorization
+Server begrenzt jedes Refresh-Token zusätzlich auf die Session-Limits des Realms.
+Sind diese kürzer als die TTL der Policy, endet die Session vorzeitig und der Client
+muss früher einen neuen Token-Exchange durchführen.
+
+| Terraform-Variable         | Beschreibung                                                  | Standard |
+|----------------------------|---------------------------------------------------------------|----------|
+| `sso_session_idle_timeout` | Maximale Inaktivität einer Session (Go-Duration, z. B. `24h`) | `"24h"`  |
+| `sso_session_max_lifespan` | Maximale Gesamtdauer einer Session (Go-Duration)              | `"24h"`  |
+
+Beide Werte müssen mindestens der größten Refresh-Token-TTL entsprechen, die die
+Policy ausstellt. Die Standardwerte passen zur Default-Policy (`86400` Sekunden).
+
 ##### Abhängigkeiten / erforderliche Konfiguration
 
 * Der externe Hostname muss konfiguriert werden:
@@ -697,16 +736,28 @@ Keycloak-Admin-Konsole ist der Provider unter
 ##### Admin-API absichern
 
 Die Keycloak-Admin-REST-API (`/auth/admin/*`) muss vor öffentlichem Zugriff
-geschützt werden. Das Helm-Chart bietet eine integrierte Absicherung über einen
-separaten Admin-Hostnamen (`authserver.adminHostname`): Nur der Pfad
-`/auth/admin` wird auf dem Haupthostnamen an den PEP-Proxy geroutet und dort mit
-`403` gesperrt — alle übrigen `/auth/*`-Pfade gehen unverändert direkt an den
-Authserver. Ein dedizierter Admin-Ingress ermöglicht Terraform und
-CI/CD-Pipelines den Zugang über den Admin-Hostnamen.
+geschützt werden, ebenso der `master`-Realm (`/auth/realms/master/*`), in dem das
+Admin-Access-Token ausgestellt wird. Das Helm-Chart bietet eine integrierte
+Absicherung über einen separaten Admin-Hostnamen (`authserver.adminHostname`):
+Nur die Pfade `/auth/admin` und `/auth/realms/master` werden auf dem
+Haupthostnamen an den PEP-Proxy geroutet und dort mit `403` gesperrt — alle
+übrigen `/auth/*`-Pfade, darunter der gesamte `zeta-guard`-Realm, gehen
+unverändert direkt an den Authserver. Ein dedizierter Admin-Ingress ermöglicht
+Terraform und CI/CD-Pipelines den Zugang über den Admin-Hostnamen; die
+Authserver-Konfiguration heftet zusätzlich die Frontend-URL des `master`-Realms
+an diesen Hostnamen, damit der Browser-Login der Admin Console nicht auf den
+gesperrten Pfad läuft.
 
 Die Lösung ist ingress-controller-unabhängig und funktioniert mit F5 NIC,
 nginx-Ingress, OpenShift Routes und GKE Ingress, da sie nur
 Standard-Ingress-Pfad-Routing voraussetzt.
+
+In der PDP-Konfiguration zeigt `keycloak_url` dann auf den Admin-Hostnamen.
+Alles, was Terraform sonst aus dieser URL ableiten würde und öffentlich sein
+muss, ist deshalb explizit zu setzen: `audience` (Audience der Access-Tokens)
+und — bei aktivem mobilen Client-Flow (`enable_sekidp = true`) —
+`sekidp_client_id` (öffentlicher Issuer des Realms, über den der sektorale IDP
+das Entity Statement des Guards lädt).
 
 Details und Konfigurationsbeispiele finden sich in der
 [Helm-Chart-Referenz – Admin-API-Absicherung](../Referenzen/Referenz_des_Helm_Charts.md#admin-api-absicherung).
@@ -747,6 +798,15 @@ diesen Zweck verwendet werden. Siehe dazu
 | `authserverDb.kcDbSecretName` | `KC_DB_USERNAME`      | Hierbei ist im Helm-Value der Name eines Secrets zu konfigurieren. Aus dem Secret wird das Feld `username` ausgelesen und dieses in die entsprechende Keycloak-Umgebungsvariable geschrieben. |
 | `authserverDb.kcDbSecretName` | `KC_DB_PASSWORD`      | Hierbei ist im Helm-Value der Name eines Secrets zu konfigurieren. Aus dem Secret wird das Feld `password` ausgelesen und dieses in die entsprechende Keycloak-Umgebungsvariable geschrieben. |
 | `authserverDb.kcDbSchema`     | `KC_DB_SCHEMA`        |                                                                                                                                                                                               |
+
+Zusätzliche JDBC-Parameter gehören **nicht** in `KC_DB_URL_PROPERTIES`: Keycloak
+ignoriert diese Option, sobald `db-url` gesetzt ist — und das Chart setzt sie
+immer. Nutzen Sie stattdessen `authserver.db.urlProperties`; die Werte werden als
+Query-Parameter an die URL angehängt und haben bei pgjdbc Vorrang vor den
+Verbindungseigenschaften des Images. `connectTimeout` und `targetServerType` sind
+dabei nicht zulässig und werden beim Rendern abgewiesen, weil Keycloak beide
+selbst setzt und die Injektion überspringt, sobald einer der Namen in der URL
+auftaucht.
 
 ##### Verwandte Dokumentation
 
@@ -837,6 +897,21 @@ entscheidend:
   Token-Validierung: Er ist der `iss`, den er in jedem Access-Token erwartet.
   Üblicherweise hat er die Form
   `https://<authserver_name>/auth/realms/zeta-guard`.
+* `pepproxy.nginxConf.pepInternalUrl` ist die Adresse, über die der PEP den
+  Authorization Server erreicht, um OIDC-Discovery und JWKS abzurufen.
+  Standardmäßig ist der Wert leer; beide Abrufe folgen dann dem öffentlichen
+  `pepIssuer` und verlassen den Cluster. Empfohlen ist die **clusterinterne**
+  Adresse `http://authserver/auth/realms/zeta-guard` (PEP-Image ab 2.0.0),
+  bei abweichendem Kontextpfad entsprechend angepasst — der Realm-Name
+  `zeta-guard` selbst ist unveränderlich. Die Token-Validierung ändert sich in
+  keinem Fall.
+
+  Den Cluster zu verlassen ist dabei weniger ein Vertraulichkeits- als ein
+  Verfügbarkeits- und Angriffsflächenproblem: Discovery-Dokument und JWKS sind
+  öffentliche Daten, aber der Umweg über Load Balancer und Ingress macht die
+  Token-Validierung von vorgelagerter Infrastruktur abhängig, erhöht die Latenz
+  und erzwingt eine zusätzliche Egress-Freigabe (A_27864-01). Details siehe
+  [Referenz des Helm-Charts](../Referenzen/Referenz_des_Helm_Charts.md#clusterinterne-kommunikation-mit-dem-authserver).
 * Öffentliche URL des PEP. Diese fließt in das Well-Known Discovery Dokument
   (`/.well-known/oauth-protected-resource`) ein. Die Basis-URL wird über
   `pepproxy.wellKnownBase` gesetzt (Muster: `https://<pep_name>`). Der
@@ -1106,13 +1181,28 @@ authserver:
     periodicRowChecksEnabled: false
     lockdownOnError: false
     shutdownOnError: false
+    automaticCryptoUpdatesEnabled: true  # Verfahren A der Schlüsselrotation
     bootstrapInterval: "PT30S"
     bootstrapAttempts: 15
     keychainFileName: "/keychainData/keychain"
+    # Nur während einer Schlüsselrotation, siehe
+    # „Wie Sie die Schlüssel der VAU-Datenbank rotieren“:
+    # futureKeychainFileName: "/keychainData/keychain-2026-10"
+    # previousKeychainFileName: "/keychainData/keychain"
     keychainGenerator:
       extraVolumeMounts:
         - name: spree-keychain
           mountPath: /keychainData
+  hsm:
+    enabled: true
+    endpoint: "<hsm-proxy>:50051"
+    dbEnc:
+      keyId: "<KEK-ID>"
+  container:
+    extraVolumeMounts:
+      - name: spree-keychain
+        mountPath: /keychainData
+        readOnly: true
   extraVolumes:
     - name: spree-keychain
       secret:
@@ -1120,45 +1210,46 @@ authserver:
         items:
           - key: keychainFile
             path: keychain
+          # Während einer Schlüsselrotation: eigener Key pro Keychain
+          # - key: keychainFile-2026-10
+          #   path: keychain-2026-10
 ...
 ```
 
-Dabei sind für den VAU Betrieb mit VAU-externer Datenbank folgende Werte
-verbindlich (defaults werden demnächst angepasst):
+Dabei sind für den VAU Betrieb mit VAU-externer Datenbank folgender Wert
+verbindlich (Mit ZETA Guard Version >=2.0.0 entfallen die anderen Values):
 
 ```yaml
 dbEnc:
   enabled: true
-  columnEncryptionEnabled: true
-  integrityChecksEnabled: true
-  integrityRowChecksEnabled: true
-  integrityTableChecksEnabled: true
-  periodicRowChecksEnabled: false
-  lockdownOnError: false
-  shutdownOnError: false
 ```
 
-| Property                                               | Bedeutung                                                                                                                                                                  | Standard |
-|--------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
-| `authserver.dbEnc.enabled`                             | Generelles Aktivieren der Verschlüsselung und Integritätsprüfung                                                                                                           | `false`  |
-| `authserver.dbEnc.columnEncryptionEnabled`             | Spaltenweise Verschlüsselung aktivieren                                                                                                                                    | `false`  |
-| `authserver.dbEnc.integrityChecksEnabled`              | Generelle Aktivierung der Integritätsprüfungen                                                                                                                             | `false`  |
-| `authserver.dbEnc.integrityRowChecksEnabled`           | Aktivierung Integritätsprüfung auf Datenbank-Zeilenebene                                                                                                                   | `false`  |
-| `authserver.dbEnc.integrityTableChecksEnabled`         | Aktivierung Integritätsprüfung auf Tabellenebene                                                                                                                           | `false`  |
-| `authserver.dbEnc.periodicRowChecksEnabled`            | Aktivierung der periodischen Integritätsprüfung auf Datenbank-Zeilenebene. Bei Deaktivierung findet die Integritätsprüfung immer noch beim direkten Zugriff statt.         | `false`  |
-| `authserver.dbEnc.lockdownOnError`                     | Aktivierung des internen Fehlerstates innerhalb des Authservers, der weitere Anfragen abweist. <br> Bei Deaktivierung werden alle Anfragen weiterhin versucht zu bedienen. | `false`  |
-| `authserver.dbEnc.shutdownOnError`                     | Aktivieren des automatischen Herunterfahrens des Authservers, wenn Integritätsprüfungen fehlschlagen.                                                                      | `false`  |
-| `authserver.dbEnc.bootstrapInterval`                   | Intervall, in dem der Authserver prüft, ob eine Initialisierung der Datenbank notwendig ist, und gegebenenfalls die Initialisierung startet                                | `PT30S`  |
-| `authserver.dbEnc.bootstrapAttempts`                   | Anzahl der Versuche, die Initialisierung der Datenbank zu starten                                                                                                          | `15`     |
-| `authserver.dbEnc.keychainFileName`                    | Pfad zur Keychain-Datei im Container                                                                                                                                       | `""`     |
-| `authserver.dbEnc.keychainGenerator.extraVolumeMounts` | Zusätzliche Volume-Mounts für den Keychain-Generator (Einhängen der Keychain-Datei)                                                                                        | `[]`     |
-| `authserver.extraVolumes`                              | Zusätzliche `volumes`-Einträge des Authserver-Pods (Kubernetes-Syntax, z. B. Secret-Volumes); hier für die Bereitstellung der Keychain-Datei                               | `[]`     |
+| Property                                               | Bedeutung                                                                                                                                                                                                                       | Standard |
+|--------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
+| `authserver.dbEnc.enabled`                             | Generelles Aktivieren der Verschlüsselung und Integritätsprüfung                                                                                                                                                                | `false`  |
+| `authserver.dbEnc.columnEncryptionEnabled`             | **Security, nicht anpassen ohne direkte Anweisung.** Spaltenweise Verschlüsselung aktivieren                                                                                                                                    | `true`   |
+| `authserver.dbEnc.integrityChecksEnabled`              | **Security, nicht anpassen ohne direkte Anweisung.** Generelle Aktivierung der Integritätsprüfungen                                                                                                                             | `true`   |
+| `authserver.dbEnc.integrityRowChecksEnabled`           | **Security, nicht anpassen ohne direkte Anweisung.** Aktivierung Integritätsprüfung auf Datenbank-Zeilenebene                                                                                                                   | `true`   |
+| `authserver.dbEnc.integrityTableChecksEnabled`         | **Security, nicht anpassen ohne direkte Anweisung.** Aktivierung Integritätsprüfung auf Tabellenebene                                                                                                                           | `true`   |
+| `authserver.dbEnc.periodicRowChecksEnabled`            | **Security, nicht anpassen ohne direkte Anweisung.** Aktivierung der periodischen Integritätsprüfung auf Datenbank-Zeilenebene. Bei Deaktivierung findet die Integritätsprüfung immer noch beim direkten Zugriff statt.         | `false`  |
+| `authserver.dbEnc.lockdownOnError`                     | **Security, nicht anpassen ohne direkte Anweisung.** Aktivierung des internen Fehlerstates innerhalb des Authservers, der weitere Anfragen abweist. <br> Bei Deaktivierung werden alle Anfragen weiterhin versucht zu bedienen. | `false`  |
+| `authserver.dbEnc.shutdownOnError`                     | **Security, nicht anpassen ohne direkte Anweisung.** Aktivieren des automatischen Herunterfahrens des Authservers, wenn Integritätsprüfungen fehlschlagen.                                                                      | `false`  |
+| `authserver.dbEnc.automaticCryptoUpdatesEnabled`       | Automatischer Start der Umschlüsselung nach einem Keychain-Wechsel, siehe [Wie Sie die Schlüssel der VAU-Datenbank rotieren](Wie_Sie_die_Schlüssel_der_VAU-Datenbank_rotieren.md)                                               | `false`  |
+| `authserver.dbEnc.bootstrapInterval`                   | Intervall, in dem der Authserver prüft, ob eine Initialisierung der Datenbank notwendig ist, und gegebenenfalls die Initialisierung startet                                                                                     | `PT30S`  |
+| `authserver.dbEnc.bootstrapAttempts`                   | Anzahl der Versuche, die Initialisierung der Datenbank zu starten                                                                                                                                                               | `15`     |
+| `authserver.dbEnc.keychainFileName`                    | Pfad zur aktiven Keychain-Datei im Container                                                                                                                                                                                    | `""`     |
+| `authserver.dbEnc.futureKeychainFileName`              | Pfad zur angekündigten Keychain-Datei; nur während einer Schlüsselrotation                                                                                                                                                      | `""`     |
+| `authserver.dbEnc.previousKeychainFileName`            | Pfad zur abgelösten Keychain-Datei; nur während einer Schlüsselrotation                                                                                                                                                         | `""`     |
+| `authserver.dbEnc.keychainGenerator.extraVolumeMounts` | Zusätzliche Volume-Mounts für den Keychain-Generator (Einhängen der Keychain-Datei)                                                                                                                                             | `[]`     |
+| `authserver.hsm.dbEnc.keyId`                           | ID des KEK im HSM, mit dem die Keychain verschlüsselt ist                                                                                                                                                                       | `""`     |
+| `authserver.container.extraVolumeMounts`               | Zusätzliche Volume-Mounts des Authserver-Containers; hier für das Einhängen der Keychain-Datei                                                                                                                                  | `[]`     |
+| `authserver.extraVolumes`                              | Zusätzliche `volumes`-Einträge des Authserver-Pods (Kubernetes-Syntax, z. B. Secret-Volumes); hier für die Bereitstellung der Keychain-Datei                                                                                    | `[]`     |
 
-#### Keychain-Secret bereitstellen
+#### Keychain-Secrets bereitstellen
 
-Das im Beispiel referenzierte Secret muss vor der Installation im
-Deployment-Namespace vorhanden sein und den Key `keychainFile` mit der
-Keychain-Datei enthalten:
+Die im Beispiel referenzierten Secrets müssen vor der Installation oder einer
+Änderung im Deployment-Namespace vorhanden sein und eine Keychain-Datei
+enthalten. Beispiel für Key `keychainFile`:
 
 ```bash
 kubectl create secret generic zeta-authserver-dbenc \
@@ -1166,12 +1257,18 @@ kubectl create secret generic zeta-authserver-dbenc \
   --namespace NAMESPACE
 ```
 
-Drei Values müssen dabei zusammenpassen:
+Die Keychain-Datei erzeugen Sie mit dem Keychain-Generator, wie in
+[Wie Sie die Schlüssel der VAU-Datenbank rotieren, Schritt 1](Wie_Sie_die_Schlüssel_der_VAU-Datenbank_rotieren.md#schritt-1-neue-keychain-erzeugen)
+beschrieben.
+
+Folgende Values müssen dabei zusammenpassen:
 
 1. `authserver.extraVolumes` bindet das Secret als Volume ein und bildet über
    `items` den Secret-Key `keychainFile` auf den Dateinamen `keychain` ab.
-2. `authserver.dbEnc.keychainGenerator.extraVolumeMounts` hängt dasselbe Volume
-   unter `mountPath` ein — im Beispiel `/keychainData`.
+2. `authserver.container.extraVolumeMounts` und
+   `authserver.dbEnc.keychainGenerator.extraVolumeMounts` hängen dasselbe
+   Volume im Authserver-Container und im Keychain-Generator unter demselben
+   `mountPath` ein — im Beispiel `/keychainData`.
 3. `authserver.dbEnc.keychainFileName` verweist auf den daraus resultierenden
    Pfad, im Beispiel also `/keychainData/keychain`.
 
@@ -1186,14 +1283,25 @@ gibt also nur diesen einen Ablauf — Secret vorab anlegen, Init-Container
 verwendet es. Auch in einer HSM-gestützten Umgebung (VAU, Lasttest) entsteht das
 Secret nicht automatisch.
 
-> **KEK-Stabilität:** Keychain-Secret und HSM-KEK gehören zusammen. Wird der KEK
-> ausgetauscht oder verloren, ist die bestehende verschlüsselte Datenbank mit dem
-> vorhandenen Keychain-Secret nicht mehr lesbar und der Authserver bricht mit
-> `ERROR_DECRYPTION` ab. KEK und Secret gemeinsam stabil halten oder die
-> Datenbank neu aufsetzen.
+> **KEK-Stabilität:** Keychain-Secret und HSM-KEK gehören zusammen. Geht der
+> KEK verloren oder wird er ohne Rotation ausgetauscht, ist die bestehende
+> verschlüsselte Datenbank mit dem vorhandenen Keychain-Secret nicht mehr lesbar
+> und der Authserver bricht mit `ERROR_DECRYPTION` ab. Tauschen Sie Keychain und
+> KEK deshalb nur über eine
+> [Schlüsselrotation](Wie_Sie_die_Schlüssel_der_VAU-Datenbank_rotieren.md) aus.
+
+#### Schlüsselrotation
+
+Die Schlüssel der VAU-Datenbank dürfen nur begrenzt lange verwendet werden.
+Keychain und KEK lassen sich im laufenden Betrieb austauschen. Das SIP
+verschlüsselt dabei alle Daten neu und berechnet die Integritätsprüfsummen neu.
+Den Ablauf beschreibt
+[Wie Sie die Schlüssel der VAU-Datenbank rotieren](Wie_Sie_die_Schlüssel_der_VAU-Datenbank_rotieren.md).
 
 #### Verwandte Dokumentation
 
+* [Wie Sie die Schlüssel der VAU-Datenbank rotieren](Wie_Sie_die_Schlüssel_der_VAU-Datenbank_rotieren.md)
+* [Konfiguration einer VAU mit verschlüsselter Datenbank](../Referenzen/Konfiguration_VAU.md)
 * [Helm-Chart-Referenz – Spree integrity provider (VAU)](../Referenzen/Referenz_des_Helm_Charts.md#spree-integrity-provider-vau)
 * [Sicherheitsanforderungen an den Betreiber des ZETA-Guard – Betrieb des Authservers in einer VAU-basierten Umgebung](../SicherheitsanforderungenZETAGuardBetreiber.md#betrieb-des-authservers-in-einer-vau-basierten-umgebung)
 * [Wie Sie eine VAU-Umgebung für Last- und Performance-Tests aufsetzen](Wie_Sie_eine_VAU_Umgebung_für_Lasttests_aufsetzen.md) — vollständige HSM-gestützte Beispielumgebung, in der dieses Secret zusammen mit dem KEK `vau-db-kek-v1` verwendet wird

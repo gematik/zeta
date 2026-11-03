@@ -103,12 +103,12 @@ sudo apt-get update && sudo apt-get dist-upgrade
 >
 > Bei anderen Versionen ggf. die Download-URLs bzw. Variablen anpassen.
 
-#### Schritt 2.1: [jq](https://jqlang.org/), unzip und make installieren
+#### Schritt 2.1: [jq](https://jqlang.org/) und unzip installieren
 
 In der Ubuntu-Shell Folgendes eingeben:
 
 ```shell
-sudo apt-get install jq unzip make dnsutils
+sudo apt-get install jq unzip dnsutils
 ```
 
 #### Schritt 2.2: [go](https://go.dev/) und [KIND](https://kind.sigs.k8s.io/) installieren
@@ -199,6 +199,9 @@ ausführen:
 ```shell
 terraform version
 ```
+
+Die PDP-Konfiguration von ZETA-Guard benötigt Terraform 1.11 oder neuer (siehe
+[Quickstart – Voraussetzungen](ZETA_Guard_Quickstart.md#voraussetzungen)).
 
 #### Schritt 2.5: [k9s](https://k9scli.io/) installieren
 
@@ -463,13 +466,57 @@ kubectl -n zeta-local create secret tls authserver-tls \
 
 ### Schritt 5.5: Komponenten aus der Registry ziehen
 
-In der Ubuntu-Shell Folgendes eingeben:
+In der Ubuntu-Shell im Ordner des `zeta-guard-helm`-Repositorys Folgendes
+eingeben:
 
 ```shell
-make clean deploy stage=local
+# Reste eines früheren Durchlaufs entfernen (generierte Terraform-Dateien)
+rm -rf terraform/authserver/.terraform terraform/authserver/terraform.tfstate* \
+  terraform/authserver/.terraform.lock.hcl terraform/authserver/main.tf \
+  terraform/authserver/providers.tf terraform/authserver/mode-assert.tf
+rm -f terraform/authserver/environments/local.backend.hcl
+
+# Abhängigkeiten der Subcharts herunterladen
+helm repo add --force-update prometheus-community https://prometheus-community.github.io/helm-charts
+helm dependency build --skip-refresh charts/test-monitoring-service
+helm dependency build --skip-refresh charts/zeta-guard
+
+# cert-manager und CloudNativePG-Operator installieren (clusterweit)
+helm upgrade --install cert-manager oci://quay.io/jetstack/charts/cert-manager \
+  --version v1.20.1 -n cert-manager --create-namespace --set crds.enabled=true
+helm upgrade --install cloudnative-pg oci://ghcr.io/cloudnative-pg/charts/cloudnative-pg \
+  --version 0.29.0 -n cnpg-system --create-namespace \
+  --set config.clusterWide=true --wait --timeout 5m
+
+# Testumgebung installieren
+helm upgrade --install zeta-testenv-local . \
+  -f local-test/values.local.yaml \
+  --set-file smcb_keystore.password="$SMB_KEYSTORE_PW_FILE" \
+  --set-file smcb_keystore.keystore="$SMB_KEYSTORE_FILE_B64" \
+  -n zeta-local --rollback-on-failure --render-subchart-notes --timeout 10m
 ```
 
-Der Befehl sollte Folgendes zurückgeben:
+> [!NOTE]
+> Bricht `helm` beim Rendern mit `429 (Too Many Requests)` ab, lädt es das
+> Schema `values.schema.json` des Subcharts `nginx-ingress` nach, das auf
+> `raw.githubusercontent.com` verweist. Entfernen Sie das Schema in diesem Fall
+> aus dem heruntergeladenen Subchart und wiederholen Sie die Installation:
+>
+> ```shell
+> for tgz in charts/*/charts/*.tgz; do
+>   name=$(tar -tzf "$tgz" | head -1 | cut -d/ -f1)
+>   tar -xzOf "$tgz" "$name/values.schema.json" 2>/dev/null \
+>     | grep -q '"$ref"[[:space:]]*:[[:space:]]*"http' || continue
+>   tmp=$(mktemp -d ./.strip-schema.XXXXXX)
+>   tar -xzf "$tgz" -C "$tmp" && rm -f "$tmp/$name/values.schema.json" \
+>     && (cd "$tmp" && COPYFILE_DISABLE=1 tar -czf stripped.tgz "$name") \
+>     && mv "$tmp/stripped.tgz" "$tgz"
+>   rm -rf "$tmp"
+> done
+> ```
+
+Die Installation der Testumgebung (`helm upgrade --install zeta-testenv-local`)
+sollte Folgendes zurückgeben:
 
 ```text
 Thank you for installing zeta-testenv.
@@ -483,10 +530,36 @@ and your administration frontend is at
     zeta-kind.local/auth
 ```
 
-In der Ubuntu-Shell Folgendes eingeben:
+Anschließend prüfen, ob die Pods den Pod-Security-Standard `restricted`
+einhalten würden (der Namespace wird dabei nicht verändert; Verstöße erscheinen
+als Warnungen):
 
 ```shell
-make config stage=local
+kubectl label --dry-run=server --overwrite ns zeta-local \
+  pod-security.kubernetes.io/enforce=restricted \
+  pod-security.kubernetes.io/enforce-version=v1.32
+```
+
+Dann die Realm-Konfiguration einspielen. In der Ubuntu-Shell Folgendes
+eingeben:
+
+```shell
+cd terraform/authserver
+STAGE=local NAMESPACE=zeta-local \
+  TF_VAR_use_kubernetes=true TF_VAR_config_path=~/.kube/config \
+  ./generate-main-and-backend.sh
+terraform init -backend-config=environments/local.backend.hcl -reconfigure
+
+# Admin-Zugangsdaten aus dem Secret authserver-admin übernehmen
+eval "$(bash scripts/kc-admin-env.sh zeta-local)"
+
+# direkt nach dem Deployment ist der Authserver evtl. noch nicht bereit,
+# daher bis zu fünf Versuche
+for i in 1 2 3 4 5; do
+  terraform apply -parallelism=1 -var-file=../../local-test/local.tfvars \
+    -auto-approve && break
+done
+cd ../..
 ```
 
 Der Befehl sollte mit einer Ausgabe wie dieser enden. Die Anzahl der Ressourcen

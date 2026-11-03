@@ -56,11 +56,21 @@ Die Installation gliedert sich grob in folgende Schritte:
 
 Das ZETA-Guard-Helm-Chart ist für Helm 4 konzipiert.
 
-Kopieren Sie nun die
-Datei [values-demo.yaml](https://github.com/gematik/zeta-guard-helm/blob/main/charts/zeta-guard/values-demo.yaml)
-in das Arbeitsverzeichnis.
-Sie können diese Datei als Konfigurationsvorlage verwenden, umbenennen und
-anpassen.
+Zuerst bestimmen Sie die Version – den Tag – des Charts, die Sie verwenden wollen:
+
+```shell
+crane ls europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-helm/zeta-guard
+```
+
+Dann laden Sie den Chart herunter, und entpacken ihn:
+
+```shell
+helm pull oci://europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-helm/zeta-guard:{TAG} --untar
+```
+
+Kopieren Sie nun die Datei `values-demo.yaml` aus dem entpackten Chart in das
+Arbeitsverzeichnis. Sie können diese Datei als Konfigurationsvorlage verwenden,
+umbenennen und anpassen.
 
 Beim **ersten Deployment** (Initialinstallation) müssen zusätzlich zu den
 Admin-Zugangsdaten auch die Werte für `authserver.genesisHash` und
@@ -96,13 +106,13 @@ authserver:
   `genesisHash` bricht die Integrität der Admin-Event-Hash-Chain; eine Änderung
   von `smcbHashingPepper` invalidiert alle bestehenden SMC-B-Nutzer-Hashes.
 
-Mit
-dieser [values-demo.yaml](https://github.com/gematik/zeta-guard-helm/blob/main/charts/zeta-guard/values-demo.yaml)
-können Sie ZETA-Guard über
-folgendes Kommando installieren:
+Mit dieser values-demo.yaml können Sie ZETA-Guard über folgendes Kommando
+installieren:
 
 ```shell
-    helm upgrade --install zeta-guard oci://europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-helm/zeta-guard:${TAG} -f values-demo.yaml  --rollback-on-failure --timeout 15m
+helm upgrade --install zeta-guard \
+  oci://europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-helm/zeta-guard:{TAG} \
+  -f values-demo.yaml --rollback-on-failure --timeout 15m
 ```
 
 ### 2. PDP konfigurieren
@@ -132,6 +142,7 @@ Terraform-Variable
 | **Zugangsdaten**        | `TF_VAR_keycloak_*`, aus `authserver-admin` gefüllt² | `TF_VAR_keycloak_*`²                          |
 | **Kubernetes-Provider** | Wird konfiguriert und genutzt                        | Entfällt vollständig¹                         |
 | **Cluster-Zugang**      | Erforderlich (kubeconfig)                            | Nicht erforderlich                            |
+| **Namespace**           | `keycloak_namespace` erforderlich                    | `keycloak_namespace` wird nicht verwendet     |
 | **Typischer Einsatz**   | CI/CD-Pipelines, Cluster-Zugang vorhanden            | Lokale Entwicklung, kein Cluster-Zugang nötig |
 | **Aktivierung**         | `use_kubernetes = true` (Standard)                   | `use_kubernetes = false`                      |
 
@@ -208,11 +219,11 @@ Insbesondere werden folgende Rechte vorausgesetzt:
 > [Betriebsmodi](#betriebsmodi)). Das Leserecht auf `authserver-admin` bleibt
 > dennoch nötig: Es braucht jetzt `scripts/kc-admin-env.sh` statt Terraform.
 >
-> Der State ist damit nicht harmlos. Er enthält weiterhin die Client-Secrets und
-> das Dummy-Benutzerpasswort des Fake-SekIDP-Testrealms (`use_fake_sekidp_testrealm`
-> — in Produktivumgebungen nicht aktivieren). Behandeln Sie
-> `tfstate-<workspace>-state` also weiterhin als schützenswert und vergeben Sie
-> die obigen Secret-Rechte eng.
+> Client-Secrets enthält der State ebenfalls keine mehr: die letzten stammten
+> aus dem Fake-SekIDP-Testrealm, der entfallen ist. Der State beschreibt aber
+> weiterhin die vollständige Realm-Konfiguration — behandeln Sie
+> `tfstate-<workspace>-state` also als schützenswert und vergeben Sie die obigen
+> Secret-Rechte eng.
 
 Ein `cluster-admin` ist dafür **nicht** erforderlich — alle benötigten Rechte
 sind Namespace-lokal. Als Vorlage:
@@ -346,6 +357,11 @@ audience_scope_name = "zero:audience"               # Name des Audience-Scopes (
 # use_kubernetes = true   # false für lokalen Modus ohne K8s-Backend
 # audience       = ""     # Expliziter Audience-Wert; leer = aus keycloak_url abgeleitet
 # pdp_scopes     = []     # Zusätzliche PDP-Scopes, z. B. ["zero:read", "zero:write"]
+
+# Optional — mobiler Client-Flow über einen sektoralen IDP (SekIDP)
+# enable_sekidp        = false
+# sekidp_client_id     = ""  # Öffentlicher Issuer des Realms; nötig, wenn keycloak_url
+#                            # auf den Admin-Hostnamen zeigt (leer = aus keycloak_url)
 ```
 
 Die Keycloak-Admin-Zugangsdaten gehören **nicht** in diese Datei: Sie sind
@@ -375,21 +391,18 @@ Siehe [demo.tfvars](https://github.com/gematik/zeta-guard-helm/blob/main/terrafo
 
 Vor der Konfiguration müssen die modusabhängigen Dateien generiert und das
 Backend initialisiert werden. Das Skript `generate-main-and-backend.sh` erzeugt
-aus Templates `main.tf`, `providers.tf`, `mode-assert.tf` und — nur im
-Kubernetes-Modus — `sekidp-secret.tf`, dazu die Backend-Konfiguration. Im
-lokalen Modus (`use_kubernetes = false`) entfallen der
-`provider "kubernetes"`-Block, der zugehörige `required_providers`-Eintrag und
-`sekidp-secret.tf` — es wird also kein Cluster-Zugang und keine kubeconfig
-benötigt.
+aus Templates `main.tf`, `providers.tf` und `mode-assert.tf`, dazu die
+Backend-Konfiguration. Die beiden Modi unterscheiden sich nur im Backend: Im
+Kubernetes-Modus liegt der State als Secret im Cluster, im lokalen Modus
+(`use_kubernetes = false`) als Datei — dann wird kein Cluster-Zugang und keine
+kubeconfig benötigt.
 
-> **Hinweis:** Terraform leitet Provider-Anforderungen statisch aus den
-> Ressourcentyp-Namen ab, weshalb die `kubernetes_*`-Blöcke in einer je Modus
-> erzeugten Datei liegen und nicht per `count = 0` abgeschaltet werden. Im
-> Kubernetes-Modus ist `sekidp-secret.tf` deren einzige Quelle; im lokalen Modus
-> existiert keine davon, sodass `terraform init` das Provider-Plugin
-> `hashicorp/kubernetes` gar nicht erst herunterlädt. Für Umgebungen mit Air-Gap
-> oder Registry-Whitelisting heißt das: `hashicorp/kubernetes` muss nur für den
-> Kubernetes-Modus verfügbar sein.
+> **Hinweis:** Die Konfiguration verwendet keinen `kubernetes`-Provider. Das
+> `kubernetes`-Backend ist in Terraform eingebaut, `terraform init` lädt dafür
+> kein Provider-Plugin herunter. Für Umgebungen mit Air-Gap oder
+> Registry-Whitelisting muss `hashicorp/kubernetes` also in keinem der beiden
+> Modi verfügbar sein. Eine `sekidp-secret.tf` aus einer älteren Version
+> entfernt das Skript beim nächsten Lauf.
 
 ##### Kubernetes-Modus (Standard)
 
@@ -510,23 +523,17 @@ Zwei Nebenwirkungen sind beabsichtigt und sollten bekannt sein:
 
 ### 3. PEP konfigurieren
 
-Die [values-demo.yaml](https://github.com/gematik/zeta-guard-helm/blob/main/charts/zeta-guard/values-demo.yaml)
-enthält eine PEP-Beispielkonfiguration, die eine
-nginx-Welcome-Seite ausliefert.
-Für den Demo-Use-Case können Sie diesen Abschnitt überspringen.
+Die `values-demo.yaml` im Chart enthält eine PEP-Beispielkonfiguration, die eine
+nginx-Welcome-Seite ausliefert. Für den Demo-Use-Case können Sie diesen
+Abschnitt überspringen.
 
 Falls der PEP an einen Fachdienst angeschlossen werden soll, geht dies wie
 folgt:
 
-Der PEP ist auf Basis von nginx umgesetzt. In
-der [values-demo.yaml](https://github.com/gematik/zeta-guard-helm/blob/main/charts/zeta-guard/values-demo.yaml)
-ist im Feld
-`pepproxy.nginxConf.fileContent` der Dateiinhalt einer nginx-Konfiguration
-(.../nginx.conf) anzugeben.
-Dort sind in
-der [values-demo.yaml](https://github.com/gematik/zeta-guard-helm/blob/main/charts/zeta-guard/values-demo.yaml)
-die folgenden Direktiven
-auf die Konfiguration des PDP abzustimmen:
+Der PEP ist auf Basis von nginx umgesetzt. In der `values-demo.yaml` im Chart
+ist im Feld `pepproxy.nginxConf.fileContent` der Dateiinhalt einer
+nginx-Konfiguration (.../nginx.conf) angegeben. Dort sind die folgenden
+Direktiven auf die Konfiguration des PDP abzustimmen:
 
 * `pep_issuer`
 
@@ -536,28 +543,24 @@ auf die Konfiguration des PDP abzustimmen:
 * `proxy_pass`
 
   Das abzusichernde Ziel.
-  In
-  der [values-demo.yaml](https://github.com/gematik/zeta-guard-helm/blob/main/charts/zeta-guard/values-demo.yaml)
-  ist das Ausliefern des http-Verzeichnisses via
+  In der `values-demo.yaml` ist das Ausliefern des http-Verzeichnisses via
   `root ...` eingerichtet.
   Der Fachdienst ist in der Regel über die nginx-Standarddirektive `proxy_pass`
   anzubinden.
-  In
-  der [values-demo.yaml](https://github.com/gematik/zeta-guard-helm/blob/main/charts/zeta-guard/values-demo.yaml)
-  wäre dann die `root`-Direktive zu ersetzen, z. B. durch
-  `proxy_pass https://testfachdienst/`
+  In der `values-demo.yaml` im Chart wäre dann die `root`-Direktive zu ersetzen,
+  z. B. durch `proxy_pass https://testfachdienst/`
 
 Anmerkung: Die nginx-Direktive `pep on;` schaltet das PEP-spezifische Verhalten
 auf dem entsprechenden Pfad ein. Eine genauere Referenz zur PEP-Konfiguration
 findet sich [hier](../Referenzen/Konfiguration_des_PEP_Http_Proxy.md).
 
-Nachdem Sie
-die [values-demo.yaml](https://github.com/gematik/zeta-guard-helm/blob/main/charts/zeta-guard/values-demo.yaml)
-entsprechend angepasst haben, können Sie Ihre
+Nachdem Sie die `values-demo.yaml` entsprechend angepasst haben, können Sie Ihre
 Änderungen über folgendes Helm-Kommando ausrollen:
 
 ```shell
-    helm upgrade --install zeta-guard zeta/zeta-guard -f values-demo.yaml --rollback-on-failure --timeout 15m
+helm upgrade --install zeta-guard \
+  oci://europe-west3-docker.pkg.dev/gematik-pt-zeta-prod/zeta-helm/zeta-guard:{TAG} \
+  -f values-demo.yaml --rollback-on-failure --timeout 15m
 ```
 
 Nun haben Sie den ZETA-Guard eingerichtet und ein Zugriff über den
