@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ZETA Guard Metadata",
+  "description": "Signing certificates and metadata published for ZETA Guard.",
+  "type": "object",
+  "properties": {
+    "format_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Semantic version of the certinfo format.",
+      "examples": ["1.0.0"]
+    },
+    "updated_at": {
+      "type": "integer",
+      "minimum": 1774508400,
+      "description": "Unix Epoch Timestamp from the moment this file was last generated. Shall be updated when higher than previous value."
+    },
+    "env": {
+      "type": "string",
+      "enum": ["gemdev", "dev", "test", "ref", "prod"],
+      "description": "Target instance."
+    },
+    "signing_certificates": {
+      "type": "object",
+      "properties": {
+        "release": {
+          "$ref": "#/definitions/certificateList"
+        },
+        "provisioning_container": {
+          "$ref": "#/definitions/certificateList"
+        }
+      },
+      "required": [
+        "release",
+        "provisioning_container"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "format_version",
+    "updated_at",
+    "env",
+    "signing_certificates"
+  ],
+  "additionalProperties": false,
+  "definitions": {
+    "certificateList": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "minProperties": 1,
+        "propertyNames": {
+          "minLength": 1
+        },
+        "additionalProperties": {
+          "$ref": "#/definitions/certificate"
+        }
+      }
+    },
+    "certificate": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["root-ca", "ca-chain"]
+        },
+        "pem": {
+          "type": "string",
+          "minLength": 1,
+          "description": "PEM encoded certificate."
+        },
+        "hash": {
+          "type": "string",
+          "description": "SHA256 Hash of the certificate."
+        },
+        "mirror": {
+          "$ref": "#/definitions/mirror",
+          "description": "Additional source to acquire or to verify the certificate."
+        }
+      },
+      "required": [
+        "type",
+        "pem",
+        "hash",
+        "mirror"
+      ],
+      "additionalProperties": false
+    },
+    "mirror": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "tsl"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "type",
+        "url"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
