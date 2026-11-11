@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: OpenID Federation Entity Configuration Endpunkt des Authorization Servers
-  version: 1.0.0
+  version: 1.1.0
   description: |
     Der ZETA Guard Authorization Server ist Relying Party der TI-Föderation (A_25655) und
     veröffentlicht seine Entity Configuration (selbst signiertes Entity Statement) unter

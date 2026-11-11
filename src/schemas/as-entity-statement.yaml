@@ -3,7 +3,7 @@
 # Served at GET <iss>/.well-known/openid-federation
 # (Content-Type: application/entity-statement+jwt).
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.0.2"
+schemaVersion: "1.1.0"
 title: ZETA Guard Authorization Server Entity Statement
 description: >-
   Entity Configuration des ZETA Guard Authorization Servers (AuthS) in der
@@ -23,6 +23,9 @@ description: >-
   daraus keine Union- oder Hilfstypen; ein JSON-Schema-Validator prüft sie
   unverändert. Einzige inhaltliche Ergänzung: federation_entity nennt die drei
   in der Beschreibung genannten Felder mit Typ.
+  Neu in 1.1.0 (abwärtskompatibel): optionaler Parameter
+  oauth_authorization_server.ti_security_class (Sicherheitsklasse des
+  Dienstes für die fachdienstübergreifende Fast-Path-Registrierung).
 
   Nicht in draft-07 ausdrückbare Regeln, die zusätzlich gelten:
   (1) payload.iss und payload.sub sind identisch (OpenID Federation 1.1, Entity
@@ -515,7 +518,9 @@ definitions:
       Schlüssel, mit denen sie ZETA Attestation Token (A_29915-01) dieses AuthS
       prüfen. Die Werte
       entsprechen as-well-known.yaml; hier ist nur das für die Föderation
-      erforderliche Minimum festgelegt.
+      erforderliche Minimum festgelegt. Ausnahme: ti_security_class steht nur
+      in den Föderationsmetadaten, nicht in as-well-known.yaml, weil der Wert
+      erst durch die Validierung des Federation Master verlässlich ist.
     properties:
       issuer:
         type: string
@@ -547,6 +552,32 @@ definitions:
                 - kid
         required:
           - keys
+      ti_security_class:
+        type: integer
+        minimum: 1
+        description: >-
+          Optional. Sicherheitsklasse des TI 2.0-Dienstes, den dieser ZETA Guard
+          schützt; höhere Werte bedeuten ein höheres Schutzniveau. Die Klasse
+          drückt das Vertrauensniveau des Fachdienstes aus, das beim
+          fachdienstübergreifenden Fast-Path verglichen wird (gemSpec_ZETA 2.0.1
+          A_29913), nicht das Vertrauensniveau der Nutzerauthentisierung. Welche
+          Klassen es gibt und welche ein Dienst hat, legt die gematik fest.
+          Der ZETA Guard setzt den Wert aus seiner Konfiguration (die von der
+          gematik zugewiesene Klasse) und stellt bei jeder Änderung die Entity
+          Configuration neu aus; ohne gültige Konfiguration fehlt der Parameter.
+          Vorgeschlagen, noch nicht Teil von gemSpec_ZETA bzw.
+          gemSpec_IDP_FedMaster und bis zur Übernahme informativ: (a) Der
+          Federation Master (bzw. der ZETA TI-Intermediate) validiert den Wert
+          im Subordinate Statement über diesen AuthS per metadata_policy mit
+          den Operatoren one_of (genau die bei der gematik registrierte Klasse)
+          und essential: true (OpenID Federation 1.1); weicht der Wert ab oder
+          fehlt er, schlägt die Auflösung der Metadaten fehl. (b) Der Ziel-Guard
+          verwendet die Klasse nur aus den so validierten, aufgelösten Metadaten
+          der Entität mit Entity Identifier = iss des ZETA Attestation Token und
+          lehnt den Fast-Path ab, wenn die Validierung oder die Klasse fehlt,
+          die Klasse keine der von der gematik festgelegten Klassen ist oder
+          niedriger als die eigene. Bis zur Übernahme ist der Wert eine
+          unbestätigte Selbstauskunft des AuthS.
     # Genau eines von jwks, jwks_uri und signed_jwks_uri.
     if:
       required:

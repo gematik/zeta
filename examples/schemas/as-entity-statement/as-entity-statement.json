@@ -92,7 +92,8 @@
       },
       "oauth_authorization_server": {
         "issuer": "https://zeta-guard.example.de",
-        "jwks_uri": "https://zeta-guard.example.de/certs"
+        "jwks_uri": "https://zeta-guard.example.de/certs",
+        "ti_security_class": 2
       }
     }
   }
