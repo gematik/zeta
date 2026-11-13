@@ -50,7 +50,7 @@ Hierbei sind anzupassen:
 | SMB_KEYSTORE_ALIAS        | Alias of the key in the SM-B Certificate file                                                                         |                                                            |
 | SMB_KEYSTORE_PASSWORD     | Password for the private key                                                                                          |                                                            |
 | SMB_KEYSTORE_B64          | Alternativ zur Datei: der Keystore Base64-kodiert (vor allem für den Load-Driver)                                     |                                                            |
-| REQUIRED_ROLE_OID         | Role-OID, die das TI-Zertifikat des ASL-Servers enthalten muss                                                        | 1.2.276.0.76.4.324                                         |
+| REQUIRED_ROLE_OID         | Role-OID, die das TI-Zertifikat des ASL-Servers enthalten muss                                                        | 1.2.276.0.76.4.328                                         |
 | ASL_PROD                  | Produktiv- (`true`, Default) oder Nicht-Produktivmodus des ASL-Protokolls                                              | false                                                      |
 | POPP_TOKEN                | Wert eines PoPP-Tokens, welches an den PEP mitgegeben wird (optional)                                                 | eyJhbGciOiJFUzI1NiI......                                  |
 | DISABLE_SERVER_VALIDATION | Falls auf `true` gesetzt, wird die TLS-Zertifikatsprüfung des Servers ausgesetzt (für Tests)                          |                                                            |

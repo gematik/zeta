@@ -219,8 +219,9 @@ im Helm-Chart-Repository. Der Ablauf in Kurzform:
 | `keycloak_realm_events`                       | nichts zu tun — der Provider schreibt die Konfiguration per `PUT` |
 
    Client-Policy-Profil und -Policy sind **reine Konfiguration** (Profilname,
-   `dpop-bind-enforcer`-Executor, Client-Typ-Bedingungen). Sie enthalten keine
-   Nutzdaten und keinen Client-Zustand, das Löschen und Neuanlegen ist daher
+   Executoren `dpop-bind-enforcer` und `reject-implicit-grant`,
+   Client-Typ-Bedingungen). Sie enthalten keine Nutzdaten und keinen
+   Client-Zustand, das Löschen und Neuanlegen ist daher
    unkritisch. Löschen Sie die Policy vor dem Profil — eine Policy, die auf ein
    fehlendes Profil verweist, wird abgelehnt.
 
@@ -399,6 +400,54 @@ Für den Betrieb wichtig:
   Types werden mit `unsupported_grant_type` abgelehnt. Die vollständige Liste
   steht in den
   [Release Notes der Komponenten](../ReleaseNotes/ZetaGuard/ReleaseNotes.md#keycloak-authserver-zeta-pdp).
+- **Datenbank-Volume standardmäßig 32Gi (ab 2.0.4):**
+  `cloudnativePg.storage.size` ist mit `32Gi` statt `10Gi` vorbelegt. Ohne
+  eigenen Wert vergrößert das `helm upgrade` das Volume einer bestehenden
+  Installation; das setzt eine StorageClass mit `allowVolumeExpansion: true`
+  voraus und lässt sich nicht rückgängig machen. Soll das Volume bleiben, wie
+  es ist, setzen Sie den bisherigen Wert vor dem Upgrade explizit. Siehe
+  [Größe des Datenbank-Volumes](../Referenzen/Referenz_des_Helm_Charts.md#größe-des-datenbank-volumes).
+- **Token Exchange antwortet mit `400` statt `403` (ab 2.0.4):** Fehlerhafte
+  oder ungültige Anfragen (z. B. ungültige Nonce, falscher Grant Type,
+  ungültiges `x5c`-Zertifikat, Client Statement oder Posture) beantwortet der
+  Authserver mit `400`. Ein DPoP-Proof ohne `nonce` ergibt `400`
+  (`use_dpop_nonce`) mit einer frischen Nonce im Header `DPoP-Nonce`. Clients,
+  die auf `403` prüfen, müssen angepasst werden.
+- **Dynamische Client-Registrierung eingeschränkt (ab 2.0.4):** Ändern und
+  Löschen nach RFC 7592 (`PUT`/`DELETE`) gibt es nicht mehr, Keycloaks eigene
+  Registrierungsendpunkte sind abgeschaltet, und `jwks`, `grant_types`,
+  `client_name` sowie `token_endpoint_auth_method` sind Pflichtfelder. Siehe
+  [Wie die dynamische Client-Registrierung funktioniert](Wie_die_dynamische_Client-Registrierung_funktioniert.md).
+- **Nur noch Authorization Code Flow (ab 2.0.4):** Das Client-Policy-Profil
+  erhält den Executor `reject-implicit-grant`; Implicit- und Hybrid-Anfragen
+  werden abgewiesen. Wirksam wird das mit dem `terraform apply` des
+  [Update-Wegs](#der-unterstützte-update-weg).
+- **SM(C)-B-Nutzerdaten unverändert aus dem Zertifikat (ab 2.0.4, A_26972-03):**
+  `commonName` und `organizationName` werden ohne DN-Escaping übernommen (z. B.
+  `Praxis Dr. Müller, Zahnarzt` statt `Praxis Dr. Müller\, Zahnarzt`). Fehlt
+  `organizationName` im Zertifikat, entfällt das Feld, statt mit `Unbekannt`
+  belegt zu werden. Das betrifft die Access-Token-Claims, den Header
+  `ZETA-User-Info` und die OPA-Eingabe `user_info`.
+- **Notification Service lehnt Zugriffe auf fremde Pusher ab (ab 2.0.4):**
+  Operationen auf dem Pusher eines anderen Nutzers enden mit `403 M_FORBIDDEN`
+  statt mit einer Übernahme bzw. `404`. Wenn ein Gerät das Konto wechselt, muss
+  es seinen Pusher vorher abmelden. Siehe
+  [Wie der Notification Service funktioniert](Wie_der_Notification_Service_funktioniert.md#authentifizierung).
+- **ASL: unbekannte `cid` ergibt `403` statt `500` (ab 2.0.4):** Kennt der PEP
+  die `cid` einer Anfrage nicht oder nicht mehr – etwa nach einem Neustart des
+  PEP-Pods, auch nach dem Upgrade selbst –, antwortet er mit `403` und dem
+  ASL-Fehlercode 9 `unknown CID` statt mit `500` und Fehlercode 102. Das
+  ZETA-SDK baut die Session in diesem Fall ab Version 2.0.6 neu auf; Clients
+  mit älterem SDK oder eigener ASL-Implementierung müssen angepasst werden.
+  Unfertige Handshakes verfallen nach 5 Minuten, siehe
+  [Konfigurationsparameter (ASL)](../Referenzen/Konfiguration_des_PEP_Http_Proxy.md#konfigurationsparameter-asl).
+- **HSM-Proxy-Adresse des PEP mit Schema (ab 2.0.4):** Der PEP beachtet das
+  Schema von `pepproxy.hsmProxyAddr`. `https://` baut TLS auf und prüft das
+  Zertifikat des HSM-Proxy; `http://` oder eine Adresse ohne Schema ist nur
+  für eine Loopback-Adresse zulässig, sonst startet der PEP nicht. Stellen Sie
+  die Adresse auf `https://` um oder setzen Sie
+  `pepproxy.hsmProxyPlainTextAccepted: true`, wenn das Netz den Kanal schützt.
+  Siehe [HSM-Konfiguration (TLS)](../Referenzen/Referenz_des_Helm_Charts.md#hsm-konfiguration-tls).
 - **RS-API des Notification Service verlangt ein Client-Zertifikat**
   (`notificationService.rs.mtls.enabled: true`). Das Chart stellt dafür kein
   TLS bereit, RS-Aufrufe enden ohne Anpassung mit `401`, siehe

@@ -11,6 +11,7 @@
 * Sicherheitsanforderungen
   * [Sicherheitsanforderungen an den Betreiber des ZETA-Guard](SicherheitsanforderungenZETAGuardBetreiber.md)
   * [Sicherheitsanforderungen an den Client-Hersteller](SicherheitsanforderungenClientHersteller.md)
+  * [Sichere Konfiguration des ZETA-SDK](SichereKonfigurationdesZETASDK.md)
 * Anleitungen
   * [ZETA-Guard-Quickstart](Anleitungen/ZETA_Guard_Quickstart.md)
   * [Wie Sie den Cluster lokal mit KIND aufsetzen](Anleitungen/Wie_Sie_den_Cluster_lokal_mit_KIND_aufsetzen.md)
@@ -40,6 +41,7 @@
   * [Wie der Notification Service funktioniert](Anleitungen/Wie_der_Notification_Service_funktioniert.md)
   * [Wie Sie Benachrichtigungen aus dem Fachdienst versenden](Anleitungen/Wie_Sie_Benachrichtigungen_aus_dem_Fachdienst_versenden.md)
   * [Wie Sie das SDK-Notifications-Modul verwenden](Anleitungen/Wie_Sie_das_SDK_Notifications-Modul_verwenden.md)
+  * [Wie Sie die ZETA-Apps mit BrowserStack testen](Anleitungen/Wie_Sie_die_ZETA_Apps_mit_BrowserStack_testen.md)
   * [Troubleshooting & Debugging](Anleitungen/Troubleshooting_und_Debugging.md)
 * Erklärungen
   * [Wie der Telemetriedaten-Service funktioniert](Erklärungen/Wie_der_Telemetrie-Daten_Service_funktioniert.md)

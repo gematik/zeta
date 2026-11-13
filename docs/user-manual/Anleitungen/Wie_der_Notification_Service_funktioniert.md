@@ -116,6 +116,16 @@ Die beiden APIs des Dienstes sind unterschiedlich abgesichert:
   mindestens `identifier`); fehlt der Header, antwortet er mit `401`. Jede
   Operation ist an dieses Subjekt gebunden — ein Gerät sieht und ändert nur
   die Daten des eigenen Nutzers.
+  Eine Operation auf einem Pusher eines anderen Nutzers lehnt der Dienst mit
+  `403` und dem Fehlercode `M_FORBIDDEN` ab (A_29978): Das betrifft das
+  Registrieren eines Pushers (App-ID und Pushkey), den ein anderer Nutzer hält
+  (auch mit `append`), dessen Abmeldung sowie `GET`/`POST /channels/{pushkey}`
+  und `GET /history/device/{pushkey}`. Ein Pushkey, den niemand hält, ergibt
+  weiterhin `404`. Wechselt der Nutzer auf einem Gerät das Konto, muss das
+  Gerät seinen Pusher unter dem alten Konto abmelden, bevor es ihn unter dem
+  neuen Konto registriert. Bei Pushern aus einer früheren Version lautet die
+  Antwort auf den Kanal- und Historien-Pfaden so lange `404`, bis ihr Besitzer
+  sie erneut registriert.
 - **RS-Seite (Fachdienst):** Die Spezifikation verlangt einen per mTLS
   authentifizierten technischen Nutzer (A_29980). Der Dienst verlangt auf der
   RS-API ein Client-Zertifikat aus seinem Truststore und antwortet sonst mit

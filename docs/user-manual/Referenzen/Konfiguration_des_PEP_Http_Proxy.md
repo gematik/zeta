@@ -252,6 +252,18 @@ Dekodiertes Beispiel für ein Versicherten-Token (Nutzer hat der Freigabe des Ge
     * Pflichtfeld: Nein (aber siehe Beschreibung)
     * Context: `http`
     * Standardwert: nicht gesetzt
+* `pep_jwks_max_lifetime`
+    * Typ: duration
+    * Beschreibung: Höchstdauer, für die der PEP abgerufene Schlüssel und
+      Discovery-Dokumente von PDP und PoPP-Server verwendet, bevor er sie
+      vollständig neu abruft — unabhängig vom `Cache-Control: max-age` der
+      Antwort und von zwischenzeitlichen `304`-Antworten. Einheiten wie bei
+      `pep_asl_ocsp_ttl`. Der Cache liegt je Worker-Prozess; ein Reload
+      ersetzt die Worker und leert ihn damit. Das Helm-Chart setzt die
+      Direktive nicht, es gilt der Standardwert.
+    * Pflichtfeld: Nein
+    * Context: `http`
+    * Standardwert: `24h`
 * `pep_http_client_connect_timeout`, `pep_http_client_timeout`
     * Typ: integer
     * Beschreibung: Konfigurationen für den pep-spezifischen HTTP client. Dieser
@@ -471,4 +483,41 @@ Moduls. Weiterhin gilt für alle ASL-Direktiven:
     * Pflichtfeld: Nein
     * Context: `http`
     * Standardwert: `"24h"`
+* `pep_asl_session_cache_size`
+    * Typ: size
+    * Beschreibung: Größe des Shared-Memory-Bereichs für den ASL-Session-Cache
+      (`1m` bis `16g`). Der Cache gilt je nginx-Instanz, also je Pod. Ein
+      Eintrag belegt etwa 300–500 Bytes; `100m` fassen rund 200.000 bis
+      300.000 Sessions. Ist der Bereich voll, entfernt der PEP zuerst
+      abgelaufene Einträge und verdrängt danach die ältesten, Handshakes vor
+      Sessions. Ein Reload behält den Cache und seine Sessions. Ändert sich die
+      Größe, wird der Cache geleert.
+    * Pflichtfeld: Nein
+    * Context: `http`
+    * Standardwert: `100m`
+* `pep_asl_session_ttl`
+    * Typ: duration
+    * Beschreibung: Maximaldauer einer aufgebauten ASL-Session. Wird vom
+      ASL-Protokoll auf 24 h begrenzt. Einheiten wie bei `pep_asl_ocsp_ttl`.
+      Änderungen wirken mit einem Reload.
+    * Pflichtfeld: Nein
+    * Context: `http`
+    * Standardwert: `24h`
+* `pep_asl_handshake_ttl`
+    * Typ: duration
+    * Beschreibung: Lebensdauer eines nicht abgeschlossenen Handshakes.
+      Einheiten wie bei `pep_asl_ocsp_ttl`. Änderungen wirken mit einem
+      Reload.
+    * Pflichtfeld: Nein
+    * Context: `http`
+    * Standardwert: `5m`
+
+Eine Anfrage mit einer `cid`, die der Session-Cache nicht oder nicht mehr kennt
+(abgelaufen, aufgeräumt oder verdrängt), beantwortet der PEP mit `403` und dem
+ASL-Fehlercode 9 `unknown CID` (gemSpec_Krypt A_26924). Der Client initiiert
+dann einen neuen Handshake. Das gilt für laufende Sessions ebenso wie für den
+Handshake selbst.
+
+Das Helm-Chart setzt die drei Cache-Direktiven nicht; es gelten die
+Standardwerte.
 

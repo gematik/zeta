@@ -124,14 +124,19 @@ nicht erforderlich, aber möglich.
 Wichtige ZETA-spezifische Metriken des HTTP Proxy (per OTLP an das
 Telemetry-Gateway):
 
-| Name                           | Instrument Type | Unit (UCUM) | Description                                                                       |
-|--------------------------------|-----------------|-------------|-----------------------------------------------------------------------------------|
-| `http.server.request.duration` | Histogram       | `s`         | Dauer aller Requests am HTTP Proxy (Attribute: HTTP-Methode, Statuscode)          |
-| `zeta.asl.sessions.active`     | Gauge           |             | Einträge (Handshakes + Sessions) im ASL-Session-Cache                             |
-| `zeta.jwk_cache.age`           | Gauge           | `s`         | Sekunden seit dem letzten erfolgreichen JWKS-Update (Attribut: `target`)          |
-| `zeta.jwk_cache.refresh`       | Counter         |             | JWKS-Update-Versuche nach Ziel und Ergebnis (Attribute: `target`, `outcome`)      |
-| `zeta.ocsp.response.age`       | Gauge           | `s`         | Sekunden seit dem letzten erfolgreichen OCSP-Abruf                                |
-| `zeta.asl.signer_cert.expiry`  | Gauge           | `s`         | Ablaufzeitpunkt (`not_after`) des ASL-Signaturzertifikats in Unix-Epochensekunden |
+| Name                                    | Instrument Type | Unit (UCUM) | Description                                                                       |
+|-----------------------------------------|-----------------|-------------|-----------------------------------------------------------------------------------|
+| `http.server.request.duration`          | Histogram       | `s`         | Dauer aller Requests am HTTP Proxy (Attribute: HTTP-Methode, Statuscode)          |
+| `zeta.asl.sessions.active`              | Gauge           |             | Einträge (Handshakes + Sessions) im ASL-Session-Cache                             |
+| `zeta.asl.sessions.handshaking`         | Gauge           |             | Nicht abgeschlossene Handshakes im ASL-Session-Cache (Teil von `sessions.active`) |
+| `zeta.asl.session_cache.used`           | Gauge           | `By`        | Belegte Bytes im ASL-Session-Cache                                                |
+| `zeta.asl.session_cache.size`           | Gauge           | `By`        | Größe des ASL-Session-Cache (`pep_asl_session_cache_size`)                        |
+| `zeta.asl.session_cache.alloc_failures` | Counter         |             | Einfügeversuche, die an einem vollen ASL-Session-Cache gescheitert sind           |
+| `zeta.asl.session_cache.evictions`      | Counter         |             | Gültige Einträge, die aus einem vollen ASL-Session-Cache verdrängt wurden         |
+| `zeta.jwk_cache.age`                    | Gauge           | `s`         | Sekunden seit dem letzten erfolgreichen JWKS-Update (Attribut: `target`)          |
+| `zeta.jwk_cache.refresh`                | Counter         |             | JWKS-Update-Versuche nach Ziel und Ergebnis (Attribute: `target`, `outcome`)      |
+| `zeta.ocsp.response.age`                | Gauge           | `s`         | Sekunden seit dem letzten erfolgreichen OCSP-Abruf                                |
+| `zeta.asl.signer_cert.expiry`           | Gauge           | `s`         | Ablaufzeitpunkt (`not_after`) des ASL-Signaturzertifikats in Unix-Epochensekunden |
 
 ### Health-Endpunkte
 
@@ -512,6 +517,9 @@ Betreiber-SIEM dienen können. Als Ausgangspunkt empfehlen sich:
     * `zeta.asl.signer_cert.expiry` — Alarm rechtzeitig vor Ablauf des
       ASL-Signaturzertifikats (Metrik ist der `not_after`-Zeitpunkt in
       Epochensekunden, d. h. Alarm bei `expiry - now < Schwellwert`).
+    * `zeta.asl.session_cache.alloc_failures` — Alarm bei jedem Anstieg: Der
+      ASL-Session-Cache war voll (siehe `pep_asl_session_cache_size` in der
+      [PEP-Konfiguration](../Referenzen/Konfiguration_des_PEP_Http_Proxy.md#konfigurationsparameter-asl)).
     * `zeta.jwk_cache.age` und `zeta.ocsp.response.age` — anhaltend steigende
       Werte deuten auf Verbindungsprobleme zu PDP/PoPP bzw. OCSP-Responder hin.
     * 5xx-Rate aus `http.server.request.duration` (Attribut Statuscode) bzw.

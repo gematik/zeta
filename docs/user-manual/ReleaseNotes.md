@@ -2,6 +2,60 @@
 
 # Release Notes des Produkthandbuchs
 
+## Release 2.0.4
+
+### added
+
+- [Größe des Datenbank-Volumes](Referenzen/Referenz_des_Helm_Charts.md#größe-des-datenbank-volumes):
+  `cloudnativePg.storage.size` (Standard `32Gi`, vorher `10Gi`), Faustformel je
+  registriertem Client, eigenes WAL-Volume.
+- [Client-Ablaufjob](Anleitungen/Wie_der_Client-Lebenszyklus_verwaltet_wird.md):
+  `CLIENT_REGISTRATION_EXPIRATION_BATCH_SIZE` (Standard 500).
+- [ASL-Session-Cache](Referenzen/Konfiguration_des_PEP_Http_Proxy.md#konfigurationsparameter-asl):
+  Direktiven `pep_asl_session_cache_size`, `pep_asl_session_ttl`,
+  `pep_asl_handshake_ttl` und Metriken `zeta.asl.session_cache.*`.
+- [Telemetrie-Attribute](Referenzen/Telemetrie-Attribute.md): `user.roles` und
+  `attackDetection.type`.
+- [PEP-Konfiguration](Referenzen/Konfiguration_des_PEP_Http_Proxy.md#konfigurationsparameter-pep-basis):
+  Direktive `pep_jwks_max_lifetime` (Standard `24h`).
+- [HSM-Konfiguration (TLS)](Referenzen/Referenz_des_Helm_Charts.md#hsm-konfiguration-tls):
+  `pepproxy.hsmProxyPlainTextAccepted`.
+- [Release Notes der Komponenten](ReleaseNotes/ZetaGuard/ReleaseNotes.md):
+  Authserver 2.0.2, PEP Proxy 2.0.1, Notification Service 2.0.2 und Helm-Chart
+  2.0.3 und 2.0.4.
+- Neue Seite [Sichere Konfiguration des ZETA-SDK](SichereKonfigurationdesZETASDK.md):
+  sicherheitsrelevante Einstellungen des SDK und empfohlene Werte für den Produktivbetrieb.
+- Neue Anleitung [Wie Sie die ZETA-Apps mit BrowserStack testen](Anleitungen/Wie_Sie_die_ZETA_Apps_mit_BrowserStack_testen.md):
+  Test der Android- und iOS-Demo-Apps auf realen Geräten über BrowserStack.
+
+### changed
+
+- [Release Notes des ZETA-SDK](ReleaseNotes/ZetaSDK/ReleaseNotes.md): Stand ZETA-SDK
+  2.0.6.
+- **BREAKING** [Besonderheiten beim Update auf 2.0.x](Anleitungen/Wie_Sie_ZETA_Guard_aktualisieren.md#besonderheiten-beim-update-auf-20x):
+  Datenbank-Volume standardmäßig `32Gi`, Token Exchange `400` statt `403`,
+  Client-Registrierung ohne `PUT`/`DELETE`, SM(C)-B-Nutzerdaten ohne
+  DN-Escaping, `403` für fremde Pusher, Schema der HSM-Proxy-Adresse des PEP.
+- [Besonderheiten beim Update auf 2.0.x](Anleitungen/Wie_Sie_ZETA_Guard_aktualisieren.md#besonderheiten-beim-update-auf-20x):
+  Der PEP antwortet bei einer unbekannten ASL-`cid` mit `403` / Fehlercode 9;
+  das ZETA-SDK baut die Session ab Version 2.0.6 neu auf.
+- [Dynamische Client-Registrierung](Anleitungen/Wie_die_dynamische_Client-Registrierung_funktioniert.md):
+  Pflichtfelder, nur noch `GET` nach RFC 7592, DPoP-Nonce beim Token Exchange,
+  Refresh mit `scope`-Parameter (A_29843), TPM-Attestierung abgeschaltet.
+- [Mobiler Client-Flow](Anleitungen/Wie_der_mobile_Client-Flow_funktioniert.md#ablauf):
+  `bind-email` verlangt `zeta:email-binding` und `zeta:email-verify`; neue
+  Antworten `409` (`email_already_bound`) und `400` (`invalid_code`).
+- [Notification Service](Anleitungen/Wie_der_Notification_Service_funktioniert.md#authentifizierung):
+  Zugriffe auf den Pusher eines anderen Nutzers enden mit `403 M_FORBIDDEN`
+  (A_29978).
+- [Service Mesh konfigurieren](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md#8-service-mesh-konfigurieren):
+  Istio-Installation mit der CNI-Option `reconcileIptablesOnStartup`; nach
+  einem Knoten-Neustart genügt ein Neustart des Istio-CNI-Agenten.
+- [Client-Policy-Profil](Anleitungen/Wie_Sie_ZETA_Guard_aktualisieren.md):
+  neuer Executor `reject-implicit-grant`. Implicit- und Hybrid-Anfragen werden
+  abgewiesen, bei Registrierungen mit `response_types` `token` wird der
+  Implicit-Flow abgeschaltet.
+
 ## Release 2.0.2
 
 ### added

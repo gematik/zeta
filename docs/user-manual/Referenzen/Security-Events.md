@@ -59,11 +59,12 @@ erzeugt ein interner Scheduler das Event (kein Endpoint)
 
 **Properties:**
 
-| Key                  | Requirement Level | Value Type | Beschreibung        | Example Values                                                                                                |
-|----------------------|-------------------|------------|---------------------|---------------------------------------------------------------------------------------------------------------|
-| `auth.client_id`     | mandatory         | string     | Client-ID           |                                                                                                               |
-| `event_type`         | mandatory         | string     | Security event type | `authn_client_registration_fail`                                                                              |
-| `zeta-client.reason` | mandatory         | string     | Grund des Fehlers   | `integrity_provider_unavailable`, `attestation_failed`, `registration_expired`, `too_many_clients_registered` |
+| Key                  | Requirement Level | Value Type | Beschreibung                                                  | Example Values                                                                                                |
+|----------------------|-------------------|------------|---------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
+| `auth.client_id`     | mandatory         | string     | Client-ID                                                     |                                                                                                               |
+| `event_type`         | mandatory         | string     | Security event type                                           | `authn_client_registration_fail`                                                                              |
+| `zeta-client.reason` | mandatory         | string     | Grund des Fehlers                                             | `integrity_provider_unavailable`, `attestation_failed`, `registration_expired`, `too_many_clients_registered` |
+| `user.roles`         | mandatory         | string     | Nutzertyp (`Versicherter`, `Leistungserbringer`, `Unbekannt`) | `Leistungserbringer`                                                                                          |
 
 ## Event authn_authorization_code_invalid
 
@@ -128,10 +129,11 @@ sektoralen IDP (mobiler Client-Flow)
 
 **Properties:**
 
-| Key                         |           | Value Type | Beschreibung        | Example Values                                                          |
-|-----------------------------|-----------|------------|---------------------|-------------------------------------------------------------------------|
-| `attackDetection.capecId`   | mandatory | int        | Attack Pattern ID   | `115`                                                                   |
-| `attackDetection.capecName` | mandatory | string     | Attack Pattern Name | `"Authentication Bypass"`                                               |
-| `attackDetection.clientIP`  | mandatory | string     |                     | `127.0.0.1`                                                             |
-| `attackDetection.detail`    | mandatory | string     |                     | `Expected audience not available in the token`                          |
-| `attackDetection.origin`    | optional  | string     |                     | `org.keycloak.TokenVerifier$AudienceCheck.test(TokenVerifier.java:163)` |
+| Key                         |           | Value Type | Beschreibung                                                  | Example Values                                                          |
+|-----------------------------|-----------|------------|---------------------------------------------------------------|-------------------------------------------------------------------------|
+| `attackDetection.capecId`   | mandatory | int        | Attack Pattern ID                                             | `115`                                                                   |
+| `attackDetection.capecName` | mandatory | string     | Attack Pattern Name                                           | `"Authentication Bypass"`                                               |
+| `attackDetection.clientIP`  | mandatory | string     |                                                               | `127.0.0.1`                                                             |
+| `attackDetection.detail`    | mandatory | string     |                                                               | `Expected audience not available in the token`                          |
+| `attackDetection.origin`    | optional  | string     |                                                               | `org.keycloak.TokenVerifier$AudienceCheck.test(TokenVerifier.java:163)` |
+| `user.roles`                | mandatory | string     | Nutzertyp (`Versicherter`, `Leistungserbringer`, `Unbekannt`) | `Leistungserbringer`                                                    |

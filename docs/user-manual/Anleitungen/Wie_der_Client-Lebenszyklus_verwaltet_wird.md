@@ -64,7 +64,11 @@ abgewiesen.
 
 Der Job läuft im Intervall `CLIENT_REGISTRATION_SCHEDULER_INTERVAL`
 (Standard: 5 Minuten), frühestens `CLIENT_REGISTRATION_STARTUP_DELAY`
-(Standard: 20 Sekunden) nach dem Serverstart. `lastAccess` wird bei jeder
+(Standard: 20 Sekunden) nach dem Serverstart. Pro Lauf entfernt er höchstens
+`CLIENT_REGISTRATION_EXPIRATION_BATCH_SIZE` Einträge (Standard: 500), die
+ältesten zuerst; den Rest übernimmt der nächste Lauf. Ein großer Rückstand,
+etwa nach einem Lasttest, wird so über mehrere Läufe abgebaut; ein kürzeres
+Intervall beschleunigt das. `lastAccess` wird bei jeder
 erfolgreichen Anmeldung bzw. jedem Token Exchange fortgeschrieben. Für
 Wartungsfenster lässt sich der Job über das Realm-Attribut `zeta-guard.realm.client_job.disabled=true`
 vorübergehend aussetzen. Alle Variablen sind in der
@@ -186,7 +190,7 @@ Daneben löscht **`logout()`** nur die Tokens, die DPoP-Schlüssel und das
 `zeta_route`-Cookie; die Registrierung bleibt bestehen.
 
 Alle drei wirken nur lokal: Das SDK ruft keinen serverseitigen Löschendpunkt auf
-(es nutzt kein RFC 7592, siehe
+(der Guard bietet kein Löschen nach RFC 7592 an, siehe
 [dynamische Client-Registrierung](Wie_die_dynamische_Client-Registrierung_funktioniert.md)).
 Die nach `clearRegistration()` oder `forget()` zurückgelassene Registrierung
 verschwindet serverseitig erst über die Idle-TTL oder die LRU-Verdrängung. Ebenso bleibt ein beim Notification Service
@@ -201,9 +205,12 @@ erhalten, meldet die App ihn vorher mit `deletePusher` ab (siehe
   `ZETA_OIDC_FLOW_ENABLED` sollte in produktiven Umgebungen deaktiviert
   bleiben.
 - Es gibt **keinen client- oder betreiberseitigen Endpunkt, um eine einzelne
-  Registrierung gezielt zu löschen** — das SDK nutzt kein RFC 7592, und eine
-  eigene Admin-Fachschnittstelle dafür existiert nicht. Registrierungen
-  verschwinden regulär nur über die Idle-TTLs oder die LRU-Verdrängung.
+  Registrierung gezielt zu löschen** — der Guard bietet kein Löschen nach
+  RFC 7592 an, und es existiert keine Admin-Fachschnittstelle dafür.
+  Regulär werden Registrierungen nur durch Idle-TTLs und LRU-Verdrängung
+  entfernt. Ausgenommen sind mobile Clients: Deren Nutzer entfernen ein
+  Gerät über `DELETE /zeta/clients/{client_id}` (siehe
+  [Client-Management-Endpunkte](Wie_der_mobile_Client-Flow_funktioniert.md#client-management-endpunkte)).
 - Die Revocation-API widerruft **Sitzungen, nicht Registrierungen**: Ein
   gemeldetes Token beendet die Session, die Client-Registrierung bleibt
   bestehen und kann sich neu anmelden.

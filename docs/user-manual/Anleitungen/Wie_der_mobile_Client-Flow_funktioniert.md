@@ -41,24 +41,29 @@ Die Umsetzung auf Client-Seite beschreibt
    Registrierungsstatus des Clients:
    - Status `CONFIRMED` → OPA-Autorisierung, danach der vollwertige Token-Satz.
    - sonst → ein **reduziertes E-Mail-Binding-Token**: 300 s Lebensdauer, kein
-     Refresh-Token, Audience `zeta-guard-as`, Scopes nur `zeta:email-binding` /
-     `zeta:email-verify`. Die Token-Antwort enthält `binding_mode`
+     Refresh-Token, Audience `zeta-guard-as`, Scope `zeta:email-verify` und —
+     nur bei einer Identität ohne verifizierte Adresse — `zeta:email-binding`.
+     Die Token-Antwort enthält `binding_mode`
      (`collect_email` oder `verify_otp`) und bei `verify_otp` einen `email_hint`;
      in diesem Fall wird sofort ein OTP an die bereits gebundene Adresse gemailt.
 4. **E-Mail-Bindung:** Mit dem reduzierten Token ruft die App über den PEP auf
    (unveränderter Pfad; der PEP prüft Token, DPoP und Scope und reicht den
    Aufrufer als `zeta-client-data` weiter):
-   - `POST /realms/{realm}/zeta/identity/bind-email` (Scope `zeta:email-binding`,
-     Formfeld `email`) — speichert die Adresse und verschickt ein sechsstelliges
-     OTP mit 300 s Gültigkeit,
+   - `POST /realms/{realm}/zeta/identity/bind-email` (Scopes
+     `zeta:email-binding` und `zeta:email-verify`, Formfeld `email`) — speichert
+     die Adresse und verschickt ein sechsstelliges OTP mit 300 s Gültigkeit. Hat
+     die Identität bereits eine verifizierte Adresse, antwortet ZETA mit dem
+     Statuscode `409` (`email_already_bound`),
    - `POST …/bind-email/resend` (Scope `zeta:email-verify`),
    - `POST …/bind-email/verify` (Scope `zeta:email-verify`, Formfeld `code`) —
      markiert die Adresse als verifiziert, Registrierung → `CONFIRMED`, Antwort
-     `{"status":"bound"}`.
+     `{"status":"bound"}`. Ein Code kann nur die E-Mail-Adresse bestätigen, an
+     die er verschickt wurde; sonst lautet die Antwort `400` (`invalid_code`).
 5. **Token Exchange:** Der Exchange `zeta-email-binding-token-exchange` tauscht
    das reduzierte Token nach bestätigter Bindung gegen den vollwertigen Token-Satz;
    die ursprünglich per PAR angeforderten Scopes werden wiederhergestellt und die
-   OPA-Autorisierung läuft erneut.
+   OPA-Autorisierung läuft erneut. Der Exchange verlangt einen DPoP-Proof mit
+   dem Schlüssel, an den das reduzierte Token gebunden ist.
 
 ## Nutzerdaten aus dem ID-Token (A_26973-03)
 
@@ -105,7 +110,8 @@ bleiben in der Session.
 
 Unter `GET /realms/{realm}/.well-known/openid-federation` liefert der Guard sein
 eigenes Entity Statement (Compact JWS, `typ: entity-statement+jwt`, ES256,
-Gültigkeit 3600 s) gemäß A_23034-02. Die RP-Metadaten weisen ausschließlich PAR
+Gültigkeit 3600 s) gemäß A_23034-02, mit dem Content-Type
+`application/entity-statement+jwt`. Die RP-Metadaten weisen ausschließlich PAR
 und `self_signed_tls_client_auth` aus, enthalten die Schlüssel für die
 ID-Token-Verschlüsselung sowie die zulässigen PAR-Scopes (A_29660). Als
 Redirect-URIs (A_25656) listet der Guard die der SekIDP-Clients des Realms. Ist
@@ -163,7 +169,8 @@ Authserver-Pfade `/auth/realms/zeta-guard/zeta/clients` und
   benachrichtigt (A_25750), parallele Registrierungen der Identität mit offener
   OTP-Challenge werden entfernt, und es entsteht das Security-Event
   `authn_email_change`
-  (siehe [Security-Events](../Referenzen/Security-Events.md)).
+  (siehe [Security-Events](../Referenzen/Security-Events.md)). Auch hier kann
+  ein Code nur die E-Mail-Adresse bestätigen, an die er verschickt wurde.
 - `GET /realms/{realm}/zeta/userinfo/email?id=<KVNR>` — gibt einem Resource
   Server die **verifizierte** E-Mail-Adresse des Versicherten heraus
   (`{"email": "…"}`). Der Resource Server authentisiert sich per mTLS. Seine

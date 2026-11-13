@@ -11,13 +11,15 @@ Diese Attribute treten nur bei Logs, Metriken und Spans der Angriffserkennung
 auf. Sie
 referenzieren [Common Attack Pattern Enumerations and Classifications (CAPEC)](https://capec.mitre.org/).
 
-| Key                         | Value Type | Description         | Example Values                                                          |
-|-----------------------------|------------|---------------------|-------------------------------------------------------------------------|
-| `attackDetection.capecId`   | int        | Attack Pattern ID   | `115`                                                                   |
-| `attackDetection.capecName` | string     | Attack Pattern Name | `"Authentication Bypass"`                                               |
-| `attackDetection.clientIP`  | string     |                     | `127.0.0.1`                                                             |
-| `attackDetection.detail`    | string     |                     | `Expected audience not available in the token`                          |
-| `attackDetection.origin`    | string     |                     | `org.keycloak.TokenVerifier$AudienceCheck.test(TokenVerifier.java:163)` |
+| Key                         | Value Type | Description                                                                                                                            | Example Values                                                          |
+|-----------------------------|------------|----------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------|
+| `attackDetection.capecId`   | int        | Attack Pattern ID                                                                                                                      | `115`                                                                   |
+| `attackDetection.capecName` | string     | Attack Pattern Name                                                                                                                    | `"Authentication Bypass"`                                               |
+| `attackDetection.clientIP`  | string     |                                                                                                                                        | `127.0.0.1`                                                             |
+| `attackDetection.detail`    | string     |                                                                                                                                        | `Expected audience not available in the token`                          |
+| `attackDetection.origin`    | string     |                                                                                                                                        | `org.keycloak.TokenVerifier$AudienceCheck.test(TokenVerifier.java:163)` |
+| `attackDetection.type`      | string     | Art des Angriffs, wenn sich mehrere Fehler eine CAPEC-ID teilen; gesetzt vom HTTP Proxy bei abgelehnten Anfragen der No-Travel-Prüfung | `impossible_travel`                                                     |
+| `user.roles`                | string     | Nutzertyp für die Aufschlüsselung der Security-KPIs: `Versicherter`, `Leistungserbringer` oder `Unbekannt`                             | `Leistungserbringer`                                                    |
 
 ## Policy-Entscheidungen
 

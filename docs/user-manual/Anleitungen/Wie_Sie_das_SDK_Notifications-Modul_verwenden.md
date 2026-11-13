@@ -257,13 +257,12 @@ val one = notifications.getNotification(history.first().identifier)
   Rest der Liste geliefert.
 - `404` bzw. `501` führen zu einer `NotificationHistoryNotFoundException` mit
   dem `errorCode` des Notification Service (z. B. `NOTIFICATION_NOT_FOUND`,
-  `PUSHER_NOT_FOUND`). Der Notification Service antwortet für eine unbekannte
-  ID, für Daten eines anderen Nutzers und für eine deaktivierte Historie gleich;
-  eine deaktivierte Historie zeigt sich daher als diese Exception oder als leere
-  Liste.
-- Weist der Notification Service den Scope `notification.history.read` nicht
-  aus, lehnt ein PEP, der den Scope prüft, die Aufrufe mit `403` ab
-  (`NotificationApiForbiddenException`).
+  `PUSHER_NOT_FOUND`). Für eine unbekannte ID und eine deaktivierte Historie
+  antwortet der Notification Service gleich; eine deaktivierte Historie zeigt
+  sich daher als diese Exception oder als leere Liste.
+- Gehört der `pushkey` einem anderen Nutzer, antwortet der Notification Service
+  ab Version 2.0.2 mit `403` statt `404`; das SDK wirft dann eine
+  `NotificationApiForbiddenException`.
 
 ## Push-Empfang in der App
 
