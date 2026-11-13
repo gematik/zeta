@@ -228,6 +228,8 @@ Die relevanten Anleitungen und Referenzen sind hier verlinkt:
 
 * [Wie Sie mögliche Probleme im SDK analysieren können](Anleitungen/Wie_Sie_Probleme_im_SDK_analysieren.md)
 
+* [Sichere Konfiguration des SDK](SichereKonfigurationdesZETASDK.md)
+
 Falls ein cloudbasiertes Primärsystem den ZETA-Client ggf. als eigenen Container
 betreiben möchte (abhängig von Sicherheitsbetrachtungen und Zulassung), können
 diese Anleitungen als Basis für Eigenentwicklungen hilfreich sein:
@@ -287,14 +289,7 @@ Timeouts).
 
 ### Known Issues Mobile Devices
 
-Hinweis: Die Nutzung mit mobilen Geräten ist noch als Vorschau zu bewerten und
-nicht produktiv nutzbar.
-
-* Unter iOS nutzen wir noch die betriebssystemseitige TLS-Verifikation. Die
-  gematik-spezifischen Prüfungen sind daher noch nicht umgesetzt. Geplant ist,
-  dies durch den ktor-curl-client zu ersetzen.
-
-Weitere Einschränkungen für mobile Clients, etwa beim Speicher unter iOS,
+Einschränkungen für mobile Clients, etwa beim Speicher unter iOS,
 beschreibt das [ReadMe für Hersteller mobiler Clients](ReadMeMobileClientHersteller.md#known-issues-mobile-devices).
 Die gestapelte OCSP-Response wird seit Version 1.3.2 auch auf Android-Versionen
 mit API-Level < 37 extrahiert und geprüft.

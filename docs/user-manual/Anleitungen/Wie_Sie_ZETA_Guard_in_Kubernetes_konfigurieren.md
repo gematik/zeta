@@ -1020,7 +1020,22 @@ Vorausgesetzt ist, dass das ZETA-Guard-Helm-Chart bereits installiert ist.
    `kubectl get crd gateways.gateway.networking.k8s.io &> /dev/null || kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.0/experimental-install.yaml`
 
 2) Installieren von Istio mit dem Ambient-Profil
-    - `istioctl install --set profile=ambient --skip-confirmation`
+    - `istioctl install --set profile=ambient --set values.cni.ambient.reconcileIptablesOnStartup=true --skip-confirmation`
+    - Die Option `reconcileIptablesOnStartup` veranlasst den Istio-CNI-Agenten,
+      beim Start die Umleitungsregeln bereits laufender Pods zu prüfen und
+      wiederherzustellen.
+    - Nach einem Neustart des Knotens (z. B. bei einer Wartung) können einzelne
+      Pods die Anbindung an das Mesh verlieren, weil der Agent vor ihnen
+      startet. Anfragen über einen betroffenen Ingress-Controller-Pod schlagen
+      dann mit HTTP 502 fehl, Pods unter `STRICT`-mTLS werden nicht bereit. In
+      diesem Fall den Agenten des Knotens neu starten; mit gesetzter Option
+      stellt er die Anbindung der laufenden Pods wieder her, ohne dass sie neu
+      erzeugt werden müssen:
+      `kubectl -n istio-system delete pod -l k8s-app=istio-cni-node --field-selector spec.nodeName=<Knoten>`
+    - Bei einer bestehenden Installation ohne diese Option: den Befehl mit den
+      ursprünglich verwendeten Parametern und der zusätzlichen Option erneut
+      ausführen und anschließend den Istio-CNI-Agenten neu starten:
+      `kubectl -n istio-system rollout restart daemonset/istio-cni-node`
 
 3) Einschalten des Ambient Mode für den Namespace des ZETA-Guard (`zeta-local`
    in diesem Beispiel)

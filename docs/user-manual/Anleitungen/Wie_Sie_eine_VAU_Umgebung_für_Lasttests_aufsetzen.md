@@ -207,7 +207,8 @@ pepproxy:
     replicaCount: 2               # 2× PEP
     asl_enabled: true             # ASL
     aslOcsp: "off"                # OCSP aus (PEP-ASL)
-    hsmProxyAddr: "hsm-sim:50051" # PEP-TLS über HSM (ossl_hsm)
+    hsmProxyAddr: "http://hsm-sim:50051" # PEP-TLS über HSM (ossl_hsm)
+    hsmProxyPlainTextAccepted: true      # hsm-sim spricht nur unverschlüsseltes gRPC
 
 nginxIngressHsm: true           # HSM-TLS am NIC-Ingress
 

@@ -10,6 +10,69 @@
 
 ## Keycloak Authserver (ZETA PDP)
 
+### Release 2.0.2
+
+#### added:
+- Refresh token grant (A_29843): the `scope` parameter may request scopes that were not part of the original grant.
+  The new access token carries exactly the requested scopes, provided they are client scopes assigned to the client
+  and the policy engine allows them; the OPA input `scopes` now reflects the requested scopes (falling back to the
+  originally granted ones if `scope` is absent). Session, consent and token-reuse checks are still applied by Keycloak
+
+#### fixed:
+- Mobile flow: the authserver issues KVNR tokens only within a request that passed the policy engine decision for that
+  client (or for the reduced e-mail-binding token). Other grants on a SekIDP session no longer yield such tokens
+- Keycloak's standard token exchange is disabled in the image; exchanges the 𝝵-Guard providers decline get HTTP 400
+- The e-mail-binding token exchange requires a DPoP proof of the key its subject token is bound to
+- The well-known configuration announces `response_types_supported` `code` only
+- TPM attestation is disabled until the expected protocol update.
+- Removed the compromised emSign/eMudhra root CAs (CVE-2026-114406 / CVE-2026-91403) from the hardened Keycloak image's 
+  Java truststore (cacerts) and OS trust bundles
+- The entity statement at `.well-known/openid-federation` is served with Content-Type `application/entity-statement+jwt`
+  as OpenID Federation requires, instead of `application/jwt`. Requests with `Accept: application/entity-statement+jwt`
+  no longer fail with 406, so a federation master can fetch it (ANFTI2-1074)
+- Entity statement: optimized the query that loads the `redirect_uris`
+- The client expiration job no longer removes all expired clients in a single transaction. After a load test with
+  hundreds of thousands of clients that transaction exceeded the transaction timeout and was rolled back on every run,
+  while memory grew until the container was killed (`OOMKilled`). A run now removes at most
+  `CLIENT_REGISTRATION_EXPIRATION_BATCH_SIZE` (default `500`) entries, oldest first, and leaves the rest to the next
+  run. With a large backlog, shorten `CLIENT_REGISTRATION_SCHEDULER_INTERVAL` or raise the batch size
+- The client expiration job also removes the data of an expired user whose Keycloak user no longer exists (e.g. deleted in
+  the admin console). Before, the removal failed every time
+- The authserver starts again when a deployment sets `KC_FEATURES_DISABLED` itself. The configured features are now
+  added to the hardened set instead of causing a startup failure
+- The release notes of 2.0.1 listed the feature `twitter-broker` as disabled. It was never part of the hardened set, as
+  it only exists in a coming Keycloak version
+- Client Registration: Implemented check that `jwks`, `grant_types`, `client_name` and `token_endpoint_auth_method` are set
+- Client Registration: Strip several URI values to prevent Keycloak making requests to attacker controlled targets
+- Client Registration: Keycloak's native client-registration endpoints (`default`, `install`,
+    `saml2-entity-descriptor`) are disabled, and the RFC 7592 update/delete operations
+    (`PUT`/`DELETE`) are removed from the OIDC registration — only `POST`/`GET` on
+    `/clients-registrations/openid-connect` remain. This closes the mapper type-swap on
+    update (an allowed mapper type could be swapped to a disallowed one such as
+    `oidc-hardcoded-role-mapper` via the update endpoint, injecting privileged roles) and
+    the broad `ClientRepresentation` registration surface it relied on.
+- E-mail binding and e-mail change: a one-time code only confirms the address it was sent to (`400 invalid_code` otherwise).
+  Codes issued before the update are rejected the same way (lifetime 5 minutes); a resend issues a valid one
+
+#### changed:
+- SM(C)-B user data according to A_26972-03: commonName and organizationName are taken unchanged from the certificate,
+  without DN escaping of special characters (e.g. `Praxis Dr. Müller, Zahnarzt` instead of `Praxis Dr. Müller\, Zahnarzt`).
+  This applies to the stored user data, the access-token claims `common_name`/`organization_name` and the OPA input
+  `user_info`. organizationName is only taken if present in the certificate; otherwise the claim, the OPA input field
+  and the user attribute are omitted instead of being set to `Unbekannt`
+- Token exchange handles DPoP nonces according to RFC 9449, section 8: a DPoP proof without `nonce` is rejected with
+  `use_dpop_nonce` (HTTP 400) and a fresh nonce in the `DPoP-Nonce` response header
+- The SekIDP mTLS client (PAR and token requests) is provided as a Keycloak `connections-http-client` provider
+  `zeta-sekidp-mtls`. It uses the same SPI configuration as the default HTTP client, plus the SekIDP keystore
+- **BREAKING** Token exchange returns HTTP 400 instead of 403 for malformed or invalid requests (e.g. invalid nonce,
+  grant type, x5c certificate, client attestation or posture)
+- `POST .../zeta/identity/bind-email` answers `409` (`email_already_bound`) if the identity already has a verified e-mail
+  address
+- Logs and traces for security KPI calculation now also
+  carry the attribute `user.roles` indicating a
+  `Versicherter`, `Leistungserbringer` or `Unbekannt`-er
+  user type.
+
 ### Release 2.0.1
 
 #### added:
@@ -441,6 +504,98 @@
 
 ## PEP Proxy (ZETA PEP)
 
+### Release 2.0.1
+
+#### fixed
+
+- ASL: a full session cache no longer answers new handshakes with HTTP 500 (`ngx_slab_alloc()
+  failed: no memory`). Unfinished handshakes now expire (`pep_asl_handshake_ttl`, default 5m,
+  previously never), expired entries are cleaned up at least every 10s without holding the
+  write lock for a full scan, and a failing insert drops expired entries, tops up with the
+  oldest live ones (handshakes before sessions) and retries. The scan for that runs under the
+  read lock, removal happens in small chunks.
+
+- ASL: a request for a cid that is not (or no longer) in the session cache, e.g. after cleanup
+  or eviction, is answered with `403`/error code 9 `unknown CID` (gemSpec_Krypt A_26924)
+  instead of `500`/102 `internal error: missing`, so clients know to run a new handshake. This
+  applies to established sessions as well as to the handshake (M3); an expired handshake is
+  answered the same way. Clients matching on error code 102 for this case need to be adapted.
+
+- ASL: an M3 carrying the cid of an established session no longer deletes that session.
+
+- DSA-6572-1: the compromised emSign (eMudhra) root CAs are now explicitly
+  distrusted in the `pep` and `nginx-ingress` runtime images (ca-certificates is
+  upgraded and the emSign roots are removed from the system trust store)
+- ASL: the inner request's `Host` header is no longer forwarded on the loopback hop; the outer
+  request's `Host` is used instead. The loopback hop targets `127.0.0.1` and never uses a
+  proxy (with thanks to Machine Spirits UG)
+- ASL: inner request targets are only accepted in origin-form (`/path?query`) and always stay on
+  the PEP's own listener; a path like `/http://host/…` no longer redirects the inner request to
+  that host (with thanks to Machine Spirits UG)
+- PDP/PoPP key cache: fetched keys and discovery documents are used for at most
+  `pep_jwks_max_lifetime` (default `24h`) before they are fetched again in full, without
+  `If-None-Match`/`If-Modified-Since`. Previously the response's `Cache-Control: max-age`
+  alone decided, and every `304` renewed it, so a key set accepted once with a long `max-age`
+  and the server's current `ETag` stayed in use until the next restart. Cached keys are also
+  dropped when discovery names a different `jwks_uri` than the one they were fetched from, a
+  `304` to an unconditional request is treated as a failed fetch, and an oversized `max-age`
+  can no longer overflow the grace-period calculation. The cache is held per worker
+  process; `nginx -s reload` replaces the workers and thereby purges it
+
+- **BREAKING** `ossl_hsm`: the provider honours the scheme of `HSM_PROXY_ADDR`. Previously
+  every address was dialed in plaintext, `https://` included. `https://` now connects with
+  TLS and verifies the proxy's certificate against the configured host name, using the system
+  trust store or the CA file named by the new `HSM_PROXY_CA`. `http://` (or no scheme) is only
+  accepted for a loopback address; for any other address the provider fails to initialise and
+  nginx, when configured with a `store:hsm:` key, does not start.
+  `HSM_PROXY_ALLOW_PLAINTEXT=1` restores plaintext to a remote address, for local testing or
+  when the link is secured by other means such as a service mesh, and logs a warning at every
+  start. A `SignResponse` whose `key_id` is empty or differs from the requested one is
+  rejected; HSM proxy implementations must return the `key_id` they signed with. Deployments that configured `https://` need a proxy that
+  actually serves TLS; deployments that configured `http://host` must switch to `https://`
+  (with thanks to Machine Spirits UG)
+
+#### added
+
+- `hsm_sim`: optional TLS. `--tls-cert`/`--tls-key` serve TLS on `--listen`,
+  `--tls-client-ca` additionally demands a client certificate (mTLS), and `--plaintext-listen`
+  opens a second, plaintext listener for clients without TLS support. All four can be set
+  through `HSM_SIM_TLS_CERT`, `HSM_SIM_TLS_KEY`, `HSM_SIM_TLS_CLIENT_CA` and
+  `HSM_SIM_PLAINTEXT_LISTEN`. Without them the simulator serves plaintext as before.
+- `ossl_hsm`: the provider can authenticate to the HSM proxy with a client certificate
+  (mTLS, A_28830). `HSM_PROXY_CLIENT_CERT` and `HSM_PROXY_CLIENT_KEY` name PEM files with the
+  certificate (chain) and its private key; they are read once at start and require an
+  `https://` address.
+- Security KPI for impossible travel (A_25484-03): the "possible attack detected"
+  log of an impossible-travel rejection now carries `attackDetection.type="impossible_travel"`
+  (CAPEC 560 is shared with other errors), next to `user.roles` (see below) as the breakdown by
+  user role. The metric `zeta.impossible_travel_count` gets the attribute `user.roles` with the
+  same values. Country and location data are not part of this change.
+- A_25484-03: attack-detection logs (`possible attack detected: …`, carrying
+  `attackDetection.capecId`) have the new attribute `user.roles` with the value
+  `Versicherter`, `Leistungserbringer` or `Unbekannt`, so the security KPIs can be
+  broken down by user role. The role is derived from the professionOID of the validated access
+  token according to gemSpec_OID: `oid_versicherter` → `Versicherter`; the Berufsgruppen of
+  Tab_PKI_402 and the care-providing institutions of Tab_PKI_403 (Praxen, Krankenhäuser,
+  Apotheken, Rettungsdienst, Pflege, Heil- und Hilfsmittel, …) → `Leistungserbringer`; any
+  other professionOID (e.g. Kostenträger, Leistungserbringerorganisationen, gematik, technical
+  roles) → `Unbekannt`. Without a token, or when its validation failed, it is `Unbekannt`
+  as well. The professionOID itself is not logged.
+- directives `pep_asl_session_cache_size` (default 100m, min 1m, max 16g), `pep_asl_session_ttl`
+  (default 24h, capped at the 24h of the ASL protocol) and `pep_asl_handshake_ttl` (default 5m).
+  The cache is per pod. TTL changes apply on reload. The ASL certificates, roots and testing
+  flag are read when the zone is created: a reload keeps the zone, its sessions and these
+  settings, unless the size changed, in which case it starts over with an empty cache.
+- metrics `zeta.asl.sessions.handshaking` (part of `sessions.active`),
+  `zeta.asl.session_cache.used`/`.size` (bytes), `zeta.asl.session_cache.alloc_failures` and
+  `.evictions`; alert on any increase of `alloc_failures`.
+
+#### changed
+
+- metric `zeta.asl.sessions.active` keeps its meaning (handshakes + sessions), but is an O(1)
+  counter now.
+- Before performance runs, restart the PEP pod to start with an empty session cache.
+
 ### Release 2.0.0
 
 #### fixed
@@ -788,6 +943,31 @@
 
 ## Notification Service
 
+### Release 2.0.2
+
+#### fixed
+- With sealing off, a pushkey longer than about 300 characters (the API allows 512 bytes) made every
+  notification to that user fail with `400`: the device history's storage id contained the pushkey and
+  exceeded the 450-character id column. The history is now stored under a SHA-256 of user and pushkey.
+  Histories under the old id are still read, moved to the new id by the next notification (keeping their
+  retention deadline) and deleted with the device. No migration step is needed.
+- **Breaking for clients:** an operation on another user's pusher is rejected with
+  `403 M_FORBIDDEN` (A_29978) instead of succeeding. Registering an app ID and pushkey another user
+  holds, with or without `append`, no longer moves the pusher to the caller and answers `403`;
+  deregistering another user's pusher answers `403` instead of `200`; `GET`/`POST
+  /channels/{pushkey}` and `GET /history/device/{pushkey}` for a pushkey another user holds answer
+  `403` instead of `404 PUSHER_NOT_FOUND`. A pushkey nobody holds still answers `404`, and
+  deregistering a pusher nobody holds still `200`. A device that changes accounts has to deregister
+  its pusher before the new account registers it; the takeover of 2.0.0-rc1 followed A_27154, which
+  does not apply to this service. `append` is still accepted but has no effect. The FdV contract is
+  unchanged; see README "Current limitations".
+- A new index of the users per pushkey tells the `403` from the `404` on the channel and history
+  paths. Pushers registered by an earlier release enter it when their owner registers them again;
+  until then another user still gets `404` for them there. Pushers two users shared through
+  `append: true` stay shared, and each user keeps managing its own registration. A pushkey the Push
+  Gateway rejects is now also removed from the owner index, so it no longer blocks another user from
+  registering it.
+
 ### Release 2.0.1
 
 #### added
@@ -1054,6 +1234,64 @@ Initial release of the ZETA Notification Service.
 - processing of policy signer certs
 
 ## ZETA Guard Helm Charts
+
+### Release 2.0.4
+
+#### changed:
+
+- updates the ZETA SDK test drivers (testdriver, nativedriver, android-testdriver) to 2.0.6
+- updates tiger-proxy to `fork-2.0.4` and zeta-cert-validation-mock to 2.0.4
+
+### Release 2.0.3
+
+#### added:
+
+- Security KPI `zeta_guard_kpi.impossible_travel_24h` (A_25484-03): number of impossible travel
+  rejections of the PEP, broken down by `user.roles` (`Versicherter`, `Leistungserbringer`,
+  `Unbekannt`). Counted from the PEP's attack log event (`attackDetection.type=impossible_travel`),
+  which carries `user.roles` since PEP 2.0.1; needs a PEP that sets both. Country and
+  place are not part of it yet.
+
+#### changed:
+
+- **BREAKING** `pepproxy.hsmProxyAddr`: the PEP's `ossl_hsm` provider now honours the scheme of
+  the address. `https://` connects with TLS and verifies the HSM Proxy's certificate; `http://`
+  or an address without a scheme is only accepted for a loopback address. With a plain-text
+  address to another host the PEP does not start. The new
+  `pepproxy.hsmProxyPlainTextAccepted: true` (`HSM_PROXY_ALLOW_PLAINTEXT=1`, default `false`)
+  restores the previous plain-text behaviour; set it only where the network itself protects the
+  channel, e.g. `hsm-sim` in a test cluster.
+- the KPI metrics helper CronJob pushes `zeta_guard_kpi.impossible_travel_24h` as one data point per
+  `user.roles` instead of a single total, so the breakdown reaches the TI-SIEM (A_25484-03). All
+  other KPIs are unchanged (one total data point). A role without events that day has no data
+  point. The rounded total is distributed to the roles (largest remainder), so the values add up
+  to the total reported before.
+- the PEP requires the scope `zeta:email-binding` in addition to `zeta:email-verify` for
+  `POST /auth/realms/zeta-guard/zeta/identity/bind-email`; `.../resend` and `.../verify` are
+  unchanged and have their own locations in the PEP configuration
+- the client policy profile `zeta_client_policy_profile` gets the executor
+  `reject-implicit-grant`: implicit and hybrid authorization requests are
+  rejected, registrations with `response_types` `token` get the implicit flow
+  switched off. See
+  [How to upgrade ZETA Guard](https://github.com/gematik/zeta-guard-helm/blob/main/docs/how-to_guides/How_to_upgrade_ZETA_Guard.md)
+- default database volume `cloudnativePg.storage.size` and
+  `keycloak-db.cluster.storage.size` is 32Gi (was 10Gi), a
+  size of 10Gi might run full with many registered clients. [How to manage the authserver DB](https://github.com/gematik/zeta-guard-helm/blob/main/docs/how-to_guides/How_to_manage_authserver_DB.md)
+  now explains how to size the volume and recommends a separate WAL volume
+  (`walStorage`) for production. In a VAU (`authserver.dbEnc.enabled: true`) the
+  integrity checks need about three times the space per client, 64Gi are
+  recommended there
+- Updated telemetry attributes attached to security KPIs signifying
+  `Versicherter`, `Leistungserbringer` and `Unbekannt`.
+- updates keycloak-zeta to 2.0.2, ngx_pep and nginx-ingress to 2.0.1, notification-service and
+  notification-keychain-generator to 2.0.2
+- updates zeta-telemetry-gateway to v0.157.1
+- test environment: updates hsm_sim to 2.0.1, the test drivers to 2.0.5, tiger-proxy to `fork-2.0.3`
+  and zeta-cert-validation-mock to 2.0.3
+
+#### fixed:
+
+- Reporting of security KPIs now go directly to TI SIEM in addition to prometheus. The 24h sum through prometheus is now **deprecated**.
 
 ### Release 2.0.2
 

@@ -114,7 +114,7 @@ notificationService:
 | Value                                  | Standard               | Beschreibung                                                                                                                              |
 |----------------------------------------|------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
 | `notificationService.image.repository` | `notification-service` | Image-Repository (Registry-Präfix aus `global.registry_host` + `registry_name`, überschreibbar über `notificationService.image.registry`) |
-| `notificationService.image.tag`        | `2.0.1`                | Gemeinsames Tag-Präfix; das Chart hängt pro Variante `-rs` bzw. `-fdv` an                                                                 |
+| `notificationService.image.tag`        | `2.0.2`                | Gemeinsames Tag-Präfix; das Chart hängt pro Variante `-rs` bzw. `-fdv` an                                                                 |
 | `notificationService.rs.image.tag`     | `""`                   | Variantenspezifisches Tag der `-rs`-Variante; ersetzt das gemeinsame Tag unverändert (kein Suffix)                                        |
 | `notificationService.fdv.image.tag`    | `""`                   | Variantenspezifisches Tag der `-fdv`-Variante; ersetzt das gemeinsame Tag unverändert (kein Suffix)                                       |
 | `notificationService.rs.image.digest`  | `""`                   | Optionaler Digest-Pin der `-rs`-Variante (wird als `@<digest>` angehängt)                                                                 |
@@ -191,13 +191,12 @@ nachdem eine Historie angelegt wurde, wird sie gelöscht, und die nächste
 Benachrichtigung startet eine neue Historie. Die Historie ist von der kurzen
 Aufbewahrungsfrist der Verarbeitungsdaten ausgenommen; ihre Aufbewahrung
 richtet sich nach der Betreiber-Konfiguration (A_29988). Unabhängig von der
-Frist löscht der Dienst die Historie eines Geräts, sobald der Nutzer dessen
-Pushkey unter keiner App-ID mehr hält — bei der Abmeldung des Pushers, wenn das
-Push Gateway den Pushkey ablehnt oder ein anderer Nutzer den Pusher ohne
-`append` übernimmt. A_29989 verlangt bei der Abmeldung nur das Löschen von
-Push-Konfiguration und Schlüsselmaterial; die Historie löscht der Dienst
-darüber hinaus mit. Eine erneute Registrierung desselben Pushkeys beginnt mit
-leerer Historie. Gelöscht wird auch bei deaktivierter Historie, sodass beim
+Frist löscht der Dienst die Historie eines Geräts, sobald der Nutzer keinen
+Pusher mit dem Pushkey dieses Geräts mehr registriert hat — bei der Abmeldung
+des Pushers oder wenn das Push-Gateway den Pushkey ablehnt. A_29989 verlangt bei der Abmeldung nur das
+Löschen von Push-Konfiguration und Schlüsselmaterial; die Historie löscht der
+Dienst darüber hinaus mit. Eine erneute Registrierung desselben Pushkeys beginnt
+mit leerer Historie. Gelöscht wird auch bei deaktivierter Historie, sodass beim
 Abschalten keine Altdaten erhalten bleiben.
 
 > **Wichtig — Kopplung an den Keycloak-Scope ist nicht automatisch:** Damit
@@ -252,7 +251,7 @@ Registrierung und nutzt `notify/batch`.
 | `notificationService.sealing.keychainGenerator.enabled`           | `true`                            | Init-Container, der über den HSM Proxy eine erste Keychain erzeugt, wenn unter `keychainFileName` noch keine liegt; nur abschalten, wenn `initContainerProvideKeys` die Keychain immer bereitstellt               |
 | `notificationService.sealing.keychainGenerator.kekId`             | `""`                              | KEK, unter dem eine neue Keychain gekapselt wird (`HSM_PROXY_KEK_ID`), Schema `[component]-[purpose]-[algorithm]-v<N>`, z. B. `notification-service-keychain-kek-aesgcm-v1`; Pflicht, solange der Generator läuft |
 | `notificationService.sealing.keychainGenerator.image.repository`  | `notification-keychain-generator` | Image-Repository des Keychain-Generators; Registry wie `notificationService.image`                                                                                                                                |
-| `notificationService.sealing.keychainGenerator.image.tag`         | `2.0.1`                           | Image-Tag des Keychain-Generators; leer → `notificationService.image.tag` (ohne Varianten-Suffix)                                                                                                                 |
+| `notificationService.sealing.keychainGenerator.image.tag`         | `2.0.2`                           | Image-Tag des Keychain-Generators; leer → `notificationService.image.tag` (ohne Varianten-Suffix)                                                                                                                 |
 | `notificationService.sealing.keychainGenerator.extraVolumeMounts` | `[]`                              | Volume-Mounts des Keychain-Generators, z. B. für die Keychain                                                                                                                                                     |
 | `notificationService.extraVolumes`                                | `[]`                              | Zusätzliche Volumes der Notification-Service-Pods, z. B. ein Secret mit der Keychain                                                                                                                              |
 | `notificationService.extraVolumeMounts`                           | `[]`                              | Zusätzliche Volume-Mounts des Notification-Service-Containers, z. B. für die Keychain (read-only genügt)                                                                                                          |

@@ -31,6 +31,7 @@ sie integrieren, betreiben und fachlich nutzen.
 | 1.3.3   | 21.09.26 | Hotfix-Release: Komponenten-Release-Notes um PEP Proxy 1.3.3 und Helm-Chart 1.3.3 ergänzt (Härtung der Ziel-URL-Validierung bei ASL-Subrequests); Handbuch sonst unverändert gegenüber 1.3.2                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | 2.0.1   | 28.10.26 | Update auf ZETA release 2.0.1 (Komponenten 2.0.0, Helm-Chart 2.0.1): Release Notes der Komponenten; Besonderheiten beim Update auf 2.0.x; Client-Management über den PEP; Notification Service mit mTLS der RS-API, Sealing/HSM und verschlüsseltem Push; Federation Master über den Provisioning Processor; Speicherung der SekIDP-Nutzerdaten und `userinfo/email` mit mTLS; Sperre des `master`-Realms auf dem Haupthostnamen; einheitliche Security Contexts; SBOM-Referenz; Verhalten des Authservers bei Ausfall der PDP-Datenbank; SDK-Dokumentation auf ZETA-SDK 2.0.0                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | 2.0.2   | 03.11.26 | Update auf ZETA release 2.0.2 (Helm-Chart 2.0.2, Authserver und Notification Service 2.0.1): Release Notes der Komponenten; Keychain, Keychain-Generator und Schlüsselrotation für das Sealing des Notification Service (entfernt: `hsm.kek.*`, `sealing.dekCacheSize`); Entity Statement mit `federation_entity` und festen `redirect_uris`; nicht genutzte Keycloak-Features deaktiviert; Härtung der CronJobs (OPA-Rollout-Restart, Token-Renewer); Sicherheitsanforderungen an Client-Hersteller überarbeitet; OID für `oid_zeta-guard` korrigiert                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| 2.0.4   | 13.11.26 | Update auf ZETA release 2.0.4 (Helm-Chart 2.0.4, Authserver 2.0.2, PEP Proxy 2.0.1, Notification Service 2.0.2): Release Notes der Komponenten; Besonderheiten beim Update (Datenbank-Volume 32Gi, Token Exchange `400` statt `403`, Client-Registrierung ohne `PUT`/`DELETE`, Schema der HSM-Proxy-Adresse, unbekannte ASL-`cid` mit `403`); ASL-Session-Cache des PEP und `pep_jwks_max_lifetime`; E-Mail-Bindung und fremde Pusher im Notification Service; Telemetrie-Attribut `user.roles`; Sicherheitsbetrachtungen und sichere Konfiguration des SDK; Test der Apps mit BrowserStack; Istio-CNI nach Knoten-Neustart                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
 Detaillierte Informationen finden sich in den [Release Notes des Produkthandbuchs](ReleaseNotes.md).
 
@@ -42,6 +43,7 @@ Detaillierte Informationen finden sich in den [Release Notes des Produkthandbuch
 - [Fachdienst-Hersteller](#fachdienst-hersteller-1)
 - [Fachdienst-Betreiber](#fachdienst-betreiber-1)
 - [Primärsystem-Hersteller](#primärsystem-hersteller-1)
+- [Sicherheitsbetrachtung](#sicherheitsbetrachtungen)
 - [Known Issues](#known-issues)
 - [Index / Schnellzugriff](#index--schnellzugriff)
 - [License](#license)
@@ -129,6 +131,38 @@ ein, um Dienste der TI 2.0 aufzurufen.
 Informationen spezifisch für App-Hersteller finden sich in
 [Readme für App-Hersteller](ReadMeMobileClientHersteller.md).
 
+## Sicherheitsbetrachtungen
+
+Die ZETA Komponenten müssen in Anwendungen und Dienste der verschiedenen Hersteller eingebunden werden,
+sie stehen nicht frei im Raum. Daher müssen die Hersteller und Anbieter bei der Integration
+entsprechende Sicherheitsanforderungen erfüllen. Diese sind hier - zusätzlich zu den Verlinkungen
+in den Zielgruppenspezifischen Kapitel - noch einmal aufgeführt:
+
+### Sicherheitsanforderungen
+
+Die gematik- und BSI-Anforderungen, und in Folge die OWASP-Anforderungen, die bei der Nutzung der
+ZETA-Komponenten zu erfüllen sind, sind zum Teil nur durch die Hersteller und Anbieter umsetzbar,
+und müssen dort - ggf. - auch über Gutachten oder EvTs nachgewiesen werden.
+
+Die folgenden Anforderungen sind durch die Hersteller bzw. Anbieter umzusetzen:
+
+- [Sicherheitsanforderungen an ZETA-Guard Betreiber](SicherheitsanforderungenZETAGuardBetreiber.md)
+- [Sicherheitsanforderungen an Client Hersteller](SicherheitsanforderungenClientHersteller.md)
+
+###  Sichere Konfigurationen
+
+Für die praktische Umsetzung müssen die ZETA Komponenten auf eine sichere Weise konfiguriert werden.
+Hier werden Konfigurationshinweise zum SDK und dem ZETA Guard aufgezeigt:
+
+- [Sichere Konfiguration des SDK](SichereKonfigurationdesZETASDK.md)
+- Hinweise zur sicheren Konfiguration des ZETA Guard sind den Referenzen für die Konfiguration der einzelnen Komponenten des ZETA Guard zu entnehmen.
+
+### Wartungs- und Updateinformationen
+
+Wartungs- und Featurereleases werden in Abstimmung mit der gematik veröffentlicht.
+Dies betrifft auch Hotfix-Releases, die kurzfristige Sicherheitsthemen beheben.
+Die Kommunikation findet über die gematik-Prozesse und -Kommunikationskanäle statt.
+
 ## Known Issues
 
 Dieses Kapitel beschreibt übergreifende Known Issues und Won't-Fix-Einträge.
@@ -156,6 +190,8 @@ Als Einstieg eignen sich folgende Dokumente besonders gut:
   [Wie Sie den Testdriver bauen](Anleitungen/Wie_Sie_den_Testdriver_bauen.md)
 * Für das Ausführen des ZETA-Testdrivers:
   [Wie Sie den Testdriver nutzen](Anleitungen/Wie_Sie_den_Testdriver_nutzen.md)
+* Für das Testen der ZETA-Client-Apps (Android/iOS) auf echten Geräten in BrowserStack:
+  [Wie Sie die ZETA-Apps mit BrowserStack testen](Anleitungen/Wie_Sie_die_ZETA_Apps_mit_BrowserStack_testen.md)
 * Wie Sie einen Ende-zu-Ende-Integrationstest ausführen:
   [Wie Sie einen Ende-zu-Ende-Integrationstest ausführen](Anleitungen/Wie_Sie_einen_Ende_zu_Ende_Integrationstest_ausführen.md)
 * Wie Sie den ZETA-Guard-Cluster lokal in einem `KIND`-Setup ausführen:
@@ -163,6 +199,7 @@ Als Einstieg eignen sich folgende Dokumente besonders gut:
 * Konfigurationshinweise für den ZETA-Guard:
   [Konfigurationshinweise](Referenzen/Konfigurationshinweise.md)
 * [Sicherheitsanforderungen an den Client-Hersteller](SicherheitsanforderungenClientHersteller.md)
+* [Sichere_Konfiguration_des_ZETA_SDK](SichereKonfigurationdesZETASDK.md)
 
 Für den produktiven Betrieb des ZETA-Guard empfehlen sich zusätzlich folgende
 Dokumente:

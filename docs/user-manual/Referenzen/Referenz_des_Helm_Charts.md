@@ -742,6 +742,55 @@ cloudnativePg:
 > Test-Cluster. `maxConnections` muss zu den Keycloak-Pool-Größen (siehe unten)
 > passen.
 
+#### Größe des Datenbank-Volumes
+
+| Value                                | Beschreibung                                                                                                        | Standard |
+|--------------------------------------|---------------------------------------------------------------------------------------------------------------------|----------|
+| `cloudnativePg.storage.size`         | Größe des Daten-Volumes je Instanz                                                                                  | `32Gi`   |
+| `cloudnativePg.storage.storageClass` | StorageClass des Daten-Volumes; leer → Default-StorageClass des Clusters                                            | `""`     |
+| `cloudnativePg.walStorage`           | Eigenes Volume für das Write-Ahead-Log (`size`, optional `storageClass`); leer → das WAL liegt auf dem Daten-Volume | `{}`     |
+
+Die Zahl der registrierten Clients bestimmt den Platzbedarf, nicht der Verkehr.
+Mit dem Spree Integrity Provider (`authserver.dbEnc.enabled: true`, siehe
+[Spree Integrity Provider (VAU)](#spree-integrity-provider-vau)) kommt je
+gespeicherter Zeile eine Prüfsumme hinzu. Das Volume füllt sich dadurch ungefähr
+dreimal so schnell:
+
+| Variante                                     | Platz je registriertem Client | Faustformel für das Volume     | Clients bei 32Gi | Clients bei 64Gi |
+|----------------------------------------------|-------------------------------|--------------------------------|------------------|------------------|
+| ohne VAU (`authserver.dbEnc.enabled: false`) | ca. 15 KB                     | `Clients × 15 KB × 1,3 + 3 GB` | ca. 1,4 Mio.     | ca. 3 Mio.       |
+| mit VAU (`authserver.dbEnc.enabled: true`)   | ca. 50 KB                     | `Clients × 50 KB × 1,3 + 3 GB` | ca. 400.000      | ca. 900.000      |
+
+Der Faktor 1,3 deckt Bloat und Reindex ab, die 3 GB das WAL und die
+Grunddaten. Die Werte stammen aus Messungen an Testinstallationen; prüfen Sie
+das tatsächliche Wachstum an Ihrer Installation (`pg_database_size` vor und
+nach einer Reihe von Registrierungen).
+
+- **In einer VAU** beginnen Sie mit 64Gi und einem eigenen WAL-Volume.
+- Läuft das Volume voll, stoppt PostgreSQL und der Pod startet nicht mehr.
+  Überwachen Sie die Belegung und vergrößern Sie rechtzeitig.
+- Ein Volume lässt sich im Betrieb vergrößern, wenn die StorageClass
+  `allowVolumeExpansion: true` hat: `cloudnativePg.storage.size` anheben und das
+  Release aktualisieren. Verkleinern ist nicht möglich.
+
+Ein eigenes WAL-Volume verhindert, dass die Schreibspitzen der Checkpoints die
+Commits verzögern. Es empfiehlt sich für den Produktivbetrieb mit
+Registrierungsspitzen, in einer VAU und auf Speicher, dessen IOPS von der
+Volume-Größe abhängen (üblich bei Cloud-Disks):
+
+```yaml
+cloudnativePg:
+    storage:
+        size: 64Gi
+    walStorage:
+        size: 16Gi
+        storageClass: <schnelle-storage-class>
+```
+
+Entscheiden Sie das vor der Erstinstallation; das nachträgliche Ergänzen an
+einem bestehenden Cluster ist nicht vorgesehen. 8–16Gi genügen für
+`max_wal_size: "2GB"`.
+
 ### Connection Pooling (Keycloak)
 
 Keycloak hält serverseitig einen JDBC-Datenbank-Pool sowie einen
@@ -1417,7 +1466,7 @@ Zertifikat liegt als gewöhnliche PEM-Datei im Container vor.
 
 ```yaml
 pepproxy:
-    hsmProxyAddr: "hsm-proxy:50051"   # gRPC-Adresse des HSM-Proxy; null deaktiviert die HSM-Anbindung
+    hsmProxyAddr: "https://hsm-proxy:50051"   # gRPC-Adresse des HSM-Proxy; null deaktiviert die HSM-Anbindung
     hsmTlsKeyId: "tls.p256"           # Schlüssel-ID des TLS-Schlüssels im HSM
     hsmTlsCert: "tls.p256.pem"        # zum HSM-Schlüssel passende Zertifikatsdatei (relativ zu /etc/nginx)
 ```
@@ -1425,16 +1474,23 @@ pepproxy:
 Ist `pepproxy.hsmProxyAddr` gesetzt,
 
 - erhält der nginx-Container die Umgebungsvariable `HSM_PROXY_ADDR`, die der
-  `ossl_hsm`-Provider ausliest, und
+  `ossl_hsm`-Provider ausliest,
+- richtet sich die Verbindung zum HSM-Proxy nach dem Schema der Adresse:
+  `https://` baut TLS auf und prüft das Zertifikat des HSM-Proxy gegen den
+  Hostnamen und den System-Truststore des PEP-Images. `http://` oder eine
+  Adresse ohne Schema ist nur für eine Loopback-Adresse zulässig; bei einer
+  unverschlüsselten Adresse zu einem anderen Host startet der PEP nicht,
+  es sei denn, `pepproxy.hsmProxyPlainTextAccepted` ist gesetzt, und
 - öffnet der PEP zusätzlich zum HTTP-Listener (Port 8081) einen TLS-Listener auf
   Port 8443 mit `ssl_certificate_key "store:hsm:<hsmTlsKeyId>"` — der Schlüssel
   wird dabei nur über seine Schlüssel-ID im HSM referenziert.
 
-| Value                   | Beschreibung                                                                                                                                                                                                  | Standard       |
-|-------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|
-| `pepproxy.hsmProxyAddr` | gRPC-Adresse des HSM-Proxy. Wenn gesetzt, terminiert der PEP TLS auf Port 8443 mit dem HSM-Schlüssel `hsmTlsKeyId` über den `ossl_hsm`-Provider; `null` deaktiviert die HSM-Anbindung.                        | `null`         |
-| `pepproxy.hsmTlsKeyId`  | Schlüssel-ID des TLS-Schlüssels im HSM (`ssl_certificate_key "store:hsm:<hsmTlsKeyId>"`). Nur relevant, wenn `hsmProxyAddr` gesetzt ist.                                                                      | `tls.p256`     |
-| `pepproxy.hsmTlsCert`   | Zum HSM-Schlüssel passende Zertifikatsdatei, relativ zu `/etc/nginx`. Die Standard-Datei ist im PEP-Image enthalten und passt zum HSM-Simulator; eigene Zertifikate werden per `extraVolumeMounts` gemountet. | `tls.p256.pem` |
+| Value                                | Beschreibung                                                                                                                                                                                                                                                                        | Standard       |
+|--------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|
+| `pepproxy.hsmProxyAddr`              | gRPC-Adresse des HSM-Proxy. Wenn gesetzt, terminiert der PEP TLS auf Port 8443 mit dem HSM-Schlüssel `hsmTlsKeyId` über den `ossl_hsm`-Provider; `null` deaktiviert die HSM-Anbindung.                                                                                              | `null`         |
+| `pepproxy.hsmProxyPlainTextAccepted` | Erlaubt einen unverschlüsselten gRPC-Kanal zu einem HSM-Proxy, der nicht auf der Loopback-Adresse liegt (`HSM_PROXY_ALLOW_PLAINTEXT=1`); der PEP protokolliert dann bei jedem Start eine Warnung. Nur setzen, wo das Netz selbst den Kanal schützt, z. B. `hsm-sim` im Testcluster. | `false`        |
+| `pepproxy.hsmTlsKeyId`               | Schlüssel-ID des TLS-Schlüssels im HSM (`ssl_certificate_key "store:hsm:<hsmTlsKeyId>"`). Nur relevant, wenn `hsmProxyAddr` gesetzt ist.                                                                                                                                            | `tls.p256`     |
+| `pepproxy.hsmTlsCert`                | Zum HSM-Schlüssel passende Zertifikatsdatei, relativ zu `/etc/nginx`. Die Standard-Datei ist im PEP-Image enthalten und passt zum HSM-Simulator; eigene Zertifikate werden per `extraVolumeMounts` gemountet.                                                                       | `tls.p256.pem` |
 
 > **Hinweis:** Die Schlüssel-ID ist für die gRPC-Schnittstelle ein opaker
 > String: Der HSM-Proxy muss die konfigurierte ID auf den passenden Schlüssel
@@ -1444,6 +1500,11 @@ Ist `pepproxy.hsmProxyAddr` gesetzt,
 > HSM-Schlüssel passende Zertifikat über `pepproxy.extraVolumes` /
 > `pepproxy.extraVolumeMounts` in den Container gemountet und der Dateiname in
 > `pepproxy.hsmTlsCert` eingetragen werden.
+
+> **Hinweis:** Eine eigene CA für das Zertifikat des HSM-Proxy (`HSM_PROXY_CA`)
+> und ein Client-Zertifikat für mTLS (`HSM_PROXY_CLIENT_CERT`,
+> `HSM_PROXY_CLIENT_KEY`) unterstützt der `ossl_hsm`-Provider, das Helm-Chart
+> setzt diese Variablen aber nicht.
 
 > **Hinweis:** `nginx -s reload` initialisiert OpenSSL-Provider nicht neu.
 > Änderungen an der HSM-/TLS-Konfiguration erfordern daher einen Neustart der
@@ -1461,7 +1522,7 @@ Secret `asl-identity` gemountet zu werden:
 ```yaml
 pepproxy:
     asl_enabled: true
-    hsmProxyAddr: "hsm-proxy:50051"
+    hsmProxyAddr: "https://hsm-proxy:50051"
     asl_hsm_key: "store:hsm:asl-signer.p256"   # zum Signaturzertifikat passender HSM-Schlüssel, Format store:hsm:<key-id>
 ```
 

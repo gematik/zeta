@@ -1,7 +1,7 @@
 
-# RELEASE NOTES ZETA-SDK
+# RELEASE NOTES
 
-## Version: v2.0.0
+## Version: v2.0.6
 
 This version implements the ZETA protocol for the ZETA client SDK.
 
@@ -57,22 +57,163 @@ runtime environments.
 
 ### Known issues:
 
-- TLS validation is not fully implemented on iOS
 - The SDK does not fully handle paths parts in the AS well-known URL. The AS well-known is defined
   as on the root path, so this is WONTFIX.
 
+### Changes in 2.0.6 (from 2.0.5)
+
+#### Breaking changes
+
+- N/A
+
+#### New
+
+- N/A
+
+#### Bug Fixes
+
+- Fixed missing ASL session recovery for PEP errors `403` with error code 9 ("unknown CID"), 3 or 8 now clears the session and triggers one new handshake instead of aborting.
+  The original error code is kept if recovery fails.
+- Mobile client flow (OIDC): the Pushed Authorization Request (PAR) now includes the `client_id`.
+
+### Behavioural Changes
+
+- `logout()` now also clears the ASL session.
+
+### Changes in 2.0.5 (from 2.0.4)
+
+#### Breaking changes
+
+- N/A
+
+#### New
+
+- N/A
+
+#### Bug Fixes
+
+- Fixed missing Gradle task dependencies between `commonizeCInterop` and Linux/MinGW metadata tasks, causing Windows CI builds to fail with implicit dependency errors.
+
+### Behavioural Changes
+
+- N/A
+
+### Changes in 2.0.4 (from 2.0.3)
+
+#### Breaking changes
+
+- N/A
+
+#### New
+
+- N/A
+
+#### Bug Fixes
+
+- Guards that publish no usable `api_versions_supported` (missing,
+  empty or all versions retired, e.g. ZETA Guard 1.2) are now treated as 1.x. In 2.0.3 they got the 2.x behavior,
+  so software registration sent fields introduced in 2.0 and Apple clients without App Attest
+  failed with "Invalid combination of »SOFTWARE« and »APPLE«".
+
+### Behavioural Changes
+
+- Without a usable `api_versions_supported`, the SDK now applies the 1.x adaptations
+  instead of the standard behavior. 1.3.x guards (`[1.0.0]`) and 2.x guards
+  (`[1.0.0, 2.0.0]`) are unaffected.
+
+### Changes in 2.0.3 (from 2.0.2)
+
+#### Breaking changes
+
+- Removed the unused `registrationCallback` from `BuildConfig`. Integrations that set it
+  must remove that argument.
+
+#### New
+
+- Compatibility with ZETA Guard 1.3.x and 2.0.x: the SDK reads `api_versions_supported`
+  from the authorization server's well-known and adapts to 1.3.x guards: software client
+  registration without the fields introduced in 2.0, and no Apple `platform_product_id` in
+  software postures. 2.0.x guards, and guards that publish no API versions, keep the
+  standard behavior.
+- iOS: TLS validation: adds a pre-flight check to obtain the OCSP stapled responses.
+
+#### Bug Fixes
+
+- Fixed OCSP and CRL time checks on native platforms.
+- GS_A_4367 - Use secure random for the code verifier and the code challenge
+
+### Behavioural Changes
+
+- N/A
+
+
+## Changes in 2.0.2 (from 2.0.1)
+
+Hotfix release based on 2.0.1.
+
+### Bug Fixes
+
+- Authorization server configuration is no longer lost when the well-known
+  documents are served with `Cache-Control: max-age=0`. The SDK now revalidates
+  the cached configuration instead of discarding it. The workaround of setting
+  `max-age > 0` on the server side is no longer required.
+
+### Breaking Changes
+
+- N/A
+
+### New Features
+
+- N/A
+
+### Behavioural Changes
+
+- N/A
+
+## Changes in 2.0.1 (from 2.0.0)
+
+### Security
+
+Updated third-party dependencies to fix vulnerabilities reported by Dependency-Track:
+
+- Bouncy Castle (`bcprov-jdk18on`, `bcpkix-jdk18on`): 1.85.2 / 1.85 -> 1.86
+    - CVE-2026-17508, CVE-2026-18036, CVE-2026-18040, CVE-2026-71888,
+      CVE-2026-71889, CVE-2026-71891, CVE-2026-71892, CVE-2026-97873
+- Netty (`netty-codec-http`, `netty-codec-http2`): 4.2.17.Final -> 4.2.19
+    - CVE-2026-89044, CVE-2026-93488, CVE-2026-93491, CVE-2026-93492,
+      CVE-2026-93558, CVE-2026-93562, CVE-2026-93565, CVE-2026-93566,
+      CVE-2026-93567, CVE-2026-93568, CVE-2026-93573, CVE-2026-93574,
+      CVE-2026-93579
+
+### Breaking Changes
+
+- N/A
+
+### New Features
+
+- N/A
+
+### Behavioural Changes
+
+- N/A
+
+### Bug Fixes
+
+- N/A
 
 ## Changes in 2.0.0 (from 1.3.2)
 
 ### Breaking Changes
 
 - `OidcConfig`: `requestUri` has been replaced by two explicit fields. Previously both redirect URIs were derived from `requestUri` (`{requestUri}/app` and `{requestUri}/oidc`):
-  - `redirectUri`: final app redirect where Keycloak returns the authorization code.
-  - `oidcRedirectUri`: intermediate redirect where the SekIDP returns its `code` and `state`, which are relayed to the Keycloak broker.
+    - `redirectUri`: final app redirect where Keycloak returns the authorization code.
+    - `oidcRedirectUri`: intermediate redirect where the SekIDP returns its `code` and `state`, which are relayed to the Keycloak broker.
 
   Both must be registered as redirect URIs during client registration.
 - `OidcConfig`: the optional `authenticationCallback` has been replaced by the required `authorizationLauncher: AuthorizationLauncher`. The application implements `open(request)`, which shows the login in the system browser, relays the SekIDP `code`/`state` to the broker endpoint in the same browser, and returns the final redirect URL.
-The SDK handles PKCE, `state`, PAR, validation and the token exchange. See the README section "AuthorizationLauncher".
+  The SDK handles PKCE, `state`, PAR, validation and the token exchange. See the README section "AuthorizationLauncher".
+- `ZetaSdkClient.changeEmail` only starts the e-mail change and returns `ChangeEmailResponse.Pending` or `ChangeEmailResponse.Verified`; call `verifyEmailChange(code)` to complete it. Errors are thrown as `ClientManagementException` subclasses.
+- TestDriver: `GET /oidc/change-email` has been replaced by `POST /testdriver-api/client-management/identity/email`.
 
 ### New Features
 
@@ -81,6 +222,10 @@ The SDK handles PKCE, `state`, PAR, validation and the token exchange. See the R
 - Authentication at token exchange according to A_25338-01
 - C# SDK on NuGet: the C# SDK is now packaged for release via NuGet
 - Android TestDriver: test driver app for running the automated SDK tests on Android devices
+- Client management API: the SDK can list the clients registered for the current identity, de-register a client, change the identity e-mail, and show the registration access log (provided by the server).
+- Hardware attestation tests on real devices: the Android and iOS demo apps can now be tested automatically on real devices via BrowserStack
+- TestDriver: new endpoint `hellozeta/ios` and `hellozeta/android` to run the Hello ZETA flow on a real Android/iOS device
+- TestDriver: client-management endpoints `POST /testdriver-api/client-management/identity/email`, `.../identity/email/resend`, `.../identity/email/verify`, `GET .../clients` and `DELETE .../clients/{client_id}`
 
 ### Behavioural Changes
 
@@ -103,7 +248,7 @@ The SDK handles PKCE, `state`, PAR, validation and the token exchange. See the R
 
 - Updated Gradle dependencies to the latest compatible versions.
 - Refactored time handling across the SDK by introducing the ZetaClock interface,
- allowing a custom clock implementation to be injected.
+  allowing a custom clock implementation to be injected.
 
 ### Behavioural Changes
 
@@ -200,7 +345,7 @@ Other new features are:
 - ANFTI-697: websocket fragmentation
 - ANFTI-651: C# Exception Handling
 - ANFTI2-735: rework Access Token storage to reduce key size (was too big) and include ability for scope-specific access tokens for the same resource (DiPag)
-- Removal of SMCB Subject Token provider as it was a test tool and never meant for production (see [README](https://github.com/gematik/zeta-sdk/blob/main/README.md))
+- Removal of SMCB Subject Token provider as it was a test tool and never meant for production
 - Netty CVE finding in testdriver
 
 ## Changes in 1.2.0 (from 1.0.2)
@@ -227,8 +372,8 @@ Other new features are:
 - Always send Software Statements as those are the ones we support currently
 - Remove leftover hardcoded profession OID check
 - OCSP validation fixes:
-  - issuer cert passed explicitly to OCSP_basic_verify for signature validation
-  - nextUpdate handling fixed
+    - issuer cert passed explicitly to OCSP_basic_verify for signature validation
+    - nextUpdate handling fixed
 - Proxy password sent as literal string instead of pointer representation
 - Fixed WebSocket communication in Java client
   Fixed PoPP header duplication in testdriver
@@ -271,7 +416,7 @@ Other new features are:
 - Fix TLS Cipher suite validation for TLS 1.2. OkHttp returns IANA names but validator was comparing against OpenSSL names,
 - causing all TLS 1.2 connections to fail compliance check.
 - Update aus gemspec_ZETA RC 26_1
-  - key thumbprints in SubjectToken
+    - key thumbprints in SubjectToken
 
 ## Changes from 0.4.1
 
@@ -292,11 +437,11 @@ Other new features are:
 - Build-Prozess für den C++ Client in einem Docker Container ermöglicht
 - Härtung des TLS durch Einschränkung der cipher suites
 - Erweiterung des Testdriver durch ein "load" Interface, um mehrere Client-Instanzen parallel steuern zu können für den Lasttest
-  - Dazu die Möglichkeit, das SMC-B Zertifikat als base64-encoded String direkt als Konfiguration zu nutzen
+    - Dazu die Möglichkeit, das SMC-B Zertifikat als base64-encoded String direkt als Konfiguration zu nutzen
 - Fixes bei Headern
-  - Forwarded-Header werden im inneren ASL Request herausgefiltert
+    - Forwarded-Header werden im inneren ASL Request herausgefiltert
 - Anpassungen am Attestation service, Vorbereitungen für Windows
-  - hier werden aktuell noch Spezifikationsänderungen erwartet
+    - hier werden aktuell noch Spezifikationsänderungen erwartet
 - Erweiterungen einiger Logs um Zeitmessungen
 - Fix websocket communication in Java client
 
@@ -309,18 +454,18 @@ Other new features are:
 - Attestation service for Linux (TPM based)
 - Increase code coverage for modules Crypto and ASL
 - Fixes included:
-  - Dpop token htu value for request with ASL
-  - Proper configuration handling, when PDP and PEP are on different hosts
-  - Improvement for reading registration number from SM-B certificate
-  - Handling of X-Forwarded headers when using ASL
+    - Dpop token htu value for request with ASL
+    - Proper configuration handling, when PDP and PEP are on different hosts
+    - Improvement for reading registration number from SM-B certificate
+    - Handling of X-Forwarded headers when using ASL
 
 ## Changes from 0.2.11
 
 - Fix websockets on C++ client
 
 - Work on the Client Attestation Service
-  - Integrate tpm2-tss library bindings to access TPM (only linux)
-  - Implement TPM commands
+    - Integrate tpm2-tss library bindings to access TPM (only linux)
+    - Implement TPM commands
 
 ## Changes from 0.2.10 (internal)
 

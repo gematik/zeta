@@ -32,8 +32,10 @@ SMC-B-Maschinenclient eingerichtet.
 
 ## Ablauf
 
-1. **Request:** Der Client sendet ein JSON-Dokument mit seinen Metadaten. Die
-   wesentlichen Felder:
+1. **Request:** Der Client sendet ein JSON-Objekt mit seinen Metadaten.
+   `token_endpoint_auth_method`, `jwks`, `grant_types` und `client_name` sind
+   Pflichtfelder; fehlt eines davon, antwortet der Guard mit
+   `400 invalid_client_metadata`. Die wesentlichen Felder:
    - `token_endpoint_auth_method`: `private_key_jwt` — der Client
      authentifiziert sich später am Token-Endpunkt mit einem selbst signierten
      JWT statt mit einem Client Secret.
@@ -47,7 +49,11 @@ SMC-B-Maschinenclient eingerichtet.
      und `refresh_token`, für SMC-B-Maschinenclients nur
      `urn:ietf:params:oauth:grant-type:token-exchange` und `refresh_token`.
    - `redirect_uris`: nur bei mobilen Clients (siehe Schritt 3).
-   - `client_name`: frei wählbarer Anzeigename.
+   - `client_name`: Anzeigename; der Wert ist frei wählbar.
+   - URI-Angaben wie `jwks_uri`, `client_uri`, `logo_uri`, `policy_uri`,
+     `tos_uri`, `request_uris` oder Logout-URIs übernimmt der Guard nicht. Der
+     Schlüssel muss deshalb in `jwks` selbst stehen. `redirect_uris` sind davon
+     nicht betroffen.
    - Attestierungsnachweis (`attestation_type`): Das ZETA-SDK sendet je nach
      Plattform `software` (mit einer Nonce vom `nonce_endpoint` und dem
      Besitznachweis `signed_hash_puk_client_sig`), `android` (Zertifikatskette
@@ -63,7 +69,6 @@ SMC-B-Maschinenclient eingerichtet.
      -d '{
        "token_endpoint_auth_method": "private_key_jwt",
        "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"],
-       "response_types": ["token"],
        "client_name": "Mein Primärsystem",
        "jwks": { "keys": [ { "kid": "…", "kty": "EC", "use": "sig", "…": "…" } ] }
      }'
@@ -137,9 +142,13 @@ beschrieben, das Verhalten in
 ## Verwaltung der Registrierung (RFC 7592)
 
 Die Registrierungsantwort enthält ein `registration_access_token` und eine
-`registration_client_uri`. Darüber ließe sich die Registrierung nach
-[RFC 7592](https://www.rfc-editor.org/rfc/rfc7592) auslesen, ändern oder
-löschen.
+`registration_client_uri`. Darüber lässt sich die Registrierung nach
+[RFC 7592](https://www.rfc-editor.org/rfc/rfc7592) auslesen (`GET`). Ändern
+(`PUT`) und Löschen (`DELETE`) bietet der Guard nicht an; solche Anfragen
+beantwortet er mit `405 Method Not Allowed`. Keycloaks eigene
+Registrierungsendpunkte (`…/clients-registrations/default`, `…/install` und
+`…/saml2-entity-descriptor`) sind abgeschaltet; es bleibt allein
+`…/clients-registrations/openid-connect`.
 
 Das **ZETA-SDK nutzt diesen Mechanismus nicht.** Es speichert die
 Registrierungsantwort lokal pro Registrierungsendpunkt zusammen mit der `kid`
@@ -167,14 +176,26 @@ Instanz sich später ausweist:
   (Client Assertion, signiert mit dem registrierten Instanzschlüssel).
 - **SMC-B-Maschinenclients** verwenden den Grant
   `urn:ietf:params:oauth:grant-type:token-exchange`: Sie tauschen ein
-  SMC-B-signiertes Subject-Token gegen den Token-Satz des Guards. Jede
-  Ausstellung durchläuft die OPA-Policy-Entscheidung; auch der
-  `refresh_token`-Grant autorisiert bei jedem Refresh erneut über OPA.
+  SMC-B-signiertes Subject-Token gegen den Token-Satz des Guards. Eine
+  OPA-Policy entscheidet über jede Ausstellung; auch der `refresh_token`-Grant
+  autorisiert bei jedem Refresh erneut über OPA.
+  Fehlerhafte oder ungültige Token-Exchange-Anfragen (z. B. ungültige Nonce,
+  falscher Grant Type, ungültiges `x5c`-Zertifikat, Client Statement oder
+  Posture) beantwortet der Guard mit `400`. Die TPM-Attestierung ist derzeit
+  abgeschaltet; ein Client Statement mit TPM-Posture wird abgelehnt.
 - **Mobile Clients** verwenden den `authorization_code`-Grant. Der
   Authorization Request läuft über PAR (Pushed Authorization Requests); das
   Well-Known-Dokument weist `require_pushed_authorization_requests: true` aus.
 - **Alle Access- und Refresh-Tokens sind DPoP-gebunden** (RFC 9449); der Client
-  muss bei jedem Token-Request einen DPoP-Proof mitschicken.
+  muss bei jedem Token-Request einen DPoP-Proof mitschicken. Beim Token
+  Exchange muss der Proof eine `nonce` tragen. Fehlt sie, antwortet der Guard
+  mit `400` (`use_dpop_nonce`) und einer zu verwendenden Nonce im Antwort-Header
+  `DPoP-Nonce` (RFC 9449, Abschnitt 8).
+- **Refresh mit `scope`-Parameter (A_29843):** Der `refresh_token`-Grant darf
+  auch Scopes anfordern, die nicht Teil des ursprünglichen Grants waren. Das
+  neue Access-Token trägt genau die angeforderten Scopes, sofern sie dem Client
+  als Client-Scopes zugewiesen sind und die Policy sie erlaubt. Ohne `scope`
+  gelten die ursprünglich gewährten Scopes.
 - Tokens werden mit **ES256** signiert; in produktiven Deployments liegt der
   Signaturschlüssel im HSM. Ist das HSM aktiviert, aber nicht erreichbar,
   antwortet der Token-Endpunkt fail-closed mit `503` und `Retry-After: 30`,
