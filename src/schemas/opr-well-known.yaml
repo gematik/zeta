@@ -1,8 +1,19 @@
 # Schema for the OAuth protected resource server .well-known JSON object
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.0.0"
+schemaVersion: "1.1.0"
 title: OAuth Protected Resource Server .well-known JSON Object
-description: Schema for the .well-known JSON object used by OAuth Protected Resource Servers.
+description: >-
+  Schema for the .well-known JSON object used by OAuth Protected Resource Servers.
+
+  History:
+
+  - 1.1.0: `resource` restricted to the origin of the main resource with a trailing
+    `/` (`https://<host>[:<port>]/`, no further path), enforced by a pattern; rules for
+    endpoint URLs, well-known location, token request and `aud`, and the client's
+    resource check added to the description. Providers using a path prefix (e.g.
+    `/pep/`) must adapt their configuration; ZETA Clients need no change.
+
+  - 1.0.0: Initial version.
 type: object
 properties:
   resource:
@@ -11,9 +22,34 @@ properties:
       Identifier for the protected resource. This MUST be a URL using the `https` scheme
       and MUST NOT include a fragment component. It is RECOMMENDED that this URL does
       not include a query component, but using one is permitted if necessary for
-      resource identification. (See [Reference to relevant spec, e.g., RFC XXXX Section 1.2]
-      for the formal definition).
+      resource identification. (See RFC 9728 Section 2 for the formal definition).
+
+      ZETA requirements: The value MUST be the origin of the main resource (the
+      Fachdienst) followed by a single `/`, i.e. `https://<host>[:<port>]/`, for example
+      `https://vsdm2.gematik-kk.de/`. It MUST NOT contain a path other than `/`, a query,
+      a fragment or userinfo. The host MUST be lowercase; the default port 443 MUST be
+      omitted. Exactly one Fachdienst is served per host.
+
+      The endpoint URL of a Fachdienst operation is this value followed by the path from
+      the Fachdienst specification without its leading `/` (e.g.
+      `https://vsdm2.gematik-kk.de/vsdservice/v1/vsdmbundle`). The PEP forwards the path
+      to the resource server unchanged; no prefix is removed.
+
+      This metadata document is retrieved from
+      `https://<host>[:<port>]/.well-known/oauth-protected-resource` (RFC 9728 Section 3.1,
+      no path inserted). The ZETA Client MUST send this value unchanged as `resource` in
+      the token request; the `aud` claim of the access token equals it character by
+      character.
+
+      The ZETA Client MUST determine whether a request URL belongs to this resource by
+      comparing scheme, host and port after parsing (same origin), not by a string prefix
+      without the trailing `/`. Excluded from the resource are the ZETA paths on the same
+      host: the Authorization Server endpoints below `issuer` (including Client
+      Management), `/.well-known/`, `/ASL` and `/notification-service/`. Notification
+      Service and Client Management are fixed resources with their own resource
+      identifier including a path; they are not discovered via this document.
     format: uri
+    pattern: "^https://[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*(:([0-9]{1,2}|[0-9]{4,5}|[0-35-9][0-9]{2}|4[0-35-9][0-9]|44[0-24-9]))?/$"
   authorization_servers:
     type: array
     description: >-

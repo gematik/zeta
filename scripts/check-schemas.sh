@@ -61,6 +61,8 @@ for dir in examples/schemas/*/; do
 done
 wk="examples/discovery-and-configuration/05-oauth-authorization-server-well-known-response.json"
 [ -f "$wk" ] && check_example src/schemas/as-well-known.yaml "$wk"
+prw="examples/discovery-and-configuration/02-oauth-protected-resource-response.json"
+[ -f "$prw" ] && check_example src/schemas/opr-well-known.yaml "$prw"
 
 echo "== 3. OpenAPI-Lint (redocly.yaml)"
 out=$(redocly lint 2>&1); rc=$?

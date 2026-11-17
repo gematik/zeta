@@ -1,5 +1,5 @@
 {
-  "resource": "https://erp.zentral.example.de",
+  "resource": "https://erp.zentral.example.de/",
   "authorization_servers": [
     "https://auth-server.zeta.example.de"
   ],

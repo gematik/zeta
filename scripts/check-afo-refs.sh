@@ -5,7 +5,7 @@
 # Verwendung: scripts/check-afo-refs.sh [-v] [<stand-verzeichnis>] [pfad ...]
 #   -v                   auch VORSCHLAG-Treffer ausgeben
 #   <stand-verzeichnis>  Ordner mit AFOS.md, z. B. tmp/gemSpec_ZETA/gemSpec_ZETA_2.0.1_CC_1757236
-#                        (Standard: neuester Stand mit AFOS.md)
+#                        (Standard: Stand mit AFOS.md und höchster Revisionsnummer)
 #   pfad                 Standard: src docs examples
 #
 # Meldet je Verweis:
@@ -23,7 +23,9 @@ verbose=0; [ "${1:-}" = "-v" ] && { verbose=1; shift; }
 if [ -n "${1:-}" ] && [ -f "$1/AFOS.md" ]; then
   stand=${1%/}; shift
 else
-  stand=$(for d in tmp/gemSpec_ZETA/*/; do [ -f "$d/AFOS.md" ] && echo "${d%/}"; done | sort -V | tail -1)
+  # Aktualität entscheidet die Polarion-Revision am Ende des Ordnernamens, nicht die Version im Namen.
+  stand=$(for d in tmp/gemSpec_ZETA/*/; do [ -f "$d/AFOS.md" ] && echo "${d%/}"; done \
+          | awk -F_ '{print $NF "\t" $0}' | sort -n | tail -1 | cut -f2)
 fi
 [ -f "$stand/AFOS.md" ] || { echo "Stand ohne AFOS.md: $stand"; exit 2; }
 paths=("$@"); [ ${#paths[@]} -eq 0 ] && paths=(src docs examples)
