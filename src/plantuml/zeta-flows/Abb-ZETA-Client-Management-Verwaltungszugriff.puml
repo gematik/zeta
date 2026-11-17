@@ -25,9 +25,9 @@ end note
 
 == Verwaltungs-Token beziehen (eigenes Token, genau eine Audience) ==
 
-Client -> AuthS++: POST /token  dpop: <dpop_proof>\n{grant_type=refresh_token, refresh_token,\nresource=<issuer>/zeta,\nscope="zeta:client-management zeta:email-change",\nclient_assertion (PrK.Client.Sig)}
-AuthS -> AuthS: Client Assertion (F2), DPoP-Proof, Refresh Token prüfen;\ngenau ein resource (sonst 400 invalid_target);\nVerwaltungs-Scopes nur mit <issuer>/zeta und nur bei Status bound\n(sonst 400 invalid_scope)
-AuthS --> Client--: 200 OK {access_token (aud: cm_resource,\nscope: "zeta:client-management zeta:email-change"),\nrefresh_token (rotiert), token_type: DPoP, expires_in}
+Client -> AuthS++: POST /token  dpop: <dpop_proof>\n{grant_type=refresh_token, refresh_token,\nresource=<issuer>/zeta/,\nscope="zeta:client-management zeta:email-change",\nclient_assertion (PrK.Client.Sig)}
+AuthS -> AuthS: Client Assertion (F2), DPoP-Proof, Refresh Token prüfen;\ngenau ein resource (sonst 400 invalid_request);\nVerwaltungs-Scopes nur mit <issuer>/zeta/ und nur bei Status bound\n(sonst 400 invalid_scope)
+AuthS --> Client--: 200 OK {access_token (aud: <issuer>/zeta/,\nscope: "zeta:client-management zeta:email-change"),\nrefresh_token (rotiert), token_type: DPoP, expires_in}
 note over Client, AuthS
   Danach bezieht der Client das Fachdienst-Token wieder per Refresh mit
   resource=<Fachdienst>. Eine Audience je Token hält die Zuordnung der Scopes eindeutig.
@@ -36,7 +36,7 @@ end note
 == Clients auflisten, umbenennen (ohne Step-up) ==
 
 Client -> HP++: GET /zeta/clients\nAuthorization: DPoP <Access Token>  DPoP: <dpop_proof>
-HP -> HP: Prüfe Access Token, DPoP-Proof (inkl. Replay),\naud = cm_resource, scope zeta:client-management
+HP -> HP: Prüfe Access Token, DPoP-Proof (inkl. Replay),\naud = <issuer>/zeta/, scope zeta:client-management
 HP -> AuthS++: weiterleiten mit Token und DPoP-Proof
 AuthS -> AuthS: Prüfe Token und DPoP-Proof selbst (htu gegen externe Route-URL),\naufrufende Registrierung vollständig registriert, iat nach letztem Rollover
 AuthS --> HP--: 200 OK {clients: [{client_id, client_name, product_id,\nplatform, registered_at, last_used_at, is_self}]}
@@ -62,7 +62,7 @@ alt nach der Löschung bliebe nur der Aufrufer übrig
     Client -> User: Anmeldung beim sektoralen IDP
     note over Client, AuthS
       Regulärer Authorization Code Flow (PAR, GET /authorize, Nutzerauthentisierung,
-      POST /token mit Client Assertion) mit resource=<issuer>/zeta, Scope, acr_values
+      POST /token mit Client Assertion) mit resource=<issuer>/zeta/, Scope, acr_values
       und max_age=0; danach wiederholt der Client die Anfrage einmal.
     end note
     Client -> HP: DELETE /zeta/clients/{target_client_id} (neues Access Token)

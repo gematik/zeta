@@ -183,7 +183,7 @@ Cache-Control: public, max-age=86400
 ETag: "w/37b12-abc12345"
 
 {
-  "resource": "https://api.example.com",
+  "resource": "https://api.example.com/",
   "authorization_servers": [
     "https://auth.example.com"
   ],

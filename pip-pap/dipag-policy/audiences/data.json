@@ -1,6 +1,8 @@
 {
   "allowed_audiences": [
     "dev.digitale-patientenrechnung.de",
-    "dipag-server:30300"    
+    "dipag-server:30300",
+    "https://dev.digitale-patientenrechnung.de/",
+    "https://dipag-server:30300/"
   ]
 }

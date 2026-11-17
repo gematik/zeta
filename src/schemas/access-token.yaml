@@ -1,7 +1,7 @@
 # Schema for the AccessToken JSON object. Issuer is a PDP authorization server.
 # See also https://www.rfc-editor.org/rfc/rfc9068.html
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.1.1"
+schemaVersion: "1.2.0"
 title: Access Token
 description: Schema for the Access Token issued by the PDP authorization server, as defined in RFC 9068.
 type: object
@@ -54,15 +54,18 @@ properties:
         else:
           type: string
         description: >-
-          The intended recipient(s) of the token, expressed as a stable, logical,
-          deployment-independent audience identifier of the target service (e.g.
-          "n_resource", "cm_resource"). For tokens issued under contract version 2
-          (`ver: 2`) this value is determined by the Policy Engine (OPA) decision
-          and MUST NOT be the environment-specific resource URL; the canonical
-          RFC 9728 resource identifier is conveyed via the `resource` request
-          parameter (RFC 8707) and bound to the request via the DPoP `htu` claim
-          (RFC 9449) instead. For legacy tokens (`ver` absent or `1`) the value is
-          taken verbatim from the client-supplied `audience` request parameter.
+          The intended recipient of the token: the resource identifier of the
+          target, character by character. Contract version 2 (`ver: 2`): the value
+          of the `resource` request parameter (RFC 8707), unchanged. Legacy tokens
+          (`ver` absent or `1`): the value of the `audience` request parameter,
+          unchanged. Resource identifiers: main resource `https://<host>[:<port>]/`
+          (`resource` of its protected resource metadata, opr-well-known.yaml),
+          Notification Service: that value followed by `notification-service/`,
+          Client Management: `issuer` without a trailing `/` followed by `/zeta/`.
+          There is no logical audience; the called endpoint is bound via the DPoP
+          `htu` claim (RFC 9449). Changed in 1.2.0: formerly a logical audience
+          determined by the Policy Engine. Minor version
+          because contract v2 is not yet used by any ZETA Guard or ZETA Client.
       sub:
         type: string
         description: "The subject of the token; Telematik-ID, KVNR or other unique identifier"
@@ -136,9 +139,8 @@ properties:
           Token-issuance contract version. `1` (or absent) indicates the legacy
           contract where `aud` is taken verbatim from the client-supplied
           `audience` parameter. `2` indicates the new contract where the client
-          sends a `resource` indicator (RFC 8707) and the `aud` claim is
-          determined by the Policy Engine (OPA) decision. The PEP uses this value
-          to select the correct audience-matching rule during the transition.
+          sends a `resource` indicator (RFC 8707) that is written unchanged into
+          the `aud` claim. In both contracts `aud` is the resource identifier.
         enum:
           - 1
           - 2

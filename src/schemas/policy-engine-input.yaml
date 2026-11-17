@@ -1,7 +1,7 @@
 # Policy Engine Input Schema for ZETA Guard
 # This schema combines authorization_request data, client-statement.yaml and user-info.yaml.
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.5.0"
+schemaVersion: "1.6.0"
 title: Policy Engine Input Schema for ZETA Guard
 type: object
 description: >
@@ -42,8 +42,8 @@ properties:
       The version of the schema. `1.0` corresponds to the legacy contract where
       the access token `aud` is taken verbatim from the `audience` parameter.
       `1.1` corresponds to the contract where the client supplies a `resource`
-      indicator (RFC 8707) and the Policy Engine determines the `aud` claim
-      (returned in the decision).
+      indicator (RFC 8707) that becomes the `aud` claim unchanged. In both
+      contracts `aud` is the resource identifier of the target.
     type: string
     enum:
       - "1.0"
@@ -66,13 +66,11 @@ properties:
       audience:
         type: array
         description: >-
-          LEGACY (contract v1 / schema version 1.0). The logical,
-          deployment-independent audience identifier(s) taken verbatim from the
-          client-supplied `audience` parameter and written verbatim into the
-          access token `aud` claim. Present only for legacy requests; for
-          contract v2 the client sends `resource` instead and the Policy Engine
-          determines the `aud` (returned in the decision). MUST NOT be the
-          environment-specific resource URL.
+          LEGACY (contract v1 / schema version 1.0). The audience taken
+          verbatim from the client-supplied `audience` parameter and written
+          verbatim into the access token `aud` claim: the same resource
+          identifier as `resource` in contract v2. Present only for legacy
+          requests.
         items:
           type: string
       resource:
@@ -80,10 +78,15 @@ properties:
         format: uri
         description: >-
           Resource indicator (RFC 8707), contract v2 / schema version 1.1: the
-          single absolute endpoint URL at the resource server for which the
-          access token is requested. The Policy Engine uses it to determine the
-          logical `aud` returned in the decision. Does NOT itself become the
-          `aud`. Exactly one endpoint per access token.
+          resource identifier of the target, not the URL of an endpoint. Main
+          resource: `resource` of its protected resource metadata,
+          `https://<host>[:<port>]/` (opr-well-known.yaml); Notification Service:
+          that value followed by `notification-service/`; Client Management:
+          `issuer` without a trailing `/` followed by `/zeta/`. Becomes the `aud`
+          claim unchanged. The policy decides whether the resource is allowed
+          (list of allowed resource identifiers). Changed in 1.6.0: formerly the
+          endpoint URL from which the Policy Engine derived a logical `aud`. Minor version because contract v2 is not
+          yet used by any ZETA Guard or ZETA Client.
       country_code:
         type: string
         description: "ISO 3166-1 alpha-2 country code of the source IP, resolved by

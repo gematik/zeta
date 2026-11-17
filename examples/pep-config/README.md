@@ -48,8 +48,8 @@ Ingress-Regel nötig und eine Chart-Änderung empfohlen (Abschnitt [Chart v1.3.x
 | --- | --- | --- | --- |
 | Durchleitung, selbstauthentisierend | `POST /register`, `POST /register/verify` | `pep off`; Body-Grenze 64 KiB bzw. 16 KiB | prüft Attestierung und Besitznachweis bzw. Aktivierungsgeheimnis |
 | Durchleitung, Client Assertion | `GET`/`PUT`/`DELETE /register/{client_id}`, `HEAD /zeta/rollover-nonce`, `GET /zeta/identity/rebind/status` | `pep off`; Body-Grenze 32 KiB bzw. 1 KiB | prüft die Client Assertion einschließlich `jti`-Replay-Cache, `htm`/`htu`, Lebensdauer |
-| Token, E-Mail-Binding-Token | `/zeta/identity/bind-email`, `…/resend`, `…/verify`, `/zeta/identity/rebind`, `…/verify` | `pep on`, `pep_require_aud cm_resource`, Scope `zeta:email-binding` bzw. `zeta:email-verify`; Body-Grenze 8 KiB | prüft Token und DPoP-Proof erneut, Status der Registrierung |
-| Token, Verwaltungs-Token | `/zeta/identity/email`, `…/verify`, `/zeta/clients`, `/zeta/clients/{target_client_id}`, `/zeta/identity/rebind/cancel`, `/zeta/identity/recovery-code`, `…/verify`, `/zeta/identity/events` | `pep on`, `pep_require_aud cm_resource`, Scope `zeta:client-management` bzw. `zeta:email-change`; Body-Grenze 8 KiB | prüft Token und DPoP-Proof erneut, Objektprüfung, Step-up (acr, Sitzungsalter) |
+| Token, E-Mail-Binding-Token | `/zeta/identity/bind-email`, `…/resend`, `…/verify`, `/zeta/identity/rebind`, `…/verify` | `pep on`, `pep_require_aud <issuer>/zeta/`, Scope `zeta:email-binding` bzw. `zeta:email-verify`; Body-Grenze 8 KiB | prüft Token und DPoP-Proof erneut, Status der Registrierung |
+| Token, Verwaltungs-Token | `/zeta/identity/email`, `…/verify`, `/zeta/clients`, `/zeta/clients/{target_client_id}`, `/zeta/identity/rebind/cancel`, `/zeta/identity/recovery-code`, `…/verify`, `/zeta/identity/events` | `pep on`, `pep_require_aud <issuer>/zeta/`, Scope `zeta:client-management` bzw. `zeta:email-change`; Body-Grenze 8 KiB | prüft Token und DPoP-Proof erneut, Objektprüfung, Step-up (acr, Sitzungsalter) |
 
 Der Token-Endpunkt und die übrigen OAuth-Endpunkte des Authorization Servers sind nicht Teil
 dieser API; sie laufen weiter über die `/auth`-Location des Helm-Charts.
@@ -62,10 +62,11 @@ Die Werte entsprechen dem Helm-Chart `zeta-guard` v1.2.4 (Template
 - Der Ingress leitet `/auth` zum PEP; der PEP hat eine allgemeine Location `/auth` ohne
   PEP-Prüfung zum Authorization Server.
 - Issuer `https://<host>/auth/realms/zeta-guard`; damit ist der Ressourcenbezeichner der API
-  `https://<host>/auth/realms/zeta-guard/zeta`.
+  `https://<host>/auth/realms/zeta-guard/zeta/` (mit `/` am Ende).
 - Upstream des Authorization Servers `http://authserver`.
-- Logische Audience der API `cm_resource`; sie muss mit der Audience übereinstimmen, die die
-  Policy Engine für den Ressourcenbezeichner vergibt.
+- Erwarteter `aud` der Token-Routen ist der Ressourcenbezeichner `<issuer>/zeta/`; der
+  Authorization Server übernimmt ihn unverändert aus `resource` (keine logische Audience).
+  In `zeta-cm-token-route.conf` steht ein Beispiel-Host, der im Betrieb zu ersetzen ist.
 - Direktiven von `libngx_pep.so` wie im Chart: `pep`, `pep_require_aud`, `pep_require_scope`
   (Liste der geforderten Scopes), `pep_require_popp`, `pep_forward_client_data`.
 

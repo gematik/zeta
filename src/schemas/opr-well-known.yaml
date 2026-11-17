@@ -2,54 +2,93 @@
 $schema: "http://json-schema.org/draft-07/schema#"
 schemaVersion: "1.1.0"
 title: OAuth Protected Resource Server .well-known JSON Object
-description: >-
-  Schema for the .well-known JSON object used by OAuth Protected Resource Servers.
+description: |-
+  Schema for the protected resource metadata document (RFC 9728) of the main
+  resource of a ZETA Guard. The main resource is the Fachdienst (the specialist
+  service, e.g. VSDM) behind the PEP. Only the main resource publishes this document;
+  the Notification Service and the Client Management are fixed resources without such
+  a document.
 
   History:
 
-  - 1.1.0: `resource` restricted to the origin of the main resource with a trailing
-    `/` (`https://<host>[:<port>]/`, no further path), enforced by a pattern; rules for
-    endpoint URLs, well-known location, token request and `aud`, and the client's
-    resource check added to the description. Providers using a path prefix (e.g.
-    `/pep/`) must adapt their configuration; ZETA Clients need no change.
+  - 1.1.0: `resource` restricted to the origin of the main resource followed by a
+    single `/` (`https://<host>[:<port>]/`, no further path), enforced by `pattern` and
+    `maxLength`. Rules for the endpoint URL, the well-known location, the token request,
+    `aud` and the client's resource check added to the description. Every provider
+    whose `resource` is not exactly of this form (path prefix such as `/pep/`, or no
+    trailing `/`) must adapt its configuration. Consumers stay compatible: a ZETA
+    Client compares the configured value with `resource` after normalization (RFC 3986
+    Sections 6.2.2.1 and 6.2.3), so `https://<host>` and `https://<host>/` match. New
+    ZETA Client rules (form check, same-origin check, excluded ZETA paths, fixed
+    resources) are listed under `resource`. Minor version because only producers of
+    the document must change.
 
   - 1.0.0: Initial version.
 type: object
 properties:
   resource:
     type: string
-    description: >-
-      Identifier for the protected resource. This MUST be a URL using the `https` scheme
-      and MUST NOT include a fragment component. It is RECOMMENDED that this URL does
-      not include a query component, but using one is permitted if necessary for
-      resource identification. (See RFC 9728 Section 2 for the formal definition).
+    description: |-
+      Identifier for the protected resource (RFC 9728 Section 1.2: URL with the `https`
+      scheme, no fragment). ZETA restricts this further.
 
-      ZETA requirements: The value MUST be the origin of the main resource (the
-      Fachdienst) followed by a single `/`, i.e. `https://<host>[:<port>]/`, for example
-      `https://vsdm2.gematik-kk.de/`. It MUST NOT contain a path other than `/`, a query,
-      a fragment or userinfo. The host MUST be lowercase; the default port 443 MUST be
-      omitted. Exactly one Fachdienst is served per host.
+      - Form: The value MUST be the origin of the main resource followed by a single
+        `/`, i.e. `https://<host>[:<port>]/`, for example `https://vsdm2.gematik-kk.de/`
+        (form as in RFC 8707 Section 2, `https://api.example.com/`). It MUST NOT
+        contain a path other than `/`, a query, a fragment or userinfo. The host MUST be
+        lowercase; the default port 443 MUST be omitted; a port has no leading zero.
+        Exactly one Fachdienst is served per host.
 
-      The endpoint URL of a Fachdienst operation is this value followed by the path from
-      the Fachdienst specification without its leading `/` (e.g.
-      `https://vsdm2.gematik-kk.de/vsdservice/v1/vsdmbundle`). The PEP forwards the path
-      to the resource server unchanged; no prefix is removed.
+      - Endpoint URL: The URL of a Fachdienst operation is this value followed by the
+        path from the Fachdienst specification without its leading `/`, e.g.
+        `https://vsdm2.gematik-kk.de/vsdservice/v1/vsdmbundle`. Note: the PEP forwards
+        the path to the resource server unchanged and removes no prefix
+        (gemSpec_ZETA, PEP HTTP Proxy).
 
-      This metadata document is retrieved from
-      `https://<host>[:<port>]/.well-known/oauth-protected-resource` (RFC 9728 Section 3.1,
-      no path inserted). The ZETA Client MUST send this value unchanged as `resource` in
-      the token request; the `aud` claim of the access token equals it character by
-      character.
+      - Location: This document is retrieved from
+        `https://<host>[:<port>]/.well-known/oauth-protected-resource`; the trailing `/`
+        of the value is removed before the well-known path is inserted, so no path
+        remains (RFC 9728 Section 3.1).
 
-      The ZETA Client MUST determine whether a request URL belongs to this resource by
-      comparing scheme, host and port after parsing (same origin), not by a string prefix
-      without the trailing `/`. Excluded from the resource are the ZETA paths on the same
-      host: the Authorization Server endpoints below `issuer` (including Client
-      Management), `/.well-known/`, `/ASL` and `/notification-service/`. Notification
-      Service and Client Management are fixed resources with their own resource
-      identifier including a path; they are not discovered via this document.
+      - ZETA Client, start: The ZETA Client MUST reject a configured value with a path
+        other than empty or `/`. It MUST compare the configured value with `resource` of
+        this document after normalization according to RFC 3986 Sections 6.2.2.1 and
+        6.2.3 (case of scheme and host, empty path, default port) and MUST discard the
+        document if they differ. This deviates from the identity required by RFC 9728
+        Section 3.3, limited to these normalizations.
+
+      - Token request and `aud`: The ZETA Client MUST send `resource` of this document
+        unchanged as `resource` (contract v2) or `audience` (contract v1) in the token
+        request; the `aud` claim of the access token equals it character by character.
+
+      - Fixed resources: The Notification Service has the resource identifier
+        `resource` of this document followed by `notification-service/` (e.g.
+        `https://vsdm2.gematik-kk.de/notification-service/`, port kept). The Client
+        Management has `issuer` of the authorization server metadata without a trailing
+        `/`, followed by `/zeta/`. Both are not discovered via this document. The ZETA
+        Client sends them as `resource`; the Client Management also as `audience` in
+        contract v1, the Notification Service is used with contract v2 only.
+
+      - Resource check: For every request URL passed by the Fachdienst client, the ZETA
+        Client MUST compare scheme, host and port after parsing (origin) and paths by
+        segment; a string prefix check without the trailing `/` is not permitted.
+        (1) Same origin as a fixed resource identifier and path under its path: sent
+        only with the token of that fixed resource. (2) Same origin as this value and
+        path equal to or under the path of `issuer`, under `/.well-known/`, equal to or
+        under `/ASL`, or equal to an endpoint of the authorization server metadata:
+        rejected. (3) Any other URL with the same origin as this value: sent with the
+        token of this resource. (4) Any other URL: rejected. A rejected URL causes an
+        error to the Fachdienst client; the ZETA Client sends neither the request nor
+        an access token. The ZETA Client's own requests (discovery, registration,
+        nonce, token, PAR, revocation, `/ASL`) are not subject to this check.
+
+      - Path space: The path of `issuer` is not empty; no endpoint path of the
+        Fachdienst is equal to or lies under the path of `issuer`, lies under
+        `/.well-known/` or `/notification-service/`, is equal to or lies under `/ASL`, or
+        is equal to the path of an endpoint of the authorization server metadata.
     format: uri
-    pattern: "^https://[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*(:([0-9]{1,2}|[0-9]{4,5}|[0-35-9][0-9]{2}|4[0-35-9][0-9]|44[0-24-9]))?/$"
+    maxLength: 270
+    pattern: "^https://[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*(:([1-9][0-9]?|[1-35-9][0-9]{2}|4[0-35-9][0-9]|44[0-24-9]|[1-9][0-9]{3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?/$"
   authorization_servers:
     type: array
     description: >-

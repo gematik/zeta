@@ -18,7 +18,7 @@
     },
     "sts": {
         "token_endpoint": "https://zeta-guard.anbieter-b.example.ti-dienste.de/auth/realms/zeta-guard/protocol/openid-connect/token",
-        "resource": "https://fachdienst-b.example.ti-dienste.de/api/v1",
+        "resource": "https://fachdienst-b.example.ti-dienste.de/",
         "scopes": [
             "b-api:read"
         ],

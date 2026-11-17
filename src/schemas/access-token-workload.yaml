@@ -3,7 +3,7 @@
 # Token Service. See also https://www.rfc-editor.org/rfc/rfc9068.html and
 # https://www.rfc-editor.org/rfc/rfc8693.html
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.0.0"
+schemaVersion: "1.1.0"
 title: Access Token (Workload)
 description: >-
   Access token that the Authorization Server, acting as Secure Token Service,
@@ -77,10 +77,8 @@ properties:
       ver:
         type: integer
         description: >-
-          Token-issuance contract version. Always 2: aud is the logical audience
-          determined by the Policy Engine from the resource indicator (RFC 8707);
-          the PEP applies the corresponding audience rule (gemSpec_ZETA 2.0.1
-          A_25668-01). The legacy contract (audience parameter, ver 1) is not
+          Token-issuance contract version. Always 2: aud is the resource
+          indicator (RFC 8707) of the token exchange, unchanged. The legacy contract (audience parameter, ver 1) is not
           offered for Workload Identity Federation.
         enum:
           - 2
@@ -94,8 +92,12 @@ properties:
         else:
           type: string
         description: >-
-          Logical audience of the target service as determined by the Policy
-          Engine decision (gemSpec_ZETA 2.0.1 A_29953).
+          Resource identifier of the target service, character by character the
+          `resource` parameter of the token exchange: the main resource of the
+          target ZETA Guard, `https://<host>[:<port>]/` (opr-well-known.yaml).
+          Changed in 1.1.0: formerly a logical audience determined by the Policy
+          Engine decision. Minor version because
+          Workload Identity Federation is not yet in use (Stufe 3).
       scope:
         type: string
         description: The permissions that this token grants (space-delimited).

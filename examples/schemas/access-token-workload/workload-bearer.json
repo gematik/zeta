@@ -10,7 +10,7 @@
         "iss": "https://zeta-guard.anbieter-b.example.ti-dienste.de/auth/realms/zeta-guard",
         "sub": "system:serviceaccount:fachdienst-a:resource-server",
         "client_id": "https://zeta-guard.anbieter-a.example.ti-dienste.de/auth/realms/zeta-guard",
-        "aud": "b_resource",
+        "aud": "https://fachdienst-b.example.ti-dienste.de/",
         "scope": "b-api:read",
         "exp": 1793009100,
         "iat": 1793008800,

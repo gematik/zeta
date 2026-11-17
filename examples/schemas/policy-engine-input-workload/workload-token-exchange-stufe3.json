@@ -12,7 +12,7 @@
     "scopes": [
       "b-api:read"
     ],
-    "resource": "https://fachdienst-b.example.ti-dienste.de/api/v1",
+    "resource": "https://fachdienst-b.example.ti-dienste.de/",
     "ip_address": "198.51.100.23",
     "country_code": "DE"
   }

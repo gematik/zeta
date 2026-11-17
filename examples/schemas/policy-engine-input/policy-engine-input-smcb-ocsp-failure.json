@@ -29,7 +29,7 @@
     "scopes": [
       "vsdservice"
     ],
-    "resource": "https://test-ik-nr.vsdm2.ti-dienste.de/vsdservice/v1/vsdmbundle",
+    "resource": "https://test-ik-nr.vsdm2.ti-dienste.de/",
     "country_code": "DE",
     "http_method": "POST",
     "ip_address": "192.0.2.150",

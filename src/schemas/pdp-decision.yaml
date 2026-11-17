@@ -9,6 +9,13 @@
 # mit maschinenlesbaren Ablehnungsgründen der Policy; der Authorization Server
 # bildet sie über Tab-ZETA-Ablehnungsgründe auf genau einen Client-Code ab
 # (zeta-error.yaml denial_reason).
+#
+# 1.5.0 (abwärtskompatibel für Policies, Verhalten des AS ändert sich): result.aud ist veraltet. Der
+# Authorization Server übernimmt aud unverändert aus resource bzw. audience
+# des Token Request und wertet result.aud nicht mehr aus; Policies setzen
+# es nicht mehr. Das Feld bleibt, damit ältere Policies gültig bleiben
+# (result ist additionalProperties: false). Minor, weil Contract v2
+# noch von keinem ZETA Guard und keinem ZETA Client genutzt wird.
 # reasons darf eine Map oder ein Array von Strings sein (Policies erzeugen mit
 # Partial Set Rules ein Array). Die Antwort hängt von der Version des Inputs
 # ab: reason_codes nur, wenn der Policy Engine Input schema_version ab 1.5.0
@@ -17,7 +24,7 @@
 # nicht und erhält daher keine reason_codes; das gilt je Instanz, also auch im
 # Mischbetrieb während eines Rolling Update.
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.4.0"
+schemaVersion: "1.5.0"
 title: PDP Decision Response
 description: Schema for the PDP Decision as provided by the OPA Policy Engine
   REST API (/v1/data/...).
@@ -52,14 +59,12 @@ properties:
           - refresh_token
       aud:
         description: >
-          The logical, deployment-independent audience identifier assigned by the
-          Policy Engine for the issued access token (contract v2). The
-          Authorization Server writes this value into the `aud` claim and sets
-          `ver: 2`. Only present when `allow` is true and the request supplied a
-          `resource` indicator (RFC 8707). Absent for legacy (contract v1)
-          decisions, where `aud` is taken verbatim from the client-supplied
-          `audience` parameter. Value: a string or an array of strings (RFC 7519
-          section 4.1.3).
+          DEPRECATED since 1.5.0, not used for token issuance. The `aud` claim
+          equals the requested resource identifier (`resource` in contract v2,
+          `audience` in contract v1) character by character; there is no logical
+          audience. Policies SHOULD NOT set this field; the Authorization Server
+          ignores it. Formerly: logical audience assigned by the Policy Engine.
+          Value: a string or an array of strings (RFC 7519 section 4.1.3).
         # Deliberately no `type` and no oneOf here: generators have no working
         # mapping for "string or array of strings" (openapi-generator emits
         # Java that does not compile and an empty Kotlin class). The value is

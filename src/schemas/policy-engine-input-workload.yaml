@@ -2,7 +2,7 @@
 # (service-to-service communication). Counterpart of policy-engine-input.yaml for
 # requesting services that are not registered ZETA clients.
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.1.0"
+schemaVersion: "1.2.0"
 title: Policy Engine Input Schema for Workload Identity Federation
 type: object
 description: >-
@@ -38,8 +38,7 @@ properties:
   version:
     description: >-
       Version of the input contract. Always "1.1": the request carries a
-      resource indicator (RFC 8707) and the Policy Engine determines the aud
-      claim. The legacy contract "1.0" (audience parameter) is not offered for
+      resource indicator (RFC 8707) that becomes the aud claim unchanged. The legacy contract "1.0" (audience parameter) is not offered for
       Workload Identity Federation.
     type: string
     enum:
@@ -94,9 +93,13 @@ properties:
         type: string
         format: uri
         description: >-
-          Resource indicator (RFC 8707): the single absolute endpoint URL at the
-          resource server. The Policy Engine determines the logical aud returned
-          in the decision.
+          Resource indicator (RFC 8707): the resource identifier of the target
+          service, i.e. `resource` of its protected resource metadata,
+          `https://<host>[:<port>]/` (opr-well-known.yaml). Becomes the aud claim
+          unchanged. Changed in 1.2.0: formerly the endpoint URL from which the
+          Policy Engine derived a logical aud.
+          Minor version because Workload Identity Federation is not yet in use
+          (Stufe 3).
       ip_address:
         type: string
         description: The source IP address of the request.

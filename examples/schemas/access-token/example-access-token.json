@@ -8,7 +8,7 @@
         "iss": "https://pdp.example.zeta.ti-dienste.de",
         "exp": 1740931200,
         "aud": [
-            "https://test-ik-nr.vsdm2.ti-dienste.de"
+            "https://test-ik-nr.vsdm2.ti-dienste.de/"
         ],
         "sub": "1-2-ARZT-WalterWalter01",
         "profession_oid": "1.2.276.0.76.4.30",

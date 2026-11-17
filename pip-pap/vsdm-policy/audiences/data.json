@@ -1,5 +1,6 @@
 {
   "allowed_audiences": [
-    "https://test-ik-nr.vsdm2.ti-dienste.de"
+    "https://test-ik-nr.vsdm2.ti-dienste.de",
+    "https://test-ik-nr.vsdm2.ti-dienste.de/"
   ]
 }

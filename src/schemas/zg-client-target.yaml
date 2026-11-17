@@ -1,5 +1,5 @@
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.1.0"
+schemaVersion: "1.2.0"
 title: ZG Client Target
 description: >
   Schema für eine Datei im Verzeichnis /targets/ des ZG Client
@@ -165,8 +165,12 @@ properties:
         format: uri
         description: >
           Wert des Parameters `resource` [RFC8707] im Token Exchange
-          (Contract v2). Genau eines von `resource` und `audience` ist
-          anzugeben.
+          (Contract v2): Ressourcenbezeichner der Hauptressource des
+          Zieldienstes, also `resource` aus dessen Protected Resource Metadata
+          (`https://<host>[:<port>]/`, opr-well-known.yaml), nicht die URL eines
+          Endpunkts. Wird unverändert zum `aud` des Access Token. Genau eines
+          von `resource` und `audience` ist anzugeben. Geändert in 1.2.0 Minor, weil der ZG
+          Client erst mit Stufe 3 eingeführt wird.
       audience:
         type: string
         description: >

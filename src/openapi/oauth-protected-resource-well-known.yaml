@@ -2,7 +2,18 @@ openapi: 3.1.0
 
 info:
   title: OAuth 2.0 Protected Resource Metadata Endpoint
-  version: 1.1.0
+  version: 1.2.0
+  description: |
+    Changes 1.1.0 -> 1.2.0 (behavior: one document per host, no subpath documents):
+    only the main resource (the Fachdienst) publishes this document, at
+    `https://<host>[:<port>]/.well-known/oauth-protected-resource` without a path (its `resource` is `https://<host>[:<port>]/`, opr-well-known.yaml 1.1.0;
+    RFC 9728 Section 3.1). The Notification Service and the Client Management are fixed
+    resources (`resource` followed by `notification-service/`; `issuer` without a trailing
+    `/` followed by `/zeta/`) without a protected resource metadata document; the former
+    Notification Service document `/.well-known/oauth-protected-resource/notification-service`
+    is no longer used. Minor version: the endpoint and the response schema stay
+    unchanged; the Notification Service document is used only by ZETA Clients with contract
+    v2, which is developed together with the ZETA Guard of the same stage.
 
 paths:
   /.well-known/oauth-protected-resource:
@@ -10,7 +21,9 @@ paths:
       operationId: getProtectedResourceMetadata
       summary: Retrieve the metadata of the protected resource
       description: |
-        This endpoint returns a JSON document containing metadata about the configuration of the protected resource.
+        This endpoint returns a JSON document containing metadata about the configuration of the main
+        resource of the host. There is exactly one such document per host; no path is appended to
+        `/.well-known/oauth-protected-resource`.
 
         The ZETA Guard returns an ETag header that changes whenever the content of the document changes,
         and a Cache-Control header with max-age (at most 86400 seconds). On subsequent requests the ZETA Client
