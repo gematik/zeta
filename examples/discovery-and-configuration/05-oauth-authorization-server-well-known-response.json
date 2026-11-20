@@ -38,6 +38,7 @@
   "code_challenge_methods_supported": [
     "S256"
   ],
+  "zeta_asl_use": "required",
   "dpop_signing_alg_values_supported": [
     "ES256"
   ],

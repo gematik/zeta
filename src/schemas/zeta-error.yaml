@@ -38,8 +38,17 @@
 # des PEP HTTP Proxy und des Client Management nach Tab-ZETA-Ablehnungsgründe. Information für Nutzer und
 # Support; die Reaktion des Clients richtet sich weiter nur nach HTTP-Status und
 # error.
+#
+# 1.9.0 (Umsetzung ab Stufe 3; Stufe 3 noch nicht umgesetzt): Abschnitt PEP HTTP
+# Proxy von Tab-ZETA-Ablehnungsgründe neu. Bekannte Werte token_audience_mismatch
+# und scope_insufficient entfallen: Abweichender aud und fehlender Scope sind 401
+# (ungültiges Token bzw. insufficient_scope) ohne denial_reason. Neu: asl_required
+# (Request ohne ZETA/ASL an eine Route, die ZETA/ASL verlangt). Ein zu niedriges acr
+# ohne Step-up-Möglichkeit trägt authentication_level_insufficient. denial_reason
+# ist nicht mehr mit error insufficient_scope zulässig. Das Enum bleibt offen; ein
+# Client, der einen entfallenen Wert erhält, reagiert weiter nach HTTP-Status und error.
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.8.0"
+schemaVersion: "1.9.0"
 title: HTTP ZETA Error Response
 description: Schema for transmitting error information for HTTP ZETA error response.
 type: object
@@ -74,7 +83,6 @@ then:
       enum:
         - access_denied
         - insufficient_acr
-        - insufficient_scope
         - registration_forbidden
         - forbidden_target
         - temporarily_unavailable
@@ -89,7 +97,7 @@ definitions:
       decision (pdp-decision.yaml `result.reason_codes`), the Authorization
       Backend or own checks; at the PEP HTTP Proxy and the Client Management
       from their own checks. Only with error access_denied,
-      insufficient_acr, insufficient_scope, registration_forbidden,
+      insufficient_acr, registration_forbidden,
       forbidden_target or temporarily_unavailable (403, and 503 when the
       revocation status is unavailable); a further error value with
       denial_reason requires a new minor version of this schema, and clients
@@ -122,11 +130,11 @@ definitions:
           - registration_limit_reached
           - backend_denied
           - revocation_status_unavailable
-          # --- PEP HTTP Proxy (AP01–AP04) ---
-          - token_audience_mismatch
+          # --- PEP HTTP Proxy (AP01–AP04; AP02 acr ohne Step-up-Möglichkeit
+          # verwendet authentication_level_insufficient, siehe oben) ---
           - dpop_target_mismatch
-          - scope_insufficient
           - popp_invalid
+          - asl_required
           # --- Client Management (AC03–AC06; AC01 client_not_allowed und
           # AC02 policy_denied siehe oben) ---
           - target_not_accessible

@@ -1,9 +1,14 @@
 # Schema for the Authorization Server .well-known JSON object
 $schema: "http://json-schema.org/draft-07/schema#"
-schemaVersion: "1.2.0"
+schemaVersion: "1.3.0"
 title: Authorization Server .well-known JSON Object
 description: >-
   Schema for the .well-known JSON object used by Authorization Servers.
+  Changes 1.2.0 -> 1.3.0 (backward compatible, no required field added):
+  zeta_asl_use is added as optional field (values not_supported and required;
+  absent means not_supported). It states whether the endpoints of this
+  Authorization Server, including the Client Management API, are reached only
+  via ZETA/ASL.
   Changes 1.1.0 -> 1.2.0 (backward compatible, no required field added):
   dpop_signing_alg_values_supported (RFC 9449) is added as optional field;
   response_types_supported no longer enumerates implicit and hybrid response
@@ -140,6 +145,25 @@ properties:
       The JWS algorithms supported for DPoP proof JWTs (RFC 9449 section 5.1).
     items:
       type: string
+  # --- ZETA/ASL ---
+  zeta_asl_use:
+    type: string
+    description: >-
+      Whether the endpoints of this Authorization Server (all endpoints except the
+      well-known documents, including the Client Management API under
+      `<issuer>/zeta/`) are reached only via ZETA/ASL.
+      `not_supported`: no ZETA/ASL for these endpoints, unless the protected
+      resource on the same origin as `issuer` declares `zeta_asl_use: required`.
+      `required`: these endpoints are reached only via ZETA/ASL; the ZETA/ASL
+      endpoint is `https://<authority of issuer>/ASL` and the channel is terminated
+      at the PEP HTTP Proxy, never at the Authorization Server.
+      `required_passthrough` is not allowed here, because ZETA/ASL for
+      Authorization Server endpoints never terminates behind the PEP. A client
+      rejects a document with any other value. If absent, `not_supported` applies.
+    enum:
+      - not_supported
+      - required
+    default: not_supported
   # --- Token-Issuance Contract Versioning ---
   api_versions_supported:
     type: array

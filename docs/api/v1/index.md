@@ -1384,19 +1384,53 @@ Nach erfolgreichem Erhalt der Access-Token sendet der ZETA-Client Anfragen an de
 
 ![Abbildung 23: Zugriff auf RS mit ASL](../../../images/zeta-flows/Abb-ZETA-Zugriff-auf-RS-mit-ASL.svg)*
 
-Erfordert der Fachdienst eine dedizierte Verschlüsselung (ASL), baut der Client einen verschlüsselten Tunnel auf. Der Client sendet die verschlüsselten Fachdaten per HTTP `POST` an den Endpoint `/ASL` des PEP Proxys.
+Gibt das Well-known-Dokument `zeta_asl_use: required` oder `required_passthrough` an, baut der ZETA Client einen ZETA/ASL-Kanal auf (Protokoll nach gemSpec_Krypt Kap. 7 „ZETA/ASL (VAU-Protokoll)“). Nur der erste Handshake-Request geht an `/ASL`. Die Antwort nennt im Header `ZETA-ASL-CID` eine Verbindungs-ID, einen vom Server gewählten URL-Pfad, der immer mit `/ASL/` beginnt (sonst bricht der Client ab). Alle weiteren Requests dieser Verbindung gehen an diesen Pfad.
 
-**Anfrage-Beispiel:**
+Der Client prüft das ZETA/ASL-Zertifikat: Rollen-OID `oid_zeta-guard` bei Terminierung am PEP, Subject Alternative Name passend zum Host des ZETA/ASL-Endpunkts (derselbe SAN wie im TLS-Zertifikat).
+
+**Handshake, Nachricht 1 und 2:**
 
 ```http
 POST /ASL HTTP/1.1
 Host: api.example.com
-Content-Type: application/jose
-Authorization: DPoP eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImFzLXNpZ25pbmcta2V5LTEifQ...
-DPoP: eyJhbGciOiJFUzI1NiIsInR5cCI6ImRwb3Arand0IiwiandrIjp7...
+Content-Type: application/cbor
 
-[Verschlüsselte JWE Payload (Fachnachricht)]
+[CBOR: Nachricht 1 (ephemere ECDH- und ML-KEM-768-Schlüssel des Clients)]
 ```
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/cbor
+ZETA-ASL-CID: /ASL/1b4f0e9851971998e732078544c96b36c3d01cedf7caa332359d6f1d83567014
+
+[CBOR: Nachricht 2]
+```
+
+Nachricht 3 und 4 laufen ebenso als `application/cbor`, aber an den Pfad aus `ZETA-ASL-CID`.
+
+**Fachlicher Request, Terminierung am PEP (`required`):** Der äußere Request enthält weder Access Token noch DPoP-Proof. Beide stehen im verschlüsselten inneren Request.
+
+```http
+POST /ASL/1b4f0e9851971998e732078544c96b36c3d01cedf7caa332359d6f1d83567014 HTTP/1.1
+Host: api.example.com
+Content-Type: application/octet-stream
+
+[Chiffrat: Header (Version, PU/nonPU, Request, Request-Counter, KeyID), IV, AES-GCM-Ciphertext, GMAC]
+```
+
+Klartext des inneren Requests vor der Verschlüsselung:
+
+```http
+GET /vsdservice/v1/vsdmbundle HTTP/1.1
+Host: api.example.com
+Authorization: DPoP eyJhbGciOiJFUzI1NiIsInR5cCI6ImF0K2p3dCJ9...
+DPoP: eyJhbGciOiJFUzI1NiIsInR5cCI6ImRwb3Arand0IiwiandrIjp7...
+Accept: application/json
+```
+
+`htu` des inneren DPoP-Proofs ist `https://api.example.com/vsdservice/v1/vsdmbundle`.
+
+**Terminierung am Resource Server (`required_passthrough`):** Zusätzlich enthält der äußere Request im `Authorization`-Header das `asl_access_token` aus der Token Response und im `DPoP`-Header je Request einen eigenen DPoP-Proof nach Tab-ZETA-Token-Ausstellung-ASL-am-Resource-Server: `htm` = `POST`, `htu` = URL des äußeren Requests, also `https://api.example.com/ASL` für Nachricht 1 und danach `https://api.example.com/ASL/1b4f…` (Pfad aus `ZETA-ASL-CID`). `aud` des `asl_access_token` ist `https://api.example.com/ASL`. Der PEP prüft beide und reicht den Request unverändert an den Resource Server weiter.
 
 ---
 
@@ -1435,7 +1469,26 @@ Der PEP HTTP Proxy validiert Token und Signaturen und hängt die entschlüsselte
 
 ---
 
-### 7.3 Cookie-Behandlung durch den ZETA Client
+### 7.3 ZETA/ASL für Notification Service, Client Management und Authorization Server
+
+Notification Service (`R + notification-service/`) und Client Management (`<issuer>/zeta/`) haben kein eigenes Well-known-Dokument und damit kein eigenes `zeta_asl_use`. Der ZETA Client leitet die ZETA/ASL-Nutzung aus den Dokumenten ab, die er für die Hauptressource R ohnehin abruft:
+
+| Ziel | ZETA/ASL genau dann, wenn | ZETA/ASL-Endpunkt | Terminierung |
+| --- | --- | --- | --- |
+| Hauptressource R | `zeta_asl_use` von R ist `required` oder `required_passthrough` | `https://<authority von R>/ASL` | PEP bzw. Resource Server |
+| Notification Service | `zeta_asl_use` von R ist `required` | `https://<authority von R>/ASL` | PEP |
+| Authorization Server (`/nonce`, `/register`, PAR, `/token`, `/revoke`) und Client Management | AS-Dokument hat `zeta_asl_use: required` oder `issuer` hat die Origin von R und R hat `required` | `https://<authority von issuer>/ASL` | PEP |
+| Well-known-Dokumente | nie | – | – |
+
+- Bei `required_passthrough` laufen Notification Service, Authorization Server und Client Management ohne ZETA/ASL, weil `/ASL` an den Resource Server durchreicht. Hat dann das AS-Dokument auf derselben Origin `required`, ist die Konfiguration widersprüchlich; der ZETA Client verwirft die Dokumente.
+- Ein Kanal je ZETA/ASL-Endpunkt reicht: Bei Terminierung am PEP trägt er die inneren Requests an alle Ziele dieser Origin, die ZETA/ASL verlangen. Ein Kanal zum Resource Server (`required_passthrough`) trägt nur Requests an R.
+- Äußerer Request bei Terminierung am PEP: ohne Access Token und ohne DPoP-Proof. Der `asl_access_token` gilt nur für `required_passthrough` und nur für R.
+- Innerer Request: Access Token der jeweiligen Ressource (`aud` = NS- bzw. CM-Bezeichner) und DPoP-Proof mit `htu` = URL des aufgerufenen Endpunkts; an `/nonce`, `/register` und PAR ohne Access Token, an `/token` und `/revoke` mit DPoP-Proof und Client Assertion ohne Access Token.
+- Kein Rückfall: Verlangt ein Ziel ZETA/ASL und scheitert Aufbau oder Prüfung des Kanals, sendet der ZETA Client den Request nicht über TLS allein, sondern meldet einen Fehler an den Fach-Client. Der PEP lehnt Requests außerhalb des Kanals an solchen Routen mit `403 access_denied` ab.
+
+Das Protokoll (Handshake über `POST /ASL`, Verbindungs-ID `ZETA-ASL-CID`, Prüfung des ZETA/ASL-Zertifikats) legt gemSpec_Krypt Kap. 7 fest.
+
+### 7.4 Cookie-Behandlung durch den ZETA Client
 
 Der ZETA Guard setzt Cookies insbesondere für Session Affinity ein, damit Requests einer Session dieselbe Instanz erreichen. Cookies von ZETA Guard oder Fachdienst verwaltet der ZETA Client stellvertretend für den Fach-Client. Cookies verlassen den ZETA Client nicht in Richtung Fach-Client, und der Fach-Client kann keine Cookies einschleusen.
 
@@ -1482,10 +1535,11 @@ Sämtliche Fehler der ZETA Guard Endpunkte folgen dem JSON-Schema [zeta-error.ya
 | **400** | `invalid_request` | Der DPoP-Proof oder das HTTP-Format ist ungültig. | 1. Gültigkeit des `DPoP`-Headers prüfen (z.B. Zeitstempel, URI).<br>2. Parameter im URL-kodierten Request-Body validieren. |
 | **400** / **401** | `invalid_request` / `invalid_client` | Die Zeitstempel des DPoP-Proofs oder der Client Assertion liegen außerhalb des Toleranzfensters des AuthS — Ursache ist praktisch immer eine abweichende lokale Systemuhr. Typische Meldungen im `error_description`: `DPoP proof is not active`, `Token is not active`, `Token was issued in the future`, `Token expiration is too far in the future and iat claim not present in token`. | 1. Serverzeit-Offset aus dem `Date`-Header der AuthS-Antwort ermitteln und alle `iat`/`exp`/`nbf` daraus ableiten (siehe [Zeitsynchronisation und Serverzeit-Offset](#zeitsynchronisation-und-serverzeit-offset)).<br>2. Anfrage einmalig mit neu bestimmtem Offset wiederholen.<br>3. Abweichung der Systemuhr des Clients gegen eine verlässliche Zeitquelle messen und protokollieren. |
 | **401** | `invalid_client` | Die Signatur der Client Assertion ist ungültig oder der Client Instance Key unbekannt. | 1. DCR-Registrierungsstatus des Clients prüfen.<br>2. Verwendeten Signaturalgorithmus und Schlüssel verifizieren. |
+| **401** | `invalid_token` / `insufficient_scope` (PEP) | Der PEP HTTP Proxy lehnt das Access Token ab (Header `zeta-error-origin: pep`, `WWW-Authenticate`): Token ungültig, auch wenn `aud` nicht genau dem Ressourcenbezeichner der Route entspricht; oder der Pflicht-Scope der Route fehlt (`insufficient_scope` mit `scope`). Kein `denial_reason`. | 1. `aud`: Ressourcenbezeichner im Token Request (`resource`) gegen das Well-known-Dokument der Ressource prüfen, neues Token beziehen.<br>2. `insufficient_scope`: einmal ein Token mit dem geforderten Scope beziehen und wiederholen; liegt der Scope außerhalb der Vorgabe des Fach-Clients, Step-up-Bedarf an den Fach-Client melden. |
 | **403** | `access_denied` | Attestierungsprüfung fehlgeschlagen; PCR-Werte weichen von Baseline ab. | 1. TPM PCRs prüfen (Integrität von ZAS/System).<br>2. Sicherstellen, dass keine unerlaubte Kernel-Modifikation vorliegt. |
-| **403** | `access_denied` (PEP) | Der PEP HTTP Proxy lehnt ab: `aud` des Access Token oder `htu` des DPoP Proof passt nicht zur Route (Header `zeta-error-origin: pep`) oder das PoPP Token ist ungültig (ohne `zeta-error-origin`). Gilt ab Stufe 2; ab Stufe 3 zusätzlich mit `denial_reason`. Scope nicht per Step-up erlangbar: `insufficient_scope` (RFC 6750). | 1. Mit `zeta-error-origin: pep` (aud, htu): Reaktion nach 5.4.6.1 Nr. 3b(ii): einmal Token-Refresh und Request wiederholen; bei erneutem 403 einmal volle Authentifizierung, danach Abbruch; Konfiguration von Ziel-URL und Audience prüfen.<br>2. Ohne `zeta-error-origin` (PoPP ungültig): kein Refresh, keine Authentifizierung; Fehler unverändert an den Fach-Client bzw. das Primärsystem durchreichen (gemSpec_ZETA 2.0.1 A_29853). |
+| **403** | `access_denied` (PEP) | Der PEP HTTP Proxy lehnt ab (Header `zeta-error-origin: pep`): `htu` des DPoP Proof passt nicht zur Route; `acr` des Access Token liegt unter dem Mindest-`acr` der Route und ein Step-up ist nicht möglich (`acr` = `gematik-ehealth-loa-low`); die Route verlangt ZETA/ASL, der Request kam aber nicht über den ZETA/ASL-Kanal. Oder das PoPP Token ist ungültig (ohne `zeta-error-origin`). Gilt ab Stufe 2; ab Stufe 3 zusätzlich mit `denial_reason` (`dpop_target_mismatch`, `authentication_level_insufficient`, `asl_required`, `popp_invalid`). | 1. `htu`: Reaktion nach 5.4.6.1 Nr. 3b(ii): einmal Token-Refresh und Request wiederholen; bei erneutem 403 einmal volle Authentifizierung, danach Abbruch; Konfiguration der Ziel-URL prüfen.<br>2. `acr` ohne Step-up: kein Refresh, keine Authentifizierung; Fehler an den Fach-Client.<br>3. ZETA/ASL: Well-known-Dokument neu abrufen und den Request einmal im ZETA/ASL-Kanal wiederholen, sonst Fehler an den Fach-Client.<br>4. Ohne `zeta-error-origin` (PoPP ungültig): kein Refresh, keine Authentifizierung; Fehler unverändert an den Fach-Client bzw. das Primärsystem durchreichen (gemSpec_ZETA A_29853). |
 | **403** | `insufficient_acr` | Token-Endpunkt, nur bei Grants mit Nutzerauthentisierung (`authorization_code`, Einlösung des E-Mail-Binding-Tokens, Refresh solcher Sessions): Die Policy Engine verlangt für Scope oder Ressource ein höheres Authentifizierungsniveau (`acr`, `gematik-ehealth-loa-substantial` oder `-high`) oder eine jüngere Authentisierung. Der Body enthält `acr_values` und ggf. `max_age` ([token-response.yaml](../../../src/schemas/token-response.yaml) `denyResponse`). | 1. War der Request der Token-Request eines Step-up nach PEP-401 (`insufficient_user_authentication`): abbrechen, Nutzer informieren (je Ausgangsrequest nur eine interaktive Anmeldung).<br>2. Sonst je Ausgangsrequest höchstens einmal den Authorization Code Flow mit `acr_values` und ggf. `max_age` aus dem Body durchlaufen, dann den Ausgangsrequest wiederholen.<br>3. Erneut 403 oder `insufficient_acr` im Token-Request dieses Flows oder scheitert dieser Flow vor dem Token-Request (Fehler-Redirect `access_denied`): abbrechen, Nutzer informieren.<br>4. Fehlen gültige `acr_values` oder kennt der Client den Code nicht: wie `access_denied` behandeln. |
-| **403** / **503** | `access_denied` / `temporarily_unavailable` mit `denial_reason` (ab Stufe 3) | Ablehnung durch Policy, PEP oder Client Management; `denial_reason` nennt den Grund nach Tab-ZETA-Ablehnungsgründe, z. B. `client_update_required` (mit `min_version`), `os_update_required`, `client_not_allowed`, `security_check_failed`, `policy_denied`, am PEP z. B. `dpop_target_mismatch`; 503 nur bei `revocation_status_unavailable` als einzigem Grund. | 1. Reaktion nur nach HTTP-Status und `error`: 403 am Token-Endpunkt nach T16 (Workload Identity Federation T23), 503 frühestens nach `Retry-After`, ab Stufe 3 höchstens einmal je Ausgangsrequest wiederholen.<br>2. Nutzer anhand von `denial_reason` informieren; unbekannter oder fehlender Wert wie `policy_denied`.<br>3. Für den Support `trace_id` angeben. |
+| **403** / **503** | `access_denied` / `temporarily_unavailable` mit `denial_reason` (ab Stufe 3) | Ablehnung durch Policy, PEP oder Client Management; `denial_reason` nennt den Grund nach Tab-ZETA-Ablehnungsgründe, z. B. `client_update_required` (mit `min_version`), `os_update_required`, `client_not_allowed`, `security_check_failed`, `policy_denied`, am PEP z. B. `dpop_target_mismatch` oder `asl_required`; 503 nur bei `revocation_status_unavailable` als einzigem Grund. | 1. Reaktion nur nach HTTP-Status und `error`: 403 am Token-Endpunkt nach T16 (Workload Identity Federation T23), 503 frühestens nach `Retry-After`, ab Stufe 3 höchstens einmal je Ausgangsrequest wiederholen.<br>2. Nutzer anhand von `denial_reason` informieren; unbekannter oder fehlender Wert wie `policy_denied`.<br>3. Für den Support `trace_id` angeben. |
 | **503** | `temporarily_unavailable` | Token-Endpunkt: Policy Engine oder Authorization Backend liefern keine Entscheidung, JWKS eines Workload-Issuers nicht abrufbar oder (Token Exchange mit SM(C)-B) kein verwertbarer OCSP-Status des SM(C)-B-Zertifikats bei Konfiguration `fail_closed` des AuthS (Standard). | 1. Frühestens nach `Retry-After` (falls vorhanden) wiederholen; ab Stufe 3 höchstens einmal je Ausgangsrequest.<br>2. Danach abbrechen und den Nutzer informieren. |
 | **404** | `resource_not_found` | Falscher Well-Known Pfad oder Endpoint. | 1. FQDN des Resource Servers und Pfadstruktur prüfen. |
 | **409** | `conflict` | Der Client Instance Key (`PuK.Client.Sig`) existiert bereits im PDP-System. | 1. Verwenden Sie ein neues Schlüsselpaar für eine Neuinstallation.<br>2. Prüfen Sie, ob ein Registrierungs-Reset nötig ist. |
@@ -1557,7 +1611,7 @@ Bitte beachten Sie das [CONTRIBUTING.md](../../../CONTRIBUTING.md) für Informat
 | Abkürzung | Bedeutung | Beschreibung |
 | ----------- | ----------- | -------------- |
 | **AK** | Attestation Key | Hardwaregebundener Schlüssel zur Signatur von Attestation Evidence (TPM Quote bzw. Apple App Attest Assertion). |
-| **ASL** | Application-layer Security Link | Zusätzliche Verschlüsselungsschicht zwischen Client und Resource Server (JWE-basiert). |
+| **ASL** | Additional Security Layer (ZETA/ASL) | Zusätzliche Verschlüsselungsschicht über TLS zwischen ZETA Client und PEP HTTP Proxy oder Resource Server; Protokoll nach gemSpec_Krypt Kap. 7 (VAU-Protokoll, nicht JWE). |
 | **AuthS** | Authorization Server | Der PDP in seiner Rolle als OAuth 2.0 Authorization Server (Token-Ausstellung, DCR). |
 | **DCR** | Dynamic Client Registration | Registrierungsprozess, bei dem ein Client seine Identität beim ZETA Guard etabliert (RFC 7591). |
 | **DPoP** | Demonstrating Proof-of-Possession | Mechanismus zur Bindung von Access Tokens an einen kryptografischen Schlüssel (RFC 9449). |

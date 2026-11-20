@@ -1,8 +1,19 @@
 openapi: 3.1.0
 info:
   title: ZETA Guard — Client Registration and Management API
-  version: 1.3.0-draft
+  version: 1.4.0-draft
   description: |
+    1.4.0-draft (status change; minor, because the Client Management API is not yet
+    implemented): a missing scope is answered by the PEP HTTP Proxy with 401
+    `insufficient_scope` in `WWW-Authenticate` (with `scope`), no longer with 403. The
+    403 responses no longer list insufficient_scope; the response `InsufficientScope` is
+    removed, the case is part of `InvalidToken`. No `denial_reason` for this case.
+
+    1.3.1-draft (description only): the ZETA/ASL rule for the management routes is
+    stated from the client's view (when ZETA/ASL is used, which ZETA/ASL endpoint,
+    what the inner request carries); it follows `zeta_asl_use` of the AS well-known
+    (as-well-known.yaml 1.3.0) and of the protected resource on the same origin.
+
     1.3.0-draft (expected `aud` and `resource` change; minor, because the Client Management API is not yet implemented): the resource identifier of this API is written with a
     trailing `/` (`<issuer>/zeta/`); `aud` of the email-binding and management tokens is
     exactly this resource identifier. The logical audience (e.g. `cm_resource`) is
@@ -151,9 +162,18 @@ info:
     `auth_time` claim. For SM(C)-B registrations a new token exchange with SM(C)-B subject
     token counts as step-up; `acr` is not checked.
 
-    **ZETA/ASL.** As for the other PEP and PDP endpoints (A_28852). If ZETA/ASL is
-    enabled at the PEP HTTP Proxy (A_26480), the management routes are accepted only via the
-    ZETA/ASL channel.
+    **ZETA/ASL.** The management routes are Authorization Server endpoints. They are
+    reached only via ZETA/ASL if the AS well-known declares `zeta_asl_use: required`, or
+    if `issuer` has the origin of a protected resource whose metadata declare
+    `zeta_asl_use: required`; otherwise via TLS only (also for `required_passthrough`,
+    because `/ASL` then leads to the Resource Server). ZETA/ASL endpoint:
+    `https://<authority of issuer>/ASL`; the channel terminates at the PEP HTTP Proxy,
+    never at the Authorization Server, and may be shared with the other routes of
+    that host that require ZETA/ASL. The outer request carries no access token and no
+    DPoP proof. The inner request carries the management access token
+    (`aud` = `<issuer>/zeta/`) and a DPoP proof with `htu` = URL of the management
+    endpoint, never the `asl_access_token`. Outside the channel the PEP rejects
+    requests to these routes with `403 access_denied`.
 
     **Rate limit.** At most 30 requests per minute and registration on the
     management routes; beyond that `429 rate_limit_exceeded` with `Retry-After`.
@@ -595,7 +615,7 @@ paths:
           * no bound address (first use): scope `zeta:email-binding zeta:email-verify`;
           * bound address (follow-up registration): scope `zeta:email-verify`; the OTP (N7)
             was already sent to the STORED address at token issuance. This endpoint is then
-            NOT authorised (`403 insufficient_scope`); a client-supplied address is
+            NOT authorised (`401 insufficient_scope`); a client-supplied address is
             structurally excluded.
 
         The guard sends an OTP (N7) to the supplied address and binds it only after a
@@ -624,14 +644,6 @@ paths:
               schema: { $ref: '../schemas/zeta-error.yaml' }
         '401':
           $ref: '#/components/responses/InvalidToken'
-        '403':
-          description: >-
-            insufficient_scope — the token does not carry `zeta:email-binding` (follow-up
-            registration); from Stufe 3 on with `denial_reason` `scope_insufficient`
-            (AP03)
-          content:
-            application/json:
-              schema: { $ref: '../schemas/zeta-error.yaml' }
         '429':
           $ref: '#/components/responses/OtpSendLimited'
         '500':
@@ -760,8 +772,6 @@ paths:
               schema: { $ref: '../schemas/zeta-error.yaml' }
         '401':
           $ref: '#/components/responses/StepUpRequired'
-        '403':
-          $ref: '#/components/responses/InsufficientScope'
         '429':
           $ref: '#/components/responses/OtpSendLimited'
         '500':
@@ -803,9 +813,8 @@ paths:
           $ref: '#/components/responses/InvalidToken'
         '403':
           description: >-
-            forbidden_target — the open challenge belongs to another registration |
-            insufficient_scope (PEP). From Stufe 3 on with `denial_reason`
-            `challenge_other_registration` (AC06) resp. `scope_insufficient` (AP03).
+            forbidden_target — the open challenge belongs to another registration. From
+            Stufe 3 on with `denial_reason` `challenge_other_registration` (AC06).
           content:
             application/json:
               schema: { $ref: '../schemas/zeta-error.yaml' }
@@ -844,8 +853,6 @@ paths:
               schema: { $ref: '#/components/schemas/ClientList' }
         '401':
           $ref: '#/components/responses/InvalidToken'
-        '403':
-          $ref: '#/components/responses/InsufficientScope'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '500':
@@ -1139,8 +1146,6 @@ paths:
               schema: { $ref: '../schemas/zeta-error.yaml' }
         '401':
           $ref: '#/components/responses/InvalidToken'
-        '403':
-          $ref: '#/components/responses/InsufficientScope'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '500':
@@ -1172,7 +1177,7 @@ paths:
         '401':
           $ref: '#/components/responses/StepUpRequired'
         '403':
-          description: access_denied — recovery codes not enabled | insufficient_scope (PEP)
+          description: access_denied — recovery codes not enabled
           content:
             application/json:
               schema: { $ref: '../schemas/zeta-error.yaml' }
@@ -1224,7 +1229,7 @@ paths:
         '403':
           description: >-
             forbidden_target — the open challenge belongs to another registration |
-            access_denied — recovery codes not enabled | insufficient_scope (PEP)
+            access_denied — recovery codes not enabled
           content:
             application/json:
               schema: { $ref: '../schemas/zeta-error.yaml' }
@@ -1277,8 +1282,6 @@ paths:
               schema: { $ref: '../schemas/zeta-error.yaml' }
         '401':
           $ref: '#/components/responses/InvalidToken'
-        '403':
-          $ref: '#/components/responses/InsufficientScope'
         '429':
           $ref: '#/components/responses/RateLimitExceeded'
         '500':
@@ -1384,10 +1387,14 @@ components:
         registered or deleted; token issued before the last rollover) |
         invalid_dpop_proof (DPoP proof missing, invalid or replayed). Client: once refresh or
         new proof, then new authentication; for a deleted registration a follow-up
-        registration.
+        registration. | insufficient_scope (PEP; the token does not carry the required scope
+        of the route): the client obtains a token with the scope once and retries
+        (gemSpec_ZETA A_29859); without `denial_reason`.
       headers:
         WWW-Authenticate:
-          description: '`DPoP error="invalid_token"` or `DPoP error="invalid_dpop_proof"` (RFC 9449).'
+          description: >-
+            `DPoP error="invalid_token"`, `DPoP error="invalid_dpop_proof"` (RFC 9449) or
+            `DPoP error="insufficient_scope", scope="…"` (RFC 6750 Section 3.1).
           schema: { type: string }
       content:
         application/json:
@@ -1407,21 +1414,13 @@ components:
       content:
         application/json:
           schema: { $ref: '../schemas/zeta-error.yaml' }
-    InsufficientScope:
-      description: >-
-        insufficient_scope — required scope missing (PEP); the client obtains a token with the
-        scope once. From Stufe 3 on with `denial_reason` `scope_insufficient` (AP03).
-      content:
-        application/json:
-          schema: { $ref: '../schemas/zeta-error.yaml' }
     ForbiddenTarget:
       description: >-
         forbidden_target — target unknown, of another identity, in `pending_user_binding`, or
-        (SM(C)-B) of another `product_id` and not inactive for 30 days |
-        insufficient_scope (PEP). From Stufe 3 on with `denial_reason`:
+        (SM(C)-B) of another `product_id` and not inactive for 30 days. From Stufe 3 on
+        with `denial_reason`:
         `target_not_accessible` (unknown or of another identity, AC03),
-        `target_pending_binding` (AC04), `target_still_active` (AC05); insufficient_scope with
-        `scope_insufficient` (AP03).
+        `target_pending_binding` (AC04), `target_still_active` (AC05).
       content:
         application/json:
           schema: { $ref: '../schemas/zeta-error.yaml' }
