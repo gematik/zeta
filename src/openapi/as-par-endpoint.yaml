@@ -1,10 +1,10 @@
 openapi: 3.1.0
 info:
   title: OAuth 2.0 Pushed Authorization Requests (PAR) Endpoint (RFC 9126)
-  version: 1.2.0
+  version: 1.2.1
   description: |
     Outer Pushed Authorization Request of mobile ZETA Clients
-    (Abb-ZETA-OIDC-Authorization-Request-mit-äußerem-und-innerem-PAR, A_29660).
+    (Abb-ZETA-OIDC-Authorization-Request-mit-äußerem-und-innerem-PAR, A_29660-01).
 
     Changes 1.0.0 -> 1.1.0: client authentication (`client_assertion`), the ZETA
     parameters `idp_iss`, `oidc_redirect_uri`, `acr_values` and `resource` are added; PKCE
@@ -15,6 +15,9 @@ info:
     Changes 1.1.0 -> 1.2.0: optional parameter `max_age` (OpenID Connect Core 1.0,
     RFC 9470), e.g. from a `403 insufficient_acr` of the token endpoint (T15); enforced at the sectoral IDP as `max_age=0` in the inner PAR
     (gemSpec_IDP_Sek 3.3.0 A_25753).
+
+    Changes 1.2.0 -> 1.2.1 (description only): references to the requirement versions of
+    gemSpec_ZETA 2.0.0_CC2 r1788595 (A_29660-01, A_25659-01).
 servers:
   - url: https://as.example.com
 paths:
@@ -26,7 +29,7 @@ paths:
         The ZETA Client pushes the parameters of the outer authorization request to the
         Authorization Server and authenticates with a `private_key_jwt` client assertion.
         No DPoP proof is sent here: step (02) of the flow names only the client assertion,
-        although A_25659 demands DPoP for all requests (open point towards the
+        although A_25659-01 demands DPoP for all requests (open point towards the
         specification).
         The Authorization Server validates the request, stores it and returns a
         `request_uri` that the client presents at the authorization endpoint.

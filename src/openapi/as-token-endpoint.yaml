@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: OAuth 2.0 Token Endpoint (RFC 6749 Section 3.2)
-  version: 1.5.0
+  version: 1.5.1
   description: |
     Token endpoint of the ZETA Guard Authorization Server.
 
@@ -26,11 +26,11 @@ info:
     through the PEP HTTP Proxy.
 
     Changes 1.1.2 -> 1.2.0: token exchange of Workload Identity Federation (service-to-service
-    communication, gemSpec_ZETA 2.0.1 A_28431): `subject_token_type`
+    communication, A_28431-01): `subject_token_type`
     `urn:ietf:params:oauth:token-type:id_token` and the parameter `requested_token_type` are
     added; `client_assertion_type`, `client_assertion` and the `DPoP` header are no longer
     required by the schema, because this variant has no registered client. For all other
-    grants they remain mandatory (checked by the Authorization Server, A_25659). For code
+    grants they remain mandatory (checked by the Authorization Server, A_25659-01). For code
     generators the three fields become optional.
 
     Changes 1.2.0 -> 1.3.0: a Policy Engine denial caused solely by the user authentication
@@ -66,7 +66,7 @@ info:
 
     Every request is authenticated with a `private_key_jwt` client assertion (RFC 7523) and
     carries a DPoP proof (RFC 9449); requests without them are rejected with
-    `401 invalid_client` resp. `400 invalid_dpop_proof` (A_25659). Only exception: the token
+    `401 invalid_client` resp. `400 invalid_dpop_proof` (A_25659-01). Only exception: the token
     exchange of Workload Identity Federation, where the requesting service is identified by
     the validated subject token and a DPoP proof is optional.
 
@@ -75,6 +75,17 @@ info:
     atomic step before it evaluates the request further, so that at most one request
     per nonce succeeds; all occurrences in the request must be equal. The rule is
     stated once, for all platforms, in `dcr-request.yaml`, definitions/nonce.
+
+    Changes 1.5.0 -> 1.5.1 (description only): references to the current requirement
+    versions of gemSpec_ZETA 2.0.0_CC2 r1788595 (A_25659-01, A_28431-01, A_28525-03,
+    A_29672-01, A_29733-01); the identity-binding requirements are A_30714 and A_30718;
+    the maximum number of SMC-B registrations per Telematik-ID is A_30736 and part of the
+    specification (no longer "client-management target model only"); the limits A_30719,
+    A_30720 and the rebinding A_30740 are named with A_30714; the error table is named
+    Tab-ZETA-PDP-Fehlerfälle-Token-Endpunkt; the reference to a draft version of the SM(C)-B
+    subject-token requirement is removed (the structural variant recognition is described
+    in the text).
+
 servers:
   - url: https://as.example.com
 paths:
@@ -91,14 +102,14 @@ paths:
               - `urn:ietf:params:oauth:token-type:jwt` — SM(C)-B signed subject token
                 (`subject-token-smb.yaml`, A_25645-02);
               - `urn:ietf:params:oauth:token-type:access_token` — redemption of the
-                down-scoped email-binding token for full tokens (A_30218);
+                down-scoped email-binding token for full tokens (A_30718);
               - Workload Identity Federation: `subject_token` is a
                 JWT according to `subject-token-workload.yaml`, with `subject_token_type`
                 `urn:ietf:params:oauth:token-type:jwt` or
                 `urn:ietf:params:oauth:token-type:id_token`. The Authorization Server
                 recognises this variant structurally: `id_token`, or `jwt` without `x5c`
                 in the JOSE header; `jwt` with the SM(C)-B certificate in `x5c` is the
-                SM(C)-B subject token (proposal A_25645-03). The variant is chosen from
+                SM(C)-B subject token. The variant is chosen from
                 still unverified data; all decisions follow the checks of
                 the subject token. `iss` MUST be an issuer registered with gematik
                 (A_28437-02) and configured at this Authorization Server
@@ -112,9 +123,9 @@ paths:
                 `urn:ietf:params:oauth:token-type:access_token`, `expires_in` of at most
                 3600 seconds and no refresh token.
           * `authorization_code` — outer Authorization Code Flow of mobile clients with
-            PKCE (`code`, `redirect_uri` = app_redirect_uri, `code_verifier`), A_29672.
+            PKCE (`code`, `redirect_uri` = app_redirect_uri, `code_verifier`), A_29672-01.
           * `urn:ietf:params:oauth:grant-type:jwt-bearer` (RFC 7523 section 2.1) —
-            authentication without user identity (`assertion`), A_29733.
+            authentication without user identity (`assertion`), A_29733-01.
           * `refresh_token` — renewal with refresh token rotation (A_25662-01).
 
         Target of the token (contract versioning, A_29693): contract v2 clients send
@@ -152,7 +163,7 @@ paths:
         `oneOf` per `grant_type`, because code generators map that to an untyped union.
         The Authorization Server validates the grant-specific parameters itself.
 
-        ZETA identity binding (A_30085, A_29905): if the
+        ZETA identity binding (A_30714): if the
         `authorization_code` grant is presented while the client registration is
         `pending_user_binding`, the endpoint issues a DOWN-SCOPED access token instead of
         the requested scope (returned explicitly per RFC 6749 section 5.1 to signal that
@@ -168,11 +179,13 @@ paths:
             `POST /zeta/identity/bind-email/verify`.
           * Email bound but not yet OTP-confirmed for THIS registration
             (Folgeregistrierung): the OTP is sent to the STORED address at token issuance
-            (only if no challenge is already open — repeated token requests do NOT
-            re-trigger emails) and the scope is `zeta:email-verify` only (optionally with
+            (only if no challenge is already open and the limits of A_30719 and A_30720 are
+            not reached — repeated token requests do NOT re-trigger emails) and the scope is
+            `zeta:email-verify` only (optionally with
             `email_hint`) — the client cannot submit a different address (least
             privilege); it goes directly to `verify` (re-send via
-            `POST /zeta/identity/bind-email/resend`).
+            `POST /zeta/identity/bind-email/resend`). With this token the client may start the
+            rebinding instead of the confirmation (A_30740).
           * Email bound and verified (`bound`): the requested scopes are granted
             (regular path, no binding step).
         After completing the binding the client exchanges the email-binding token for
@@ -193,7 +206,7 @@ paths:
             (`cnf.jkt`). A refresh, and the redemption of the email-binding token, use the
             same DPoP key as the request that opened the session. REQUIRED for all grants
             except the token exchange of Workload Identity Federation, where it is optional
-            (A_25659).
+            (A_25659-01).
           schema:
             type: string
       requestBody:
@@ -333,7 +346,7 @@ paths:
             `unauthorized_client` (grant type not registered for this client, A_30364), and
             DPoP errors including nonce errors `invalid_dpop_proof` (A_25661-01). ZETA does not
             use `use_dpop_nonce`: nonces come from `GET /nonce` only; refresh requests need
-            no nonce. The exact mapping per error case is table ZT_PDP_Fehlerfaelle
+            no nonce. The exact mapping per error case is table Tab-ZETA-PDP-Fehlerfälle-Token-Endpunkt
             (gemSpec_ZETA 5.4.6.1). For the ZETA identity binding: a token-exchange request with the
             email-binding token as `subject_token` fails with `invalid_grant` while the
             registration is not yet `bound`, or when the email-binding token is expired or
@@ -353,9 +366,9 @@ paths:
         '401':
           description: >-
             Client authentication failed or is missing (`invalid_client`) — A_25661-01,
-            A_25659; not used for the token exchange of Workload Identity Federation. The token endpoint
+            A_25659-01; not used for the token exchange of Workload Identity Federation. The token endpoint
             never signals step-up (`insufficient_user_authentication`): step-up need is signalled
-            only by the protected endpoints per RFC 9470 (PEP, A_28525-02; client management), whose `WWW-Authenticate` header supplies the `acr_values`. An insufficient
+            only by the protected endpoints per RFC 9470 (PEP, A_28525-03; client management), whose `WWW-Authenticate` header supplies the `acr_values`. An insufficient
             authentication level at the token endpoint is evaluated by the Policy Engine via
             `acr` (scope reduction, `403 insufficient_acr` or `403 access_denied`).
           content:
@@ -381,18 +394,17 @@ paths:
             Backend never sends `insufficient_acr`. A client that receives
             `insufficient_acr` without valid `acr_values` treats it as `access_denied`
             (T16). 403 is further used when the Authorization Backend denied access
-            (`access_denied`, A_30243). Client-management target model only (not yet part
-            of gemSpec_ZETA 2.0.1): at the first token exchange of an SM(C)-B registration
-            403 is also used when the configured maximum number of `active` SM(C)-B
-            registrations per Telematik-ID is reached (`access_denied`; no registration is
+            (`access_denied`, A_30243). At the first token exchange of an SMC-B registration
+            403 is also used when the configured maximum number of `active` SMC-B
+            registrations per Telematik-ID is reached (A_30736) (`access_denied`; no registration is
             displaced automatically, the client deletes one via the Client Management API). For the token exchange of Workload Identity
             Federation 403 means the Policy Engine denied the workload. 403 is used for no
             other case; a terminated session or
             revoked refresh token is `400 invalid_grant`.
             From Stufe 3 on every 403 body carries `denial_reason` and `trace_id`; the
             Authorization Server determines `denial_reason` from `result.reason_codes`, the
-            Authorization Backend (`backend_denied`) or, with the client-management target
-            model only, the registration limit (`registration_limit_reached`) according to
+            Authorization Backend (`backend_denied`) or the registration limit
+            (`registration_limit_reached`, A_30736) according to
             Tab-ZETA-Ablehnungsgründe. The reaction of the client still follows
             `error` only (T16, for Workload Identity Federation T23).
           content:
