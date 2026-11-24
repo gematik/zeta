@@ -33,21 +33,25 @@ Client -> AuthS++: POST /revoke  dpop: dpop_proof\n{client_assertion (JWT, PrK.C
 AuthS -> AuthS : Client-Authentifizierung prüfen\n(Client Assertion [RFC7523], DPoP Proof [RFC9449]) — wie am Token-Endpunkt
 
 alt Client-Authentifizierung erfolgreich
-  alt token_type_hint = refresh_token bzw. Refresh Token erkannt
-    AuthS -> AuthS: Widerrufe übergebenes Refresh Token und ALLE der Session\nzugeordneten (auch rotierten) Refresh Token, terminiere Session
+  alt Token einem anderen Client zugeordnet
+    note right of AuthS
+      ohne Wirkung (A_29997-01)
+    end note
+    AuthS --> Client: 200 OK oder 400
+  else Eigenes Refresh Token erkannt
+    AuthS -> AuthS: Widerrufe übergebenes Refresh Token und ALLE der Session\nzugeordneten (auch rotierten) Refresh Token, terminiere Session,\nlöse Widerruf der Access Token aus
     AuthS -> AuthS: Revisionssichere Protokollierung\n(Trace-Id, Session-Id, Trigger-Source, Reason-Code, Zeitpunkt)
     note right of AuthS
-      (RFC 7009 §2.2): Antwort 200 OK unabhängig davon,
-      ob das Token gültig, bereits ungültig oder unbekannt war
-      (keine Preisgabe der Token-Existenz).
+      Antwort 200 OK (A_29999-01).
       Folge-Refresh-Requests werden mit
-      400 invalid_grant abgelehnt (A_29998).
+      400 invalid_grant abgelehnt (A_29998-01).
     end note
     AuthS --> Client: 200 OK
   else Access Token übergeben (außerhalb Geltungsbereich)
     note right of AuthS
-      Access Token sind kurzlebig, DPoP-gebunden und werden zustandslos
-      geprüft; ihr Widerruf ist nicht Zweck dieses Endpunkts.
+      Access Token sind kurzlebig und DPoP-gebunden;
+      ihr Widerruf ist nicht Zweck dieses Endpunkts.
+      Access Token terminierter Sessions lehnt der PEP ab.
       Antwort unabhängig von token_type_hint (A_30000).
     end note
     AuthS --> Client: 200 OK (ohne Wirkung)
@@ -55,9 +59,13 @@ alt Client-Authentifizierung erfolgreich
 else DPoP Proof fehlerhaft
   AuthS --> Client: 400 Bad Request {"error": "invalid_dpop_proof"}
 else Client Assertion fehlerhaft
-  AuthS --> Client: 401 Unauthorized {"error": "invalid_client"}
+  AuthS --> Client: 401 (400 zulässig) {"error": "invalid_client"}
 end alt
-Client -> Client: Lösche lokale Access-/Refresh Token\nund DPoP-Schlüssel (unabhängig von der Antwort, A_30002)
+note over Client
+  Bei invalid_dpop_proof und invalid_client einmal W1 (ohne Nonce),
+  bei 429/5xx einmal Wiederholung nach Retry-After bzw. 10 s (A_30510)
+end note
+Client -> Client: Lösche lokale Access-/Refresh Token\nund DPoP-Schlüssel (nach Abschluss gemäß A_30510, A_30002)
 Client --> User: Abmeldung abgeschlossen
 
 deactivate Client
@@ -67,6 +75,7 @@ note over AuthS, Client
   as-well-known-Dokument (revocation_endpoint*, [RFC8414] / [as-well-known.yaml]).
   Client-Authentifizierung wie am Token-Endpunkt; ein Client kann nur eigene Token widerrufen.
   Fehler-Body gemäß [zeta-error.yaml].
+  Ein ungültiges oder unbekanntes Token wird ohne Wirkung mit 200 OK beantwortet (A_29999-01).
 end note
 
 @enduml
