@@ -177,12 +177,12 @@ Felder lässt er **weg**, wenn der zugehörige Claim im Token fehlt — sie
 erscheinen also nicht als `null`. Fehlt `commonName`, lehnt der PEP die Anfrage
 ab.
 
-| Feld               | Typ                   | Immer gesetzt | Beschreibung                                                                                   |
-|--------------------|-----------------------|---------------|------------------------------------------------------------------------------------------------|
-| `identifier`       | string                | ja            | Telematik-ID, KVNR oder anderer eindeutiger Identifikator des Subjekts (aus dem `sub`-Claim).  |
-| `professionOID`    | string                | ja            | Profession-OID des Subjekts.                                                                   |
-| `commonName`       | string                | ja            | Kurzname der Institution.                                                                      |
-| `organizationName` | string                | nein          | Name der Organisation oder Institution. Entfällt, wenn der Access-Token den Claim nicht trägt. |
+| Feld               | Typ                   | Immer gesetzt | Beschreibung                                                                                                                                                                          |
+|--------------------|-----------------------|---------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `identifier`       | string                | ja            | Telematik-ID, KVNR oder anderer eindeutiger Identifikator des Subjekts (aus dem `sub`-Claim).                                                                                         |
+| `professionOID`    | string                | ja            | Profession-OID des Subjekts.                                                                                                                                                          |
+| `commonName`       | string                | ja            | Kurzname der Institution.                                                                                                                                                             |
+| `organizationName` | string                | nein          | Name der Organisation oder Institution. Entfällt, wenn der Access-Token den Claim nicht trägt.                                                                                        |
 | `birthdate`        | string (`YYYY-MM-DD`) | nein          | Geburtsdatum des Versicherten nach ISO 8601 (A_27558). Nur bei Versicherten-Token (`professionOID` `1.2.276.0.76.4.49`); bei SMC-B-/LEI-Token entfällt das Feld. Siehe Hinweis unten. |
 
 Dekodiertes Beispiel:
@@ -231,6 +231,21 @@ Dekodiertes Beispiel für ein Versicherten-Token (mit `birthdate`):
     * Pflichtfeld: Ja
     * Context: `http`
     * Standardwert: (muss je nach Umgebung gesetzt werden)
+* `pep_pdp_url`
+    * Typ: string (URL)
+    * Beschreibung: Optionale interne Basis-URL des PDP für OIDC-Discovery und
+      JWKS-Abruf. `pep_pdp_issuer` bleibt die Vertrauensidentität (der erwartete
+      `iss`); so ist der PDP über eine clusterinterne Adresse erreichbar,
+      während die Tokens weiter den öffentlichen Issuer tragen. Die von der
+      Discovery ausgewiesene `jwks_uri` wird vom Issuer-Präfix auf
+      `pep_pdp_url` umgeschrieben; eine `jwks_uri` außerhalb des Issuers ruft
+      der PEP unverändert ab und protokolliert das. Bei beiden Abrufen sendet er
+      die Origin des öffentlichen Issuers (`Host`, `X-Forwarded-Proto`,
+      `X-Forwarded-Host`). Ab PEP 1.3.5; im Helm-Chart über
+      `pepproxy.nginxConf.pepInternalUrl`.
+    * Pflichtfeld: Nein
+    * Context: `http`
+    * Standardwert: nicht gesetzt (Discovery und JWKS über `pep_pdp_issuer`)
 * `pep_revocation_url`
     * Typ: string (URL)
     * Beschreibung: Endpunkt der Session-Revocation-API des PDP. Die Direktive
@@ -246,6 +261,9 @@ Dekodiertes Beispiel für ein Versicherten-Token (mit `birthdate`):
       weiterhin abgelehnt, nur nicht mehr an den PDP gemeldet.
       Ein leerer oder nicht als URL interpretierbarer Wert wird beim Start
       abgelehnt.
+      Das Helm-Chart setzt die Direktive immer, standardmäßig auf
+      `http://authserver/auth/realms/zeta-guard/zeta-guard-revocation`;
+      abweichend über `pepproxy.nginxConf.pepRevocationUrl`.
     * Pflichtfeld: Nein (aber siehe Beschreibung)
     * Context: `http`
     * Standardwert: nicht gesetzt
@@ -271,6 +289,18 @@ Dekodiertes Beispiel für ein Versicherten-Token (mit `birthdate`):
     * Pflichtfeld: Nein
     * Context: `http`
     * Standardwert: `1900-01-01`
+* `pep_jwks_max_lifetime`
+    * Typ: duration
+    * Beschreibung: Höchstdauer, für die der PEP abgerufene Schlüssel und
+      Discovery-Dokumente von PDP und PoPP-Server verwendet, bevor er sie
+      vollständig neu abruft — unabhängig vom `Cache-Control: max-age` der
+      Antwort und von zwischenzeitlichen `304`-Antworten. Einheiten wie bei
+      `pep_asl_ocsp_ttl`. Der Cache liegt je Worker-Prozess; ein Reload
+      ersetzt die Worker und leert ihn damit. Ab PEP 1.3.5. Das Helm-Chart
+      setzt die Direktive nicht, es gilt der Standardwert.
+    * Pflichtfeld: Nein
+    * Context: `http`
+    * Standardwert: `24h`
 * `pep_http_client_connect_timeout`, `pep_http_client_timeout`
     * Typ: integer
     * Beschreibung: Konfigurationen für den pep-spezifischen HTTP client. Dieser
@@ -369,8 +399,11 @@ Dekodiertes Beispiel für ein Versicherten-Token (mit `birthdate`):
       dekodierten Claims werden als Header `ZETA-PoPP-Token-Content` an den Upstream
       weitergereicht.
       Fehlt der `PoPP`-Header, obwohl er verlangt wird, antwortet der PEP mit
-      `HTTP 400 Bad Request`. Ist die Signatur ungültig oder schlägt eine der
-      anderen Prüfungen fehl, antwortet der PEP mit `HTTP 403 Forbidden`.
+      `HTTP 400 Bad Request`. Ist die Signatur ungültig, fehlt der Claim
+      `actorId` oder schlägt eine der anderen Prüfungen fehl, antwortet der PEP
+      mit `HTTP 403 Forbidden`. Beide Antworten tragen gemäß A_29850 keinen
+      `zeta-error-origin`-Header, damit der ZETA-Client sie an den Aufrufer
+      durchreicht, statt sich neu zu authentifizieren.
       Der Issuer des PoPP-Servers wird global über `pep_popp_issuer` konfiguriert.
     * Pflichtfeld: Nein
     * Context: `http`, `server`, `location`
@@ -486,4 +519,40 @@ Moduls. Weiterhin gilt für alle ASL-Direktiven:
     * Pflichtfeld: Nein
     * Context: `http`
     * Standardwert: `"24h"`
+* `pep_asl_session_cache_size`
+    * Typ: size
+    * Beschreibung: Größe des Shared-Memory-Bereichs für den ASL-Session-Cache
+      (`1m` bis `16g`). Der Cache gilt je nginx-Instanz, also je Pod. Ein
+      Eintrag belegt etwa 300–500 Bytes; `100m` fassen rund 200.000 bis
+      300.000 Sessions. Ist der Bereich voll, entfernt der PEP zuerst
+      abgelaufene Einträge und verdrängt danach die ältesten, Handshakes vor
+      Sessions. Ein Reload behält den Cache und seine Sessions. Ändert sich die
+      Größe, wird der Cache geleert.
+    * Pflichtfeld: Nein
+    * Context: `http`
+    * Standardwert: `100m`
+* `pep_asl_session_ttl`
+    * Typ: duration
+    * Beschreibung: Maximaldauer einer aufgebauten ASL-Session. Wird vom
+      ASL-Protokoll auf 24 h begrenzt. Einheiten wie bei `pep_asl_ocsp_ttl`.
+      Änderungen wirken mit einem Reload.
+    * Pflichtfeld: Nein
+    * Context: `http`
+    * Standardwert: `24h`
+* `pep_asl_handshake_ttl`
+    * Typ: duration
+    * Beschreibung: Lebensdauer eines nicht abgeschlossenen Handshakes.
+      Einheiten wie bei `pep_asl_ocsp_ttl`. Änderungen wirken mit einem
+      Reload.
+    * Pflichtfeld: Nein
+    * Context: `http`
+    * Standardwert: `5m`
 
+Die drei Cache-Direktiven gibt es ab PEP 1.3.5. Das Helm-Chart setzt sie nicht;
+es gelten die Standardwerte.
+
+Eine Anfrage mit einer `cid`, die der Session-Cache nicht oder nicht mehr kennt
+(abgelaufen, aufgeräumt oder verdrängt), beantwortet der PEP mit `403` und dem
+ASL-Fehlercode 9 `unknown CID` (gemSpec_Krypt A_26924). Der Client initiiert
+dann einen neuen Handshake. Das gilt für laufende Sessions ebenso wie für den
+Handshake selbst.

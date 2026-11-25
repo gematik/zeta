@@ -39,7 +39,10 @@ sind höchstens `SMCB_USER_MAX_CLIENTS` Registrierungen erlaubt (Standard: 256).
 Das Limit wird bei der Anmeldung geprüft, wenn ein neuer Client dem Nutzer
 zugeordnet wird. Wird es überschritten, wird die neue Registrierung **nicht
 abgelehnt**; stattdessen verdrängt der Guard die am längsten nicht mehr
-verwendete Registrierung dieses Nutzers (LRU, frühester `lastAccess`). Die
+verwendete Registrierung dieses Nutzers (LRU, frühester `lastAccess`). Das
+Limit hält auch bei gleichzeitigen Token Exchanges über alle
+Authserver-Instanzen hinweg: Die Zuordnung eines neuen Clients sperrt die Zeile
+des Nutzers in `ZETA_USER_DATA`, bis die Verdrängung abgeschlossen ist. Die
 Verdrängung erzeugt das Security-Event `authn_client_deleted` mit Grund
 `max_clients_exceeded` (siehe
 [Security-Events](../Referenzen/Security-Events.md)). Nur wenn die Verdrängung
@@ -60,7 +63,11 @@ abgewiesen.
 
 Der Job läuft im Intervall `CLIENT_REGISTRATION_SCHEDULER_INTERVAL`
 (Standard: 5 Minuten), frühestens `CLIENT_REGISTRATION_STARTUP_DELAY`
-(Standard: 20 Sekunden) nach dem Serverstart. `lastAccess` wird bei jeder
+(Standard: 20 Sekunden) nach dem Serverstart. Je Lauf entfernt er höchstens
+`CLIENT_REGISTRATION_EXPIRATION_BATCH_SIZE` Einträge (Standard: 500), die
+ältesten zuerst; den Rest übernimmt der nächste Lauf. Ein großer Rückstand,
+etwa nach einem Lasttest, wird so über mehrere Läufe abgebaut; ein kürzeres
+Intervall beschleunigt das. `lastAccess` wird bei jeder
 erfolgreichen Anmeldung bzw. jedem Token Exchange fortgeschrieben. Für
 Wartungsfenster lässt sich der Job über das Realm-Attribut `zeta-guard.realm.client_job.disabled=true`
 vorübergehend aussetzen. Alle Variablen sind in der
@@ -155,7 +162,7 @@ Das ZETA-SDK bietet zwei Stufen, eine Client-Instanz lokal zurückzusetzen
   Daten zum Guard — der nächste Zugriff verhält sich wie eine Erstinstallation.
 
 Beide wirken nur lokal: Das SDK ruft keinen serverseitigen Löschendpunkt auf
-(es nutzt kein RFC 7592, siehe
+(der Guard bietet kein Löschen nach RFC 7592 an, siehe
 [dynamische Client-Registrierung](Wie_die_dynamische_Client-Registrierung_funktioniert.md)).
 Die zurückgelassene Registrierung verschwindet serverseitig erst über die
 Idle-TTL oder die LRU-Verdrängung.
@@ -167,9 +174,10 @@ Idle-TTL oder die LRU-Verdrängung.
   `ZETA_OIDC_FLOW_ENABLED` sollte in produktiven Umgebungen deaktiviert
   bleiben.
 - Es gibt **keinen client- oder betreiberseitigen Endpunkt, um eine einzelne
-  Registrierung gezielt zu löschen** — das SDK nutzt kein RFC 7592, und eine
-  eigene Admin-Fachschnittstelle dafür existiert nicht. Registrierungen
-  verschwinden regulär nur über die Idle-TTLs oder die LRU-Verdrängung.
+  Registrierung gezielt zu löschen** — der Guard bietet kein Löschen nach
+  RFC 7592 an, und eine eigene Admin-Fachschnittstelle dafür existiert nicht.
+  Registrierungen verschwinden regulär nur über die Idle-TTLs oder die
+  LRU-Verdrängung.
 - Die Revocation-API widerruft **Sitzungen, nicht Registrierungen**: Ein
   gemeldetes Token beendet die Session, die Client-Registrierung bleibt
   bestehen und kann sich neu anmelden.

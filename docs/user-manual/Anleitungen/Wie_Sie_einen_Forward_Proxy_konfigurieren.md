@@ -33,10 +33,10 @@ Die Proxy-Konfiguration wird automatisch von folgenden Komponenten übernommen:
 
 Folgende Komponenten erhalten bewusst keine Proxy-Konfiguration:
 
-| Komponente                          | Grund                                                        |
-|-------------------------------------|--------------------------------------------------------------|
-| `keycloak-build` Init-Container     | Führt `kc.sh build` lokal aus, kein ausgehender HTTP-Verkehr |
-| `keychain-generator` Init-Container | Nur gRPC zu cluster-internem HSM                             |
+| Komponente                          | Grund                                                      |
+|-------------------------------------|------------------------------------------------------------|
+| `keycloak-copy` Init-Container      | Kopiert lokal in das Volume des Pods, kein Netzwerkverkehr |
+| `keychain-generator` Init-Container | Nur gRPC zu cluster-internem HSM                           |
 
 ### Subcharts (manuelle Konfiguration erforderlich)
 

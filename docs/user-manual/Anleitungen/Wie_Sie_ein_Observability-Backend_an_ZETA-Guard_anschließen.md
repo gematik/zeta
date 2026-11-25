@@ -14,7 +14,7 @@ Das Telemetry-Gateway ist ein OpenTelemetry-Collector, und Sie können
 die [offizielle Dokumentation des Collectors](https://opentelemetry.io/docs/collector/configuration/)
 und seiner Module verwenden. Die im Telemetry-Gateway verfügbaren Exporter und
 Authenticator-Extensions können Sie
-im [Build-Manifest des Collectors](https://github.com/open-telemetry/opentelemetry-collector-releases/blob/v0.156.0/distributions/otelcol-k8s/manifest.yaml)
+im [Build-Manifest des Collectors](https://github.com/open-telemetry/opentelemetry-collector-releases/blob/v0.157.0/distributions/otelcol-k8s/manifest.yaml)
 nachschlagen.
 
 <!-- Future Work Link zum Build-Manifest aktualisieren, sobald eigene Collectoren veröffentlicht wurden. -->

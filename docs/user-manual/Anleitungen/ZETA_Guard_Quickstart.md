@@ -132,6 +132,7 @@ Terraform-Variable
 | **Zugangsdaten**        | `TF_VAR_keycloak_*`, aus `authserver-admin` gefüllt² | `TF_VAR_keycloak_*`²                          |
 | **Kubernetes-Provider** | Wird konfiguriert und genutzt                        | Entfällt vollständig¹                         |
 | **Cluster-Zugang**      | Erforderlich (kubeconfig)                            | Nicht erforderlich                            |
+| **Namespace**           | `keycloak_namespace` erforderlich                    | `keycloak_namespace` wird nicht verwendet     |
 | **Typischer Einsatz**   | CI/CD-Pipelines, Cluster-Zugang vorhanden            | Lokale Entwicklung, kein Cluster-Zugang nötig |
 | **Aktivierung**         | `use_kubernetes = true` (Standard)                   | `use_kubernetes = false`                      |
 

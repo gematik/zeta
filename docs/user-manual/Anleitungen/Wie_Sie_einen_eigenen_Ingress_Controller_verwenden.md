@@ -143,15 +143,15 @@ Diese Einstellungen sind nicht F5-spezifisch, aber sie erfüllen Anforderungen
 der gematik-Spezifikation. Wer TLS an einem eigenen Ingress terminiert, führt
 den Nachweis dort selbst.
 
-| Einstellung am NIC                                               | Anforderung                                                       |
-|------------------------------------------------------------------|-------------------------------------------------------------------|
-| `ssl_protocols TLSv1.3 TLSv1.2`                                  | GS-A_5035, GS-A_4387, A_18464, GS-A_4385, A_18467                 |
-| `ssl_ciphers` (TLS 1.2), `ssl_conf_command Ciphersuites` (1.3)   | A_17322, A_21275-01, A_17124-03, GS-A_5016                        |
-| `ssl_ecdh_curve`                                                 | GS-A_4359-02, GS-A_4357-02                                        |
-| `ssl_session_tickets off` (plus `ssl_session_timeout` < 24 h)    | GS-A_5322 — Rotation bzw. Löschung des Session-Ticket-Schlüssels  |
-| `ssl_stapling on`, `ssl_stapling_verify on`                      | A_26964                                                           |
-| `ssl_prefer_server_ciphers off`                                  | A_17775 — Reihenfolge des Clients                                 |
-| `nginx.org/hsts`, `-max-age`, `-include-subdomains` (Master)     | HSTS mit einem Jahr, inkl. Subdomains                             |
+| Einstellung am NIC                                             | Anforderung                                                      |
+|----------------------------------------------------------------|------------------------------------------------------------------|
+| `ssl_protocols TLSv1.3 TLSv1.2`                                | GS-A_5035, GS-A_4387, A_18464, GS-A_4385, A_18467                |
+| `ssl_ciphers` (TLS 1.2), `ssl_conf_command Ciphersuites` (1.3) | A_17322, A_21275-01, A_17124-03, GS-A_5016                       |
+| `ssl_ecdh_curve`                                               | GS-A_4359-02, GS-A_4357-02                                       |
+| `ssl_session_tickets off` (plus `ssl_session_timeout` < 24 h)  | GS-A_5322 — Rotation bzw. Löschung des Session-Ticket-Schlüssels |
+| `ssl_stapling on`, `ssl_stapling_verify on`                    | A_26964                                                          |
+| `ssl_prefer_server_ciphers off`                                | A_17775 — Reihenfolge des Clients                                |
+| `nginx.org/hsts`, `-max-age`, `-include-subdomains` (Master)   | HSTS mit einem Jahr, inkl. Subdomains                            |
 
 Die Werte im Einzelnen stehen in `nginx-ingress.controller.config.entries` der
 `values.yaml` des Charts, jeweils mit der zugehörigen Anforderung als Kommentar.
@@ -191,12 +191,13 @@ Umgebungen genügt das. Wo es nicht genügt, ist `ingressEnabled: false` zu setz
 und eine eigene Ingress-Definition zu pflegen, die dieselben Pfade auf dieselben
 Services routet:
 
-| Pfad            | Service         | Anmerkung                                       |
-|-----------------|-----------------|-------------------------------------------------|
-| `/auth`         | `authserver`    | Realm-Endpunkte (Token, Well-Known, Login)      |
-| `/auth/admin`   | `pep-proxy-svc` | nur wenn `authserver.adminHostname` gesetzt ist |
-| `/`             | `pep-proxy-svc` | alle Fachdienst-Pfade und die ASL-Endpunkte     |
-| WebSocket-Pfade | `pep-proxy-svc` | aus `proxyLocations` mit `websocket: true`      |
+| Pfad                  | Service         | Anmerkung                                       |
+|-----------------------|-----------------|-------------------------------------------------|
+| `/auth`               | `authserver`    | Realm-Endpunkte (Token, Well-Known, Login)      |
+| `/auth/admin`         | `pep-proxy-svc` | nur wenn `authserver.adminHostname` gesetzt ist |
+| `/auth/realms/master` | `pep-proxy-svc` | nur wenn `authserver.adminHostname` gesetzt ist |
+| `/`                   | `pep-proxy-svc` | alle Fachdienst-Pfade und die ASL-Endpunkte     |
+| WebSocket-Pfade       | `pep-proxy-svc` | aus `proxyLocations` mit `websocket: true`      |
 
 Ebenfalls nur mit dem mitgelieferten NIC nutzbar ist `nginxIngressHsm: true`:
 Der Value unterdrückt `spec.tls` der Master-Ressource, damit TLS stattdessen
@@ -209,12 +210,15 @@ Controllers.
 
 Nicht nachzubilden sind Absicherungen, die bewusst nicht am Ingress hängen:
 
-* **Sperre der Admin-REST-API und -Konsole auf dem öffentlichen Hostnamen.**
-  Ist `authserver.adminHostname` gesetzt, routet das Chart `/auth/admin` auf den
-  PEP, der mit `403` antwortet. Das funktioniert mit jedem Ingress-Controller,
-  weil es nur Pfad-Routing benötigt. Ohne Admin-Hostnamen bleiben Admin-API und
-  -Konsole auf dem öffentlichen Hostnamen erreichbar — sonst gäbe es keinen Weg
-  zu ihnen.
+* **Sperre der Admin-REST-API, der Konsole und des `master`-Realms auf dem
+  öffentlichen Hostnamen.**
+  Ist `authserver.adminHostname` gesetzt, routet das Chart `/auth/admin` und
+  `/auth/realms/master` auf den PEP, der mit `403` antwortet. Der `master`-Realm
+  gehört dazu, weil dort das Admin-Access-Token ausgestellt wird; der
+  `zeta-guard`-Realm bleibt unberührt. Das funktioniert mit jedem
+  Ingress-Controller, weil es nur Pfad-Routing benötigt. Ohne Admin-Hostnamen
+  bleiben Admin-API, Konsole und `master`-Realm auf dem öffentlichen Hostnamen
+  erreichbar — sonst gäbe es keinen Weg zu ihnen.
 * **Header-Behandlung an der Upstream-Grenze.** Die `ZETA-*`-Header setzt
   ausschließlich der PEP; vom Client mitgeschickte Kopien verwirft er. Siehe
   [Header-Behandlung und `proxy_headers.conf`](../Referenzen/Konfiguration_des_PEP_Http_Proxy.md#header-behandlung-und-proxy_headersconf).

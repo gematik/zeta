@@ -21,6 +21,7 @@ der bei einem intakten Realm eine ganze Reihe von `409 Conflict`- und
 - [Vorgehen bei verlorenem State](#vorgehen-bei-verlorenem-state)
 - [Pflichtschritt: Update von 1.3.0/1.3.1 auf 1.3.2](#pflichtschritt-update-von-130131-auf-132)
 - [Besonderheiten beim Update auf 1.3.x](#besonderheiten-beim-update-auf-13x)
+- [Besonderheiten beim Update auf Chart 1.3.6](#besonderheiten-beim-update-auf-chart-136)
 - [Fehlerbilder](#fehlerbilder)
 
 ## Was Terraform verwaltet — und was nicht
@@ -39,7 +40,9 @@ Sie verwaltet **nicht** und kann nicht löschen:
   CloudNativePG-PostgreSQL-Datenbank (`keycloak-db`)
 - **Clients aus der dynamischen Client-Registrierung (DCR)** — jede
   ZETA-Client-Instanz registriert sich zur Laufzeit selbst; für diese Clients
-  existiert keine Terraform-Ressource
+  existiert keine Terraform-Ressource. Neue optionale Realm-Scopes erhalten sie
+  nur, wenn `sync_existing_client_scopes` gesetzt ist (siehe
+  [Terraform-Konfiguration](../Referenzen/Referenz_des_Helm_Charts.md#terraform-konfiguration-pdp))
 - Sessions, Access- und Refresh-Tokens
 
 Beides liegt an verschiedenen Stellen. **Ein verlorener Terraform-State bedeutet
@@ -115,11 +118,11 @@ Im Kubernetes-Modus liegt der State im Secret `tfstate-default-state` im
 Namespace der Stage. Es wird vom Kubernetes-Backend von Terraform angelegt, nicht
 von Helm, und trägt keine Helm-Ownership-Metadaten:
 
-| Aktion           | State-Secret | Realm-Daten                                        |
-|------------------|--------------|----------------------------------------------------|
-| `helm upgrade`   | bleibt       | bleiben                                            |
+| Aktion           | State-Secret | Realm-Daten                                             |
+|------------------|--------------|---------------------------------------------------------|
+| `helm upgrade`   | bleibt       | bleiben                                                 |
 | `helm uninstall` | bleibt       | **gelöscht** (CNPG-`Cluster` ist Helm-verwaltet, s. u.) |
-| `make uninstall` | **gelöscht** | **gelöscht** (CNPG-Cluster inkl. PVCs)             |
+| `make uninstall` | **gelöscht** | **gelöscht** (CNPG-Cluster inkl. PVCs)                  |
 
 `make uninstall` ist ein Entwicklungs-Target. Es löscht State **und** Datenbank
 gemeinsam und hält beide damit konsistent — auf einer produktiven Stage ist es
@@ -195,10 +198,11 @@ im Helm-Chart-Repository. Der Ablauf in Kurzform:
 | `keycloak_realm_events`                       | nichts zu tun — der Provider schreibt die Konfiguration per `PUT` |
 
    Client-Policy-Profil und -Policy sind **reine Konfiguration** (Profilname,
-   `dpop-bind-enforcer`-Executor, Client-Typ-Bedingungen). Sie enthalten keine
-   Nutzdaten und keinen Client-Zustand, das Löschen und Neuanlegen ist daher
-   unkritisch. Löschen Sie die Policy vor dem Profil — eine Policy, die auf ein
-   fehlendes Profil verweist, wird abgelehnt.
+   Executoren `dpop-bind-enforcer` und `reject-implicit-grant`,
+   Client-Typ-Bedingungen). Sie enthalten keine Nutzdaten und keinen
+   Client-Zustand, das Löschen und Neuanlegen ist daher unkritisch. Löschen Sie
+   die Policy vor dem Profil — eine Policy, die auf ein fehlendes Profil
+   verweist, wird abgelehnt.
 
 3. **Keycloak-IDs ermitteln.** Die Import-IDs von Scopes, Mappern und
    Schlüssel-Providern sind UUIDs, die Keycloak beim Anlegen vergeben hat; sie
@@ -348,6 +352,70 @@ Tabellen vorgesehen ist.
   JGroups-Protokollversion mitbringt. Siehe den Migrationshinweis zu Release
   1.2.0 in den [Release Notes](../ReleaseNotes/ZetaGuard/ReleaseNotes.md).
 
+## Besonderheiten beim Update auf Chart 1.3.6
+
+Die vollständige Liste der Änderungen steht in den
+[Release Notes der Komponenten](../ReleaseNotes/ZetaGuard/ReleaseNotes.md).
+Für den Betrieb wichtig:
+
+- **HSM-Proxy-Adresse des PEP mit Schema:** Der PEP beachtet ab Image 1.3.5
+  das Schema von `pepproxy.hsmProxyAddr`. `https://` baut TLS auf und prüft das
+  Zertifikat des HSM-Proxy; `http://` oder eine Adresse ohne Schema ist nur
+  für eine Loopback-Adresse zulässig, sonst startet der PEP nicht. Stellen Sie
+  die Adresse auf `https://` um oder setzen Sie
+  `pepproxy.hsmProxyPlainTextAccepted: true`, wenn das Netz den Kanal schützt.
+  Siehe [HSM-Konfiguration (TLS)](../Referenzen/Referenz_des_Helm_Charts.md#hsm-konfiguration-tls).
+- **ASL: unbekannte `cid` ergibt `403` statt `500`:** Kennt der PEP (ab Image
+  1.3.5) die `cid` einer Anfrage nicht oder nicht mehr – etwa nach einem
+  Neustart des PEP-Pods, auch nach dem Upgrade selbst –, antwortet er mit `403`
+  und dem ASL-Fehlercode 9 `unknown CID` statt mit `500` und Fehlercode 102.
+  Clients, die für diesen Fall auf Fehlercode 102 prüfen, müssen angepasst
+  werden. Unfertige Handshakes verfallen nach 5 Minuten, siehe
+  [Konfigurationsparameter (ASL)](../Referenzen/Konfiguration_des_PEP_Http_Proxy.md#konfigurationsparameter-asl).
+- **Nur noch Authorization Code Flow:** Das Client-Policy-Profil erhält den
+  Executor `reject-implicit-grant`; Implicit- und Hybrid-Anfragen werden
+  abgewiesen, Registrierungen mit `response_types` `token` erhalten keinen
+  Implicit Flow. Wirksam wird das mit dem `terraform apply` des
+  [Update-Wegs](#der-unterstützte-update-weg).
+- **Standard-Token-Exchange von Keycloak abgeschaltet** (Authserver ab 1.3.4):
+  Token-Exchange-Anfragen, die die ZETA-Guard-Provider ablehnen, enden mit
+  `400`.
+- **Nicht genutzte Keycloak-Features deaktiviert** (Authserver ab 1.3.4): Das
+  Authserver-Image schaltet u. a. Account-Konsole und Account-API, Device Flow,
+  CIBA, Impersonation und `.well-known/uma2-configuration` ab. Die zugehörigen
+  Endpunkte (z. B. `/realms/{realm}/account`) antworten mit `404`, ihre Grant
+  Types werden mit `unsupported_grant_type` abgelehnt. Über
+  `KC_FEATURES_DISABLED` gesetzte Features kommen hinzu. Die vollständige Liste
+  steht in den
+  [Release Notes der Komponenten](../ReleaseNotes/ZetaGuard/ReleaseNotes.md#keycloak-authserver-zeta-pdp).
+- **`master`-Realm auf dem Haupthostnamen gesperrt** (nur mit
+  `authserver.adminHostname`): `/auth/realms/master` antwortet dort mit `403`.
+  Führen Sie **vor** dem `helm upgrade` ein `terraform apply` aus; es heftet die
+  Frontend-URL des `master`-Realms an den Admin-Hostnamen, sonst ist der
+  Browser-Login der Admin Console blockiert. Manuelle Admin-Aufrufe per `curl`
+  müssen danach den Admin-Hostnamen verwenden. Siehe
+  [Admin-API-Absicherung](../Referenzen/Referenz_des_Helm_Charts.md#admin-api-absicherung).
+- **Geänderte Probe-Standardwerte des Authservers:** Liveness und Readiness
+  prüfen alle 10 s (bisher 5 s), die Startup-Probe wartet bis zu 300 s (bisher
+  100 s); `timeoutSeconds: 5` ist für alle drei Probes gesetzt und vom Schema
+  verlangt. Eigene Werte unter `authserver.probes` prüfen, siehe
+  [Probes](../Referenzen/Referenz_des_Helm_Charts.md#probes).
+- **`authserver.db.urlProperties.socketTimeout` (Standard `120`) begrenzt jede
+  Anweisung, auch die DDL von Liquibase.** Steht mit dem Update eine
+  aufwendige Schema-Migration an, erhöhen Sie den Wert vorab; sonst bricht die
+  Migration ab und die Liquibase-Sperre bleibt gehalten, siehe
+  [Datenbank nicht erreichbar / Authserver antwortet nicht](Troubleshooting_und_Debugging.md#datenbank-nicht-erreichbar--authserver-antwortet-nicht).
+- **`opa.simulation.bundle.resource` ist im Bundle-Modus mit aktivierter
+  Simulation Pflicht.** Das Chart hängt kein `-sim` mehr an
+  `opa.bundle.resource` an; ohne den Wert bricht das Rendern ab. Siehe
+  [Aktivieren](Wie_Sie_OPA_in_ZETA_Guard_konfigurieren.md#aktivieren).
+- **SMC-B-OCSP-Prüfung standardmäßig fail-closed:**
+  `authserver.provider.smcB.ocspFailClosed` ist jetzt `true`; ist der
+  Sperrstatus nicht bestimmbar, lehnt der Authserver den Token-Exchange ab.
+  Stellen Sie den Egress zu den SMC-B-OCSP-Respondern sicher oder setzen Sie
+  `false` für das bisherige Verhalten, siehe
+  [SMC-B OCSP-Sperrprüfung](../Referenzen/Referenz_des_Helm_Charts.md#smc-b-ocsp-sperrprüfung).
+
 ## Fehlerbilder
 
 **Authserver 1.3.2 startet nicht; das Log enthält `Validation Failed` mit
@@ -374,6 +442,24 @@ Entfernen Sie ihn mit `terraform state rm '<adresse>'` und importieren Sie erneu
 
 **`Error: Resource already managed by Terraform`.** Diese Adresse steht bereits
 im State — überspringen Sie sie.
+
+**Der Authserver startet nicht und wartet auf eine Liquibase-Sperre.** Eine
+Schema-Migration wurde mitten im Lauf abgebrochen — das Socket-Timeout der
+Datenbankverbindung gilt auch für DDL-Anweisungen — und die Sperre in
+`DATABASECHANGELOGLOCK` ist noch gehalten. Der nächste Start wartet 30 Minuten
+darauf und scheitert anschließend. Lösen Sie die Sperre mit
+`UPDATE databasechangeloglock SET locked = false, lockgranted = NULL, lockedby = NULL;`.
+Steht eine aufwendige Migration bevor, erhöhen Sie das Timeout für dieses Release
+vorab über `authserver.db.urlProperties.socketTimeout`.
+
+**Der Authserver ist nach einem Cluster-Patch kurzzeitig in `CrashLoopBackOff`.**
+Er wurde vor der Datenbank gestartet; Keycloak bricht den Start dann ab
+(`Failed to obtain JDBC connection`), statt unbereit weiterzulaufen. Das ist
+erwartet und heilt sich selbst: ein Fehlversuch dauert rund 47 s, Kubernetes
+wartet dazwischen 10 s, 20 s, 40 s … — in der Praxis ist der Authserver damit
+etwa eine halbe Minute nach der Datenbank oben. Eingreifen müssen Sie nur, wenn
+der Zustand bestehen bleibt, nachdem die Datenbank nachweislich erreichbar ist —
+dann liegt die Ursache nicht in der Startreihenfolge.
 
 ## Weiterführende Dokumentation
 

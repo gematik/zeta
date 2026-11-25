@@ -32,8 +32,10 @@ SMC-B-Maschinenclient eingerichtet.
 
 ## Ablauf
 
-1. **Request:** Der Client sendet ein JSON-Dokument mit seinen Metadaten. Die
-   wesentlichen Felder:
+1. **Request:** Der Client sendet ein JSON-Dokument mit seinen Metadaten.
+   `token_endpoint_auth_method`, `jwks`, `grant_types` und `client_name` sind
+   Pflichtfelder; fehlt eines davon, antwortet der Guard mit
+   `400 invalid_client_metadata`. Die wesentlichen Felder:
    - `token_endpoint_auth_method`: `private_key_jwt` — der Client
      authentifiziert sich später am Token-Endpunkt mit einem selbst signierten
      JWT statt mit einem Client Secret.
@@ -44,7 +46,11 @@ SMC-B-Maschinenclient eingerichtet.
    - `grant_types`: das SDK registriert `authorization_code`,
      `urn:ietf:params:oauth:grant-type:token-exchange` und `refresh_token`.
    - `redirect_uris`: nur bei mobilen Clients (siehe Schritt 3).
-   - `client_name`: frei wählbarer Anzeigename.
+   - `client_name`: Anzeigename; der Wert ist frei wählbar.
+   - URI-Angaben wie `jwks_uri`, `client_uri`, `logo_uri`, `policy_uri`,
+     `tos_uri`, `request_uris` oder Logout-URIs übernimmt der Guard nicht. Der
+     Schlüssel muss deshalb in `jwks` selbst stehen. `redirect_uris` sind davon
+     nicht betroffen.
 
    Beispiel (Maschinenclient, gekürzt):
 
@@ -54,7 +60,6 @@ SMC-B-Maschinenclient eingerichtet.
      -d '{
        "token_endpoint_auth_method": "private_key_jwt",
        "grant_types": ["urn:ietf:params:oauth:grant-type:token-exchange", "refresh_token"],
-       "response_types": ["token"],
        "client_name": "Mein Primärsystem",
        "jwks": { "keys": [ { "kid": "…", "kty": "EC", "use": "sig", "…": "…" } ] }
      }'
@@ -128,9 +133,13 @@ beschrieben, das Verhalten in
 ## Verwaltung der Registrierung (RFC 7592)
 
 Die Registrierungsantwort enthält ein `registration_access_token` und eine
-`registration_client_uri`. Darüber ließe sich die Registrierung nach
-[RFC 7592](https://www.rfc-editor.org/rfc/rfc7592) auslesen, ändern oder
-löschen.
+`registration_client_uri`. Darüber lässt sich die Registrierung nach
+[RFC 7592](https://www.rfc-editor.org/rfc/rfc7592) auslesen (`GET`). Ändern
+(`PUT`) und Löschen (`DELETE`) bietet der Guard ab Authserver 1.3.3 nicht an;
+solche Anfragen beantwortet er mit `405 Method Not Allowed`. Keycloaks eigene
+Registrierungsendpunkte (`…/clients-registrations/default`, `…/install` und
+`…/saml2-entity-descriptor`) sind abgeschaltet; es bleibt allein
+`…/clients-registrations/openid-connect`.
 
 Das **ZETA-SDK nutzt diesen Mechanismus nicht.** Es speichert die
 Registrierungsantwort lokal pro Registrierungsendpunkt zusammen mit der `kid`
@@ -157,9 +166,15 @@ Instanz sich später ausweist:
   SMC-B-signiertes Subject-Token gegen den Token-Satz des Guards. Jede
   Ausstellung durchläuft die OPA-Policy-Entscheidung; auch der
   `refresh_token`-Grant autorisiert bei jedem Refresh erneut über OPA.
+  Keycloaks Standard-Token-Exchange ist im Image abgeschaltet; Exchanges, die
+  die ZETA-Guard-Provider ablehnen, beantwortet der Guard mit `400`. Die
+  TPM-Attestierung ist derzeit abgeschaltet; ein Client Statement mit
+  TPM-Posture wird abgelehnt.
 - **Mobile Clients** verwenden den `authorization_code`-Grant. Der
   Authorization Request läuft über PAR (Pushed Authorization Requests); das
   Well-Known-Dokument weist `require_pushed_authorization_requests: true` aus.
+  Implicit- und Hybrid-Anfragen weist das Client-Policy-Profil ab
+  (`reject-implicit-grant`); `response_types_supported` enthält nur `code`.
 - **Alle Access- und Refresh-Tokens sind DPoP-gebunden** (RFC 9449); der Client
   muss bei jedem Token-Request einen DPoP-Proof mitschicken.
 - Tokens werden mit **ES256** signiert; in produktiven Deployments liegt der
