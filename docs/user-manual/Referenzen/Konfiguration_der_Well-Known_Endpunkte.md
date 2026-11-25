@@ -95,8 +95,8 @@ Fehlkonfigurationen.
 
 `authserver.adminHostname` setzt man, um die Keycloak-Admin-Konsole und -API vom
 öffentlichen Zugang zu trennen: Der Admin-Zugang läuft dann über einen eigenen
-Hostnamen mit eigenem Ingress, und `/auth/admin` wird am öffentlichen Proxy
-gesperrt (Details unter
+Hostnamen mit eigenem Ingress, und `/auth/admin` sowie `/auth/realms/master`
+werden am öffentlichen Proxy gesperrt (Details unter
 [Admin-API-Absicherung](Referenz_des_Helm_Charts.md#admin-api-absicherung)).
 
 Das hat eine Nebenwirkung auf die Well-Knowns: Ist `adminHostname` gesetzt, läuft

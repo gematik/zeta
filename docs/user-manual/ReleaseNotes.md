@@ -1,6 +1,158 @@
 <img align="right" width="250" height="47" src="assets/images/Gematik_Logo_Flag.png"/> <br/>
 
-# Release Notes ZETA SDK und ZETA Guard Helm Charts
+# Release Notes des Produkthandbuchs
+
+## Release 1.3.7
+
+### changed
+
+- Hotfix-Release: Komponenten-Release-Notes um Authserver 1.3.5, PEP Proxy 1.3.6
+  und ZETA Guard Helm Chart 1.3.7 ergänzt
+  ([Release Notes ZETA Guard Komponenten](ReleaseNotes/ZetaGuard/ReleaseNotes.md)).
+  Enthalten sind OpenJDK 21.0.13.1 im Authserver und im keychain-generator
+  (CVE-2026-114938), der Schutz gegen HTTP Request Smuggling im ASL-Relay des
+  PEP (CWE-444), nginx 1.31.9 und NIC 5.8.0 mit dem nginx-ingress-Subchart
+  2.9.0. Konfigurationsänderungen sind nicht nötig. Alle übrigen Inhalte des
+  Handbuchs sind unverändert gegenüber 1.3.6.
+
+## Release 1.3.6
+
+### added
+
+- `pepproxy.nginxConf.pepRevocationUrl`: Endpunkt der Session-Revocation-API,
+  bisher fest im Chart hinterlegt. Leer gilt der bisherige Wert (Service
+  `authserver`), siehe
+  [nginx-Konfiguration](Referenzen/Referenz_des_Helm_Charts.md#nginx-konfiguration-fachdienst-routing).
+- `pepproxy.nginxConf.pepInternalUrl` (nginx-Direktive `pep_pdp_url`, PEP ab
+  1.3.5): OIDC-Discovery und JWKS-Abruf über den clusterinternen Authserver,
+  `pepIssuer` bleibt der erwartete `iss`; standardmäßig aus. Dazu
+  `pepproxy.hostAliases`. Siehe
+  [Clusterinterne Kommunikation mit dem Authserver](Referenzen/Referenz_des_Helm_Charts.md#clusterinterne-kommunikation-mit-dem-authserver).
+- Neue PEP-Direktive `pep_jwks_max_lifetime` (Standard `24h`): Schlüssel und
+  Discovery-Dokumente von PDP und PoPP-Server werden spätestens danach
+  vollständig neu abgerufen, siehe
+  [Konfigurationsparameter (PEP-Basis)](Referenzen/Konfiguration_des_PEP_Http_Proxy.md#konfigurationsparameter-pep-basis).
+- ASL-Session-Cache des PEP konfigurierbar (`pep_asl_session_cache_size`,
+  `pep_asl_session_ttl`, `pep_asl_handshake_ttl`) mit neuen Metriken
+  `zeta.asl.session_cache.*`; ein voller Cache führt nicht mehr zu `500`. Siehe
+  [Konfigurationsparameter (ASL)](Referenzen/Konfiguration_des_PEP_Http_Proxy.md#konfigurationsparameter-asl).
+- [Entity Statement des Guards](Anleitungen/Wie_der_mobile_Client-Flow_funktioniert.md#entity-statement-des-guards):
+  `client_name`, `organization_name`, `contacts` und `redirect_uris` sind über
+  `authserver.config.entityStatement` konfigurierbar; neu sind die
+  `federation_entity`-Metadaten (gemSpec_IDP_Sek, Tab. 28). Eine feste
+  `redirectUris`-Liste ersetzt die Redirect-URIs der Clients des Realms.
+- Neue Terraform-Variablen `smtp_starttls`, `smtp_ssl`, `smtp_auth_username`
+  und `smtp_auth_password` für TLS und Authentisierung am SMTP-Server (OTP-Mails
+  der E-Mail-Bindung). Das Passwort liegt im Terraform-State. Siehe
+  [Terraform-Konfiguration (PDP)](Referenzen/Referenz_des_Helm_Charts.md#terraform-konfiguration-pdp).
+- Terraform kann neue optionale Realm-Scopes (`pdp_scopes`,
+  Notification-Scopes) bei bereits per DCR registrierten Clients nachtragen.
+  Standardmäßig aus (`sync_existing_client_scopes`), begrenzt über
+  `sync_existing_client_scopes_max_clients`; nur für Realms mit wenigen Clients.
+  Siehe [Terraform-Konfiguration (PDP)](Referenzen/Referenz_des_Helm_Charts.md#terraform-konfiguration-pdp).
+- Egress-NetworkPolicies: Die OCSP-Kategorien `ocspSmcbTsp`, `ocspTiPki` und
+  `ocspCabForum` sind beschrieben, samt Zuordnung zur URL-Liste der gematik,
+  siehe
+  [Wofür die drei OCSP-Kategorien stehen](Anleitungen/Wie_Sie_Egress_NetworkPolicies_konfigurieren.md#wofür-die-drei-ocsp-kategorien-stehen).
+- Optionales Tail Sampling für TI-SIM und TI-SIEM im Telemetry-Gateway
+  (`tail_sampling/siem_and_sim`, A_28988), standardmäßig nicht aktiv, siehe
+  [Wie Sie das optionale Sampling aktivieren](Anleitungen/Wie_Sie_Telemetrie_des_Resource_Servers_an_die_gematik_schicken.md#wie-sie-das-optionale-sampling-für-ti-sim-und-ti-siem-aktivieren).
+
+### changed
+
+- _Breaking_ Der PEP beachtet das Schema von `pepproxy.hsmProxyAddr`:
+  `https://` mit Zertifikatsprüfung, unverschlüsselt nur noch zur
+  Loopback-Adresse oder mit `pepproxy.hsmProxyPlainTextAccepted: true`. Siehe
+  [Besonderheiten beim Update auf Chart 1.3.6](Anleitungen/Wie_Sie_ZETA_Guard_aktualisieren.md#besonderheiten-beim-update-auf-chart-136).
+- Mit gesetztem `pepproxy.hsmProxyAddr` rendert das Chart den TLS-Listener des
+  PEP auf Port 8443 nur noch, wenn `pepproxy.hsmTlsCert` und
+  `pepproxy.hsmTlsKeyId` gesetzt sind, siehe
+  [HSM-Konfiguration (TLS)](Referenzen/Referenz_des_Helm_Charts.md#hsm-konfiguration-tls).
+- _Breaking_ ASL: Eine unbekannte oder abgelaufene `cid` beantwortet der PEP
+  mit `403` und Fehlercode 9 `unknown CID` statt `500`/102, siehe
+  [Besonderheiten beim Update auf Chart 1.3.6](Anleitungen/Wie_Sie_ZETA_Guard_aktualisieren.md#besonderheiten-beim-update-auf-chart-136).
+- PoPP-Fehler des PEP (`400` bei fehlendem, `403` bei ungültigem PoPP-Token)
+  tragen keinen Header `zeta-error-origin: pep` mehr (A_29850); der ZETA-Client
+  reicht sie an den Aufrufer durch, siehe
+  [`pep_require_popp`](Referenzen/Konfiguration_des_PEP_Http_Proxy.md#konfigurationsparameter-pep-basis).
+- Ein PoPP-Token ohne Claim `actorId` beantwortet der PEP mit `403` statt
+  `500`.
+- Der PEP-Proxy erhält einen Default für `pepproxy.containerSecurityContext`
+  (u. a. `readOnlyRootFilesystem`, `runAsUser: 1000`, alle Capabilities
+  entfernt). Unter OpenShift `runAsUser: null` setzen, siehe
+  [Wie Sie ZETA-Guard auf OpenShift betreiben](Anleitungen/ZETA_OpenShift_Kompatibilität.md).
+- Der Authserver lässt nur noch den Authorization Code Flow zu
+  (`reject-implicit-grant`, `response_types_supported` nur `code`), schaltet
+  Keycloaks Standard-Token-Exchange ab und stellt KVNR-Tokens nur nach der
+  Policy-Entscheidung für den Client aus. Siehe
+  [Besonderheiten beim Update auf Chart 1.3.6](Anleitungen/Wie_Sie_ZETA_Guard_aktualisieren.md#besonderheiten-beim-update-auf-chart-136).
+- _Sicherheitsrelevant_ Die TPM-Attestierung ist abgeschaltet; ein Client
+  Statement mit TPM-Posture lehnt der Authserver ab, siehe
+  [Wie die dynamische Client-Registrierung funktioniert](Anleitungen/Wie_die_dynamische_Client-Registrierung_funktioniert.md).
+- _Sicherheitsrelevant_ Dynamische Client-Registrierung gehärtet (ab
+  Authserver 1.3.3, CVE-2026-15572): Ändern und Löschen nach RFC 7592 entfallen,
+  Keycloaks eigene Registrierungsendpunkte sind abgeschaltet. Siehe
+  [Verwaltung der Registrierung](Anleitungen/Wie_die_dynamische_Client-Registrierung_funktioniert.md#verwaltung-der-registrierung-rfc-7592).
+- _Sicherheitsrelevant_ Die Client-Registrierung übernimmt keine URI-Angaben
+  wie `jwks_uri` oder `logo_uri` mehr, damit der Authserver keine Anfragen an
+  fremde Ziele stellt. Siehe
+  [Wie die dynamische Client-Registrierung funktioniert](Anleitungen/Wie_die_dynamische_Client-Registrierung_funktioniert.md#ablauf).
+- Die Client-Registrierung verlangt `token_endpoint_auth_method`, `jwks`,
+  `grant_types` und `client_name`; fehlt eines, antwortet der Authserver mit
+  `400 invalid_client_metadata`. Siehe
+  [Wie die dynamische Client-Registrierung funktioniert](Anleitungen/Wie_die_dynamische_Client-Registrierung_funktioniert.md#ablauf).
+- Der Ablaufjob für Client-Registrierungen entfernt je Lauf höchstens
+  `CLIENT_REGISTRATION_EXPIRATION_BATCH_SIZE` Einträge (Standard `500`), statt
+  nach Lasttests am Transaktions-Timeout zu scheitern (`OOMKilled`). Siehe
+  [Wie der Client-Lebenszyklus verwaltet wird](Anleitungen/Wie_der_Client-Lebenszyklus_verwaltet_wird.md).
+- `SMCB_USER_MAX_CLIENTS` (A_25748-02) hält auch bei gleichzeitigen Token
+  Exchanges über mehrere Authserver-Instanzen, siehe
+  [Wie der Client-Lebenszyklus verwaltet wird](Anleitungen/Wie_der_Client-Lebenszyklus_verwaltet_wird.md).
+- _Breaking_ Das Authserver-Image schaltet nicht genutzte Keycloak-Features
+  ab (u. a. Account-Konsole, Device Flow, CIBA, Impersonation); deren Endpunkte
+  antworten mit `404`. Siehe
+  [Besonderheiten beim Update auf Chart 1.3.6](Anleitungen/Wie_Sie_ZETA_Guard_aktualisieren.md#besonderheiten-beim-update-auf-chart-136).
+- Das Refresh-Token endet spätestens mit der Session, eine Rotation verlängert
+  sie nicht (A_25662). Die neuen Terraform-Variablen `sso_session_idle_timeout`
+  und `sso_session_max_lifespan` (Standard `24h`, bisher 30 min/10 h) halten die
+  Session so lange wie das Refresh-Token. Siehe
+  [Session-Laufzeit und Refresh-Token](Anleitungen/Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md#session-laufzeit-und-refresh-token).
+- _Sicherheitsrelevant_ Mit `authserver.adminHostname` sperrt das Chart auf
+  dem Haupthostnamen auch `/auth/realms/master` (`403`). Die neue
+  Terraform-Variable `master_realm_frontend_url` steuert die Frontend-URL des
+  `master`-Realms; `terraform apply` vor dem `helm upgrade` ausführen. Siehe
+  [Admin-API-Absicherung](Referenzen/Referenz_des_Helm_Charts.md#admin-api-absicherung).
+- Access-Log des PEP: Mit `pepproxyTracingEnabled: true` endet jede Zeile mit
+  `trace_id=<id> span_id=<id>`; ohne Tracing bleibt das Format unverändert.
+  Siehe [Troubleshooting und Debugging](Anleitungen/Troubleshooting_und_Debugging.md#http-proxy).
+- Der Authserver-Init-Container heißt jetzt `keycloak-copy` und kopiert nur
+  `/opt/keycloak`; `kc.sh build` läuft einmal statt zweimal. Die
+  Standardressourcen von `authserver.initContainer.resources` sind kleiner,
+  siehe [Ressourcen](Referenzen/Referenz_des_Helm_Charts.md#ressourcen).
+- Die Terraform-Variable `keycloak_namespace` ist nur noch im Kubernetes-Modus
+  (`use_kubernetes = true`) erforderlich; im lokalen Modus scheiterte
+  `terraform plan` bisher an ihr. Siehe
+  [Betriebsmodi](Anleitungen/ZETA_Guard_Quickstart.md#betriebsmodi).
+- Der Authserver übersteht einen Failover der Datenbank: neue Values
+  `authserver.db.urlProperties` und `authserver.dbPool.maxLifetime`, geänderte
+  Probe-Standardwerte. Siehe
+  [Datenbank nicht erreichbar / Authserver antwortet nicht](Anleitungen/Troubleshooting_und_Debugging.md#datenbank-nicht-erreichbar--authserver-antwortet-nicht).
+- _Breaking_ `opa.simulation.bundle.resource` ist im Bundle-Modus mit
+  Simulation Pflicht; die Ableitung per `-sim`-Suffix entfällt, weil die gematik
+  Simulations-Bundles je Umgebung anders benennt. Siehe
+  [Wie Sie OPA in ZETA-Guard konfigurieren](Anleitungen/Wie_Sie_OPA_in_ZETA_Guard_konfigurieren.md#aktivieren).
+- _Breaking_ `authserver.provider.smcB.ocspFailClosed` ist standardmäßig
+  `true`: Bei nicht bestimmbarem OCSP-Status wird der SMC-B-Token-Exchange
+  abgelehnt. `false` stellt das bisherige Verhalten her, siehe
+  [SMC-B OCSP-Sperrprüfung](Referenzen/Referenz_des_Helm_Charts.md#smc-b-ocsp-sperrprüfung).
+- `opa-rollout-restart-cronjob`: Speicherlimit `256Mi` (bisher `64Mi`), keine
+  überlappenden Läufe und höchstens 5 Minuten Laufzeit; dieselben Schranken für
+  die Token-Renewer-CronJobs. Siehe
+  [Geplanter Neustart](Anleitungen/Wie_Sie_OPA_in_ZETA_Guard_konfigurieren.md#geplanter-neustart-rollout-restart).
+- OPA-Image `1.21.3-static` (bisher `1.19.1-static`), siehe
+  [OPA (Policy Engine)](Referenzen/Referenz_des_Helm_Charts.md#opa-policy-engine).
+- Telemetry-Gateway `v0.157.1` (OpenTelemetry Collector 0.157), per Digest
+  gepinnt.
 
 ## Release 1.3.3
 
@@ -9,6 +161,9 @@
 - Hotfix-Release: Komponenten-Release-Notes um PEP Proxy 1.3.3 und ZETA Guard
   Helm Chart 1.3.3 ergänzt
   ([Release Notes ZETA Guard Komponenten](ReleaseNotes/ZetaGuard/ReleaseNotes.md)).
+  Der PEP 1.3.3 härtet die Validierung der Ziel-URL bei ASL-Subrequests; das
+  Chart 1.3.3 ist bis auf das PEP-Image identisch mit 1.3.2. Alle übrigen
+  Inhalte des Handbuchs sind unverändert gegenüber 1.3.2.
 
 ## Release 1.3.2
 

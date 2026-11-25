@@ -28,6 +28,7 @@
   * [Wie Sie eine eigene OCI-Registry verwenden](Anleitungen/Wie_Sie_eine_eigene_OCI_Registry_verwenden.md)
   * [Wie Sie ZETA-Guard auf OpenShift betreiben](Anleitungen/ZETA_OpenShift_Kompatibilität.md)
   * [Wie Sie Telemetrie des Resource Servers an die gematik schicken](Anleitungen/Wie_Sie_Telemetrie_des_Resource_Servers_an_die_gematik_schicken.md)
+  * [Wie Sie die effektive Konfiguration eines Telemetry-Gateways finden](Anleitungen/Wie_Sie_die_effektive_Konfiguration_eines_Telemetry-Gateways_finden.md)
   * [Wie Sie ein Observability-Backend anschließen](Anleitungen/Wie_Sie_ein_Observability-Backend_an_ZETA-Guard_anschließen.md)
   * [Wie Sie einen Ende-zu-Ende-Integrationstest ausführen](Anleitungen/Wie_Sie_einen_Ende_zu_Ende_Integrationstest_ausführen.md)
   * [Wie Sie eine VAU-Umgebung für Lasttests aufsetzen](Anleitungen/Wie_Sie_eine_VAU_Umgebung_für_Lasttests_aufsetzen.md)

@@ -1,6 +1,84 @@
 # Release Notes ZETA Guard Komponenten
 
+## Inhaltsverzeichnis
+
+- [Keycloak Authserver (ZETA PDP)](#keycloak-authserver-zeta-pdp)
+- [PEP Proxy (ZETA PEP)](#pep-proxy-zeta-pep)
+- [Notification Service](#notification-service)
+- [Provisioning Processor](#provisioning-processor)
+- [ZETA Guard Helm Charts](#zeta-guard-helm-charts)
+
 ## Keycloak Authserver (ZETA PDP)
+
+### Release 1.3.5
+
+#### changed:
+
+- OpenJDK of the hardened Keycloak image updated to 21.0.13.1 (`java-21-openjdk-headless-21.0.13.1.2-1.2.el9`)
+  because of CVE-2026-114938 ("java4shell", heap out-of-bounds write in the AVX-512 Base64 decoder of HotSpot on x86-64) and other CVEs
+
+### Release 1.3.4
+
+#### added:
+- Entity statement: `metadata.openid_relying_party` carries `ti_features_supported`, `client_name`, `organization_name`,
+  `keywords`, `contacts` and `default_acr_values` (A_23034-02), plus a `metadata.federation_entity` block; set through
+  `ENTITY_STATEMENT_CLIENT_NAME`, `_ORGANIZATION_NAME`, `_CONTACT_EMAIL` and `_ID_TOKEN_VERSION`
+- `ENTITY_STATEMENT_REDIRECT_URIS` (comma-separated) sets the published `redirect_uris`; unset, those of all realm clients
+
+#### fixed:
+- Mobile flow: the authserver issues KVNR tokens only within a request that passed the policy engine decision for that
+  client (or for the reduced e-mail-binding token). Other grants on a SekIDP session no longer yield such tokens
+- Keycloak's standard token exchange is disabled in the image; exchanges the 𝝵-Guard providers decline get HTTP 400
+- The e-mail-binding token exchange requires a DPoP proof of the key its subject token is bound to
+- The well-known configuration announces `response_types_supported` `code` only
+- TPM attestation is disabled until the expected protocol update.
+- The entity statement at `.well-known/openid-federation` is served with Content-Type `application/entity-statement+jwt`
+  as OpenID Federation requires, instead of `application/jwt`. Requests with `Accept: application/entity-statement+jwt`
+  no longer fail with 406, so a federation master can fetch it. Resolves ANFTI2-1074
+- Removed the compromised emSign/eMudhra root CAs (CVE-2026-114406 / CVE-2026-91403) from the hardened Keycloak image's
+    Java truststore (cacerts) and OS trust bundles
+- The client expiration job no longer removes all expired clients in a single transaction. After a load test with
+  hundreds of thousands of clients that transaction exceeded the transaction timeout and was rolled back on every run,
+  while memory grew until the container was killed (`OOMKilled`). A run now removes at most
+  `CLIENT_REGISTRATION_EXPIRATION_BATCH_SIZE` (default `500`) entries, oldest first, and leaves the rest to the next
+  run. With a large backlog, shorten `CLIENT_REGISTRATION_SCHEDULER_INTERVAL` or raise the batch size
+- The client expiration job also removes the data of an expired user whose Keycloak user no longer exists (e.g. deleted in
+  the admin console). Before, the removal failed every time
+- The maximum number of clients per user (`SMCB_USER_MAX_CLIENTS`, A_25748-02) now also holds for concurrent token
+  exchanges, across all Keycloak instances: binding a new client locks the user's row in `ZETA_USER_DATA` and evicts the
+  oldest clients until the limit is kept. Resolves ANFTI2-1031
+- The refresh token's `exp` (and `refresh_expires_in`) is capped at the session end, and rotation no longer extends the
+  session: clients must re-authenticate by token exchange after the first refresh token's TTL (A_25662)
+  Resolves ANFTI2-1013, ANFTI2-727
+- Client Registration: Implemented check that `jwks`, `grant_types`, `client_name` and `token_endpoint_auth_method` are set
+  Resolves ANFTI2-1019
+- Client Registration: Strip several URI values to prevent Keycloak making requests to attacker controlled targets
+
+#### changed:
+- The SekIDP mTLS client (PAR and token requests, FedMaster, Entity-Statement and JWKS), OPA HTTP client and the OCSP HTTP client use now `connections-http-client` providers
+of their own, not the `default` HTTP provider. However, they all share the same configuration.
+- Netty dependencies for Keycloak bumped to version 4.1.139 via override of Jar-Files in the OCI image
+- BouncyCastle dependencies for Keycloak bumped to version 1.86 via override of Jar-Files in the OCI image
+- **BREAKING** Hardening: Keycloak features not used by 𝝵-Guard are disabled in the image (`KC_FEATURES_DISABLED`):
+  `account`, `account-api`, `ciba`, `device-flow`, `jwt-authorization-grant`, `authorization`,
+  `admin-fine-grained-authz`, `impersonation`, `workflows`, `identity-brokering-api`, `twitter-broker`, and the
+  `.well-known/uma2-configuration` endpoint. Their endpoints (e.g. `/realms/{realm}/account`, device and CIBA
+  endpoints) return 404, their grant types are rejected with `unsupported_grant_type`. Features set via
+  `KC_FEATURES_DISABLED` are added to this set
+- MariaDB JDBC driver for Keycloak bumped to version 3.5.9 via override of Jar-Files in the OCI image (CVE-2026-55856, CVE-2026-55857, CVE-2026-55858)
+- Jackson dependencies (`jackson-core`, `jackson-databind`) for Keycloak bumped to version 2.21.7 via override of Jar-Files in the OCI image (CVE-2026-68494, CVE-2026-68497, CVE-2026-89425, CVE-2026-91776, CVE-2026-91777, CVE-2026-89407, CVE-2026-19032, CVE-2026-77310, CVE-2026-83557)
+
+### Release 1.3.3
+
+#### changed:
+- **Hardened Dynamic Client Registration against privilege escalation (CVE-2026-15572).**
+  Keycloak's native client-registration endpoints (`default`, `install`,
+  `saml2-entity-descriptor`) are disabled, and the RFC 7592 update/delete operations
+  (`PUT`/`DELETE`) are removed from the OIDC registration — only `POST`/`GET` on
+  `/clients-registrations/openid-connect` remain. This closes the mapper type-swap on
+  update (an allowed mapper type could be swapped to a disallowed one such as
+  `oidc-hardcoded-role-mapper` via the update endpoint, injecting privileged roles) and
+  the broad `ClientRepresentation` registration surface it relied on.
 
 ### Release 1.3.2
 
@@ -299,10 +377,121 @@
 
 ## PEP Proxy (ZETA PEP)
 
+### Release 1.3.6
+
+#### fixed
+
+- ASL (CWE-444, HTTP request smuggling): the relay no longer copies the
+  `Content-Length` and `Transfer-Encoding` of an inner request to the loopback hop but frames it
+  from the body it sends. An inner request announcing a body it doesn't carry used to go out
+  with a length and no body, and nginx took the announced bytes from the next request on the
+  pooled connection.
+- Bumps:
+  - rust 1.100.0
+  - nginx 1.31.9 (NOTE: image ref changes from nginxinc/nginx-unprivileged to
+    nginx/nginx-unprivileged due to an upstream naming scheme change)
+  - nginx-ingress 5.8.0
+  - headers-more-nginx-module v0.42
+
+### Release 1.3.5
+
+#### fixed
+
+- ASL: don't panic on short M3
+- ASL: session requests shorter than the session overhead are rejected (`BadFormat`)
+  instead of underflowing. Resolves ANFTI2-968
+- response with 403 instead of 500 on requests with missing actorId
+- ASL: a full session cache no longer answers new handshakes with HTTP 500 (`ngx_slab_alloc()
+  failed: no memory`). Unfinished handshakes now expire (`pep_asl_handshake_ttl`, default 5m,
+  previously never), expired entries are cleaned up at least every 10s without holding the
+  write lock for a full scan, and a failing insert drops expired entries, tops up with the
+  oldest live ones (handshakes before sessions) and retries. The scan for that runs under the
+  read lock, removal happens in small chunks.
+- ASL: an M3 carrying the cid of an established session no longer deletes that session.
+- DSA-6572-1: the compromised emSign (eMudhra) root CAs are now explicitly
+  distrusted in the `pep` and `nginx-ingress` runtime images (ca-certificates is
+  upgraded and the emSign roots are removed from the system trust store)
+- **BREAKING** `ossl_hsm`: the provider honours the scheme of `HSM_PROXY_ADDR`. Previously
+  every address was dialed in plaintext, `https://` included. `https://` now connects with
+  TLS and verifies the proxy's certificate against the configured host name, using the system
+  trust store or the CA file named by the new `HSM_PROXY_CA`. `http://` (or no scheme) is only
+  accepted for a loopback address; for any other address the provider fails to initialise and
+  nginx, when configured with a `store:hsm:` key, does not start.
+  `HSM_PROXY_ALLOW_PLAINTEXT=1` restores plaintext to a remote address, for local testing or
+  when the link is secured by other means such as a service mesh, and logs a warning at every
+  start. A `SignResponse` whose `key_id` is empty or differs from the requested one is
+  rejected; HSM proxy implementations must return the `key_id` they signed with. Deployments that configured `https://` need a proxy that
+  actually serves TLS; deployments that configured `http://host` must switch to `https://`
+  (with thanks to Machine Spirits UG)
+- PDP/PoPP key cache: fetched keys and discovery documents are used for at most
+  `pep_jwks_max_lifetime` (default `24h`) before they are fetched again in full, without
+  `If-None-Match`/`If-Modified-Since`. Previously the response's `Cache-Control: max-age`
+  alone decided, and every `304` renewed it, so a key set accepted once with a long `max-age`
+  and the server's current `ETag` stayed in use until the next restart. Cached keys are also
+  dropped when discovery names a different `jwks_uri` than the one they were fetched from, a
+  `304` to an unconditional request is treated as a failed fetch, and an oversized `max-age`
+  can no longer overflow the grace-period calculation. The cache is held per worker
+  process; `nginx -s reload` replaces the workers and thereby purges it
+
+#### added
+
+- `pep_pdp_url`: optional internal base URL for OIDC discovery and the JWKS fetch.
+  `pep_pdp_issuer` stays the trust identity (the expected `iss`), so the PDP can be
+  reached over an in-cluster address while tokens keep carrying the public issuer.
+  The `jwks_uri` advertised by discovery is rewritten from the issuer prefix onto
+  `pep_pdp_url`; a `jwks_uri` outside the issuer is fetched as advertised and logged.
+  Unset (default) keeps the previous behaviour. Resolves ANFTI2-477
+- directives `pep_asl_session_cache_size` (default 100m, min 1m, max 16g), `pep_asl_session_ttl`
+  (default 24h, capped at the 24h of the ASL protocol) and `pep_asl_handshake_ttl` (default 5m).
+  The cache is per pod. TTL changes apply on reload. The ASL certificates, roots and testing
+  flag are read when the zone is created: a reload keeps the zone, its sessions and these
+  settings, unless the size changed, in which case it starts over with an empty cache.
+- metrics `zeta.asl.sessions.handshaking` (part of `sessions.active`),
+  `zeta.asl.session_cache.used`/`.size` (bytes), `zeta.asl.session_cache.alloc_failures` and
+  `.evictions`; alert on any increase of `alloc_failures`.
+
+#### changed
+
+- A_29850: PoPP errors (`PoPPMissing` 400, `PoPP` and `PoPPInvalidActor` 403) no longer carry
+  the header `zeta-error-origin: pep`. They are addressed to the caller, who supplies the PoPP
+  token, so the ZETA-Client hands them on instead of re-authenticating. Resolves ANFTI2-891
+- ASL: a request for a cid that is not (or no longer) in the session cache, e.g. after cleanup
+  or eviction, is answered with `403`/error code 9 `unknown CID` (gemSpec_Krypt A_26924)
+  instead of `500`/102 `internal error: missing`, so clients know to run a new handshake. This
+  applies to established sessions as well as to the handshake (M3); an expired handshake is
+  answered the same way. Clients matching on error code 102 for this case need to be adapted.
+- metric `zeta.asl.sessions.active` keeps its meaning (handshakes + sessions), but is an O(1)
+  counter now.
+- Before performance runs, restart the PEP pod to start with an empty session cache.
+- Bumps nginx version to 1.31.7
+- Bumps nginx-ingress version to 5.7.0
+- Bumps rust version to 1.99.1
+- `hsm_sim`: optional TLS. `--tls-cert`/`--tls-key` serve TLS on `--listen`,
+  `--tls-client-ca` additionally demands a client certificate (mTLS), and `--plaintext-listen`
+  opens a second, plaintext listener for clients without TLS support. All four can be set
+  through `HSM_SIM_TLS_CERT`, `HSM_SIM_TLS_KEY`, `HSM_SIM_TLS_CLIENT_CA` and
+  `HSM_SIM_PLAINTEXT_LISTEN`. Without them the simulator serves plaintext as before.
+- `ossl_hsm`: the provider can authenticate to the HSM proxy with a client certificate
+  (mTLS, A_28830). `HSM_PROXY_CLIENT_CERT` and `HSM_PROXY_CLIENT_KEY` name PEM files with the
+  certificate (chain) and its private key; they are read once at start and require an
+  `https://` address.
+
+### Release 1.3.4
+
+#### fixed
+
+- ASL: redirects on inner responses are never followed, but passed to the client as-is
+- ASL: the inner request's `Host` header is no longer forwarded on the loopback hop; the outer
+  request's `Host` is used instead (with thanks to Machine Spirits UG)
+- ASL: inner request targets are only accepted in origin-form (`/path?query`) and always stay on
+  the PEP's own listener; a path like `/http://host/…` no longer redirects the inner request to
+  that host (with thanks to Machine Spirits UG)
+
 ### Release 1.3.3
 
 #### fixed
-- bugfix
+- harden ASL subrequest target URL handling
+  (with thanks to Machine Spirits UG)
 
 ### Release 1.3.2
 
@@ -359,11 +548,6 @@
 - Bumps headers more to 0.40
 - To fulfill A_25669-01 the authorization, dpop and popp headers are forwarded
   to the upstream and not overridden by PEP. In future versions this will be configurable.
-
-### Release 1.2.1
-
-#### fixed
-- bugfix
 
 ### Release 1.2.0
 
@@ -709,11 +893,151 @@ Initial release of the ZETA Notification Service.
 
 ## ZETA Guard Helm Charts
 
+### Release 1.3.7
+
+#### changed:
+
+- authserver image `1.3.5`: OpenJDK 21.0.13.1 (CVE-2026-114938)
+- pepproxy image `1.3.6`: ASL HTTP request smuggling fix (CWE-444), nginx 1.31.9
+- nginx-ingress image `1.3.6` (NIC 5.8.0)
+- keychain-generator image `2.0.4-1`: OpenJDK 27.0.1.1 (CVE-2026-114938)
+- updates nginx-ingress chart to 2.9.0 (NIC 5.8.0)
+
+### Release 1.3.6
+
+#### added:
+
+- `pepproxy.nginxConf.pepInternalUrl`: cluster-internal authserver address for
+  OIDC discovery and the JWKS fetch only; `pepIssuer` stays the expected `iss`.
+  Off by default, needs a PEP image newer than 1.3.4. See
+  [How to configure the authserver](https://github.com/gematik/zeta-guard-helm/blob/main/docs/how-to_guides/How_to_configure_authserver.md).
+  Resolves ANFTI2-477
+- `pepproxy.hostAliases`: extra `/etc/hosts` entries for the PEP pod, merged
+  with the `global.enableDNSRedirect` entries.
+- `pepproxy.nginxConf.pepRevocationUrl`: session revocation endpoint of the
+  authserver, previously hardcoded. Defaults to the `authserver` Service plus
+  `/zeta-guard-revocation` (the previous fixed value).
+- `authserver.config.entityStatement` with `clientName`, `organizationName`,
+  `contactEmail` and `redirectUris`, rendered as `ENTITY_STATEMENT_*`
+  environment variables (authserver 1.3.4 or newer). Only used with
+  `authserver.config.oidcFlowEnabled: true`; unset fields keep the authserver's
+  defaults. `redirectUris` replaces the `redirect_uris` otherwise derived from
+  the realm clients.
+- new terraform vars `smtp_starttls`, `smtp_ssl`, `smtp_auth_username` and
+  `smtp_auth_password` to configure STARTTLS, SSL and auth for the SMTP server.
+  Resolves ANFTI2-1040
+
+#### changed:
+
+- **BREAKING** `pepproxy.hsmProxyAddr`: the PEP's `ossl_hsm` provider now honours the scheme of
+  the address. `https://` connects with TLS and verifies the HSM Proxy's certificate; `http://`
+  or an address without a scheme is only accepted for a loopback address. With a plain-text
+  address to another host the PEP does not start. The new
+  `pepproxy.hsmProxyPlainTextAccepted: true` (`HSM_PROXY_ALLOW_PLAINTEXT=1`, default `false`)
+  restores the previous plain-text behaviour; set it only where the network itself protects the
+  channel, e.g. `hsm-sim` in a test cluster.
+- ⚠️ `authserver.provider.smcB.ocspFailClosed` now defaults to `true`: the SMC-B
+  token exchange is also denied when the OCSP status cannot be determined. Set
+  `false` for the previous fail-open behaviour, see
+  [SMC-B OCSP revocation check](https://github.com/gematik/zeta-guard-helm/blob/main/docs/how-to_guides/How_to_configure_authserver.md#smc-b-ocsp-revocation-check).
+- Terraform can add new realm optional scopes (`pdp_scopes`, notification scopes)
+  to clients already registered via DCR. Off by default
+  (`sync_existing_client_scopes`): the sync reads every client of the realm, so
+  enable it only for realms with few clients (limit: `sync_existing_client_scopes_max_clients`)
+- ⚠️ `opa.simulation.bundle.resource` is now required with bundle mode and
+  simulation enabled. The `-sim` tag suffix appended to `opa.bundle.resource` is
+  gone:
+  gematik names simulation bundles differently per environment, so the derived
+  reference 404ed. See [OPA](https://github.com/gematik/zeta-guard-helm/blob/main/docs/reference/OPA.md#simulation-settings).
+  Resolves ANFTI2-983
+- authserver image `1.3.4`, pepproxy image `1.3.5`, nginx-ingress image `1.3.5` (NIC 5.7.0)
+- testdriver and nativedriver image `1.3.4`
+- updates nginx-ingress chart to 2.8.0 (NIC 5.7.0)
+- updates OPA-Image to 1.21.3-static
+- updates nginx/nginx-prometheus-exporter to 1.5.3. Resolves ANFTI2-673
+- updates telemetry-gateway to "v0.157.1". Resolves ANFTI2-951
+- `opa-rollout-restart-cronjob`: memory limit 256Mi (was 64Mi), no overlapping runs and a 5-minute
+  `activeDeadlineSeconds`; token-renewer CronJobs get the same guards
+- pepproxy gets a default `containerSecurityContext` (nginx and metrics sidecar), overridable.
+  Resolves ANFTI2-969
+- the client policy profile `zeta_client_policy_profile` gets the executor
+  `reject-implicit-grant`: implicit and hybrid authorization requests are
+  rejected, registrations with `response_types` `token` get the implicit flow
+  switched off. See
+  [How to upgrade ZETA Guard](https://github.com/gematik/zeta-guard-helm/blob/main/docs/how-to_guides/How_to_upgrade_ZETA_Guard.md)
+- authserver JVM runs with `-XX:-UseBASE64Intrinsics` (added to `JAVA_OPTS_APPEND`)
+  as mitigation for the OpenJDK vulnerability advisory of 2026-11-17
+  (CVE-2026-114938). If you
+  set `JAVA_TOOL_OPTIONS` on the authserver manually via `kubectl`, you can
+  remove the variable after the upgrade.
+- ⚠️ with `authserver.adminHostname` set, `/auth/realms/master` on the public
+  hostname now answers `403`; `terraform apply` pins the master realm's
+  `frontendUrl` to the admin hostname so the Admin Console login keeps working —
+  run it before the Helm upgrade. See
+  [How to configure authserver](https://github.com/gematik/zeta-guard-helm/blob/main/docs/how-to_guides/How_to_configure_authserver.md).
+  Resolves ANFTI2-908
+- PEP proxy access log: with `pepproxyTracingEnabled: true`, each line now ends
+  with `trace_id=<id> span_id=<id>` (OpenTelemetry trace context). Untraced
+  requests log empty IDs. With tracing disabled the format is unchanged. The
+  telemetry gateway copies them into the OTLP log record's `TraceId`/`SpanId`.
+- authserver init container `keycloak-build` is now `keycloak-copy` and only
+  copies `/opt/keycloak`; `startup.sh` runs `kc.sh build` once instead of twice.
+  Default `authserver.initContainer.resources` reduced, values keys unchanged.
+  Resolves ANFTI2-976
+- The Terraform variable `keycloak_namespace` is only required when
+  `use_kubernetes = true`. Local mode reads it nowhere, yet it still made
+  `terraform plan` fail with `The argument "keycloak_namespace" is required`.
+  See
+  [How to configure the authserver](https://github.com/gematik/zeta-guard-helm/blob/main/docs/how-to_guides/How_to_configure_authserver.md).
+  Resolves ANFTI2-863
+- authserver survives a database failover. Resolves ANFTI2-881. New values
+  `authserver.db.urlProperties` (pgjdbc parameters appended to `KC_DB_URL`,
+  default `socketTimeout: 120`, `tcpKeepAlive: true`) and
+  `authserver.dbPool.{maxLifetime,validationQueryTimeout,backgroundValidationInterval,foregroundValidationInterval,idleRemovalInterval}`.
+  See
+  [How to configure authserver](https://github.com/gematik/zeta-guard-helm/blob/main/docs/how-to_guides/How_to_configure_authserver.md#connection-resilience-and-database-failover)
+- ⚠️ authserver probe defaults changed: liveness/readiness `periodSeconds` 10
+  (was 5), liveness `failureThreshold` 3 (was 5), startup `failureThreshold` 60
+  (was 20, i.e. up to 300s). `timeoutSeconds: 5` is set on all three probes and
+  required by `values.schema.json`; the liveness probe stays on `/health/live`.
+- ⚠️ `authserver.db.urlProperties.socketTimeout` bounds every statement,
+  Liquibase DDL included. Raise it before an upgrade with a heavy schema
+  migration, otherwise the Liquibase lock stays held.
+- with `pepproxy.hsmProxyAddr` set (ASL via HSM), the PEP TLS listener on 8443 is
+  only rendered if `pepproxy.hsmTlsCert` and `pepproxy.hsmTlsKeyId` are set. Both
+  have defaults, so it is only dropped when both are explicitly emptied.
+  Resolves ANFTI2-959
+- new terraform vars `sso_session_idle_timeout` and `sso_session_max_lifespan` (default `24h`, previously Keycloak's
+  30m/10h) keep the authserver session alive as long as the refresh token; effective after `terraform apply`.
+  Resolves ANFTI2-1013, ANFTI2-727
+- docs: the egress categories `ocspCabForum`, `ocspSmcbTsp` and `ocspTiPki` are described in
+  [How to configure NetworkPolicies](https://github.com/gematik/zeta-guard-helm/blob/main/docs/how-to_guides/How_to_configure_NetworkPolicies.md).
+  Resolves ANFTI2-884
+
+#### fixed:
+
+- `terraform/authserver/scripts/kc-admin-env.sh` printed Keycloak admin
+  credentials with non-ASCII characters (`£`, `€`, …) as `$'…'`, which `dash`
+  (`/bin/sh` on Debian/Ubuntu) cannot `eval`; it now prints POSIX single quotes.
+  Resolves ANFTI2-1011, ANFTI2-862
+
+### Release 1.3.5
+
+#### changed:
+
+- bumped pep version to `1.3.4` to include important security hotfix.
+
+### Release 1.3.4
+
+#### changed:
+
+- bumped authserver version to `1.3.3` to include important security hotfix.
+
 ### Release 1.3.3
 
 #### changed:
 
-- pepproxy image `1.3.3`
+- pepproxy image `1.3.3` (hardened ASL subrequest target URL handling)
 
 ### Release 1.3.2
 
@@ -1086,12 +1410,6 @@ Initial release of the ZETA Notification Service.
 - dead values `opa.workloadIdentityFederation.sts.{audience,tokenUrl,iamUrl,scope}` and
   `…gar.host` from schema/examples — never read by any template; the schema now rejects
   unknown `sts` keys.
-
-### Release 1.2.4
-
-#### changed:
-
-- pepproxy image `1.2.1`
 
 ### Release 1.2.3
 

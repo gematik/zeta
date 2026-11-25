@@ -14,9 +14,11 @@ Die Requests/Limits werden auf Container-Ebene angewandt.
 ## Authserver
 
 Beim Authserver können Ressourcen separat für den Hauptcontainer und den
-Keycloak-Build-Init-Container konfiguriert werden:
+Init-Container `keycloak-copy` konfiguriert werden:
 
-- `authserver.initContainer.resources` — der `kc.sh build`-Schritt beim Start
+- `authserver.initContainer.resources` — das Kopieren von `/opt/keycloak` in
+  das beschreibbare Volume des Pods; `kc.sh build` läuft danach einmal im
+  Hauptcontainer (`startup.sh`)
 - `authserver.container.resources` — der laufende Keycloak-Prozess
 
 ```yaml
@@ -24,11 +26,10 @@ authserver:
     initContainer:
         resources:
             limits:
-                cpu: "2"
-                memory: "2Gi"
+                memory: "256Mi"
             requests:
-                cpu: "500m"
-                memory: "512Mi"
+                cpu: "100m"
+                memory: "64Mi"
     container:
         resources:
             limits:

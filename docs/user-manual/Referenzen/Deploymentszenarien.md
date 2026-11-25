@@ -409,6 +409,18 @@ zusätzlichen Komponenten und Patterns genutzt werden:
 Die genaue Umsetzung und die Sicherstellung der Skalierung, Performance und
 Ausfallsicherheit obliegt dem Betreiber.
 
+Für das mit dem Helm-Chart ausgelieferte CloudNativePG-Cluster gilt zusätzlich:
+`cloudnativePg.instances: 1` ist der Standard und macht jeden Ersatz des
+Primaries zu einem vollständigen Ausfall. Ab `instances: 3` führt CloudNativePG
+ein automatisches Failover durch. Zu beachten ist dabei, dass ein Wechsel des
+Primaries für den Authserver **kein** Verbindungsabbruch mit Fehlermeldung ist:
+die ClusterIP bleibt gültig, während die Weiterleitung auf eine nicht mehr
+existierende Pod-IP zeigt, und es wird kein TCP-Reset gesendet. Die
+Verbindungsresilienz des Authservers ist deshalb die Voraussetzung dafür, dass
+mehr Instanzen tatsächlich Verfügbarkeit bringen statt wiederholter längerer
+Ausfälle — siehe
+[Datenbank nicht erreichbar / Authserver antwortet nicht](../Anleitungen/Troubleshooting_und_Debugging.md#datenbank-nicht-erreichbar--authserver-antwortet-nicht).
+
 ### HSM-Anbindung
 
 In einem VAU-basierten Setup verlangt die Spezifikation, dass die Instanz-Keys

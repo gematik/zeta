@@ -54,7 +54,7 @@ Das Telemetry-Gateway ist ein OpenTelemetry-Collector, und Sie können
 die [offizielle Dokumentation des Collectors](https://opentelemetry.io/docs/collector/configuration/)
 und seiner Module verwenden. Die im Telemetry-Gateway verfügbaren Receiver und
 Authenticator-Extensions können Sie
-im [Build-Manifest des Collectors](https://github.com/open-telemetry/opentelemetry-collector-releases/blob/v0.156.0/distributions/otelcol-k8s/manifest.yaml)
+im [Build-Manifest des Collectors](https://github.com/open-telemetry/opentelemetry-collector-releases/blob/v0.157.0/distributions/otelcol-k8s/manifest.yaml)
 nachschlagen.
 
 <!-- Future Work Link zum Build-Manifest aktualisieren, sobald eigene Collectoren veröffentlicht wurden. -->
@@ -249,3 +249,39 @@ opa:
 > gegenüber der gematik. Der Chart-Standard ist der Platzhalter `"REPLACE ME"`:
 > Bleibt er stehen, meldet sich Ihr Dienst bei der gematik mit dieser
 > Platzhalter-Kennung.
+
+## Wie Sie das optionale Sampling für TI-SIM und TI-SIEM aktivieren
+
+Ab Chart 1.3.6 bringt das Telemetry-Gateway den Prozessor
+`tail_sampling/siem_and_sim` mit (A_28988, gemSpec_Perf). Er behält alle
+fehlerhaften Traces und 5 % der erfolgreichen. Standardmäßig ist er in keiner
+Pipeline eingehängt. Sie aktivieren ihn, indem Sie ihn nach dem
+`filter`-Prozessor in die Pipeline `traces/ti_sim` bzw. `traces/ti_siem`
+einfügen.
+
+Konfigurationsbeispiel für TI-SIM:
+
+```yaml
+telemetry-gateway:
+    config:
+        service:
+            pipelines:
+                traces/ti_sim:
+                    processors:
+                        - memory_limiter
+                        - filter/ti_sim
+                        - tail_sampling/siem_and_sim
+                        - attributes/semantic_conventions_migration
+                        - transform/siem_and_sim
+                        - redaction/zeta_guard
+                        - batch
+```
+
+Kopieren Sie nicht das Konfigurationsbeispiel, sondern rekonstruieren Sie die
+Konfiguration auf Basis Ihrer effektiven Konfiguration, siehe
+[Wie Sie die effektive Konfiguration eines Telemetry-Gateways finden](Wie_Sie_die_effektive_Konfiguration_eines_Telemetry-Gateways_finden.md).
+
+Beachten Sie, dass ggf. Metriken aus der Telemetrie erzeugt werden und Sampling
+diese Metriken verfälscht. Außerdem raten wir davon ab, Änderungen an
+Telemetrie-Prozessoren in ZETA-Guard vorzunehmen. Jede Änderung an
+Telemetrie-Prozessoren muss mit der gematik koordiniert werden.

@@ -52,7 +52,8 @@ Die Umsetzung auf Client-Seite beschreibt
 5. **Token Exchange:** Der Exchange `zeta-email-binding-token-exchange` tauscht
    das reduzierte Token nach bestätigter Bindung gegen den vollwertigen Token-Satz;
    die ursprünglich per PAR angeforderten Scopes werden wiederhergestellt und die
-   OPA-Autorisierung läuft erneut.
+   OPA-Autorisierung läuft erneut. Der Exchange verlangt einen DPoP-Proof mit
+   dem Schlüssel, an den das reduzierte Token gebunden ist.
 
 ## Entity Statement des Guards
 
@@ -60,8 +61,20 @@ Unter `GET /realms/{realm}/.well-known/openid-federation` liefert der Guard sein
 eigenes Entity Statement (Compact JWS, `typ: entity-statement+jwt`, ES256,
 Gültigkeit 3600 s) gemäß A_23034-02. Die RP-Metadaten weisen ausschließlich PAR
 und `self_signed_tls_client_auth` aus, enthalten die Schlüssel für die
-ID-Token-Verschlüsselung sowie die zulässigen PAR-Scopes (A_29660); die
-Redirect-URIs der Clients des Realms werden gemäß A_25656 gelistet.
+ID-Token-Verschlüsselung sowie die zulässigen PAR-Scopes (A_29660). Dazu
+kommen `client_name`, `organization_name`, `contacts`, `keywords`,
+`default_acr_values` und `ti_features_supported` (A_23034-02) sowie die
+`federation_entity`-Metadaten mit `name` und `organization_name`
+(gemSpec_IDP_Sek, Tab. 28). Die Werte setzen Sie über
+`authserver.config.entityStatement`, siehe
+[Mobiler Client-Flow (OIDC)](../Referenzen/Referenz_des_Helm_Charts.md#mobiler-client-flow-oidc).
+
+Als Redirect-URIs (A_25656) listet der Guard die der Clients des Realms. Ist
+`authserver.config.entityStatement.redirectUris` gesetzt, ersetzt diese feste
+Liste die Redirect-URIs der Clients vollständig: Die Redirect-URI eines später
+registrierten Clients fehlt dann im Entity Statement, und der SekIDP lehnt
+dessen Anfragen ab. Die wirksame Liste können Sie im Entity Statement selbst
+prüfen, unter `metadata.openid_relying_party.redirect_uris`.
 
 ## OPA-Autorisierung und Token-Inhalte
 
@@ -72,6 +85,10 @@ Redirect-URIs der Clients des Realms werden gemäß A_25656 gelistet.
 - Bei mobilen Sessions ist die **KVNR** das Token-Subject; die Produkt-Claims
   stammen aus dem bei der Registrierung hinterlegten Client Statement.
   Refresh-Tokens bleiben DPoP-gebunden (A_25663).
+- Tokens mit der KVNR stellt der Authserver nur innerhalb einer Anfrage aus, die
+  die Policy-Entscheidung für diesen Client durchlaufen hat (bzw. für das
+  reduzierte Token der E-Mail-Bindung). Andere Grants auf einer SekIDP-Session
+  liefern solche Tokens nicht.
 - Die Professions-Liste der OPA-Daten enthält zusätzlich `1.2.276.0.76.4.49`
   (Versicherte).
 

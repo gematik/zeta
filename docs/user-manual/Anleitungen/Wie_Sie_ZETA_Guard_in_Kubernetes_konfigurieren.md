@@ -456,6 +456,15 @@ Die Datenbank wird als Active-Passive eingesetzt. Durch den gut abgestimmten
 Einsatz eines verteilten Second-Level-Datenbankcaches im PDP skaliert dies
 trotzdem gut.
 
+Ein Wechsel oder Neuaufbau des Primaries ist für den Authserver kein
+Verbindungsabbruch mit Fehlermeldung: die ClusterIP `keycloak-db-rw` bleibt
+gültig, während die Weiterleitung auf eine nicht mehr existierende Pod-IP zeigt,
+und es wird kein TCP-Reset gesendet. Die Verbindungen laufen also ins Leere,
+statt zu scheitern. Das Chart fängt das ab — über ein begrenztes Socket-Timeout
+und begrenzte Verbindungsvalidierung, die tote Verbindungen erkennen, verwerfen
+und ersetzen. Details und Diagnose:
+[Datenbank nicht erreichbar / Authserver antwortet nicht](Troubleshooting_und_Debugging.md#datenbank-nicht-erreichbar--authserver-antwortet-nicht).
+
 #### 6.2 Policy Engine (OPA) konfigurieren
 
 Jede OPA-Instanz muss Policies vom PIP abfragen und Metriken für das Monitoring
@@ -582,6 +591,11 @@ curl -sk https://<hostname>/auth/realms/master/protocol/openid-connect/certs \
 
 Erwartetes Ergebnis: ausschließlich `"EC"`-Einträge, kein `"RSA"`.
 
+> Ist `authserver.adminHostname` gesetzt, verwenden Sie für die zweite Abfrage
+> den **Admin-Hostnamen**: Auf dem Haupthostnamen ist `/auth/realms/master`
+> gesperrt und antwortet mit `403` (siehe
+> [Admin-API-Absicherung](../Referenzen/Referenz_des_Helm_Charts.md#admin-api-absicherung)).
+
 ###### HSM-basierte Token-Signierung
 
 Neben der TLS-Konfiguration kann der Authorization Service auch JWT-Token
@@ -655,6 +669,27 @@ Keycloak-Admin-Konsole ist der Provider unter
 | `hsm_token_signing_priority`             | Provider-Priorität (höher gewinnt)                          | `"200"`  |
 | `hsm_token_signing_remove_software_keys` | Software-Signaturschlüssel nach HSM-Registrierung entfernen | `true`   |
 
+###### Session-Laufzeit und Refresh-Token
+
+Hinter jedem Refresh-Token steht eine Keycloak-Session. Die Gültigkeitsdauer des
+Refresh-Tokens gibt die Policy Decision vor (`ttl.refresh_token`, A_28527). Die
+Session endet spätestens mit Ablauf des ersten Refresh-Tokens nach der
+vollständigen Authentifizierung; eine Rotation verlängert sie nicht (A_25662,
+ab Authserver 1.3.4). Der Authorization Server begrenzt jedes Refresh-Token
+zusätzlich auf die Session-Limits des Realms. Sind diese kürzer als die TTL der
+Policy, endet die Session vorzeitig und der Client muss früher einen neuen
+Token Exchange durchführen.
+
+| Terraform-Variable         | Beschreibung                                                  | Standard |
+|----------------------------|---------------------------------------------------------------|----------|
+| `sso_session_idle_timeout` | Maximale Inaktivität einer Session (Go-Duration, z. B. `24h`) | `"24h"`  |
+| `sso_session_max_lifespan` | Maximale Gesamtdauer einer Session (Go-Duration)              | `"24h"`  |
+
+Beide Werte müssen mindestens der größten Refresh-Token-TTL entsprechen, die die
+Policy ausstellt. Die Standardwerte passen zur Default-Policy (`86400` Sekunden).
+Bisher galten Keycloaks Standardwerte (30 Minuten bzw. 10 Stunden); die neuen
+Werte wirken nach dem nächsten `terraform apply`.
+
 ##### Abhängigkeiten / erforderliche Konfiguration
 
 * Der externe Hostname muss konfiguriert werden:
@@ -697,12 +732,17 @@ Keycloak-Admin-Konsole ist der Provider unter
 ##### Admin-API absichern
 
 Die Keycloak-Admin-REST-API (`/auth/admin/*`) muss vor öffentlichem Zugriff
-geschützt werden. Das Helm-Chart bietet eine integrierte Absicherung über einen
-separaten Admin-Hostnamen (`authserver.adminHostname`): Nur der Pfad
-`/auth/admin` wird auf dem Haupthostnamen an den PEP-Proxy geroutet und dort mit
-`403` gesperrt — alle übrigen `/auth/*`-Pfade gehen unverändert direkt an den
-Authserver. Ein dedizierter Admin-Ingress ermöglicht Terraform und
-CI/CD-Pipelines den Zugang über den Admin-Hostnamen.
+geschützt werden, ebenso der `master`-Realm (`/auth/realms/master/*`), in dem das
+Admin-Access-Token ausgestellt wird. Das Helm-Chart bietet eine integrierte
+Absicherung über einen separaten Admin-Hostnamen (`authserver.adminHostname`):
+Nur die Pfade `/auth/admin` und `/auth/realms/master` werden auf dem
+Haupthostnamen an den PEP-Proxy geroutet und dort mit `403` gesperrt — alle
+übrigen `/auth/*`-Pfade, darunter der gesamte `zeta-guard`-Realm, gehen
+unverändert direkt an den Authserver. Ein dedizierter Admin-Ingress ermöglicht
+Terraform und CI/CD-Pipelines den Zugang über den Admin-Hostnamen; die
+Authserver-Konfiguration heftet zusätzlich die Frontend-URL des `master`-Realms
+an diesen Hostnamen, damit der Browser-Login der Admin Console nicht auf den
+gesperrten Pfad läuft.
 
 Die Lösung ist ingress-controller-unabhängig und funktioniert mit F5 NIC,
 nginx-Ingress, OpenShift Routes und GKE Ingress, da sie nur
@@ -747,6 +787,15 @@ diesen Zweck verwendet werden. Siehe dazu
 | `authserverDb.kcDbSecretName` | `KC_DB_USERNAME`      | Hierbei ist im Helm-Value der Name eines Secrets zu konfigurieren. Aus dem Secret wird das Feld `username` ausgelesen und dieses in die entsprechende Keycloak-Umgebungsvariable geschrieben. |
 | `authserverDb.kcDbSecretName` | `KC_DB_PASSWORD`      | Hierbei ist im Helm-Value der Name eines Secrets zu konfigurieren. Aus dem Secret wird das Feld `password` ausgelesen und dieses in die entsprechende Keycloak-Umgebungsvariable geschrieben. |
 | `authserverDb.kcDbSchema`     | `KC_DB_SCHEMA`        |                                                                                                                                                                                               |
+
+Zusätzliche JDBC-Parameter gehören **nicht** in `KC_DB_URL_PROPERTIES`: Keycloak
+ignoriert diese Option, sobald `db-url` gesetzt ist — und das Chart setzt sie
+immer. Nutzen Sie stattdessen `authserver.db.urlProperties`; die Werte werden als
+Query-Parameter an die URL angehängt und haben bei pgjdbc Vorrang vor den
+Verbindungseigenschaften des Images. `connectTimeout` und `targetServerType` sind
+dabei nicht zulässig und werden beim Rendern abgewiesen, weil Keycloak beide
+selbst setzt und die Injektion überspringt, sobald einer der Namen in der URL
+auftaucht.
 
 ##### Verwandte Dokumentation
 
@@ -837,6 +886,15 @@ entscheidend:
   Token-Validierung: Er ist der `iss`, den er in jedem Access-Token erwartet.
   Üblicherweise hat er die Form
   `https://<authserver_name>/auth/realms/zeta-guard`.
+* `pepproxy.nginxConf.pepInternalUrl` ist die Adresse, über die der PEP den
+  Authorization Server erreicht, um OIDC-Discovery und JWKS abzurufen.
+  Standardmäßig ist der Wert leer; beide Abrufe folgen dann dem öffentlichen
+  `pepIssuer` und verlassen den Cluster. Empfohlen ist die **clusterinterne**
+  Adresse `http://authserver/auth/realms/zeta-guard` (PEP-Image ab 1.3.5),
+  bei abweichendem Kontextpfad entsprechend angepasst — der Realm-Name
+  `zeta-guard` selbst ist unveränderlich. Die Token-Validierung ändert sich in
+  keinem Fall, siehe
+  [Clusterinterne Kommunikation mit dem Authserver](../Referenzen/Referenz_des_Helm_Charts.md#clusterinterne-kommunikation-mit-dem-authserver).
 * Öffentliche URL des PEP. Diese fließt in das Well-Known Discovery Dokument
   (`/.well-known/oauth-protected-resource`) ein. Die Basis-URL wird über
   `pepproxy.wellKnownBase` gesetzt (Muster: `https://<pep_name>`). Der

@@ -40,11 +40,12 @@ Um ZETA-Guard auf OpenShift 4.x zu betreiben, sind folgende Konfigurationsänder
 
 3. **Feste User-IDs aus Security Contexts entfernen:**
    OpenShift weist User- und Gruppen-IDs dynamisch pro Namespace/Projekt zu (Security
-   Context Constraints, SCC). Fest vorgegebene IDs werden abgelehnt. Dabei sind zwei
+   Context Constraints, SCC). Fest vorgegebene IDs werden abgelehnt. Dabei sind drei
    Fälle zu unterscheiden:
 
-   **a) Alle Komponenten außer dem Telemetry-Gateway** (Authserver, OPA, PEP,
-   Provisioning-Processor): Das Chart setzt dort von sich aus **kein** `runAsUser`.
+   **a) Alle Komponenten außer Telemetry-Gateway und PEP-Proxy** (Authserver,
+   OPA, Provisioning-Processor): Das Chart setzt dort von sich aus **kein**
+   `runAsUser`.
    Sie müssen lediglich darauf achten, in Ihren eigenen Values kein `runAsUser: 1000`
    in `securityContext`, `containerSecurityContext` oder
    `initContainerSecurityContext` zu setzen — bereits vorhandene Angaben entfernen.
@@ -71,6 +72,17 @@ Um ZETA-Guard auf OpenShift 4.x zu betreiben, sind folgende Konfigurationsänder
    > `--set key=null`), aber der Key trägt dann einen Nil-Wert, das Manifest rendert
    > `runAsUser: null`, und Kubernetes interpretiert das als „nicht gesetzt“ — und
    > genau das erlaubt dem SCC die Vergabe.
+
+   **c) Der PEP-Proxy** bringt ab Chart 1.3.6 einen Default für
+   `pepproxy.containerSecurityContext` mit (nginx-Container und Metrics-Sidecar),
+   darin `runAsUser: 1000`. Aus demselben Grund wie beim Telemetry-Gateway muss
+   der Wert explizit auf `null` gesetzt werden:
+
+   ```yaml
+   pepproxy:
+     containerSecurityContext:
+       runAsUser: null    # UID wird von der SCC vergeben
+   ```
 
    `fsGroup: null` ist auf OpenShift unkritisch, weil die SCC eine eigene `fsGroup`
    zuweist und das Volume damit für die vergebene UID gruppenschreibbar bleibt. Auf
