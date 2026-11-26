@@ -31,6 +31,7 @@ Als vollständige Vorlage mit Standardwerten dient die
 - [Provisioning Processor](#provisioning-processor)
     - [Eigene Registry für den Provisioning Container](#eigene-registry-für-den-provisioning-container)
     - [CA-Zertifikat für die Provisioning-Container-Registry](#ca-zertifikat-für-die-provisioning-container-registry)
+    - [Zugangsdaten für die Provisioning-Container-Registry](#zugangsdaten-für-die-provisioning-container-registry)
     - [Cosign-Vertrauenskette für Image-Verifikation](#cosign-vertrauenskette-für-image-verifikation)
 - [Terraform-Konfiguration (PDP)](#terraform-konfiguration-pdp)
 
@@ -411,17 +412,34 @@ Das erzeugte Dokument hat dann folgendes Format:
 }
 ```
 
-| Value                                | Beschreibung                                                                                   | Standard |
-|--------------------------------------|------------------------------------------------------------------------------------------------|----------|
-| `pepproxy.wellKnownBase`             | Öffentliche Basis-URL des PEP (fließt in das `resource`-Feld ein)                              | `""`     |
-| `pepproxy.wellKnownResourceSuffix`   | Pfad-Suffix, der an `wellKnownBase` angehängt wird (inkl. führendem und abschließendem `/`)    | `/pep/`  |
-| `authserver.wellKnownAuthServerPath` | Pfad-Suffix, der an `authserver.hostname` für das `authorization_servers`-Array angehängt wird | `/`      |
+| Value                                | Beschreibung                                                                                   | Standard           |
+|--------------------------------------|------------------------------------------------------------------------------------------------|--------------------|
+| `pepproxy.wellKnownBase`             | Extern erreichbare Basis-URL des PEP (fließt in das `resource`-Feld ein)                       | `http://localhost` |
+| `pepproxy.wellKnownResourceSuffix`   | Pfad-Suffix, der an `wellKnownBase` angehängt wird (inkl. führendem und abschließendem `/`)    | `/pep/`            |
+| `authserver.wellKnownAuthServerPath` | Pfad-Suffix, der an `authserver.hostname` für das `authorization_servers`-Array angehängt wird | `/`                |
+
+> **Achtung:** Der Default `http://localhost` ist nur für lokale Setups (KIND)
+> gedacht und **muss** in jeder erreichbaren Umgebung überschrieben werden –
+> anderenfalls enthält `resource` eine von außen unerreichbare URL und
+> Token-Prüfungen schlagen fehl.
+>
+> Die beiden URLs werden durch einfache Verkettung ohne Normalisierung
+> gebildet (`resource = wellKnownBase + wellKnownResourceSuffix`). Ein Schema im
+> `hostname`, ein doppelter `/` oder ein doppelter Pfadanteil (z. B.
+> `/pep/pep/`) landet unverändert im Dokument und kann zu doppelten
+> Well-Knowns führen.
 
 > **Hinweis:** Bei Deployments, bei denen Keycloak unter einem Unterpfad wie
 > `/auth` betrieben wird, ist
 > `authserver.wellKnownAuthServerPath: /auth` zu setzen. Wenn die Protected
 > Resource direkt unter der Root-URL erreichbar ist, genügt
 > `pepproxy.wellKnownResourceSuffix: /`.
+
+Wann und warum von diesen Defaults abzuweichen ist, welche
+Konfigurationsszenarien es gibt und wie doppelte Well-Knowns entstehen, ist
+ausführlich in
+[Konfiguration der Well-Known-Endpunkte](Konfiguration_der_Well-Known_Endpunkte.md)
+beschrieben.
 
 ---
 
@@ -575,6 +593,67 @@ zeta-guard:
             key: ca.crt              # Key innerhalb des Secrets
 ```
 
+Ab Helm-Chart 1.2.3 kann das CA-Zertifikat alternativ aus einer **ConfigMap**
+gemountet werden (die öffentlichen CA-Teile sind nicht geheim). Das passt zum
+OpenShift-Mechanismus
+[„Configuring a custom PKI“](https://docs.openshift.com/container-platform/latest/networking/configuring-a-custom-pki.html),
+der das CA-Bundle als ConfigMap bereitstellt.
+`provisioningContainerCaSecretRef` und `provisioningContainerCaConfigMapRef`
+schließen sich gegenseitig aus; ist beides gesetzt, hat die Secret-Referenz
+Vorrang.
+
+```yaml
+zeta-guard:
+    provisioningProcessor:
+        provisioningContainerCaConfigMapRef:
+            name: zeta-guard-openshift-ca-bundle   # Name der Kubernetes-ConfigMap
+            key: ca-bundle.crt                     # Key innerhalb der ConfigMap
+```
+
+Für beliebige andere Einbindungen stehen ab Helm-Chart 1.2.3 die generischen
+Werte `provisioningProcessor.extraEnv`, `extraVolumes` und `extraVolumeMounts`
+am Init-Container zur Verfügung. Damit werden Volume, Mount und die
+Umgebungsvariable `PROVISIONING_CONTAINER_REGISTRY_CA_FILE` selbst verdrahtet:
+
+```yaml
+zeta-guard:
+    provisioningProcessor:
+        extraEnv:
+            - name: PROVISIONING_CONTAINER_REGISTRY_CA_FILE
+              value: /var/custom-ca/ca.crt
+        extraVolumes:
+            - name: custom-ca
+              configMap:
+                  name: my-ca-bundle
+        extraVolumeMounts:
+            - name: custom-ca
+              mountPath: /var/custom-ca
+              readOnly: true
+```
+
+### Zugangsdaten für die Provisioning-Container-Registry
+
+Erlaubt die Registry keinen anonymen Zugriff, können ab Helm-Chart 1.2.3
+Benutzername und Token aus einem Kubernetes-Secret bereitgestellt werden. Der
+Init-Container führt damit vor dem Laden des Images ein `cosign login` aus. Das
+Secret wird über `provisioningProcessor.registryCredentialsSecretRef`
+referenziert.
+
+```yaml
+zeta-guard:
+    provisioningProcessor:
+        registryCredentialsSecretRef:
+            name: registry-credentials   # Name des Kubernetes-Secrets
+            usernameKey: username        # Key des Benutzernamens (Standard: username)
+            tokenKey: token              # Key des Tokens (Standard: token)
+```
+
+`usernameKey` und `tokenKey` sind optional und müssen nur gesetzt werden, wenn
+das Secret abweichende Key-Namen verwendet. Daraus werden die Umgebungsvariablen
+`PROVISIONING_CONTAINER_REGISTRY_USERNAME` und
+`PROVISIONING_CONTAINER_REGISTRY_TOKEN` im Init-Container verdrahtet. Ohne
+gesetzte Referenz erfolgt der Zugriff anonym.
+
 ### Cosign-Vertrauenskette für Image-Verifikation
 
 Der Helm Value `imageTrustCertchainSecretRef` benennt ein Kubernetes Secret, das
@@ -630,9 +709,19 @@ gehört:
 | `keycloak_url`        | —                 | Externe URL des Keycloak-Servers (bei Admin-API-Absicherung: URL des Admin-Hostnamens)                                     |
 | `keycloak_namespace`  | —                 | Kubernetes-Namespace des Authservers                                                                                       |
 | `pdp_scopes`          | `[]`              | Zusätzliche PDP-Scopes                                                                                                     |
-| `audience_scope_name` | `"zero:audience"` | Name des Audience-Scopes                                                                                                   |
+| `audience_scope_name` | `"zero:audience"` | Name des Audience-Scopes — trägt die Pflicht-Claims des Access-Tokens (siehe Hinweis unter der Tabelle)                    |
 | `audience`            | `""`              | Expliziter Audience-Wert im Access Token. Erforderlich, wenn `keycloak_url` auf einen Admin-Hostnamen zeigt (siehe unten). |
 | `insecure_tls`        | `false`           | Selbst signierte Zertifikate zulassen                                                                                      |
+
+> **Hinweis zu `audience_scope_name`:** An diesem Scope hängen die Mapper, die
+> die vom PEP geforderten Access-Token-Claims setzen (`aud`, `profession_oid`,
+> `client_id`, `ip_address`, `product_id`, `product_version`, `common_name`,
+> `organization_name`). Der Client muss den Scope anfragen. Verlangt ein
+> Fachdienst einen bestimmten Scope-Namen — z. B. `vsdservice` für das VSDM
+> (A_26744) —, setzen Sie `audience_scope_name` auf diesen Wert und führen ihn
+> **nicht** zusätzlich in `pdp_scopes` (doppelter Scope-Name → Fehler beim
+> Apply). Andernfalls fehlen dem Token die Claims und der PEP lehnt die Anfrage
+> vor der Policy-Auswertung ab.
 
 Wenn `adminHostname` gesetzt ist und `keycloak_url` auf den Admin-Hostnamen
 zeigt, muss `audience` explizit auf den **öffentlichen Haupthostnamen** gesetzt

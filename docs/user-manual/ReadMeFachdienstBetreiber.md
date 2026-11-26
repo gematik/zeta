@@ -179,6 +179,9 @@ Als Einstieg eignen sich folgende Dokumente besonders gut:
   [Wie Sie den Cluster lokal mit KIND aufsetzen](Anleitungen/Wie_Sie_den_Cluster_lokal_mit_KIND_aufsetzen.md)
 * Konfigurationshinweise für den ZETA-Guard
   [Konfigurationshinweise](Referenzen/Konfigurationshinweise.md)
+* Wann und warum die Well-Known-Pfade angepasst werden müssen und wie doppelte
+  Well-Knowns vermieden werden
+  [Konfiguration der Well-Known-Endpunkte](Referenzen/Konfiguration_der_Well-Known_Endpunkte.md)
 
 Für den produktiven Betrieb des ZETA-Guard empfehlen sich zusätzlich folgende
 Dokumente:

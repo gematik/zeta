@@ -473,6 +473,16 @@ erkennbar. In der Keycloak Admin-Konsole ist der Provider unter
   siehe [Quickstart – PDP konfigurieren](ZETA_Guard_Quickstart.md#2-pdp-konfigurieren).
 * Über die Terraform-Variable `audience_scope_name` (Standard:
   `"zero:audience"`) kann der Name des Audience-Scopes angepasst werden.
+    * **Wichtig:** Der Audience-Scope trägt die Protocol-Mapper, die die vom PEP
+      geforderten Access-Token-Claims setzen (`aud`, `profession_oid`, `client_id`,
+      `ip_address`, `product_id`, `product_version`, `common_name`, `organization_name`).
+      Der Client **muss** diesen Scope anfragen. Gibt ein Fachdienst einen bestimmten
+      Scope-Namen vor — z. B. verlangt das VSDM `scope=vsdservice` (A_26744) — muss
+      `audience_scope_name` auf diesen Wert gesetzt werden, und der Scope darf **nicht**
+      zusätzlich in `pdp_scopes` stehen (doppelter Scope-Name → Fehler beim Apply).
+      Andernfalls enthält das ausgestellte Token diese Claims nicht und der PEP weist die
+      Anfrage **vor** der Policy-Auswertung ab (z. B. `missing field 'aud'`). Das Setzen
+      ersetzt den Standard-Scope `zero:audience`.
 
 ##### Admin-API absichern
 
