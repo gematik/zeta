@@ -59,21 +59,32 @@ Ein ZETA-konformer Client muss bei der gematik registriert werden, bevor er eine
 ZETA-Guard aufrufen darf. Die registrierten Informationen werden in die OPA Regeln eingetragen,
 mit denen der ZETA-Guard den Aufruf prüft.
 
-| Parameter      | Beschreibung                                             | Kommentar                                                                                                         |
-|----------------|----------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|
+| Parameter      | Beschreibung                                             | Kommentar                                                                                                              |
+|----------------|----------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
 | productId      | Eine Identifikation des Produkts, das das SDK integriert | Diese ID wird nach A_25337 bei der Registrierung durch die gematik zugewiesen und entspricht dem Format aus A_25338-01 |
-| productVersion | Eine vom Hersteller vergebene Versionsnummer             | Dieser Parameter muss dem Format aus A_25338-01 entprechen                                                    |
+| productVersion | Eine vom Hersteller vergebene Versionsnummer             | Dieser Parameter muss dem Format aus A_25338-01 entprechen                                                             |
 
 Weitere Parameter, die insbesondere Hash-Werte der tatsächlich installierten Dateien für die spezifische Produkt-Version
 enthalten werden in einem späteren Update der Spezifikation zur Hardware-Attestierung hinzukommen.
 
 #### Fachdienst-Spezifikation
 
-| Parameter       | Beschreibung                                                         | Kommentar                                                                                                                                                                             |
-|-----------------|----------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| scopes          | Eine Liste von scopes, für den jeweiligen Aufruf benötigt werden.    | Diese Liste wird durch die Spezifikation des aufgerufenen Fachdienstes festgelegt. Für den Aufruf des VSDM ist z.B. in A_26744 festgelegt, dass der scope "vsdservice" zu nutzen ist. |
-| fachdienstUrl   | Die Basisadresse des aufzurufenden Fachdienstes                      | Dies wird durch die Fachdienst-Spezifikation vorgegeben. Für VSDM ist sie in gemspec_VSDM, Kapitel 4.3.1 definiert                                                                    |
-| requiredRoleOid | Die im ASL Zertifikat erwartete OID                                  | Das ASL Zertifikat weist sich damit in der entsprechenden Rolle nach gemspec_OID aus. Für Fachdienste die ASL mit dem ZETA-Guard terminieren wird diese OID die oid_zeta-guard sein. In anderen Fachdiensten, bei denen der ZETA-Guard das ASL Protokoll nur durchleitet (potentiell z.B. e-Rezept oder ePA), werden andere OIDs zum Tragen kommen. |
+| Parameter       | Beschreibung                                                      | Kommentar                                                                                                                                                                                                                                                                                                                                           |
+|-----------------|-------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| scopes          | Eine Liste von scopes, für den jeweiligen Aufruf benötigt werden. | Diese Liste wird durch die Spezifikation des aufgerufenen Fachdienstes festgelegt. Für den Aufruf des VSDM ist z.B. in A_26744 festgelegt, dass der scope "vsdservice" zu nutzen ist.                                                                                                                                                               |
+| fachdienstUrl   | Die Basisadresse des aufzurufenden Fachdienstes                   | Dies wird durch die Fachdienst-Spezifikation vorgegeben. Für VSDM ist sie in gemspec_VSDM, Kapitel 4.3.1 definiert                                                                                                                                                                                                                                  |
+| requiredRoleOid | Die im ASL Zertifikat erwartete OID                               | Das ASL Zertifikat weist sich damit in der entsprechenden Rolle nach gemspec_OID aus. Für Fachdienste die ASL mit dem ZETA-Guard terminieren wird diese OID die oid_zeta-guard sein. In anderen Fachdiensten, bei denen der ZETA-Guard das ASL Protokoll nur durchleitet (potentiell z.B. e-Rezept oder ePA), werden andere OIDs zum Tragen kommen. |
+
+> **Hinweis (Abstimmung mit dem Authserver):** Der hier angefragte `scope` muss auf der
+> Authserver-Seite der Name des Audience-Scopes sein, denn an diesem Scope hängen die Mapper,
+> die die vom PEP geforderten Token-Claims setzen (`aud`, `profession_oid`, `client_id`,
+> `ip_address`, `product_id`, `product_version`, `common_name`, `organization_name`). Fragt
+> der Client z. B. `vsdservice` an (A_26744), muss der Betreiber die Terraform-Variable
+> `audience_scope_name = "vsdservice"` setzen (siehe
+> [Wie Sie ZETA Guard in Kubernetes konfigurieren](Wie_Sie_ZETA_Guard_in_Kubernetes_konfigurieren.md)).
+> Anderenfalls enthält das Access-Token diese Claims nicht und der PEP lehnt die Anfrage vor der
+> Policy-Auswertung ab. Die generischen Code-Beispiele unten verwenden den Standard-Scope
+> `zero:audience`.
 
 #### Installationsspezifische Parameter
 
@@ -125,12 +136,12 @@ der SDK-Instanz gültig bleiben.
 
 Das Storage Interface umfasst folgende Methoden:
 
-| Methode             | Beschreibung                                   |
-|---------------------|------------------------------------------------|
-| `put(key, value)`   | Wert unter dem angegebenen Schlüssel speichern |
-| `get(key)`          | Wert für den angegebenen Schlüssel lesen       |
-| `remove(key)`       | Eintrag für den angegebenen Schlüssel löschen  |
-| `clear()`           | Alle gespeicherten Einträge löschen            |
+| Methode           | Beschreibung                                   |
+|-------------------|------------------------------------------------|
+| `put(key, value)` | Wert unter dem angegebenen Schlüssel speichern |
+| `get(key)`        | Wert für den angegebenen Schlüssel lesen       |
+| `remove(key)`     | Eintrag für den angegebenen Schlüssel löschen  |
+| `clear()`         | Alle gespeicherten Einträge löschen            |
 
 
 #### Logging
@@ -145,22 +156,22 @@ aufgerufen. Implementierungen müssen thread-safe sein. Wenn ein eigener Logger 
 
 Der Standard-Log-Level ist `ERROR`. Folgende Log-Level stehen zur Verfügung:
 
-| Level   | Beschreibung                              |
-|---------|-------------------------------------------|
-| `DEBUG` | Alle Meldungen inkl. ausführlichem Debug  |
-| `INFO`  | Informationsmeldungen und höher           |
-| `WARN`  | Warnungen und Fehler                      |
-| `ERROR` | Nur Fehlermeldungen (Standard)            |
-| `NONE`  | Keine Log-Ausgabe                         |
+| Level   | Beschreibung                             |
+|---------|------------------------------------------|
+| `DEBUG` | Alle Meldungen inkl. ausführlichem Debug |
+| `INFO`  | Informationsmeldungen und höher          |
+| `WARN`  | Warnungen und Fehler                     |
+| `ERROR` | Nur Fehlermeldungen (Standard)           |
+| `NONE`  | Keine Log-Ausgabe                        |
 
 Das Log-Provider Interface umfasst folgende Methoden:
 
-| Methode                       | Beschreibung            |
-|-------------------------------|-------------------------|
-| `d(tag, message, throwable)`  | DEBUG Meldung ausgeben  |
-| `i(tag, message, throwable)`  | INFO Meldung ausgeben   |
-| `w(tag, message, throwable)`  | WARN Meldung ausgeben   |
-| `e(tag, message, throwable)`  | ERROR Meldung ausgeben  |
+| Methode                      | Beschreibung           |
+|------------------------------|------------------------|
+| `d(tag, message, throwable)` | DEBUG Meldung ausgeben |
+| `i(tag, message, throwable)` | INFO Meldung ausgeben  |
+| `w(tag, message, throwable)` | WARN Meldung ausgeben  |
+| `e(tag, message, throwable)` | ERROR Meldung ausgeben |
 
 #### Konnektor-Zugriff
 
@@ -231,9 +242,9 @@ Das `ZetaSdk` ist die Builder Klasse, mit der ein `ZetaSdkClient` erstellt werde
 
 #### ZetaSdk
 
-| Operation      | Beschreibung                                                                                                                                                                                                                                                 | Return value         | Errors                                                                                                                                                                                   |
-|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| build()        | Statische Methode, um einen neuen SDK Client zu erstellen. Die Resource URL des Endpunkts wird hierbei als Input gegeben. D.h. für jeden Fachdienst kann ein separater Client erzeugt werden. Weitere Parameter sind z.B. notwendige Callback-Informationen. | ZetaSDKClient Object |                                                                                                                                                                                          |
+| Operation | Beschreibung                                                                                                                                                                                                                                                 | Return value         | Errors |
+|-----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------|--------|
+| build()   | Statische Methode, um einen neuen SDK Client zu erstellen. Die Resource URL des Endpunkts wird hierbei als Input gegeben. D.h. für jeden Fachdienst kann ein separater Client erzeugt werden. Weitere Parameter sind z.B. notwendige Callback-Informationen. | ZetaSDKClient Object |        |
 
 #### ZetaSdkClient
 
@@ -262,18 +273,18 @@ Statische Informationen, die für die einzelnen Schritte benötigt werden, werde
 Falls diese Informationen nicht vorhanden sein sollten, werden sie über Callbacks abgefragt.
 Das in der build() Methode angegebene `BuildConfig` Objekt enthält auch die notwendigen Informationen über die Callbacks.
 
-| Callback            | Called when                                                                                                                                                                                                       | expected return value |
-|---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------|
-| productId           | Die gematik Produkt-ID                                                                                                                                                                                            |                       |
-| productVersion      | die Produktversion                                                                                                                                                                                                |                       |
-| clientName          | der Name des Client                                                                                                                                                                                               |                       |
-| storageConfig       | Storage provider, der zum Speichern von Daten verwendet wird.                                                                                                                                                     |                       |
-| tpmConfig           | Wird in Stufe 2 die Konfiguration des Hardware-TPM enthalten                                                                                                                                                      |                       |
-| authConfig          | Konfiguration des Authentication Prozesses, wie Token scopes, Expiry etc. oder auch ASL Tracing flag                                                                                                              |                       |
-| platformProductId   | Plattform-Informationen wie Typ des Betriebssystems, store IDs der Anwendung für die Software-Attestierung (siehe [gematik github](https://github.com/gematik/zeta/blob/main/src/schemas/posture-software.yaml)   |                       |
-| httpClientBuilder   | Builder für HttpClients; wird für die Aufrufe der PDP APIs verwendet                                                                                                                                              |                       |
-| registration_cb()   | wenn während register(), authenticate(), or späterer HTTP Methoden eine Client-Registrierung erforderlich ist, und die nötigen Informationen nicht vorhanden sind                                                 | A reginfo object      |
-| authentication_cb() | wenn während authenticate(), oder dem späteren Aufruf von HTTP Methoden Authentifizierungsinformationennötig sind.                                                                                                | An authinfo object    |
+| Callback            | Called when                                                                                                                                                                                                     | expected return value |
+|---------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------|
+| productId           | Die gematik Produkt-ID                                                                                                                                                                                          |                       |
+| productVersion      | die Produktversion                                                                                                                                                                                              |                       |
+| clientName          | der Name des Client                                                                                                                                                                                             |                       |
+| storageConfig       | Storage provider, der zum Speichern von Daten verwendet wird.                                                                                                                                                   |                       |
+| tpmConfig           | Wird in Stufe 2 die Konfiguration des Hardware-TPM enthalten                                                                                                                                                    |                       |
+| authConfig          | Konfiguration des Authentication Prozesses, wie Token scopes, Expiry etc. oder auch ASL Tracing flag                                                                                                            |                       |
+| platformProductId   | Plattform-Informationen wie Typ des Betriebssystems, store IDs der Anwendung für die Software-Attestierung (siehe [gematik github](https://github.com/gematik/zeta/blob/main/src/schemas/posture-software.yaml) |                       |
+| httpClientBuilder   | Builder für HttpClients; wird für die Aufrufe der PDP APIs verwendet                                                                                                                                            |                       |
+| registration_cb()   | wenn während register(), authenticate(), or späterer HTTP Methoden eine Client-Registrierung erforderlich ist, und die nötigen Informationen nicht vorhanden sind                                               | A reginfo object      |
+| authentication_cb() | wenn während authenticate(), oder dem späteren Aufruf von HTTP Methoden Authentifizierungsinformationennötig sind.                                                                                              | An authinfo object    |
 | logger              | Eigener Log-Provider zur Weiterleitung der SDK-Logs an das Logging-System des Primärsystems                                                                                                                     |                       |
 
 Hinweis: in Implementierungsstufe 1 werden aktuell keine Callbacks genutzt. In Implementierungsstufe 2 können hier Anfragen
@@ -283,10 +294,10 @@ zum Beispiel zum Pushed-Authentication-Request an den IDP hinzukommen.
 
 Mit diesem Objekt wird der Speicher konfiguriert. Es gibt zwei Varianten:
 
-| Variante  | Beschreibung                                                                                                      |
-|-----------|-------------------------------------------------------------------------------------------------------------------|
-| `Default` | Verschlüsselter Standard-Speicher mit einem AES-256 Schlüssel (`aesB64Key`) und optionalem Dateipfad              |
-| `Custom`  | Eigene Implementierung des `SdkStorage` Interface. Verschlüsselung liegt in der Verantwortung des Primärsystems   |
+| Variante  | Beschreibung                                                                                                    |
+|-----------|-----------------------------------------------------------------------------------------------------------------|
+| `Default` | Verschlüsselter Standard-Speicher mit einem AES-256 Schlüssel (`aesB64Key`) und optionalem Dateipfad            |
+| `Custom`  | Eigene Implementierung des `SdkStorage` Interface. Verschlüsselung liegt in der Verantwortung des Primärsystems |
 
 **Hinweis:** Der `zeta_route` Cookie wird automatisch über `SdkStorage` persistiert und bei `logout()`, `forget()` und `clearRegistration()` gelöscht. Keine zusätzliche Konfiguration erforderlich
 
@@ -722,12 +733,12 @@ build/bin/{osArch}/debugShared/
 Nach dem Bau des SDK ist die native Library passend für die Zielplattform in den
 `runtimes/` Ordner zu kopieren:
 
-| Platform      | Source file                                          | Destination                      |
-|---------------|------------------------------------------------------|----------------------------------|
-| macOS ARM64   | `build/bin/macosArm64/debugShared/libzeta_sdk.dylib` | `runtimes/osx-arm64/native/`     |
-| macOS x64     | `build/bin/macosX64/debugShared/libzeta_sdk.dylib`   | `runtimes/osx-x64/native/`       |
-| Linux x64     | `build/bin/linuxX64/debugShared/libzeta_sdk.so`      | `runtimes/linux-x64/native/`     |
-| Windows x64   | `build/bin/mingwX64/debugShared/zeta_sdk.dll`        | `runtimes/win-x64/native/`       |
+| Platform    | Source file                                          | Destination                  |
+|-------------|------------------------------------------------------|------------------------------|
+| macOS ARM64 | `build/bin/macosArm64/debugShared/libzeta_sdk.dylib` | `runtimes/osx-arm64/native/` |
+| macOS x64   | `build/bin/macosX64/debugShared/libzeta_sdk.dylib`   | `runtimes/osx-x64/native/`   |
+| Linux x64   | `build/bin/linuxX64/debugShared/libzeta_sdk.so`      | `runtimes/linux-x64/native/` |
+| Windows x64 | `build/bin/mingwX64/debugShared/zeta_sdk.dll`        | `runtimes/win-x64/native/`   |
 
 Danach ist der passende `<Content>` Eintrag in
 `ZetaSdk.csproj` einzufügen (aus dem Kommentar herauszunehmen), so dass die Bibliothek

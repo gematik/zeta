@@ -1,6 +1,32 @@
 <img align="right" width="250" height="47" src="assets/images/Gematik_Logo_Flag.png"/> <br/>
 
-# Release Notes ZETA SDK und ZETA Guard Helm Charts
+# Release Notes des Produkthandbuchs
+
+## Release 1.2.7
+
+### added
+
+- Release Notes der Komponenten ergänzt:
+  [Release Notes ZETA Guard Komponenten](ReleaseNotes/ZetaGuard/ReleaseNotes.md)
+  und [Release Notes ZETA-SDK](ReleaseNotes/ZetaSDK/ReleaseNotes.md).
+
+## Release 1.2.3
+
+### added
+
+- Registry-CA des Provisioning Processors auch aus einer ConfigMap
+  (`provisioningProcessor.provisioningContainerCaConfigMapRef`) oder frei über
+  `extraEnv`/`extraVolumes`/`extraVolumeMounts`. Dokumentation:
+  [Wie Sie eine eigene OCI Registry verwenden](Anleitungen/Wie_Sie_eine_eigene_OCI_Registry_verwenden.md#ca-zertifikat-für-die-registry).
+- Zugangsdaten für Registries ohne anonymen Zugriff über
+  `provisioningProcessor.registryCredentialsSecretRef`. Dokumentation:
+  [Wie Sie eine eigene OCI Registry verwenden](Anleitungen/Wie_Sie_eine_eigene_OCI_Registry_verwenden.md#zugangsdaten-für-die-registry).
+
+### fixed
+
+- Der CronJob `gematik-oidc-token-renewer` übernimmt die globale
+  Forward-Proxy-Konfiguration. Dokumentation:
+  [Wie Sie einen Forward Proxy konfigurieren](Anleitungen/Wie_Sie_einen_Forward_Proxy_konfigurieren.md#betroffene-komponenten).
 
 ## Release 1.2.1
 

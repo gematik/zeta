@@ -2,6 +2,7 @@
 # Inhaltsverzeichnis
 
 * [Übersicht und Einleitung](README.md)
+* [Release Notes](ReleaseNotes.md)
 * Anleitungen
   * [ZETA Guard Quickstart](Anleitungen/ZETA_Guard_Quickstart.md)
   * [Wie Sie den Cluster lokal mit KIND aufsetzen](Anleitungen/Wie_Sie_den_Cluster_lokal_mit_KIND_aufsetzen.md)
@@ -19,11 +20,15 @@
   * [Wie Sie ein Observability-Backend anschließen](Anleitungen/Wie_Sie_ein_Observability-Backend_an_ZETA-Guard_anschließen.md)
   * [Wie Sie einen Ende zu Ende Integrationstest ausführen](Anleitungen/Wie_Sie_einen_Ende_zu_Ende_Integrationstest_ausführen.md)
   * [Wie Sie einen Forward Proxy konfigurieren](Anleitungen/Wie_Sie_einen_Forward_Proxy_konfigurieren.md)
+* Release Notes
+  * [ZETA-Guard](ReleaseNotes/ZetaGuard/ReleaseNotes.md)
+  * [ZETA-SDK](ReleaseNotes/ZetaSDK/ReleaseNotes.md)
 * Referenzen
   * [Komponentenübersicht](Referenzen/Komponentenuebersicht.md)
   * [Deploymentszenarien](Referenzen/Deploymentszenarien.md)
   * [Referenz des Helm Charts](Referenzen/Referenz_des_Helm_Charts.md)
   * [Konfigurationshinweise](Referenzen/Konfigurationshinweise.md)
+  * [Konfiguration der Well-Known-Endpunkte](Referenzen/Konfiguration_der_Well-Known_Endpunkte.md)
   * [Konfiguration des PEP Http Proxy](Referenzen/Konfiguration_des_PEP_Http_Proxy.md)
   * [Konfiguration des PDP Services](Referenzen/Konfiguration_des_PDP_Services.md)
   * [SDK-Übersicht](Referenzen/SDK-Uebersicht.md)

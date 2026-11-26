@@ -223,6 +223,15 @@ pdp_scopes = ["zero:read", "zero:write"]   # Zusätzliche PDP-Scopes
 Die Variable `audience_scope_name` erlaubt es, den Namen des Audience-Scopes
 anzupassen, falls eine abweichende Scope-Namenskonvention verwendet wird.
 
+> **Hinweis:** Der Audience-Scope trägt die Mapper, die die vom PEP geforderten
+> Access-Token-Claims setzen (`aud`, `profession_oid`, `client_id`, `ip_address`,
+> `product_id`, `product_version`, `common_name`, `organization_name`). Der Client muss
+> diesen Scope anfragen. Verlangt ein Fachdienst einen bestimmten Scope-Namen — zum Beispiel
+> `vsdservice` für das VSDM (A_26744) —, setzen Sie `audience_scope_name` auf diesen Wert
+> und führen ihn **nicht** zusätzlich in `pdp_scopes` (doppelter Scope-Name → Fehler).
+> Sonst fehlen dem Token die Claims und der PEP lehnt die Anfrage vor der Policy ab
+> (`missing field 'aud'`).
+
 Siehe [demo.tfvars](https://github.com/gematik/zeta-guard-helm/blob/main/terraform/authserver/environments/demo.tfvars).
 
 #### Backend initialisieren

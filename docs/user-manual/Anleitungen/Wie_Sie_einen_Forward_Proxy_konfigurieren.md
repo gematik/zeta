@@ -30,13 +30,14 @@ Die Proxy-Konfiguration wird automatisch von folgenden Komponenten übernommen:
 | `opa` / `opa-simulation`                  | OPA-Bundle-Registry (OCI)                       |
 | `provisioning-processor` (Init-Container) | OCI-Provisioning-Image-Registry                 |
 | `opa-token-renewer` (CronJob)             | GCP STS / IAM APIs                              |
+| `gematik-oidc-token-renewer` (CronJob)    | GCP STS / IAM APIs (ab Helm-Chart 1.2.3)        |
 
 Folgende Komponenten erhalten bewusst keine Proxy-Konfiguration:
 
-| Komponente                            | Grund                                                |
-|---------------------------------------|------------------------------------------------------|
-| `keycloak-build` Init-Container       | Führt `kc.sh build` lokal aus, kein ausgehender HTTP |
-| `keychain-generator` Init-Container   | Nur gRPC zu cluster-internem HSM                     |
+| Komponente                          | Grund                                                |
+|-------------------------------------|------------------------------------------------------|
+| `keycloak-build` Init-Container     | Führt `kc.sh build` lokal aus, kein ausgehender HTTP |
+| `keychain-generator` Init-Container | Nur gRPC zu cluster-internem HSM                     |
 
 ### Subcharts (manuelle Konfiguration erforderlich)
 
@@ -117,10 +118,10 @@ zu `JAVA_OPTS_APPEND` hinzu. Das Java-Format für `http.nonProxyHosts`
 unterscheidet sich vom Unix-Format in `NO_PROXY` (Pipe-Trenner, `*`-Wildcard
 statt führendem Punkt); der Chart führt die Konvertierung automatisch durch:
 
-| `noProxy`-Eintrag  | `http.nonProxyHosts`-Äquivalent |
-|--------------------|---------------------------------|
-| `authserver`       | `authserver`                    |
-| `.cluster.local`   | `*.cluster.local`               |
+| `noProxy`-Eintrag | `http.nonProxyHosts`-Äquivalent |
+|-------------------|---------------------------------|
+| `authserver`      | `authserver`                    |
+| `.cluster.local`  | `*.cluster.local`               |
 
 ---
 
@@ -136,10 +137,10 @@ noProxy: ".cluster.local"
 Der führende Punkt ist eine **De-facto-Konvention** — es gibt keinen RFC-Standard
 für die `NO_PROXY`-Syntax. Das Verhalten variiert je nach Tool:
 
-| Tool            | Verhalten von `.cluster.local`                                                                              |
-|-----------------|-------------------------------------------------------------------------------------------------------------|
-| curl, reqwest   | Suffix-Match — Punkt ist optional; trifft `foo.cluster.local` **und** `cluster.local`                       |
-| Go / grpc-go    | Nur Subdomains — trifft `foo.cluster.local`, aber **nicht** `cluster.local` selbst                          |
+| Tool          | Verhalten von `.cluster.local`                                                        |
+|---------------|---------------------------------------------------------------------------------------|
+| curl, reqwest | Suffix-Match — Punkt ist optional; trifft `foo.cluster.local` **und** `cluster.local` |
+| Go / grpc-go  | Nur Subdomains — trifft `foo.cluster.local`, aber **nicht** `cluster.local` selbst    |
 
 `.cluster.local` als einzelner Eintrag mit führendem Punkt deckt
 `*.pod.cluster.local` und alle anderen Kubernetes-internen FQDNs sowohl bei
